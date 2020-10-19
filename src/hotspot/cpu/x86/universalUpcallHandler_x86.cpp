@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,8 @@
 #include "oops/arrayOop.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "classfile/symbolTable.hpp"
+
+static constexpr CodeBuffer::csize_t upcall_stub_size = 1024;
 
 extern struct JavaVM_ main_vm;
 
@@ -119,7 +121,7 @@ static void upcall_helper(jobject rec, address buff) {
 
 static address generate_upcall_stub(jobject rec, const ABIDescriptor& abi, const BufferLayout& layout) {
   ResourceMark rm;
-  CodeBuffer buffer("upcall_stub", 1024, 1024);
+  CodeBuffer buffer("upcall_stub", 1024, upcall_stub_size);
 
   MacroAssembler* _masm = new MacroAssembler(&buffer);
   int stack_alignment_C = 16; // bytes

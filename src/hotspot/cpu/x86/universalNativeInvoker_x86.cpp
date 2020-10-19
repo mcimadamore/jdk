@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@
 #include "oops/arrayOop.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "prims/methodHandles.hpp"
+
+static constexpr CodeBuffer::csize_t native_invoker_size = 1024;
 
 void generate_invoke_native(MacroAssembler* _masm, const ABIDescriptor& abi, const BufferLayout& layout) {
 
@@ -189,7 +191,7 @@ jlong ProgrammableInvoker::generate_adapter(jobject jabi, jobject jlayout) {
   const ABIDescriptor abi = ForeignGlobals::parseABIDescriptor(jabi);
   const BufferLayout layout = ForeignGlobals::parseBufferLayout(jlayout);
 
-  BufferBlob* _invoke_native_blob = BufferBlob::create("invoke_native_blob", MethodHandles::adapter_code_size);
+  BufferBlob* _invoke_native_blob = BufferBlob::create("invoke_native_blob", native_invoker_size);
 
   CodeBuffer code2(_invoke_native_blob);
   ProgrammableInvokerGenerator g2(&code2, &abi, &layout);

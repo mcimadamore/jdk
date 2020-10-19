@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,6 +33,8 @@
 #include "prims/universalNativeInvoker.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
+
+static constexpr CodeBuffer::csize_t native_invoker_size = 1024;
 
 static void generate_invoke_native(MacroAssembler* _masm,
                                    const ABIDescriptor& abi,
@@ -151,7 +153,7 @@ jlong ProgrammableInvoker::generate_adapter(jobject jabi, jobject jlayout) {
   const ABIDescriptor abi = ForeignGlobals::parseABIDescriptor(jabi);
   const BufferLayout layout = ForeignGlobals::parseBufferLayout(jlayout);
 
-  BufferBlob* _invoke_native_blob = BufferBlob::create("invoke_native_blob", MethodHandles::adapter_code_size);
+  BufferBlob* _invoke_native_blob = BufferBlob::create("invoke_native_blob", native_invoker_size);
 
   CodeBuffer code2(_invoke_native_blob);
   ProgrammableInvokerGenerator g2(&code2, &abi, &layout);
