@@ -58,10 +58,10 @@ const BufferLayout ForeignGlobals::parseBufferLayout(jobject jlayout) {
 }
 
 ForeignGlobals::ForeignGlobals() {
-  TRAPS = Thread::current();
+  Thread* current_thread = Thread::current();
   ResourceMark rm;
 
-  InstanceKlass* k_ABI = find_InstanceKlass(FOREIGN_ABI "ABIDescriptor", THREAD);
+  InstanceKlass* k_ABI = find_InstanceKlass(FOREIGN_ABI "ABIDescriptor", current_thread);
   assert(k_ABI != nullptr, "Could not find ABIDescriptor class");
 
   const char* strVMSArray = "[[L" FOREIGN_ABI "VMStorage;";
@@ -73,12 +73,12 @@ ForeignGlobals::ForeignGlobals() {
   ABI.stackAlignment_offset = field_offset(k_ABI, "stackAlignment", vmSymbols::int_signature());
   ABI.shadowSpace_offset = field_offset(k_ABI, "shadowSpace", vmSymbols::int_signature());
 
-  InstanceKlass* k_VMS = find_InstanceKlass(FOREIGN_ABI "VMStorage", THREAD);
+  InstanceKlass* k_VMS = find_InstanceKlass(FOREIGN_ABI "VMStorage", current_thread);
   assert(k_VMS != nullptr, "Could not find VMStorage class");
 
   VMS.index_offset = field_offset(k_VMS, "index", vmSymbols::int_signature());
 
-  InstanceKlass* k_BL = find_InstanceKlass(FOREIGN_ABI "BufferLayout", THREAD);
+  InstanceKlass* k_BL = find_InstanceKlass(FOREIGN_ABI "BufferLayout", current_thread);
   assert(k_BL != nullptr, "Could not find BufferLayout class");
 
   BL.size_offset = field_offset(k_BL, "size", vmSymbols::long_signature());
