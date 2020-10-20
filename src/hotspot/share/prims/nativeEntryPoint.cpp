@@ -26,8 +26,7 @@
 #include "runtime/interfaceSupport.inline.hpp"
 #include "code/vmreg.hpp"
 
-JVM_ENTRY(jlong, NEP_vmStorageToVMReg(JNIEnv* env, jclass _unused, jint type, jint index))
-  ThreadToNativeFromVM ttnfvm(thread);
+JVM_LEAF(jlong, NEP_vmStorageToVMReg(JNIEnv* env, jclass _unused, jint type, jint index))
   return VMRegImpl::vmStorageToVMReg(type, index)->value();
 JVM_END
 
