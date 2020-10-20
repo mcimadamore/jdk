@@ -26,6 +26,7 @@
 #include "runtime/jniHandles.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "prims/foreign_globals.hpp"
+#include "prims/foreign_globals.inline.hpp"
 
 bool ABIDescriptor::is_volatile_reg(Register reg) const {
   return _integer_argument_registers.contains(reg)

@@ -24,9 +24,6 @@
 #ifndef SHARE_PRIMS_FOREIGN_GLOBALS
 #define SHARE_PRIMS_FOREIGN_GLOBALS
 
-#include "precompiled.hpp"
-#include "oops/oopsHierarchy.hpp"
-#include "oops/objArrayOop.hpp"
 #include CPU_HEADER(foreign_globals)
 
 class ForeignGlobals {
@@ -56,31 +53,11 @@ private:
 
   static const ForeignGlobals& instance();
 
-  template<typename T, typename Func>
-  void loadArray(objArrayOop jarray, int type_index, GrowableArray<T>& array, Func converter) const {
-    objArrayOop subarray = cast<objArrayOop>(jarray->obj_at(type_index));
-    int subarray_length = subarray->length();
-    for (int i = 0; i < subarray_length; i++) {
-      oop storage = subarray->obj_at(i);
-      jint index = storage->int_field(VMS.index_offset);
-      array.push(converter(index));
-    }
-  }
-
-  template<typename T>
-  static bool check_type(oop theOop) {
-    static_assert(false, "No check_type specialization found for this type");
-  }
-  template<>
-  static bool check_type<objArrayOop>(oop theOop) { return theOop->is_objArray(); }
-  template<>
-  static bool check_type<typeArrayOop>(oop theOop) { return theOop->is_typeArray(); }
-
   template<typename R>
-  static R cast(oop theOop) {
-    assert(check_type<R>(theOop), "Invalid cast");
-    return (R) theOop;
-  }
+  static R cast(oop theOop);
+
+  template<typename T, typename Func>
+  void loadArray(objArrayOop jarray, int type_index, GrowableArray<T>& array, Func converter) const;
 
   int field_offset(InstanceKlass* cls, const char* fieldname, Symbol* sigsym);
   InstanceKlass* find_InstanceKlass(const char* name, TRAPS);
