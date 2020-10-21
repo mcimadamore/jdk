@@ -58,7 +58,7 @@ const BufferLayout ForeignGlobals::parseBufferLayout(jobject jlayout) {
 
 ForeignGlobals::ForeignGlobals() {
   Thread* current_thread = Thread::current();
-  ResourceMark rm;
+  ResourceMark rm(current_thread);
 
   // ABIDescriptor
   InstanceKlass* k_ABI = find_InstanceKlass(FOREIGN_ABI "ABIDescriptor", current_thread);
