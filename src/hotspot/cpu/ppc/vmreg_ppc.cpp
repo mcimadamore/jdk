@@ -49,3 +49,7 @@ void VMRegImpl::set_regName() {
   }
 }
 
+VMReg VMRegImpl::vmStorageToVMReg(int type, int index) {
+  ShouldNotCallThis();
+  return VMRegImpl::Bad();
+}

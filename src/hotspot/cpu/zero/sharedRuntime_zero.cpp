@@ -137,3 +137,11 @@ int SharedRuntime::c_calling_convention(const BasicType *sig_bt,
   ShouldNotCallThis();
   return 0;
 }
+
+address SharedRuntime::make_native_invoker(address call_target,
+                                           int shadow_space_bytes,
+                                           const GrowableArray<VMReg>& input_registers,
+                                           const GrowableArray<VMReg>& output_registers) {
+  ShouldNotCallThis();
+  return nullptr;
+}
