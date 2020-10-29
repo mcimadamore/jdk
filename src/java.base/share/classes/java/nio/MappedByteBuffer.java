@@ -67,7 +67,7 @@ import jdk.internal.access.foreign.UnmapperProxy;
  * @since 1.4
  */
 
-public abstract class MappedByteBuffer
+public class MappedByteBuffer
     extends ByteBuffer
 {
 
@@ -89,24 +89,11 @@ public abstract class MappedByteBuffer
 
     // This should only be invoked by the DirectByteBuffer constructors
     //
-    MappedByteBuffer(int mark, int pos, int lim, int cap, // package-private
-                     FileDescriptor fd, boolean isSync, MemorySegmentProxy segment) {
-        super(mark, pos, lim, cap, segment);
+    MappedByteBuffer(long addr, int mark, int pos, int lim, int cap, // package-private
+                     FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, MemorySegmentProxy segment) {
+        super(addr, null, mark, pos, lim, cap, readOnly, order, segment);
         this.fd = fd;
         this.isSync = isSync;
-    }
-
-    MappedByteBuffer(int mark, int pos, int lim, int cap, // package-private
-                     boolean isSync, MemorySegmentProxy segment) {
-        super(mark, pos, lim, cap, segment);
-        this.fd = null;
-        this.isSync = isSync;
-    }
-
-    MappedByteBuffer(int mark, int pos, int lim, int cap, MemorySegmentProxy segment) { // package-private
-        super(mark, pos, lim, cap, segment);
-        this.fd = null;
-        this.isSync = false;
     }
 
     UnmapperProxy unmapper() {

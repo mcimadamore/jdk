@@ -69,7 +69,7 @@ class CharBufferSpliterator implements Spliterator.OfInt {
         int hi = limit;
         index = hi;
         while (i < hi) {
-            action.accept(cb.getUnchecked(i++));
+            action.accept(cb.get(i++)); // TODO: unchecked
         }
     }
 
@@ -78,7 +78,7 @@ class CharBufferSpliterator implements Spliterator.OfInt {
         if (action == null)
             throw new NullPointerException();
         if (index >= 0 && index < limit) {
-            action.accept(buffer.getUnchecked(index++));
+            action.accept(buffer.get(index++)); // TODO: unchecked
             return true;
         }
         return false;

@@ -25,6 +25,8 @@
 
 package java.nio;
 
+import jdk.internal.misc.Unsafe;
+
 import java.util.Objects;
 
 // ## If the sequence is a string, use reflection to share its array
@@ -35,11 +37,10 @@ class StringCharBuffer                                  // package-private
     CharSequence str;
 
     StringCharBuffer(CharSequence s, int start, int end) { // package-private
-        super(-1, start, end, s.length(), null);
+        super(Unsafe.ARRAY_CHAR_BASE_OFFSET, null, -1, start, end, s.length(), true, ByteOrder.nativeOrder(), null);
         int n = s.length();
         Objects.checkFromToIndex(start, end, n);
         str = s;
-        this.isReadOnly = true;
     }
 
     public CharBuffer slice() {
@@ -47,38 +48,37 @@ class StringCharBuffer                                  // package-private
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
         return new StringCharBuffer(str,
+                                    address + pos,
                                     -1,
                                     0,
                                     rem,
-                                    rem,
-                                    offset + pos);
+                                    rem);
     }
 
     @Override
     public CharBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
         return new StringCharBuffer(str,
+                                    address + index,
                                     -1,
                                     0,
                                     length,
-                                    length,
-                                    offset + index);
+                                    length);
     }
 
     private StringCharBuffer(CharSequence s,
+                             long address,
                              int mark,
                              int pos,
                              int limit,
-                             int cap,
-                             int offset) {
-        super(mark, pos, limit, cap, null, offset, null);
+                             int cap) {
+        super(address, null, mark, pos, limit, cap, true, ByteOrder.nativeOrder(), null);
         str = s;
-        this.isReadOnly = true;
     }
 
     public CharBuffer duplicate() {
-        return new StringCharBuffer(str, markValue(),
-                                    position(), limit(), capacity(), offset);
+        return new StringCharBuffer(str, address, markValue(),
+                                    position(), limit(), capacity());
     }
 
     public CharBuffer asReadOnlyBuffer() {
@@ -86,15 +86,15 @@ class StringCharBuffer                                  // package-private
     }
 
     public final char get() {
-        return str.charAt(nextGetIndex() + offset);
+        return str.charAt(nextGetIndex() + arrayOffset());
     }
 
     public final char get(int index) {
-        return str.charAt(checkIndex(index) + offset);
+        return str.charAt(checkIndex(index) + arrayOffset());
     }
 
     char getUnchecked(int index) {
-        return str.charAt(index + offset);
+        return str.charAt(index + arrayOffset());
     }
 
     // ## Override bulk get methods for better performance
@@ -116,7 +116,7 @@ class StringCharBuffer                                  // package-private
     }
 
     final String toString(int start, int end) {
-        return str.subSequence(start + offset, end + offset).toString();
+        return str.subSequence(start + arrayOffset(), end + arrayOffset()).toString();
     }
 
     public final CharBuffer subSequence(int start, int end) {
@@ -127,7 +127,7 @@ class StringCharBuffer                                  // package-private
                                         pos + checkIndex(start, pos),
                                         pos + checkIndex(end, pos),
                                         capacity(),
-                                        offset);
+                                        arrayOffset());
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
