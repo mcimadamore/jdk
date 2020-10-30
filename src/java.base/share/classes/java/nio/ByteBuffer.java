@@ -240,10 +240,8 @@ public class ByteBuffer
      *          If the {@code capacity} is a negative integer
      */
     public static ByteBuffer allocateDirect(int capacity) {
-        throw new UnsupportedOperationException();
+        return MappedByteBuffer.makeDirectBuffer(capacity);
     }
-
-
 
     /**
      * Allocates a new byte buffer.

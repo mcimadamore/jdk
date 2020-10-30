@@ -31,6 +31,9 @@ import java.util.Objects;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.access.foreign.UnmapperProxy;
+import jdk.internal.misc.VM;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 
 /**
@@ -80,6 +83,8 @@ public class MappedByteBuffer
     // operations if valid; null if the buffer is not mapped.
     private final FileDescriptor fd;
 
+    final Object ref; // attachment
+
     // A flag true if this buffer is mapped against non-volatile
     // memory using one of the extended FileChannel.MapMode modes,
     // MapMode.READ_ONLY_SYNC or MapMode.READ_WRITE_SYNC and false if
@@ -87,13 +92,19 @@ public class MappedByteBuffer
     // determines the behavior of force operations.
     private final boolean isSync;
 
+    Cleaner cleaner;
+
     // This should only be invoked by the DirectByteBuffer constructors
     //
-    MappedByteBuffer(long addr, int mark, int pos, int lim, int cap, // package-private
+    MappedByteBuffer(Deallocator deallocator, Object ref, long addr, int mark, int pos, int lim, int cap, // package-private
                      FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, MemorySegmentProxy segment) {
         super(addr, null, mark, pos, lim, cap, readOnly, order, segment);
+        this.ref = ref;
         this.fd = fd;
         this.isSync = isSync;
+        if (deallocator != null) {
+            this.cleaner = Cleaner.create(this, deallocator);
+        }
     }
 
     UnmapperProxy unmapper() {
@@ -119,6 +130,33 @@ public class MappedByteBuffer
                         throw new UnsupportedOperationException();
                     }
                 } : null;
+    }
+
+    static class Deallocator
+            implements Runnable
+    {
+
+        private long address;
+        private long size;
+        private int capacity;
+
+        Deallocator(long address, long size, int capacity) {
+            assert (address != 0);
+            this.address = address;
+            this.size = size;
+            this.capacity = capacity;
+        }
+
+        public void run() {
+            if (address == 0) {
+                // Paranoia
+                return;
+            }
+            UNSAFE.freeMemory(address);
+            address = 0;
+            Bits.unreserveMemory(size, capacity);
+        }
+
     }
 
     /**
@@ -335,5 +373,52 @@ public class MappedByteBuffer
     public final MappedByteBuffer rewind() {
         super.rewind();
         return this;
+    }
+
+    static MappedByteBuffer makeDirectBuffer(int cap) {
+        class DirectBufferImpl extends MappedByteBuffer implements DirectBuffer {
+
+            DirectBufferImpl(Deallocator deallocator, Object ref, long addr, int mark, int pos, int lim, int cap, FileDescriptor fd,
+                             boolean isSync, boolean readOnly, ByteOrder order, MemorySegmentProxy segment) {
+                super(deallocator, ref, addr, mark, pos, lim, cap, fd, isSync, readOnly, order, segment);
+            }
+
+            @Override
+            public long address() {
+                return address;
+            }
+
+            @Override
+            public Object attachment() {
+                return ref;
+            }
+
+            @Override
+            public Cleaner cleaner() {
+                return cleaner;
+            }
+        }
+        boolean pa = VM.isDirectMemoryPageAligned();
+        int ps = Bits.pageSize();
+        long size = Math.max(1L, (long)cap + (pa ? ps : 0));
+        Bits.reserveMemory(size, cap);
+
+        long base = 0;
+        try {
+            base = UNSAFE.allocateMemory(size);
+        } catch (OutOfMemoryError x) {
+            Bits.unreserveMemory(size, cap);
+            throw x;
+        }
+        UNSAFE.setMemory(base, size, (byte) 0);
+        final long address;
+        if (pa && (base % ps != 0)) {
+            // Round up to page boundary
+            address = base + ps - (base & (ps - 1));
+        } else {
+            address = base;
+        }
+        return new DirectBufferImpl(new MappedByteBuffer.Deallocator(base, size, cap), null, address, -1, 0, cap, cap, null,
+                false, false, ByteOrder.nativeOrder(), null);
     }
 }
