@@ -701,8 +701,10 @@ public abstract class Buffer {
 
     final int nextGetIndex(int nb) {                    // package-private
         int p = position;
-        if (limit - p < nb)
+        if (limit - p < nb) {
+            System.err.println(toString());
             throw new BufferUnderflowException();
+        }
         position = p + nb;
         return p;
     }
@@ -860,7 +862,7 @@ public abstract class Buffer {
     }
 
     short getShortInternal(int offset) {
-        return UNSAFE.getShort(base(), ix(offset));
+        return swap(UNSAFE.getShort(base(), ix(offset)));
     }
 
     void putShortInternal(short b) {
@@ -868,7 +870,7 @@ public abstract class Buffer {
     }
 
     void putShortInternal(int offset, short b) {
-        UNSAFE.putShort(base(), ix(offset), b);
+        UNSAFE.putShort(base(), ix(offset), swap(b));
     }
 
     char getCharInternal() {
@@ -876,7 +878,7 @@ public abstract class Buffer {
     }
 
     char getCharInternal(int offset) {
-        return UNSAFE.getChar(base(), ix(offset));
+        return swap(UNSAFE.getChar(base(), ix(offset)));
     }
 
     void putCharInternal(char b) {
@@ -884,7 +886,7 @@ public abstract class Buffer {
     }
 
     void putCharInternal(int offset, char b) {
-        UNSAFE.putChar(base(), ix(offset), b);
+        UNSAFE.putChar(base(), ix(offset), swap(b));
     }
 
     int getIntInternal() {
@@ -892,7 +894,7 @@ public abstract class Buffer {
     }
 
     int getIntInternal(int offset) {
-        return UNSAFE.getIntUnaligned(base(), ix(offset));
+        return swap(UNSAFE.getIntUnaligned(base(), ix(offset)));
     }
 
     void putIntInternal(int i) {
@@ -900,7 +902,7 @@ public abstract class Buffer {
     }
 
     void putIntInternal(int offset, int i) {
-        UNSAFE.putIntUnaligned(base(), ix(offset), i);
+        UNSAFE.putIntUnaligned(base(), ix(offset), swap(i));
     }
 
     float getFloatInternal() {
@@ -908,7 +910,7 @@ public abstract class Buffer {
     }
 
     float getFloatInternal(int offset) {
-        return UNSAFE.getFloat(base(), ix(offset));
+        return swap(UNSAFE.getFloat(base(), ix(offset)));
     }
 
     void putFloatInternal(float b) {
@@ -916,7 +918,7 @@ public abstract class Buffer {
     }
 
     void putFloatInternal(int offset, float b) {
-        UNSAFE.putFloat(base(), ix(offset), b);
+        UNSAFE.putFloat(base(), ix(offset), swap(b));
     }
 
     long getLongInternal() {
@@ -924,7 +926,7 @@ public abstract class Buffer {
     }
 
     long getLongInternal(int offset) {
-        return UNSAFE.getLong(base(), ix(offset));
+        return swap(UNSAFE.getLong(base(), ix(offset)));
     }
 
     void putLongInternal(long b) {
@@ -932,7 +934,7 @@ public abstract class Buffer {
     }
 
     void putLongInternal(int offset, long b) {
-        UNSAFE.putLong(base(), ix(offset), b);
+        UNSAFE.putLong(base(), ix(offset), swap(b));
     }
 
     double getDoubleInternal() {
@@ -940,7 +942,7 @@ public abstract class Buffer {
     }
 
     double getDoubleInternal(int offset) {
-        return UNSAFE.getDouble(base(), ix(offset));
+        return swap(UNSAFE.getDouble(base(), ix(offset)));
     }
 
     void putDoubleInternal(double b) {
@@ -948,6 +950,38 @@ public abstract class Buffer {
     }
 
     void putDoubleInternal(int offset, double b) {
-        UNSAFE.putDouble(base(), ix(offset), b);
+        UNSAFE.putDouble(base(), ix(offset), swap(b));
+    }
+
+    @ForceInline
+    short swap(short x) {
+        return order != ByteOrder.BIG_ENDIAN ? x : Short.reverseBytes(x);
+    }
+
+    @ForceInline
+    char swap(char x) {
+        return order != ByteOrder.BIG_ENDIAN ? x : Character.reverseBytes(x);
+    }
+
+    @ForceInline
+    int swap(int x) {
+        return order != ByteOrder.BIG_ENDIAN ? x : Integer.reverseBytes(x);
+    }
+
+    @ForceInline
+    float swap(float x) {
+        int xs = swap(Float.floatToRawIntBits(x));
+        return Float.intBitsToFloat(xs);
+    }
+
+    @ForceInline
+    long swap(long x) {
+        return order != ByteOrder.BIG_ENDIAN ? x : Long.reverseBytes(x);
+    }
+
+    @ForceInline
+    double swap(double x) {
+        long xs = swap(Double.doubleToRawLongBits(x));
+        return Double.longBitsToDouble(xs);
     }
 }

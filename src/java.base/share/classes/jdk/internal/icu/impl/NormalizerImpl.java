@@ -378,6 +378,7 @@ public final class NormalizerImpl {
             }
             int[] inIndexes=new int[indexesLength];
             inIndexes[0]=indexesLength*4;
+            System.err.println("length bytes = " + indexesLength * 4);
             for(int i=1; i<indexesLength; ++i) {
                 inIndexes[i]=bytes.getInt();
             }

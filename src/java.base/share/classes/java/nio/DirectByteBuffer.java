@@ -27,6 +27,18 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
         ref = null;
     }
 
+    // For memory-mapped buffers -- invoked by FileChannelImpl via reflection
+    //
+    protected DirectByteBuffer(int cap, long addr,
+                               FileDescriptor fd,
+                               Runnable unmapper,
+                               boolean isSync, MemorySegmentProxy segment)
+    {
+        super(addr, -1, 0, cap, cap, fd, isSync, false, ByteOrder.BIG_ENDIAN, segment);
+        cleaner = Cleaner.create(this, unmapper);
+        ref = null;
+    }
+
     @Override
     public long address() {
         return address;
@@ -90,7 +102,7 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
         } else {
             address = base;
         }
-        return new DirectByteBuffer(new Deallocator(base, size, cap), null, address, -1, 0, cap, cap, null,
+        return new DirectByteBuffer(null, new Deallocator(base, size, cap), address, -1, 0, cap, cap, null,
                 false, false, ByteOrder.nativeOrder(), null);
     }
 }

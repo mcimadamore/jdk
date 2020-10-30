@@ -29,6 +29,7 @@ package java.nio;
 
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
+import jdk.internal.misc.Unsafe;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
@@ -300,7 +301,7 @@ public class ByteBuffer
                                     int offset, int length)
     {
         try {
-            return new ByteBuffer(UNSAFE.arrayBaseOffset(byte[].class),
+            return new ByteBuffer(Unsafe.ARRAY_BYTE_BASE_OFFSET,
                     array, -1, offset, length, length, false, ByteOrder.BIG_ENDIAN, null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
