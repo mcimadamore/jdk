@@ -445,7 +445,7 @@ public class CharBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public char get() {
-        return getCharInternal();
+        return getCharInternal(nextGetIndex());
     }
 
     /**
@@ -466,7 +466,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(char c) {
-        putCharInternal(c);
+        putCharInternal(nextGetIndex(), c);
         return this;
     }
 
@@ -484,7 +484,7 @@ public class CharBuffer
      *          or not smaller than the buffer's limit
      */
     public char get(int index) {
-        return getCharInternal(index);
+        return getCharInternal(checkIndex(index));
     }
 
     /**
@@ -509,7 +509,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(int index, char c) {
-        putCharInternal(index, c);
+        putCharInternal(checkIndex(index), c);
         return this;
     }
 

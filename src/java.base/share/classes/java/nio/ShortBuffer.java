@@ -310,7 +310,7 @@ public class ShortBuffer
 
     @Override
     long ix(int pos) {
-        return address + (pos << 2);
+        return address + (pos << 1);
     }
 
 
@@ -326,7 +326,7 @@ public class ShortBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public short get() {
-        return getShortInternal();
+        return getShortInternal(nextGetIndex());
     }
 
     /**
@@ -347,7 +347,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(short d) {
-        putShortInternal(d);
+        putShortInternal(nextGetIndex(), d);
         return this;
     }
 
@@ -365,7 +365,7 @@ public class ShortBuffer
      *          or not smaller than the buffer's limit
      */
     public short get(int index) {
-        return getShortInternal(index);
+        return getShortInternal(checkIndex(index));
     }
 
     /**
@@ -390,7 +390,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(int index, short d) {
-        putShortInternal(index, d);
+        putShortInternal(checkIndex(index), d);
         return this;
     }
 

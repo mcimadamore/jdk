@@ -326,7 +326,7 @@ public class IntBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public int get() {
-        return getIntInternal();
+        return getIntInternal(nextGetIndex());
     }
 
     /**
@@ -347,7 +347,7 @@ public class IntBuffer
      *          If this buffer is read-only
      */
     public IntBuffer put(int d) {
-        putIntInternal(d);
+        putIntInternal(nextGetIndex(), d);
         return this;
     }
 
@@ -365,7 +365,7 @@ public class IntBuffer
      *          or not smaller than the buffer's limit
      */
     public int get(int index) {
-        return getIntInternal(index);
+        return getIntInternal(checkIndex(index));
     }
 
     /**
@@ -390,7 +390,7 @@ public class IntBuffer
      *          If this buffer is read-only
      */
     public IntBuffer put(int index, int d) {
-        putIntInternal(index, d);
+        putIntInternal(checkIndex(index), d);
         return this;
     }
 

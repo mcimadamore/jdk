@@ -181,6 +181,9 @@ public class TestByteBuffer {
                 Object handleValue = handleExtractor.apply(resizedSegment.baseAddress(), j - i);
                 Object bufferValue = bufferExtractor.apply(z);
                 if (handleValue instanceof Number) {
+                    if (((Number)bufferValue).longValue() != j) {
+                        bufferExtractor.apply(z);
+                    }
                     assertEquals(((Number)handleValue).longValue(), j);
                     assertEquals(((Number)bufferValue).longValue(), j);
                 } else {

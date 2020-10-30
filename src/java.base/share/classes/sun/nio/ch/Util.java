@@ -417,7 +417,7 @@ public class Util {
                                              long.class,
                                              FileDescriptor.class,
                                              Runnable.class,
-                                             boolean.class, MemorySegmentProxy.class});
+                                             boolean.class, boolean.class, MemorySegmentProxy.class});
                         ctor.setAccessible(true);
                         directByteBufferConstructor = ctor;
                     } catch (ClassNotFoundException   |
@@ -444,7 +444,7 @@ public class Util {
                              addr,
                              fd,
                              unmapper,
-                             isSync, null});
+                             isSync, false, null});
         } catch (InstantiationException |
                  IllegalAccessException |
                  InvocationTargetException e) {
@@ -453,46 +453,21 @@ public class Util {
         return dbb;
     }
 
-    private static volatile Constructor<?> directByteBufferRConstructor;
-
-    private static void initDBBRConstructor() {
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-                public Void run() {
-                    try {
-                        Class<?> cl = Class.forName("java.nio.DirectByteBufferR");
-                        Constructor<?> ctor = cl.getDeclaredConstructor(
-                            new Class<?>[] { int.class,
-                                             long.class,
-                                             FileDescriptor.class,
-                                             Runnable.class,
-                                             boolean.class, MemorySegmentProxy.class });
-                        ctor.setAccessible(true);
-                        directByteBufferRConstructor = ctor;
-                    } catch (ClassNotFoundException |
-                             NoSuchMethodException |
-                             IllegalArgumentException |
-                             ClassCastException x) {
-                        throw new InternalError(x);
-                    }
-                    return null;
-                }});
-    }
-
     static MappedByteBuffer newMappedByteBufferR(int size, long addr,
                                                  FileDescriptor fd,
                                                  Runnable unmapper,
                                                  boolean isSync)
     {
         MappedByteBuffer dbb;
-        if (directByteBufferRConstructor == null)
-            initDBBRConstructor();
+        if (directByteBufferConstructor == null)
+            initDBBConstructor();
         try {
-            dbb = (MappedByteBuffer)directByteBufferRConstructor.newInstance(
+            dbb = (MappedByteBuffer)directByteBufferConstructor.newInstance(
               new Object[] { size,
                              addr,
                              fd,
                              unmapper,
-                             isSync, null});
+                             isSync, true, null});
         } catch (InstantiationException |
                  IllegalAccessException |
                  InvocationTargetException e) {

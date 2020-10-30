@@ -776,17 +776,17 @@ public abstract class Buffer {
 
                 @Override
                 public ByteBuffer newDirectByteBuffer(long addr, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new DirectByteBuffer(null, null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.nativeOrder(), segment);
+                    return new DirectByteBuffer(null, null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.BIG_ENDIAN, segment);
                 }
 
                 @Override
                 public ByteBuffer newMappedByteBuffer(UnmapperProxy unmapperProxy, long address, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new MappedByteBuffer(address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.nativeOrder(), segment);
+                    return new MappedByteBuffer(address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.BIG_ENDIAN, segment);
                 }
 
                 @Override
                 public ByteBuffer newHeapByteBuffer(byte[] hb, int offset, int capacity, MemorySegmentProxy segment) {
-                    return new ByteBuffer(Unsafe.ARRAY_BYTE_BASE_OFFSET, hb, -1, offset, capacity, capacity, false, ByteOrder.nativeOrder(), segment);
+                    return new ByteBuffer(Unsafe.ARRAY_BYTE_BASE_OFFSET + offset, hb, -1, 0, capacity, capacity, false, ByteOrder.BIG_ENDIAN, segment);
                 }
 
                 @Override
@@ -841,112 +841,56 @@ public abstract class Buffer {
         return address + pos;
     }
 
-    byte getByteInternal() {
-        return getByteInternal(nextGetIndex(1));
-    }
-
     byte getByteInternal(int offset) {
         return UNSAFE.getByte(base(), ix(offset));
-    }
-
-    void putByteInternal(byte b) {
-        putByteInternal(nextPutIndex(1), b);
     }
 
     void putByteInternal(int offset, byte b) {
         UNSAFE.putByte(base(), ix(offset), b);
     }
 
-    short getShortInternal() {
-        return getShortInternal(nextGetIndex(2));
-    }
-
     short getShortInternal(int offset) {
         return swap(UNSAFE.getShort(base(), ix(offset)));
-    }
-
-    void putShortInternal(short b) {
-        putShortInternal(nextPutIndex(2), b);
     }
 
     void putShortInternal(int offset, short b) {
         UNSAFE.putShort(base(), ix(offset), swap(b));
     }
 
-    char getCharInternal() {
-        return getCharInternal(nextGetIndex(2));
-    }
-
     char getCharInternal(int offset) {
         return swap(UNSAFE.getChar(base(), ix(offset)));
-    }
-
-    void putCharInternal(char b) {
-        putCharInternal(nextPutIndex(2), b);
     }
 
     void putCharInternal(int offset, char b) {
         UNSAFE.putChar(base(), ix(offset), swap(b));
     }
 
-    int getIntInternal() {
-        return getIntInternal(nextGetIndex(4));
-    }
-
     int getIntInternal(int offset) {
         return swap(UNSAFE.getIntUnaligned(base(), ix(offset)));
-    }
-
-    void putIntInternal(int i) {
-        putIntInternal(nextPutIndex(4), i);
     }
 
     void putIntInternal(int offset, int i) {
         UNSAFE.putIntUnaligned(base(), ix(offset), swap(i));
     }
 
-    float getFloatInternal() {
-        return getFloatInternal(nextGetIndex(4));
-    }
-
     float getFloatInternal(int offset) {
         return swap(UNSAFE.getFloat(base(), ix(offset)));
-    }
-
-    void putFloatInternal(float b) {
-        putFloatInternal(nextPutIndex(4), b);
     }
 
     void putFloatInternal(int offset, float b) {
         UNSAFE.putFloat(base(), ix(offset), swap(b));
     }
 
-    long getLongInternal() {
-        return getLongInternal(nextGetIndex(8));
-    }
-
     long getLongInternal(int offset) {
         return swap(UNSAFE.getLong(base(), ix(offset)));
-    }
-
-    void putLongInternal(long b) {
-        putLongInternal(nextPutIndex(8), b);
     }
 
     void putLongInternal(int offset, long b) {
         UNSAFE.putLong(base(), ix(offset), swap(b));
     }
 
-    double getDoubleInternal() {
-        return getDoubleInternal(nextGetIndex(8));
-    }
-
     double getDoubleInternal(int offset) {
         return swap(UNSAFE.getDouble(base(), ix(offset)));
-    }
-
-    void putDoubleInternal(double b) {
-        putDoubleInternal(nextPutIndex(8), b);
     }
 
     void putDoubleInternal(int offset, double b) {
@@ -955,17 +899,17 @@ public abstract class Buffer {
 
     @ForceInline
     short swap(short x) {
-        return order != ByteOrder.BIG_ENDIAN ? x : Short.reverseBytes(x);
+        return order == ByteOrder.nativeOrder() ? x : Short.reverseBytes(x);
     }
 
     @ForceInline
     char swap(char x) {
-        return order != ByteOrder.BIG_ENDIAN ? x : Character.reverseBytes(x);
+        return order == ByteOrder.nativeOrder() ? x : Character.reverseBytes(x);
     }
 
     @ForceInline
     int swap(int x) {
-        return order != ByteOrder.BIG_ENDIAN ? x : Integer.reverseBytes(x);
+        return order == ByteOrder.nativeOrder() ? x : Integer.reverseBytes(x);
     }
 
     @ForceInline
@@ -976,7 +920,7 @@ public abstract class Buffer {
 
     @ForceInline
     long swap(long x) {
-        return order != ByteOrder.BIG_ENDIAN ? x : Long.reverseBytes(x);
+        return order == ByteOrder.nativeOrder() ? x : Long.reverseBytes(x);
     }
 
     @ForceInline

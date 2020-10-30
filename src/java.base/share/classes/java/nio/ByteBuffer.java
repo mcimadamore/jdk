@@ -462,7 +462,7 @@ public class ByteBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public byte get() {
-        return getByteInternal();
+        return getByteInternal(nextGetIndex());
     }
 
     /**
@@ -483,7 +483,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(byte b) {
-        putByteInternal(b);
+        putByteInternal(nextGetIndex(), b);
         return this;
     }
 
@@ -501,7 +501,7 @@ public class ByteBuffer
      *          or not smaller than the buffer's limit
      */
     public byte get(int index) {
-        return getByteInternal(index);
+        return getByteInternal(checkIndex(index));
     }
 
     /**
@@ -526,7 +526,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(int index, byte b) {
-        putByteInternal(index, b);
+        putByteInternal(checkIndex(index), b);
         return this;
     }
 
@@ -1505,7 +1505,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public char getChar() {
-        return getCharInternal();
+        return getCharInternal(nextGetIndex(2));
     }
 
     /**
@@ -1529,7 +1529,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putChar(char value) {
-        putCharInternal(value);
+        putCharInternal(nextGetIndex(2), value);
         return this;
     }
 
@@ -1550,7 +1550,7 @@ public class ByteBuffer
      *          minus one
      */
     public char getChar(int index) {
-        return getCharInternal(index);
+        return getCharInternal(checkIndex(index, 2));
     }
 
     /**
@@ -1577,7 +1577,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putChar(int index, char value) {
-        putCharInternal(index, value);
+        putCharInternal(checkIndex(index, 2), value);
         return this;
     }
 
@@ -1599,7 +1599,12 @@ public class ByteBuffer
      * @return  A new char buffer
      */
     public CharBuffer asCharBuffer() {
-        return new CharBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 1;
+        return new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1617,7 +1622,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public short getShort() {
-        return getShortInternal();
+        return getShortInternal(nextGetIndex(2));
     }
 
     /**
@@ -1641,7 +1646,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putShort(short value) {
-        putShortInternal(value);
+        putShortInternal(nextGetIndex(2), value);
         return this;
     }
 
@@ -1662,7 +1667,7 @@ public class ByteBuffer
      *          minus one
      */
     public short getShort(int index) {
-        return getShortInternal(index);
+        return getShortInternal(checkIndex(index, 2));
     }
 
     /**
@@ -1689,7 +1694,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putShort(int index, short value) {
-        putShortInternal(index, value);
+        putShortInternal(checkIndex(index, 2), value);
         return this;
     }
 
@@ -1711,7 +1716,12 @@ public class ByteBuffer
      * @return  A new short buffer
      */
     public ShortBuffer asShortBuffer() {
-        return new ShortBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 1;
+        return new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
     /**
@@ -1728,7 +1738,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public int getInt() {
-        return getIntInternal();
+        return getIntInternal(nextGetIndex(4));
     }
 
     /**
@@ -1752,7 +1762,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putInt(int value) {
-        putIntInternal(value);
+        putIntInternal(nextGetIndex(4), value);
         return this;
     }
 
@@ -1773,7 +1783,7 @@ public class ByteBuffer
      *          minus three
      */
     public int getInt(int index) {
-        return getIntInternal(index);
+        return getIntInternal(checkIndex(index, 4));
     }
 
     /**
@@ -1800,7 +1810,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putInt(int index, int value) {
-        putIntInternal(index, value);
+        putIntInternal(checkIndex(index, 4), value);
         return this;
     }
 
@@ -1822,7 +1832,12 @@ public class ByteBuffer
      * @return  A new int buffer
      */
     public IntBuffer asIntBuffer() {
-        return new IntBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 2;
+        return new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1840,7 +1855,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public long getLong() {
-        return getLongInternal();
+        return getLongInternal(nextGetIndex(8));
     }
 
     /**
@@ -1864,7 +1879,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putLong(long value) {
-        putLongInternal(value);
+        putLongInternal(nextGetIndex(8), value);
         return this;
     }
 
@@ -1885,7 +1900,7 @@ public class ByteBuffer
      *          minus seven
      */
     public long getLong(int index) {
-        return getLong(index);
+        return getLong(checkIndex(index, 8));
     }
 
     /**
@@ -1912,7 +1927,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putLong(int index, long value) {
-        putLongInternal(index, value);
+        putLongInternal(checkIndex(index, 8), value);
         return this;
     }
 
@@ -1934,7 +1949,12 @@ public class ByteBuffer
      * @return  A new long buffer
      */
     public LongBuffer asLongBuffer() {
-        return new LongBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 3;
+        return new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1952,7 +1972,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public float getFloat() {
-        return getFloatInternal();
+        return getFloatInternal(nextGetIndex(4));
     }
 
     /**
@@ -1976,7 +1996,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putFloat(float value) {
-        putFloatInternal(value);
+        putFloatInternal(nextGetIndex(4), value);
         return this;
     }
 
@@ -1997,7 +2017,7 @@ public class ByteBuffer
      *          minus three
      */
     public float getFloat(int index) {
-        return getFloatInternal(index);
+        return getFloatInternal(checkIndex(index, 4));
     }
 
     /**
@@ -2024,7 +2044,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putFloat(int index, float value) {
-        putFloatInternal(index, value);
+        putFloatInternal(checkIndex(index, 4), value);
         return this;
     }
 
@@ -2046,7 +2066,12 @@ public class ByteBuffer
      * @return  A new float buffer
      */
     public FloatBuffer asFloatBuffer() {
-        return new FloatBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 2;
+        return new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -2064,7 +2089,7 @@ public class ByteBuffer
      *          remaining in this buffer
      */
     public double getDouble() {
-        return getDoubleInternal();
+        return getDoubleInternal(nextGetIndex(8));
     }
 
     /**
@@ -2088,7 +2113,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putDouble(double value) {
-        putDoubleInternal(value);
+        putDoubleInternal(nextGetIndex(8), value);
         return this;
     }
 
@@ -2109,7 +2134,7 @@ public class ByteBuffer
      *          minus seven
      */
     public double getDouble(int index) {
-        return getDoubleInternal(index);
+        return getDoubleInternal(checkIndex(index, 8));
     }
 
     /**
@@ -2136,7 +2161,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putDouble(int index, double value) {
-        putDoubleInternal(index, value);
+        putDoubleInternal(checkIndex(index, 8), value);
         return this;
     }
 
@@ -2158,6 +2183,11 @@ public class ByteBuffer
      * @return  A new double buffer
      */
     public DoubleBuffer asDoubleBuffer() {
-        return new DoubleBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        int off = this.position();
+        int lim = this.limit();
+        assert (off <= lim);
+        int rem = (off <= lim ? lim - off : 0);
+        int size = rem >> 3;
+        return new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 }

@@ -326,7 +326,7 @@ public class FloatBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public float get() {
-        return getFloatInternal();
+        return getFloatInternal(nextGetIndex());
     }
 
     /**
@@ -347,7 +347,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(float d) {
-        putFloatInternal(d);
+        putFloatInternal(nextGetIndex(), d);
         return this;
     }
 
@@ -365,7 +365,7 @@ public class FloatBuffer
      *          or not smaller than the buffer's limit
      */
     public float get(int index) {
-        return getFloatInternal(index);
+        return getFloatInternal(checkIndex(index));
     }
 
     /**
@@ -390,7 +390,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(int index, float d) {
-        putFloatInternal(index, d);
+        putFloatInternal(checkIndex(index), d);
         return this;
     }
 

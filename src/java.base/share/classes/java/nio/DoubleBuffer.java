@@ -326,7 +326,7 @@ public class DoubleBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public double get() {
-        return getDoubleInternal();
+        return getDoubleInternal(nextGetIndex());
     }
 
     /**
@@ -347,7 +347,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(double d) {
-        putDoubleInternal(d);
+        putDoubleInternal(nextGetIndex(), d);
         return this;
     }
 
@@ -365,7 +365,7 @@ public class DoubleBuffer
      *          or not smaller than the buffer's limit
      */
     public double get(int index) {
-        return getDoubleInternal(index);
+        return getDoubleInternal(checkIndex(index));
     }
 
     /**
@@ -390,7 +390,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(int index, double d) {
-        putDoubleInternal(index, d);
+        putDoubleInternal(checkIndex(index), d);
         return this;
     }
 

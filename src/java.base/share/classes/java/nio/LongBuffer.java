@@ -310,7 +310,7 @@ public class LongBuffer
 
     @Override
     long ix(int pos) {
-        return address + (pos << 2);
+        return address + (pos << 3);
     }
 
 
@@ -326,7 +326,7 @@ public class LongBuffer
      *          If the buffer's current position is not smaller than its limit
      */
     public long get() {
-        return getLongInternal();
+        return getLongInternal(nextGetIndex());
     }
 
     /**
@@ -347,7 +347,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(long d) {
-        putLongInternal(d);
+        putLongInternal(nextGetIndex(), d);
         return this;
     }
 
@@ -365,7 +365,7 @@ public class LongBuffer
      *          or not smaller than the buffer's limit
      */
     public long get(int index) {
-        return getLongInternal(index);
+        return getLongInternal(checkIndex(index));
     }
 
     /**
@@ -390,7 +390,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(int index, long d) {
-        putLongInternal(index, d);
+        putLongInternal(checkIndex(index), d);
         return this;
     }
 
