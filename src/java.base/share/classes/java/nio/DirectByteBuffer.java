@@ -105,4 +105,9 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
         return new DirectByteBuffer(null, new Deallocator(base, size, cap), address, -1, 0, cap, cap, null,
                 false, false, ByteOrder.BIG_ENDIAN, null);
     }
+
+    @Override
+    public boolean isDirect() {
+        return true;
+    }
 }
