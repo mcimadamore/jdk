@@ -127,9 +127,9 @@ public class CharBuffer
     // backing array, and array offset
     //
     CharBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
-               boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
+               boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
-        super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
+        super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -155,7 +155,7 @@ public class CharBuffer
         if (capacity < 0)
             throw createCapacityException(capacity);
         return new CharBuffer(Unsafe.ARRAY_CHAR_BASE_OFFSET, new char[capacity], -1, 0,
-                capacity, capacity, false, ByteOrder.nativeOrder(), null);
+                capacity, capacity, false, ByteOrder.nativeOrder(), null,null);
     }
 
     /**
@@ -198,7 +198,7 @@ public class CharBuffer
     {
         try {
             return new CharBuffer(UNSAFE.arrayBaseOffset(char[].class), array, -1, offset,
-                    length, length, false, ByteOrder.nativeOrder(), null);
+                    length, length, false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -338,7 +338,7 @@ public class CharBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new CharBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, segment);
+        return new CharBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -381,7 +381,7 @@ public class CharBuffer
     @Override
     public CharBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new CharBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, segment);
+        return new CharBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -402,7 +402,7 @@ public class CharBuffer
     @Override
     public CharBuffer duplicate() {
         return new CharBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, segment);
+                readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -425,7 +425,7 @@ public class CharBuffer
      */
     public CharBuffer asReadOnlyBuffer() {
         return new CharBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, segment);
+                true, order, attachmentValue(), segment);
     }
 
     @Override
@@ -1526,7 +1526,7 @@ public class CharBuffer
                 pos + start,
                 pos + end,
                 capacity(),
-                readOnly, order, segment);
+                readOnly, order, attachmentValue(), segment);
     }
 
     // --- Methods to support Appendable ---

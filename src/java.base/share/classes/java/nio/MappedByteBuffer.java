@@ -93,8 +93,8 @@ public class MappedByteBuffer
     // This should only be invoked by the DirectByteBuffer constructors
     //
     MappedByteBuffer(long addr, int mark, int pos, int lim, int cap, // package-private
-                     FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, MemorySegmentProxy segment) {
-        super(addr, null, mark, pos, lim, cap, readOnly, order, segment);
+                     FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+        super(addr, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
         this.fd = fd;
         this.isSync = isSync;
     }

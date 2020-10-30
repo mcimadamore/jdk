@@ -213,9 +213,9 @@ public class ByteBuffer
     // backing array, and array offset
     //
     ByteBuffer(long addr, Object hb, int mark, int pos, int lim, int cap,
-               boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
+               boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
-        super(addr, hb, mark, pos, lim, cap, readOnly, order, segment);
+        super(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -261,7 +261,7 @@ public class ByteBuffer
         if (capacity < 0)
             throw createCapacityException(capacity);
         return new ByteBuffer(UNSAFE.arrayBaseOffset(byte[].class),
-                new byte[capacity], -1, 0, capacity, capacity, false, ByteOrder.BIG_ENDIAN, null);
+                new byte[capacity], -1, 0, capacity, capacity, false, ByteOrder.BIG_ENDIAN, null,null);
     }
 
     /**
@@ -302,7 +302,7 @@ public class ByteBuffer
     {
         try {
             return new ByteBuffer(Unsafe.ARRAY_BYTE_BASE_OFFSET,
-                    array, -1, offset, length, length, false, ByteOrder.BIG_ENDIAN, null);
+                    array, -1, offset, length, length, false, ByteOrder.BIG_ENDIAN, null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -354,7 +354,7 @@ public class ByteBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new ByteBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, segment);
+        return new ByteBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -393,7 +393,7 @@ public class ByteBuffer
     @Override
     public ByteBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new ByteBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, segment);
+        return new ByteBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -418,7 +418,7 @@ public class ByteBuffer
      */
     @Override
     public ByteBuffer duplicate() {
-        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(), readOnly, order, segment);
+        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -446,7 +446,7 @@ public class ByteBuffer
      */
     public ByteBuffer asReadOnlyBuffer() {
         return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, segment);
+                true, order, attachmentValue(), segment);
     }
 
 
@@ -1154,7 +1154,7 @@ public class ByteBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return true;// TODO: base() == null;
+        return base() == null;
     }
 
     /**
@@ -1604,7 +1604,7 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
-        return new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -1721,7 +1721,7 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
-        return new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -1837,7 +1837,7 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
-        return new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -1954,7 +1954,7 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
-        return new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -2071,7 +2071,7 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
-        return new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -2188,6 +2188,6 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
-        return new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, segment);
+        return new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 }

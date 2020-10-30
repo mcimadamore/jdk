@@ -91,9 +91,9 @@ public class DoubleBuffer
     // backing array, and array offset
     //
     DoubleBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
-                 boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
+                 boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
-        super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
+        super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -123,7 +123,7 @@ public class DoubleBuffer
         if (capacity < 0)
             throw createCapacityException(capacity);
         return new DoubleBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, new double[capacity], -1, 0, capacity, capacity,
-                false, ByteOrder.nativeOrder(), null);
+                false, ByteOrder.nativeOrder(), null, null);
     }
 
     /**
@@ -169,7 +169,7 @@ public class DoubleBuffer
     {
         try {
             return new DoubleBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
-                    false, ByteOrder.nativeOrder(), null);
+                    false, ByteOrder.nativeOrder(), null, null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -221,7 +221,7 @@ public class DoubleBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new DoubleBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, segment);
+        return new DoubleBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +259,7 @@ public class DoubleBuffer
     @Override
     public DoubleBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new DoubleBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, segment);
+        return new DoubleBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -281,7 +281,7 @@ public class DoubleBuffer
     @Override
     public DoubleBuffer duplicate() {
         return new DoubleBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, segment);
+                readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -305,7 +305,7 @@ public class DoubleBuffer
      */
     public DoubleBuffer asReadOnlyBuffer() {
         return new DoubleBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, segment);
+                true, order, attachmentValue(), segment);
     }
 
     @Override

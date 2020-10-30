@@ -91,9 +91,9 @@ public class LongBuffer
     // backing array, and array offset
     //
     LongBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
-               boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
+               boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
-        super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
+        super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -123,7 +123,7 @@ public class LongBuffer
         if (capacity < 0)
             throw createCapacityException(capacity);
         return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, new long[capacity], -1, 0, capacity, capacity,
-                false, ByteOrder.nativeOrder(), null);
+                false, ByteOrder.nativeOrder(), null, null);
     }
 
     /**
@@ -169,7 +169,7 @@ public class LongBuffer
     {
         try {
             return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, array, -1, offset, length, length,
-                    false, ByteOrder.nativeOrder(), null);
+                    false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -221,7 +221,7 @@ public class LongBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new LongBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, segment);
+        return new LongBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +259,7 @@ public class LongBuffer
     @Override
     public LongBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new LongBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, segment);
+        return new LongBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -281,7 +281,7 @@ public class LongBuffer
     @Override
     public LongBuffer duplicate() {
         return new LongBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, segment);
+                readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -305,7 +305,7 @@ public class LongBuffer
      */
     public LongBuffer asReadOnlyBuffer() {
         return new LongBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, segment);
+                true, order, attachmentValue(), segment);
     }
 
     @Override

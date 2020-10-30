@@ -8,12 +8,11 @@ import sun.nio.ch.DirectBuffer;
 import java.io.FileDescriptor;
 
 class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
-    final Object ref; // attachment
+
     Cleaner cleaner;
 
-    public DirectByteBuffer(Object ref, Deallocator deallocator, long addr, int mark, int pos, int lim, int cap, FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, MemorySegmentProxy segment) {
-        super(addr, mark, pos, lim, cap, fd, isSync, readOnly, order, segment);
-        this.ref = ref;
+    public DirectByteBuffer(Deallocator deallocator, long addr, int mark, int pos, int lim, int cap, FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+        super(addr, mark, pos, lim, cap, fd, isSync, readOnly, order, attachment, segment);
         if (deallocator != null) {
             this.cleaner = Cleaner.create(this, deallocator);
         }
@@ -22,9 +21,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     // Invoked only by JNI: NewDirectByteBuffer(void*, long)
     //
     private DirectByteBuffer(long addr, int cap) {
-        super(addr, -1, 0, cap, cap, null, false, false, ByteOrder.nativeOrder(), null);
+        super(addr, -1, 0, cap, cap, null, false, false, ByteOrder.nativeOrder(), null, null);
         cleaner = null;
-        ref = null;
     }
 
     // For memory-mapped buffers -- invoked by FileChannelImpl via reflection
@@ -34,9 +32,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
                                Runnable unmapper,
                                boolean isSync, boolean readOnly, MemorySegmentProxy segment)
     {
-        super(addr, -1, 0, cap, cap, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, segment);
+        super(addr, -1, 0, cap, cap, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, null, segment);
         cleaner = Cleaner.create(this, unmapper);
-        ref = null;
     }
 
     @Override
@@ -51,7 +48,7 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
 
     @Override
     public Object attachment() {
-        return ref;
+        return attachment;
     }
 
     private static class Deallocator
@@ -102,8 +99,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
         } else {
             address = base;
         }
-        return new DirectByteBuffer(null, new Deallocator(base, size, cap), address, -1, 0, cap, cap, null,
-                false, false, ByteOrder.BIG_ENDIAN, null);
+        return new DirectByteBuffer(new Deallocator(base, size, cap), address, -1, 0, cap, cap, null,
+                false, false, ByteOrder.BIG_ENDIAN, null, null);
     }
 
     @Override
