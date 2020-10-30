@@ -1154,7 +1154,7 @@ public class ByteBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return false;
+        return true;// TODO: base() == null;
     }
 
     /**

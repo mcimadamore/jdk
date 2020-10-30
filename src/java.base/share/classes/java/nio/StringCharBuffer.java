@@ -37,7 +37,7 @@ class StringCharBuffer                                  // package-private
     CharSequence str;
 
     StringCharBuffer(CharSequence s, int start, int end) { // package-private
-        super(Unsafe.ARRAY_CHAR_BASE_OFFSET, null, -1, start, end, s.length(), true, ByteOrder.nativeOrder(), null);
+        super(0, null, -1, start, end, s.length(), true, ByteOrder.nativeOrder(), null);
         int n = s.length();
         Objects.checkFromToIndex(start, end, n);
         str = s;
@@ -85,16 +85,20 @@ class StringCharBuffer                                  // package-private
         return duplicate();
     }
 
+    int stringOffset() {
+        return (int)address;
+    }
+
     public final char get() {
-        return str.charAt(nextGetIndex() + arrayOffset());
+        return str.charAt(nextGetIndex() + stringOffset());
     }
 
     public final char get(int index) {
-        return str.charAt(checkIndex(index) + arrayOffset());
+        return str.charAt(checkIndex(index) + stringOffset());
     }
 
     char getUnchecked(int index) {
-        return str.charAt(index + arrayOffset());
+        return str.charAt(index + stringOffset());
     }
 
     // ## Override bulk get methods for better performance
@@ -116,18 +120,17 @@ class StringCharBuffer                                  // package-private
     }
 
     final String toString(int start, int end) {
-        return str.subSequence(start + arrayOffset(), end + arrayOffset()).toString();
+        return str.subSequence(start + stringOffset(), end + stringOffset()).toString();
     }
 
     public final CharBuffer subSequence(int start, int end) {
         try {
             int pos = position();
-            return new StringCharBuffer(str,
+            return new StringCharBuffer(str, stringOffset(),
                                         -1,
                                         pos + checkIndex(start, pos),
                                         pos + checkIndex(end, pos),
-                                        capacity(),
-                                        arrayOffset());
+                                        capacity());
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
