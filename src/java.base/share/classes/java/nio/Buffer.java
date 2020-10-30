@@ -846,7 +846,7 @@ public abstract class Buffer {
     }
 
     void putByteInternal(byte b) {
-        putByteInternal(nextPutIndex(4), b);
+        putByteInternal(nextPutIndex(1), b);
     }
 
     void putByteInternal(int offset, byte b) {
@@ -854,7 +854,7 @@ public abstract class Buffer {
     }
 
     short getShortInternal() {
-        return getShortInternal(nextGetIndex(1));
+        return getShortInternal(nextGetIndex(2));
     }
 
     short getShortInternal(int offset) {
@@ -862,7 +862,7 @@ public abstract class Buffer {
     }
 
     void putShortInternal(short b) {
-        putShortInternal(nextPutIndex(4), b);
+        putShortInternal(nextPutIndex(2), b);
     }
 
     void putShortInternal(int offset, short b) {
@@ -870,7 +870,7 @@ public abstract class Buffer {
     }
 
     char getCharInternal() {
-        return getCharInternal(nextGetIndex(1));
+        return getCharInternal(nextGetIndex(2));
     }
 
     char getCharInternal(int offset) {
@@ -878,7 +878,7 @@ public abstract class Buffer {
     }
 
     void putCharInternal(char b) {
-        putCharInternal(nextPutIndex(4), b);
+        putCharInternal(nextPutIndex(2), b);
     }
 
     void putCharInternal(int offset, char b) {
@@ -902,7 +902,7 @@ public abstract class Buffer {
     }
 
     float getFloatInternal() {
-        return getFloatInternal(nextGetIndex(1));
+        return getFloatInternal(nextGetIndex(4));
     }
 
     float getFloatInternal(int offset) {
@@ -918,7 +918,7 @@ public abstract class Buffer {
     }
 
     long getLongInternal() {
-        return getLongInternal(nextGetIndex(1));
+        return getLongInternal(nextGetIndex(8));
     }
 
     long getLongInternal(int offset) {
@@ -926,7 +926,7 @@ public abstract class Buffer {
     }
 
     void putLongInternal(long b) {
-        putLongInternal(nextPutIndex(4), b);
+        putLongInternal(nextPutIndex(8), b);
     }
 
     void putLongInternal(int offset, long b) {
@@ -934,7 +934,7 @@ public abstract class Buffer {
     }
 
     double getDoubleInternal() {
-        return getDoubleInternal(nextGetIndex(1));
+        return getDoubleInternal(nextGetIndex(8));
     }
 
     double getDoubleInternal(int offset) {
@@ -942,7 +942,7 @@ public abstract class Buffer {
     }
 
     void putDoubleInternal(double b) {
-        putDoubleInternal(nextPutIndex(4), b);
+        putDoubleInternal(nextPutIndex(8), b);
     }
 
     void putDoubleInternal(int offset, double b) {
