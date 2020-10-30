@@ -90,15 +90,10 @@ public class IntBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    IntBuffer(long address, int[] hb, int mark, int pos, int lim, int cap,   // package-private
+    IntBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
               boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    int[] base() {
-        return (int[])hb;
     }
 
     /**
@@ -127,7 +122,7 @@ public class IntBuffer
     public static IntBuffer allocate(int capacity) {
         if (capacity < 0)
             throw createCapacityException(capacity);
-        return new IntBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, new int[capacity], -1, 0, capacity, capacity,
+        return new IntBuffer(Unsafe.ARRAY_INT_BASE_OFFSET, new int[capacity], -1, 0, capacity, capacity,
                 false, ByteOrder.nativeOrder(), null);
     }
 
@@ -173,7 +168,7 @@ public class IntBuffer
                                  int offset, int length)
     {
         try {
-            return new IntBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
+            return new IntBuffer(Unsafe.ARRAY_INT_BASE_OFFSET, array, -1, offset, length, length,
                     false, ByteOrder.nativeOrder(), null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -882,12 +877,11 @@ public class IntBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int[] array() {
-        int[] base = base();
-        if (base == null)
+        if (!(hb instanceof int[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (int[])hb;
     }
 
     /**
@@ -911,12 +905,11 @@ public class IntBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        int[] base = base();
-        if (base == null)
+        if (!(hb instanceof int[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_INT_BASE_OFFSET) / 4;
     }
 
     // -- Covariant return type overrides

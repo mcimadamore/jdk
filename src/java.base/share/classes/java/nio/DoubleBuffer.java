@@ -90,15 +90,10 @@ public class DoubleBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    DoubleBuffer(long address, double[] hb, int mark, int pos, int lim, int cap,   // package-private
+    DoubleBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
                  boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    double[] base() {
-        return (double[])hb;
     }
 
     /**
@@ -859,7 +854,7 @@ public class DoubleBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof double[]) && !readOnly;
     }
 
     /**
@@ -882,12 +877,11 @@ public class DoubleBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final double[] array() {
-        double[] base = base();
-        if (base == null)
+        if (!(hb instanceof double[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (double[])hb;
     }
 
     /**
@@ -911,12 +905,11 @@ public class DoubleBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        double[] base = base();
-        if (base == null)
+        if (!(hb instanceof double[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_DOUBLE_BASE_OFFSET) / 8;
     }
 
     // -- Covariant return type overrides

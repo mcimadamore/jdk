@@ -126,15 +126,10 @@ public class CharBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    CharBuffer(long address, char[] hb, int mark, int pos, int lim, int cap,   // package-private
+    CharBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
                boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    char[] base() {
-        return (char[])hb;
     }
 
     /**
@@ -159,7 +154,7 @@ public class CharBuffer
     public static CharBuffer allocate(int capacity) {
         if (capacity < 0)
             throw createCapacityException(capacity);
-        return new CharBuffer(UNSAFE.arrayBaseOffset(char[].class), new char[capacity], -1, 0,
+        return new CharBuffer(Unsafe.ARRAY_CHAR_BASE_OFFSET, new char[capacity], -1, 0,
                 capacity, capacity, false, ByteOrder.nativeOrder(), null);
     }
 
@@ -1087,7 +1082,7 @@ public class CharBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof char[]) && !readOnly;
     }
 
     /**
@@ -1110,12 +1105,11 @@ public class CharBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final char[] array() {
-        char[] base = base();
-        if (base == null)
+        if (!(hb instanceof char[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (char[])hb;
     }
 
     /**
@@ -1139,12 +1133,11 @@ public class CharBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        char[] base = base();
-        if (base == null)
+        if (!(hb instanceof char[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_CHAR_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_CHAR_BASE_OFFSET) / 2;
     }
 
     // -- Covariant return type overrides
@@ -1424,11 +1417,23 @@ public class CharBuffer
     }
 
     String toString(int start, int end) {
-        if (isDirect()) {
-            throw new UnsupportedOperationException();
-        } else {
+        if (hasArray()) {
             try {
-                return new String(base(), start + arrayOffset(), end - start);
+                return new String(array(), start + arrayOffset(), end - start);
+            } catch (StringIndexOutOfBoundsException x) {
+                throw new IndexOutOfBoundsException();
+            }
+        } else {
+            Objects.checkFromToIndex(start, end, limit());
+            try {
+                int len = end - start;
+                char[] ca = new char[len];
+                CharBuffer cb = CharBuffer.wrap(ca);
+                CharBuffer db = this.duplicate();
+                db.position(start);
+                db.limit(end);
+                cb.put(db);
+                return new String(ca);
             } catch (StringIndexOutOfBoundsException x) {
                 throw new IndexOutOfBoundsException();
             }

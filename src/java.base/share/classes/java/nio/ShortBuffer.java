@@ -90,15 +90,10 @@ public class ShortBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    ShortBuffer(long address, short[] hb, int mark, int pos, int lim, int cap,   // package-private
+    ShortBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
                 boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    short[] base() {
-        return (short[])hb;
     }
 
     /**
@@ -127,7 +122,7 @@ public class ShortBuffer
     public static ShortBuffer allocate(int capacity) {
         if (capacity < 0)
             throw createCapacityException(capacity);
-        return new ShortBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, new short[capacity], -1, 0, capacity, capacity,
+        return new ShortBuffer(Unsafe.ARRAY_SHORT_BASE_OFFSET, new short[capacity], -1, 0, capacity, capacity,
                 false, ByteOrder.nativeOrder(), null);
     }
 
@@ -173,7 +168,7 @@ public class ShortBuffer
                                    int offset, int length)
     {
         try {
-            return new ShortBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
+            return new ShortBuffer(Unsafe.ARRAY_SHORT_BASE_OFFSET, array, -1, offset, length, length,
                     false, ByteOrder.nativeOrder(), null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -859,7 +854,7 @@ public class ShortBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof short[]) && !readOnly;
     }
 
     /**
@@ -882,12 +877,11 @@ public class ShortBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final short[] array() {
-        short[] base = base();
-        if (base == null)
+        if (!(hb instanceof short[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (short[])hb;
     }
 
     /**
@@ -911,12 +905,11 @@ public class ShortBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        short[] base = base();
-        if (base == null)
+        if (!(hb instanceof short[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_SHORT_BASE_OFFSET) / 2;
     }
 
     // -- Covariant return type overrides

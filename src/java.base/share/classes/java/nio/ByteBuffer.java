@@ -211,15 +211,10 @@ public class ByteBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    ByteBuffer(long addr, byte[] hb, int mark, int pos, int lim, int cap,
+    ByteBuffer(long addr, Object hb, int mark, int pos, int lim, int cap,
                boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(addr, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    byte[] base() {
-        return (byte[])hb;
     }
 
     /**
@@ -240,7 +235,7 @@ public class ByteBuffer
      *          If the {@code capacity} is a negative integer
      */
     public static ByteBuffer allocateDirect(int capacity) {
-        return MappedByteBuffer.makeDirectBuffer(capacity);
+        return DirectByteBuffer.makeDirectBuffer(capacity);
     }
 
     /**
@@ -979,7 +974,7 @@ public class ByteBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof byte[]) && !readOnly;
     }
 
     /**
@@ -1002,12 +997,11 @@ public class ByteBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final byte[] array() {
-        byte[] hb = base();
-        if (hb == null)
+        if (!(hb instanceof byte[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return hb;
+        return (byte[])hb;
     }
 
     /**
@@ -1031,7 +1025,7 @@ public class ByteBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (hb == null)
+        if (!(hb instanceof byte[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
@@ -1604,7 +1598,7 @@ public class ByteBuffer
      * @return  A new char buffer
      */
     public CharBuffer asCharBuffer() {
-        throw new UnsupportedOperationException();
+        return new CharBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 
 
@@ -1716,7 +1710,7 @@ public class ByteBuffer
      * @return  A new short buffer
      */
     public ShortBuffer asShortBuffer() {
-        throw new UnsupportedOperationException();
+        return new ShortBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 
     /**
@@ -1827,7 +1821,7 @@ public class ByteBuffer
      * @return  A new int buffer
      */
     public IntBuffer asIntBuffer() {
-        throw new UnsupportedOperationException();
+        return new IntBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 
 
@@ -1939,7 +1933,7 @@ public class ByteBuffer
      * @return  A new long buffer
      */
     public LongBuffer asLongBuffer() {
-        throw new UnsupportedOperationException();
+        return new LongBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 
 
@@ -2051,7 +2045,7 @@ public class ByteBuffer
      * @return  A new float buffer
      */
     public FloatBuffer asFloatBuffer() {
-        throw new UnsupportedOperationException();
+        return new FloatBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 
 
@@ -2163,6 +2157,6 @@ public class ByteBuffer
      * @return  A new double buffer
      */
     public DoubleBuffer asDoubleBuffer() {
-        throw new UnsupportedOperationException();
+        return new DoubleBuffer(address, hb, markValue(), position(), limit(), capacity(), readOnly, order, segment);
     }
 }

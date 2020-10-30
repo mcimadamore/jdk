@@ -90,15 +90,10 @@ public class FloatBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    FloatBuffer(long address, float[] hb, int mark, int pos, int lim, int cap,   // package-private
+    FloatBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
                 boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    float[] base() {
-        return (float[])hb;
     }
 
     /**
@@ -127,7 +122,7 @@ public class FloatBuffer
     public static FloatBuffer allocate(int capacity) {
         if (capacity < 0)
             throw createCapacityException(capacity);
-        return new FloatBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, new float[capacity], -1, 0, capacity, capacity,
+        return new FloatBuffer(Unsafe.ARRAY_FLOAT_BASE_OFFSET, new float[capacity], -1, 0, capacity, capacity,
                 false, ByteOrder.nativeOrder(), null);
     }
 
@@ -173,7 +168,7 @@ public class FloatBuffer
                                    int offset, int length)
     {
         try {
-            return new FloatBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
+            return new FloatBuffer(Unsafe.ARRAY_FLOAT_BASE_OFFSET, array, -1, offset, length, length,
                     false, ByteOrder.nativeOrder(), null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -859,7 +854,7 @@ public class FloatBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof float[]) && !readOnly;
     }
 
     /**
@@ -882,12 +877,11 @@ public class FloatBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final float[] array() {
-        float[] base = base();
-        if (base == null)
+        if (!(hb instanceof float[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (float[])hb;
     }
 
     /**
@@ -911,12 +905,11 @@ public class FloatBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        float[] base = base();
-        if (base == null)
+        if (!(hb instanceof float[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_FLOAT_BASE_OFFSET) / 4;
     }
 
     // -- Covariant return type overrides

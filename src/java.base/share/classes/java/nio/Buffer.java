@@ -680,7 +680,9 @@ public abstract class Buffer {
      * field, which in combination can be used for unsafe access into a heap
      * buffer or direct byte buffer (and views of).
      */
-    abstract Object base();
+    final Object base() {
+        return hb;
+    }
 
     /**
      * Checks the current position against the limit, throwing a {@link
@@ -772,12 +774,12 @@ public abstract class Buffer {
 
                 @Override
                 public ByteBuffer newDirectByteBuffer(long addr, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new MappedByteBuffer(null, null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.nativeOrder(), segment);
+                    return new DirectByteBuffer(null, null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.nativeOrder(), segment);
                 }
 
                 @Override
                 public ByteBuffer newMappedByteBuffer(UnmapperProxy unmapperProxy, long address, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new MappedByteBuffer(null, null, address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.nativeOrder(), segment);
+                    return new MappedByteBuffer(address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.nativeOrder(), segment);
                 }
 
                 @Override

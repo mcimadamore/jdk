@@ -90,15 +90,10 @@ public class LongBuffer
     // Creates a new buffer with the given mark, position, limit, capacity,
     // backing array, and array offset
     //
-    LongBuffer(long address, long[] hb, int mark, int pos, int lim, int cap,   // package-private
+    LongBuffer(long address, Object hb, int mark, int pos, int lim, int cap,   // package-private
                boolean readOnly, ByteOrder order, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, segment);
-    }
-
-    @Override
-    long[] base() {
-        return (long[])hb;
     }
 
     /**
@@ -127,7 +122,7 @@ public class LongBuffer
     public static LongBuffer allocate(int capacity) {
         if (capacity < 0)
             throw createCapacityException(capacity);
-        return new LongBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, new long[capacity], -1, 0, capacity, capacity,
+        return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, new long[capacity], -1, 0, capacity, capacity,
                 false, ByteOrder.nativeOrder(), null);
     }
 
@@ -173,7 +168,7 @@ public class LongBuffer
                                   int offset, int length)
     {
         try {
-            return new LongBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
+            return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, array, -1, offset, length, length,
                     false, ByteOrder.nativeOrder(), null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -859,7 +854,7 @@ public class LongBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb != null) && !readOnly;
+        return (hb instanceof long[]) && !readOnly;
     }
 
     /**
@@ -882,12 +877,11 @@ public class LongBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final long[] array() {
-        long[] base = base();
-        if (base == null)
+        if (!(hb instanceof long[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return base;
+        return (long[])hb;
     }
 
     /**
@@ -911,12 +905,11 @@ public class LongBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        long[] base = base();
-        if (base == null)
+        if (!(hb instanceof long[]))
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return position() - Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+        return ((int)address - Unsafe.ARRAY_LONG_BASE_OFFSET) / 8;
     }
 
     // -- Covariant return type overrides
