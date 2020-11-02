@@ -81,14 +81,14 @@ public class MappedByteBuffer
 
     // For mapped buffers, a FileDescriptor that may be used for mapping
     // operations if valid; null if the buffer is not mapped.
-    private final FileDescriptor fd;
+    final FileDescriptor fd;
 
     // A flag true if this buffer is mapped against non-volatile
     // memory using one of the extended FileChannel.MapMode modes,
     // MapMode.READ_ONLY_SYNC or MapMode.READ_WRITE_SYNC and false if
     // it is mapped using any of the other modes. This flag only
     // determines the behavior of force operations.
-    private final boolean isSync;
+    final boolean isSync;
 
     // This should only be invoked by the DirectByteBuffer constructors
     //

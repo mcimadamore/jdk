@@ -247,6 +247,11 @@ public abstract class Buffer {
                                                    + mark + " > " + pos + ")");
             this.mark = mark;
         }
+        if (!(this instanceof StringCharBuffer)) {
+            if ((base() == null) != isDirect()) {
+                throw new AssertionError("Weird state");
+            }
+        }
     }
 
     /**
@@ -704,7 +709,6 @@ public abstract class Buffer {
     final int nextGetIndex(int nb) {                    // package-private
         int p = position;
         if (limit - p < nb) {
-            System.err.println(toString());
             throw new BufferUnderflowException();
         }
         position = p + nb;
@@ -719,6 +723,9 @@ public abstract class Buffer {
      * @return  The current position value, before it is incremented
      */
     final int nextPutIndex() {                          // package-private
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int p = position;
         if (p >= limit)
             throw new BufferOverflowException();
@@ -727,6 +734,9 @@ public abstract class Buffer {
     }
 
     final int nextPutIndex(int nb) {                    // package-private
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int p = position;
         if (limit - p < nb)
             throw new BufferOverflowException();
@@ -735,7 +745,7 @@ public abstract class Buffer {
     }
 
     Object attachmentValue() {
-        if (attachment == null && base() != null) {
+        if (attachment == null && isDirect()) {
             return this;
         } else {
             return attachment;
@@ -748,13 +758,33 @@ public abstract class Buffer {
      * or is smaller than zero.
      */
     @IntrinsicCandidate
-    final int checkIndex(int i) {                       // package-private
+    private final int checkIndex(int i) {
         if ((i < 0) || (i >= limit))
             throw new IndexOutOfBoundsException();
         return i;
     }
 
-    final int checkIndex(int i, int nb) {               // package-private
+    final int checkGetIndex(int i) {                       // package-private
+        return checkIndex(i);
+    }
+
+    final int checkGetIndex(int i, int nb) {               // package-private
+        if ((i < 0) || (nb > limit - i))
+            throw new IndexOutOfBoundsException();
+        return i;
+    }
+
+    final int checkPutIndex(int i) {                       // package-private
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
+        return checkIndex(i);
+    }
+
+    final int checkPutIndex(int i, int nb) {               // package-private
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         if ((i < 0) || (nb > limit - i))
             throw new IndexOutOfBoundsException();
         return i;

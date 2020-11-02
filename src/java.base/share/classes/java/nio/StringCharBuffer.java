@@ -25,8 +25,6 @@
 
 package java.nio;
 
-import jdk.internal.misc.Unsafe;
-
 import java.util.Objects;
 
 // ## If the sequence is a string, use reflection to share its array
@@ -94,7 +92,7 @@ class StringCharBuffer                                  // package-private
     }
 
     public final char get(int index) {
-        return str.charAt(checkIndex(index) + stringOffset());
+        return str.charAt(checkGetIndex(index) + stringOffset());
     }
 
     char getUnchecked(int index) {
@@ -128,8 +126,8 @@ class StringCharBuffer                                  // package-private
             int pos = position();
             return new StringCharBuffer(str, stringOffset(),
                                         -1,
-                                        pos + checkIndex(start, pos),
-                                        pos + checkIndex(end, pos),
+                                        pos + checkPutIndex(start, pos),
+                                        pos + checkPutIndex(end, pos),
                                         capacity());
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();

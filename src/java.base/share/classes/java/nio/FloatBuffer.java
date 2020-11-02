@@ -30,6 +30,8 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
@@ -168,7 +170,7 @@ public class FloatBuffer
                                    int offset, int length)
     {
         try {
-            return new FloatBuffer(Unsafe.ARRAY_FLOAT_BASE_OFFSET, array, -1, offset, length, length,
+            return new FloatBuffer(Unsafe.ARRAY_FLOAT_BASE_OFFSET, array, -1, offset, offset + length, array.length,
                     false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -221,7 +223,8 @@ public class FloatBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new FloatBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        int off = (pos << 2);
+        return new FloatBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +262,8 @@ public class FloatBuffer
     @Override
     public FloatBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new FloatBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        int off = (index << 2);
+        return new FloatBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -347,7 +351,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(float d) {
-        putFloatInternal(nextGetIndex(), d);
+        putFloatInternal(nextPutIndex(), d);
         return this;
     }
 
@@ -365,7 +369,7 @@ public class FloatBuffer
      *          or not smaller than the buffer's limit
      */
     public float get(int index) {
-        return getFloatInternal(checkIndex(index));
+        return getFloatInternal(checkGetIndex(index));
     }
 
     /**
@@ -390,7 +394,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(int index, float d) {
-        putFloatInternal(checkIndex(index), d);
+        putFloatInternal(checkPutIndex(index), d);
         return this;
     }
 
@@ -628,9 +632,9 @@ public class FloatBuffer
         Object base = base();
         assert base != null || isDirect();
 
-        long srcAddr = src.address + ((long)srcPos << 3);
-        long addr = address + ((long)pos << 3);
-        long len = (long)n << 3;
+        long srcAddr = src.address + ((long)srcPos << 2);
+        long addr = address + ((long)pos << 2);
+        long len = (long)n << 2;
 
 
         if (this.order() == src.order()) {
@@ -653,7 +657,7 @@ public class FloatBuffer
                                       base,
                                       addr,
                                       len,
-                                      (long)1 << 3);
+                                      (long)1 << 2);
             } finally {
                 Reference.reachabilityFence(src);
                 Reference.reachabilityFence(this);
@@ -1002,9 +1006,12 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 2);
         position(rem);
         limit(capacity());
         discardMark();
@@ -1017,7 +1024,7 @@ public class FloatBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
     /**
@@ -1206,5 +1213,58 @@ public class FloatBuffer
      */
     public ByteOrder order() {
         return order;
+    }
+
+    static class DirectFloatBuffer extends FloatBuffer implements DirectBuffer {
+        DirectFloatBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+            super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        }
+
+        @Override
+        public long address() {
+            return address;
+        }
+
+        @Override
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        @Override
+        public Object attachment() {
+            return attachment;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public FloatBuffer slice() {
+            int pos = this.position();
+            int lim = this.limit();
+            int rem = (pos <= lim ? lim - pos : 0);
+            int off = (pos << 2);
+            return new FloatBuffer.DirectFloatBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public FloatBuffer slice(int index, int length) {
+            Objects.checkFromIndexSize(index, length, limit());
+            int off = (index << 2);
+            return new FloatBuffer.DirectFloatBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public FloatBuffer asReadOnlyBuffer() {
+            return new FloatBuffer.DirectFloatBuffer(address, markValue(), position(), limit(), capacity(),
+                    true, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public FloatBuffer duplicate() {
+            return new FloatBuffer.DirectFloatBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        }
     }
 }

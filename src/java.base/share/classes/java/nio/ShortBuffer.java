@@ -30,6 +30,8 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
@@ -168,7 +170,7 @@ public class ShortBuffer
                                    int offset, int length)
     {
         try {
-            return new ShortBuffer(Unsafe.ARRAY_SHORT_BASE_OFFSET, array, -1, offset, length, length,
+            return new ShortBuffer(Unsafe.ARRAY_SHORT_BASE_OFFSET, array, -1, offset, offset + length, array.length,
                     false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -221,7 +223,8 @@ public class ShortBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new ShortBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        int off = (pos << 1);
+        return new ShortBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +262,8 @@ public class ShortBuffer
     @Override
     public ShortBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new ShortBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        int off = (index << 1);
+        return new ShortBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -347,7 +351,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(short d) {
-        putShortInternal(nextGetIndex(), d);
+        putShortInternal(nextPutIndex(), d);
         return this;
     }
 
@@ -365,7 +369,7 @@ public class ShortBuffer
      *          or not smaller than the buffer's limit
      */
     public short get(int index) {
-        return getShortInternal(checkIndex(index));
+        return getShortInternal(checkGetIndex(index));
     }
 
     /**
@@ -390,7 +394,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(int index, short d) {
-        putShortInternal(checkIndex(index), d);
+        putShortInternal(checkPutIndex(index), d);
         return this;
     }
 
@@ -628,9 +632,9 @@ public class ShortBuffer
         Object base = base();
         assert base != null || isDirect();
 
-        long srcAddr = src.address + ((long)srcPos << 3);
-        long addr = address + ((long)pos << 3);
-        long len = (long)n << 3;
+        long srcAddr = src.address + ((long)srcPos << 1);
+        long addr = address + ((long)pos << 1);
+        long len = (long)n << 1;
 
 
         if (this.order() == src.order()) {
@@ -653,7 +657,7 @@ public class ShortBuffer
                                       base,
                                       addr,
                                       len,
-                                      (long)1 << 3);
+                                      (long)1 << 1);
             } finally {
                 Reference.reachabilityFence(src);
                 Reference.reachabilityFence(this);
@@ -1002,9 +1006,12 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 1);
         position(rem);
         limit(capacity());
         discardMark();
@@ -1017,7 +1024,7 @@ public class ShortBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
     /**
@@ -1192,5 +1199,58 @@ public class ShortBuffer
      */
     public ByteOrder order() {
         return order;
+    }
+
+    static class DirectShortBuffer extends ShortBuffer implements DirectBuffer {
+        DirectShortBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+            super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        }
+
+        @Override
+        public long address() {
+            return address;
+        }
+
+        @Override
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        @Override
+        public Object attachment() {
+            return attachment;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public ShortBuffer slice() {
+            int pos = this.position();
+            int lim = this.limit();
+            int rem = (pos <= lim ? lim - pos : 0);
+            int off = (pos << 1);
+            return new ShortBuffer.DirectShortBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public ShortBuffer slice(int index, int length) {
+            Objects.checkFromIndexSize(index, length, limit());
+            int off = (index << 1);
+            return new ShortBuffer.DirectShortBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public ShortBuffer asReadOnlyBuffer() {
+            return new ShortBuffer.DirectShortBuffer(address, markValue(), position(), limit(), capacity(),
+                    true, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public ShortBuffer duplicate() {
+            return new ShortBuffer.DirectShortBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        }
     }
 }

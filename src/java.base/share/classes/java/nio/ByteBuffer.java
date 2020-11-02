@@ -302,7 +302,7 @@ public class ByteBuffer
     {
         try {
             return new ByteBuffer(Unsafe.ARRAY_BYTE_BASE_OFFSET,
-                    array, -1, offset, length, length, false, ByteOrder.BIG_ENDIAN, null,null);
+                    array, -1, offset, offset + length, array.length, false, ByteOrder.BIG_ENDIAN, null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -354,7 +354,7 @@ public class ByteBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new ByteBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return new ByteBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
     }
 
     /**
@@ -382,6 +382,7 @@ public class ByteBuffer
      *          The number of elements the new buffer will contain; must be
      *          non-negative and no larger than {@code limit() - index}
      *
+     *
      * @return  The new buffer
      *
      * @throws  IndexOutOfBoundsException
@@ -393,7 +394,7 @@ public class ByteBuffer
     @Override
     public ByteBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new ByteBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return new ByteBuffer(address + index, base(), markValue(), 0, length, length, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
     }
 
     /**
@@ -418,7 +419,7 @@ public class ByteBuffer
      */
     @Override
     public ByteBuffer duplicate() {
-        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(), readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
     }
 
     /**
@@ -446,7 +447,7 @@ public class ByteBuffer
      */
     public ByteBuffer asReadOnlyBuffer() {
         return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+                true, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
     }
 
 
@@ -483,7 +484,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(byte b) {
-        putByteInternal(nextGetIndex(), b);
+        putByteInternal(nextPutIndex(), b);
         return this;
     }
 
@@ -501,7 +502,7 @@ public class ByteBuffer
      *          or not smaller than the buffer's limit
      */
     public byte get(int index) {
-        return getByteInternal(checkIndex(index));
+        return getByteInternal(checkGetIndex(index));
     }
 
     /**
@@ -526,7 +527,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(int index, byte b) {
-        putByteInternal(checkIndex(index), b);
+        putByteInternal(checkPutIndex(index), b);
         return this;
     }
 
@@ -1139,6 +1140,9 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
         UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
@@ -1154,7 +1158,7 @@ public class ByteBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
     /**
@@ -1529,7 +1533,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putChar(char value) {
-        putCharInternal(nextGetIndex(2), value);
+        putCharInternal(nextPutIndex(2), value);
         return this;
     }
 
@@ -1550,7 +1554,7 @@ public class ByteBuffer
      *          minus one
      */
     public char getChar(int index) {
-        return getCharInternal(checkIndex(index, 2));
+        return getCharInternal(checkGetIndex(index, 2));
     }
 
     /**
@@ -1577,7 +1581,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putChar(int index, char value) {
-        putCharInternal(checkIndex(index, 2), value);
+        putCharInternal(checkPutIndex(index, 2), value);
         return this;
     }
 
@@ -1646,7 +1650,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putShort(short value) {
-        putShortInternal(nextGetIndex(2), value);
+        putShortInternal(nextPutIndex(2), value);
         return this;
     }
 
@@ -1667,7 +1671,7 @@ public class ByteBuffer
      *          minus one
      */
     public short getShort(int index) {
-        return getShortInternal(checkIndex(index, 2));
+        return getShortInternal(checkGetIndex(index, 2));
     }
 
     /**
@@ -1694,7 +1698,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putShort(int index, short value) {
-        putShortInternal(checkIndex(index, 2), value);
+        putShortInternal(checkPutIndex(index, 2), value);
         return this;
     }
 
@@ -1762,7 +1766,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putInt(int value) {
-        putIntInternal(nextGetIndex(4), value);
+        putIntInternal(nextPutIndex(4), value);
         return this;
     }
 
@@ -1783,7 +1787,7 @@ public class ByteBuffer
      *          minus three
      */
     public int getInt(int index) {
-        return getIntInternal(checkIndex(index, 4));
+        return getIntInternal(checkGetIndex(index, 4));
     }
 
     /**
@@ -1810,7 +1814,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putInt(int index, int value) {
-        putIntInternal(checkIndex(index, 4), value);
+        putIntInternal(checkPutIndex(index, 4), value);
         return this;
     }
 
@@ -1879,7 +1883,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putLong(long value) {
-        putLongInternal(nextGetIndex(8), value);
+        putLongInternal(nextPutIndex(8), value);
         return this;
     }
 
@@ -1900,7 +1904,7 @@ public class ByteBuffer
      *          minus seven
      */
     public long getLong(int index) {
-        return getLong(checkIndex(index, 8));
+        return getLongInternal(checkGetIndex(index, 8));
     }
 
     /**
@@ -1927,7 +1931,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putLong(int index, long value) {
-        putLongInternal(checkIndex(index, 8), value);
+        putLongInternal(checkPutIndex(index, 8), value);
         return this;
     }
 
@@ -1996,7 +2000,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putFloat(float value) {
-        putFloatInternal(nextGetIndex(4), value);
+        putFloatInternal(nextPutIndex(4), value);
         return this;
     }
 
@@ -2017,7 +2021,7 @@ public class ByteBuffer
      *          minus three
      */
     public float getFloat(int index) {
-        return getFloatInternal(checkIndex(index, 4));
+        return getFloatInternal(checkGetIndex(index, 4));
     }
 
     /**
@@ -2044,7 +2048,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putFloat(int index, float value) {
-        putFloatInternal(checkIndex(index, 4), value);
+        putFloatInternal(checkPutIndex(index, 4), value);
         return this;
     }
 
@@ -2113,7 +2117,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putDouble(double value) {
-        putDoubleInternal(nextGetIndex(8), value);
+        putDoubleInternal(nextPutIndex(8), value);
         return this;
     }
 
@@ -2134,7 +2138,7 @@ public class ByteBuffer
      *          minus seven
      */
     public double getDouble(int index) {
-        return getDoubleInternal(checkIndex(index, 8));
+        return getDoubleInternal(checkGetIndex(index, 8));
     }
 
     /**
@@ -2161,7 +2165,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer putDouble(int index, double value) {
-        putDoubleInternal(checkIndex(index, 8), value);
+        putDoubleInternal(checkPutIndex(index, 8), value);
         return this;
     }
 

@@ -30,6 +30,8 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
@@ -168,7 +170,7 @@ public class LongBuffer
                                   int offset, int length)
     {
         try {
-            return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, array, -1, offset, length, length,
+            return new LongBuffer(Unsafe.ARRAY_LONG_BASE_OFFSET, array, -1, offset, offset + length, array.length,
                     false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -221,7 +223,8 @@ public class LongBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new LongBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        int off = (pos << 3);
+        return new LongBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +262,8 @@ public class LongBuffer
     @Override
     public LongBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new LongBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        int off = (index << 3);
+        return new LongBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -347,7 +351,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(long d) {
-        putLongInternal(nextGetIndex(), d);
+        putLongInternal(nextPutIndex(), d);
         return this;
     }
 
@@ -365,7 +369,7 @@ public class LongBuffer
      *          or not smaller than the buffer's limit
      */
     public long get(int index) {
-        return getLongInternal(checkIndex(index));
+        return getLongInternal(checkGetIndex(index));
     }
 
     /**
@@ -390,7 +394,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(int index, long d) {
-        putLongInternal(checkIndex(index), d);
+        putLongInternal(checkPutIndex(index), d);
         return this;
     }
 
@@ -1002,9 +1006,12 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 3);
         position(rem);
         limit(capacity());
         discardMark();
@@ -1017,7 +1024,7 @@ public class LongBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
     /**
@@ -1191,5 +1198,58 @@ public class LongBuffer
      */
     public ByteOrder order() {
         return order;
+    }
+
+    static class DirectLongBuffer extends LongBuffer implements DirectBuffer {
+        DirectLongBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+            super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        }
+
+        @Override
+        public long address() {
+            return address;
+        }
+
+        @Override
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        @Override
+        public Object attachment() {
+            return attachment;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public LongBuffer slice() {
+            int pos = this.position();
+            int lim = this.limit();
+            int rem = (pos <= lim ? lim - pos : 0);
+            int off = (pos << 3);
+            return new LongBuffer.DirectLongBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public LongBuffer slice(int index, int length) {
+            Objects.checkFromIndexSize(index, length, limit());
+            int off = (index << 3);
+            return new LongBuffer.DirectLongBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public LongBuffer asReadOnlyBuffer() {
+            return new LongBuffer.DirectLongBuffer(address, markValue(), position(), limit(), capacity(),
+                    true, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public LongBuffer duplicate() {
+            return new LongBuffer.DirectLongBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        }
     }
 }

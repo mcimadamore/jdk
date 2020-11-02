@@ -30,6 +30,8 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
@@ -168,7 +170,7 @@ public class DoubleBuffer
                                     int offset, int length)
     {
         try {
-            return new DoubleBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, length, length,
+            return new DoubleBuffer(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, array, -1, offset, offset + length, array.length,
                     false, ByteOrder.nativeOrder(), null, null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
@@ -221,7 +223,8 @@ public class DoubleBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new DoubleBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        int off = (pos << 3);
+        return new DoubleBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -259,7 +262,8 @@ public class DoubleBuffer
     @Override
     public DoubleBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new DoubleBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        int off = (index << 3);
+        return new DoubleBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -347,7 +351,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(double d) {
-        putDoubleInternal(nextGetIndex(), d);
+        putDoubleInternal(nextPutIndex(), d);
         return this;
     }
 
@@ -365,7 +369,7 @@ public class DoubleBuffer
      *          or not smaller than the buffer's limit
      */
     public double get(int index) {
-        return getDoubleInternal(checkIndex(index));
+        return getDoubleInternal(checkGetIndex(index));
     }
 
     /**
@@ -390,7 +394,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(int index, double d) {
-        putDoubleInternal(checkIndex(index), d);
+        putDoubleInternal(checkPutIndex(index), d);
         return this;
     }
 
@@ -1002,9 +1006,12 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 3);
         position(rem);
         limit(capacity());
         discardMark();
@@ -1017,7 +1024,7 @@ public class DoubleBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
     /**
@@ -1203,5 +1210,58 @@ public class DoubleBuffer
      */
     public ByteOrder order() {
         return order;
+    }
+
+    static class DirectDoubleBuffer extends DoubleBuffer implements DirectBuffer {
+        DirectDoubleBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+            super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        }
+
+        @Override
+        public long address() {
+            return address;
+        }
+
+        @Override
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        @Override
+        public Object attachment() {
+            return attachment;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public DoubleBuffer slice() {
+            int pos = this.position();
+            int lim = this.limit();
+            int rem = (pos <= lim ? lim - pos : 0);
+            int off = (pos << 3);
+            return new DoubleBuffer.DirectDoubleBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public DoubleBuffer slice(int index, int length) {
+            Objects.checkFromIndexSize(index, length, limit());
+            int off = (index << 3);
+            return new DoubleBuffer.DirectDoubleBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public DoubleBuffer asReadOnlyBuffer() {
+            return new DoubleBuffer.DirectDoubleBuffer(address, markValue(), position(), limit(), capacity(),
+                    true, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public DoubleBuffer duplicate() {
+            return new DoubleBuffer.DirectDoubleBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        }
     }
 }

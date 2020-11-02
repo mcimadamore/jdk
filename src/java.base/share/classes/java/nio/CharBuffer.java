@@ -30,6 +30,8 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -198,7 +200,7 @@ public class CharBuffer
     {
         try {
             return new CharBuffer(UNSAFE.arrayBaseOffset(char[].class), array, -1, offset,
-                    length, length, false, ByteOrder.nativeOrder(), null,null);
+                    offset + length, array.length, false, ByteOrder.nativeOrder(), null,null);
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();
         }
@@ -338,7 +340,8 @@ public class CharBuffer
         int pos = this.position();
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
-        return new CharBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        int off = (pos << 1);
+        return new CharBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -381,7 +384,8 @@ public class CharBuffer
     @Override
     public CharBuffer slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
-        return new CharBuffer(address + index, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        int off = (index << 1);
+        return new CharBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -466,7 +470,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(char c) {
-        putCharInternal(nextGetIndex(), c);
+        putCharInternal(nextPutIndex(), c);
         return this;
     }
 
@@ -484,7 +488,7 @@ public class CharBuffer
      *          or not smaller than the buffer's limit
      */
     public char get(int index) {
-        return getCharInternal(checkIndex(index));
+        return getCharInternal(checkGetIndex(index));
     }
 
     /**
@@ -509,7 +513,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(int index, char c) {
-        putCharInternal(checkIndex(index), c);
+        putCharInternal(checkPutIndex(index), c);
         return this;
     }
 
@@ -1230,9 +1234,12 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer compact() {
+        if (readOnly) {
+            throw new ReadOnlyBufferException();
+        }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 1);
         position(rem);
         limit(capacity());
         discardMark();
@@ -1245,7 +1252,7 @@ public class CharBuffer
      * @return  {@code true} if, and only if, this buffer is direct
      */
     public boolean isDirect() {
-        return base() == null;
+        return false;
     }
 
 
@@ -1484,7 +1491,7 @@ public class CharBuffer
      *          If the preconditions on {@code index} do not hold
      */
     public final char charAt(int index) {
-        return get(position() + checkIndex(index, 1));
+        return get(position() + checkGetIndex(index, 1));
     }
 
     /**
@@ -1666,5 +1673,58 @@ public class CharBuffer
     public IntStream chars() {
         return StreamSupport.intStream(() -> new CharBufferSpliterator(this),
             Buffer.SPLITERATOR_CHARACTERISTICS, false);
+    }
+
+    static class DirectCharBuffer extends CharBuffer implements DirectBuffer {
+        DirectCharBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+            super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        }
+
+        @Override
+        public long address() {
+            return address;
+        }
+
+        @Override
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        @Override
+        public Object attachment() {
+            return attachment;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public CharBuffer slice() {
+            int pos = this.position();
+            int lim = this.limit();
+            int rem = (pos <= lim ? lim - pos : 0);
+            int off = (pos << 1);
+            return new CharBuffer.DirectCharBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public CharBuffer slice(int index, int length) {
+            Objects.checkFromIndexSize(index, length, limit());
+            int off = (index << 1);
+            return new CharBuffer.DirectCharBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public CharBuffer asReadOnlyBuffer() {
+            return new CharBuffer.DirectCharBuffer(address, markValue(), position(), limit(), capacity(),
+                    true, order, attachmentValue(), segment);
+        }
+
+        @Override
+        public CharBuffer duplicate() {
+            return new CharBuffer.DirectCharBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        }
     }
 }
