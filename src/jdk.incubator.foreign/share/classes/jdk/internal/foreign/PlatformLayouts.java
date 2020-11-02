@@ -36,6 +36,8 @@ import static jdk.incubator.foreign.MemoryLayouts.ADDRESS;
 
 public class PlatformLayouts {
     public static <Z extends MemoryLayout> Z pick(Z sysv, Z win64, Z aarch64) {
+        if (!CABI.isPlatformSupport())
+            return null;
         return switch (CABI.current()) {
             case SysV -> sysv;
             case Win64 -> win64;
@@ -151,7 +153,7 @@ public class PlatformLayouts {
         /**
          * The {@code T*} native type.
          */
-        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, ADDRESS.bitSize());
+        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, 64);
 
         /**
          * The {@code va_list} native type, as it is passed to a function.
@@ -216,7 +218,7 @@ public class PlatformLayouts {
         /**
          * The {@code T*} native type.
          */
-        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, ADDRESS.bitSize());
+        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, 64);
 
         /**
          * The {@code va_list} native type, as it is passed to a function.
@@ -286,7 +288,7 @@ public class PlatformLayouts {
         /**
          * The {@code T*} native type.
          */
-        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, ADDRESS.bitSize());
+        public static final ValueLayout C_POINTER = ofPointer(LITTLE_ENDIAN, 64);
 
         /**
          * The {@code va_list} native type, as it is passed to a function.

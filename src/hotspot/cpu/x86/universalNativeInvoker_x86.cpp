@@ -61,6 +61,7 @@ void generate_invoke_native(MacroAssembler* _masm, const ABIDescriptor& abi, con
    * }
    */
 
+#ifdef _LP64
   __ enter();
 
   // Put the context pointer in ebx/rbx - it's going to be heavily used below both before and after the call
@@ -170,6 +171,9 @@ void generate_invoke_native(MacroAssembler* _masm, const ABIDescriptor& abi, con
 
   __ leave();
   __ ret(0);
+#else
+  __ hlt(); // NYI
+#endif
 
   __ flush();
 }
