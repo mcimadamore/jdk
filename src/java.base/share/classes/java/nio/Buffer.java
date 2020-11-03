@@ -247,11 +247,6 @@ public abstract class Buffer {
                                                    + mark + " > " + pos + ")");
             this.mark = mark;
         }
-        if (!(this instanceof StringCharBuffer)) {
-            if ((base() == null) != isDirect()) {
-                throw new AssertionError("Weird state");
-            }
-        }
     }
 
     /**
