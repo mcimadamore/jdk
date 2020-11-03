@@ -205,7 +205,7 @@ import java.util.Objects;
  */
 
 public class ByteBuffer
-    extends Buffer
+    extends AbstractBufferImpl<ByteBuffer, byte[]>
     implements Comparable<ByteBuffer>
 {
 
@@ -216,6 +216,41 @@ public class ByteBuffer
                boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 0;
+    }
+
+    @Override
+    Class<byte[]> carrier() {
+        return byte[].class;
+    }
+
+    @Override
+    int length(byte[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void getAndPut(byte[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void putAndGet(byte[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return get(index);
+    }
+
+    @Override
+    int mismatchInternal(ByteBuffer src, int srcPos, ByteBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
     }
 
     /**
@@ -585,13 +620,7 @@ public class ByteBuffer
      *          parameters do not hold
      */
     public ByteBuffer get(byte[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return get(offset, dst, offset, length);
     }
 
     /**
@@ -662,12 +691,7 @@ public class ByteBuffer
      * @since 13
      */
     public ByteBuffer get(int index, byte[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -748,42 +772,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(ByteBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 0);
-        long addr = address + ((long)pos << 0);
-        long len = (long)n << 0;
-
-        try {
-            UNSAFE.copyMemory(srcBase,
-                              srcAddr,
-                              base,
-                              addr,
-                              len);
-        } finally {
-            Reference.reachabilityFence(src);
-            Reference.reachabilityFence(this);
-        }
-
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -838,13 +827,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(byte[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return put(offset, src, offset, length);
     }
 
     /**
@@ -919,14 +902,7 @@ public class ByteBuffer
      * @since 13
      */
     public ByteBuffer put(int index, byte[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -976,7 +952,7 @@ public class ByteBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof byte[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -999,11 +975,7 @@ public class ByteBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final byte[] array() {
-        if (!(hb instanceof byte[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (byte[])hb;
+        return super.array();
     }
 
     /**
@@ -1027,76 +999,7 @@ public class ByteBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof byte[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (int)address - UNSAFE.arrayBaseOffset(byte[].class);
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ByteBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1140,16 +1043,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1167,16 +1061,7 @@ public class ByteBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
     /**
@@ -1193,11 +1078,7 @@ public class ByteBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1226,20 +1107,7 @@ public class ByteBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof ByteBuffer))
-            return false;
-        ByteBuffer that = (ByteBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                                       that, thatPos,
-                                       thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1257,24 +1125,12 @@ public class ByteBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(ByteBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(byte x, byte y) {
-        return Byte.compare(x, y);
+    @Override
+    int compare(ByteBuffer thisBuf, int x, ByteBuffer thatBuf, int y) {
+        return Byte.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
     /**
@@ -1302,17 +1158,7 @@ public class ByteBuffer
      * @since 11
      */
     public int mismatch(ByteBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
