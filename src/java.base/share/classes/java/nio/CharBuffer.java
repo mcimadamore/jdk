@@ -1726,5 +1726,17 @@ public class CharBuffer
         public CharBuffer duplicate() {
             return new CharBuffer.DirectCharBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
         }
+
+        @Override
+        public CharBuffer subSequence(int start, int end) {
+            int pos = position();
+            Objects.checkFromToIndex(start, end, limit() - pos);
+            return new DirectCharBuffer(address,
+                    -1,
+                    pos + start,
+                    pos + end,
+                    capacity(),
+                    readOnly, order, attachmentValue(), segment);
+        }
     }
 }

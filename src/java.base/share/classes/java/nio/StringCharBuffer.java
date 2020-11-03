@@ -126,8 +126,8 @@ class StringCharBuffer                                  // package-private
             int pos = position();
             return new StringCharBuffer(str, stringOffset(),
                                         -1,
-                                        pos + checkPutIndex(start, pos),
-                                        pos + checkPutIndex(end, pos),
+                                        pos + checkGetIndex(start, pos),
+                                        pos + checkGetIndex(end, pos),
                                         capacity());
         } catch (IllegalArgumentException x) {
             throw new IndexOutOfBoundsException();

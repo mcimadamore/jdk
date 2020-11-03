@@ -251,7 +251,7 @@ public class BasicByte
     private static void compact(Buffer b) {
         try {
             Class<?> cl = b.getClass();
-            java.lang.reflect.Method m = cl.getDeclaredMethod("compact");
+            java.lang.reflect.Method m = cl.getMethod("compact");
             m.setAccessible(true);
             m.invoke(b);
         } catch (Exception e) {
