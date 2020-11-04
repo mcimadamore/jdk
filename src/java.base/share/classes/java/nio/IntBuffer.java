@@ -85,7 +85,7 @@ import java.util.Objects;
  */
 
 public class IntBuffer
-    extends Buffer
+    extends AbstractBufferImpl<IntBuffer, int[]>
     implements Comparable<IntBuffer>
 {
 
@@ -96,6 +96,56 @@ public class IntBuffer
               boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 2;
+    }
+
+    @Override
+    Class<int[]> carrier() {
+        return int[].class;
+    }
+
+    @Override
+    int length(int[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(int[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(int[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(int[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(int[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return get(index);
+    }
+
+    @Override
+    int mismatchInternal(IntBuffer src, int srcPos, IntBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    IntBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new IntBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -220,11 +270,7 @@ public class IntBuffer
      */
     @Override
     public IntBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 2);
-        return new IntBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -261,9 +307,7 @@ public class IntBuffer
      */
     @Override
     public IntBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 2);
-        return new IntBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -284,8 +328,7 @@ public class IntBuffer
      */
     @Override
     public IntBuffer duplicate() {
-        return new IntBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -308,15 +351,8 @@ public class IntBuffer
      * @return  The new, read-only int buffer
      */
     public IntBuffer asReadOnlyBuffer() {
-        return new IntBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 2);
-    }
-
 
     // -- Singleton get/put methods --
 
@@ -451,13 +487,7 @@ public class IntBuffer
      *          parameters do not hold
      */
     public IntBuffer get(int[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -528,12 +558,7 @@ public class IntBuffer
      * @since 13
      */
     public IntBuffer get(int index, int[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -614,58 +639,7 @@ public class IntBuffer
      *          If this buffer is read-only
      */
     public IntBuffer put(IntBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 2);
-        long addr = address + ((long)pos << 2);
-        long len = (long)n << 2;
-
-
-        if (this.order() == src.order()) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                                  srcAddr,
-                                  base,
-                                  addr,
-                                  len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len,
-                                      (long)1 << 2);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -720,13 +694,7 @@ public class IntBuffer
      *          If this buffer is read-only
      */
     public IntBuffer put(int[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -801,14 +769,7 @@ public class IntBuffer
      * @since 13
      */
     public IntBuffer put(int index, int[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -858,7 +819,7 @@ public class IntBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof int[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -881,11 +842,7 @@ public class IntBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int[] array() {
-        if (!(hb instanceof int[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (int[])hb;
+        return super.array();
     }
 
     /**
@@ -909,76 +866,7 @@ public class IntBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof int[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_INT_BASE_OFFSET) / 4;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final IntBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1006,16 +894,7 @@ public class IntBuffer
      *          If this buffer is read-only
      */
     public IntBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 2);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1033,16 +912,7 @@ public class IntBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
     /**
@@ -1059,11 +929,7 @@ public class IntBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1092,20 +958,7 @@ public class IntBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof IntBuffer))
-            return false;
-        IntBuffer that = (IntBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1123,24 +976,12 @@ public class IntBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(IntBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(int x, int y) {
-        return Integer.compare(x, y);
+    @Override
+    int compare(IntBuffer thisBuffer, int x, IntBuffer thatBuffer, int y) {
+        return Integer.compare(thisBuffer.get(x), thatBuffer.get(y));
     }
 
     /**
@@ -1168,17 +1009,7 @@ public class IntBuffer
      * @since 11
      */
     public int mismatch(IntBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
@@ -1225,30 +1056,8 @@ public class IntBuffer
         }
 
         @Override
-        public IntBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 2);
-            return new DirectIntBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public IntBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 2);
-            return new DirectIntBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public IntBuffer asReadOnlyBuffer() {
-            return new DirectIntBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public IntBuffer duplicate() {
-            return new DirectIntBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        IntBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectIntBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

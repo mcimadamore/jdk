@@ -85,7 +85,7 @@ import java.util.Objects;
  */
 
 public class FloatBuffer
-    extends Buffer
+    extends AbstractBufferImpl<FloatBuffer, float[]>
     implements Comparable<FloatBuffer>
 {
 
@@ -98,15 +98,62 @@ public class FloatBuffer
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
+    @Override
+    int carrierSize() {
+        return 2;
+    }
+
+    @Override
+    Class<float[]> carrier() {
+        return float[].class;
+    }
+
+    @Override
+    int length(float[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(float[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(float[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(float[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(float[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return (int)get(index);
+    }
+
+    @Override
+    int mismatchInternal(FloatBuffer src, int srcPos, FloatBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    FloatBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new FloatBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
     /**
      * Allocates a new float buffer.
      *
      * <p> The new buffer's position will be zero, its limit will be its
      * capacity, its mark will be undefined, each of its elements will be
      * initialized to zero, and its byte order will be
-
-
-
      * the {@link ByteOrder#nativeOrder native order} of the underlying
      * hardware.
 
@@ -137,9 +184,6 @@ public class FloatBuffer
      * {@code array.length}, its position will be {@code offset}, its limit
      * will be {@code offset + length}, its mark will be undefined, and its
      * byte order will be
-
-
-
      * the {@link ByteOrder#nativeOrder native order} of the underlying
      * hardware.
 
@@ -220,11 +264,7 @@ public class FloatBuffer
      */
     @Override
     public FloatBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 2);
-        return new FloatBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -261,9 +301,7 @@ public class FloatBuffer
      */
     @Override
     public FloatBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 2);
-        return new FloatBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -284,8 +322,7 @@ public class FloatBuffer
      */
     @Override
     public FloatBuffer duplicate() {
-        return new FloatBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -308,15 +345,8 @@ public class FloatBuffer
      * @return  The new, read-only float buffer
      */
     public FloatBuffer asReadOnlyBuffer() {
-        return new FloatBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 2);
-    }
-
 
     // -- Singleton get/put methods --
 
@@ -451,13 +481,7 @@ public class FloatBuffer
      *          parameters do not hold
      */
     public FloatBuffer get(float[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -528,12 +552,7 @@ public class FloatBuffer
      * @since 13
      */
     public FloatBuffer get(int index, float[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -614,58 +633,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(FloatBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 2);
-        long addr = address + ((long)pos << 2);
-        long len = (long)n << 2;
-
-
-        if (this.order() == src.order()) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                                  srcAddr,
-                                  base,
-                                  addr,
-                                  len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len,
-                                      (long)1 << 2);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -720,13 +688,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer put(float[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -801,14 +763,7 @@ public class FloatBuffer
      * @since 13
      */
     public FloatBuffer put(int index, float[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -858,7 +813,7 @@ public class FloatBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof float[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -881,11 +836,7 @@ public class FloatBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final float[] array() {
-        if (!(hb instanceof float[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (float[])hb;
+        return super.array();
     }
 
     /**
@@ -909,76 +860,7 @@ public class FloatBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof float[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_FLOAT_BASE_OFFSET) / 4;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final FloatBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1006,16 +888,7 @@ public class FloatBuffer
      *          If this buffer is read-only
      */
     public FloatBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 2);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1033,16 +906,7 @@ public class FloatBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
     /**
@@ -1059,15 +923,7 @@ public class FloatBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-
-
-
-            h = 31 * h + (int)get(i);
-
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1101,20 +957,7 @@ public class FloatBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof FloatBuffer))
-            return false;
-        FloatBuffer that = (FloatBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1136,23 +979,13 @@ public class FloatBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(FloatBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(float x, float y) {
+    @Override
+    int compare(FloatBuffer thisBuf, int i1, FloatBuffer thatBuf, int i2) {
+        float x = thisBuf.get(i1);
+        float y = thatBuf.get(i2);
         return ((x < y)  ? -1 :
                 (x > y)  ? +1 :
                         (x == y) ?  0 :
@@ -1184,17 +1017,7 @@ public class FloatBuffer
      * @since 11
      */
     public int mismatch(FloatBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
@@ -1241,30 +1064,8 @@ public class FloatBuffer
         }
 
         @Override
-        public FloatBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 2);
-            return new FloatBuffer.DirectFloatBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public FloatBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 2);
-            return new FloatBuffer.DirectFloatBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public FloatBuffer asReadOnlyBuffer() {
-            return new FloatBuffer.DirectFloatBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public FloatBuffer duplicate() {
-            return new FloatBuffer.DirectFloatBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        FloatBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectFloatBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

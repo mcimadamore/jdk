@@ -38,31 +38,6 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     }
 
     @Override
-    public ByteBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        return new DirectByteBuffer(null, address + position(), markValue(), 0, rem, rem, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
-    }
-
-    @Override
-    public ByteBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        return new DirectByteBuffer(null, address + index, markValue(), 0, length, length, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
-    }
-
-    @Override
-    public ByteBuffer asReadOnlyBuffer() {
-        return new DirectByteBuffer(null, address, markValue(), position(), limit(), capacity(), fd, isSync,
-                true, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
-    }
-
-    @Override
-    public ByteBuffer duplicate() {
-        return new DirectByteBuffer(null, address, markValue(), position(), limit(), capacity(), fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
-    }
-
-    @Override
     public long address() {
         return address;
     }
@@ -75,6 +50,11 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     @Override
     public Object attachment() {
         return attachment;
+    }
+
+    @Override
+    ByteBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new DirectByteBuffer(null, addr, mark, pos, lim, cap, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
     }
 
     private static class Deallocator
@@ -132,65 +112,5 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     @Override
     public boolean isDirect() {
         return true;
-    }
-
-    @Override
-    public CharBuffer asCharBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 1;
-        return new CharBuffer.DirectCharBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
-    }
-
-    @Override
-    public ShortBuffer asShortBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 1;
-        return new ShortBuffer.DirectShortBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
-    }
-
-    @Override
-    public IntBuffer asIntBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 2;
-        return new IntBuffer.DirectIntBuffer(address + off,  -1, 0, size, size, readOnly, order, attachmentValue(), segment);
-    }
-
-    @Override
-    public FloatBuffer asFloatBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 2;
-        return new FloatBuffer.DirectFloatBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
-    }
-
-    @Override
-    public LongBuffer asLongBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 3;
-        return new LongBuffer.DirectLongBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
-    }
-
-    @Override
-    public DoubleBuffer asDoubleBuffer() {
-        int off = this.position();
-        int lim = this.limit();
-        assert (off <= lim);
-        int rem = (off <= lim ? lim - off : 0);
-        int size = rem >> 3;
-        return new DoubleBuffer.DirectDoubleBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 }

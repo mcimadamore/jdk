@@ -85,7 +85,7 @@ import java.util.Objects;
  */
 
 public class LongBuffer
-    extends Buffer
+    extends AbstractBufferImpl<LongBuffer, long[]>
     implements Comparable<LongBuffer>
 {
 
@@ -96,6 +96,56 @@ public class LongBuffer
                boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 3;
+    }
+
+    @Override
+    Class<long[]> carrier() {
+        return long[].class;
+    }
+
+    @Override
+    int length(long[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(long[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(long[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(long[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(long[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return (int)get(index);
+    }
+
+    @Override
+    int mismatchInternal(LongBuffer src, int srcPos, LongBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    LongBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new LongBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -220,11 +270,7 @@ public class LongBuffer
      */
     @Override
     public LongBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 3);
-        return new LongBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -261,9 +307,7 @@ public class LongBuffer
      */
     @Override
     public LongBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 3);
-        return new LongBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -284,8 +328,7 @@ public class LongBuffer
      */
     @Override
     public LongBuffer duplicate() {
-        return new LongBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -308,15 +351,8 @@ public class LongBuffer
      * @return  The new, read-only long buffer
      */
     public LongBuffer asReadOnlyBuffer() {
-        return new LongBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 3);
-    }
-
 
     // -- Singleton get/put methods --
 
@@ -451,13 +487,7 @@ public class LongBuffer
      *          parameters do not hold
      */
     public LongBuffer get(long[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -528,12 +558,7 @@ public class LongBuffer
      * @since 13
      */
     public LongBuffer get(int index, long[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -614,58 +639,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(LongBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 3);
-        long addr = address + ((long)pos << 3);
-        long len = (long)n << 3;
-
-
-        if (this.order() == src.order()) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                                  srcAddr,
-                                  base,
-                                  addr,
-                                  len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len,
-                                      (long)1 << 3);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -720,13 +694,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer put(long[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -801,14 +769,7 @@ public class LongBuffer
      * @since 13
      */
     public LongBuffer put(int index, long[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -858,7 +819,7 @@ public class LongBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof long[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -881,11 +842,7 @@ public class LongBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final long[] array() {
-        if (!(hb instanceof long[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (long[])hb;
+        return super.array();
     }
 
     /**
@@ -909,76 +866,7 @@ public class LongBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof long[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_LONG_BASE_OFFSET) / 8;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final LongBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1006,16 +894,7 @@ public class LongBuffer
      *          If this buffer is read-only
      */
     public LongBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 3);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1033,16 +912,7 @@ public class LongBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
     /**
@@ -1059,11 +929,7 @@ public class LongBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1092,20 +958,7 @@ public class LongBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof LongBuffer))
-            return false;
-        LongBuffer that = (LongBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1124,24 +977,12 @@ public class LongBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(LongBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(long x, long y) {
-        return Long.compare(x, y);
+    @Override
+    int compare(LongBuffer thisBuf, int x, LongBuffer thatBuf, int y) {
+        return Long.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
     /**
@@ -1169,17 +1010,7 @@ public class LongBuffer
      * @since 11
      */
     public int mismatch(LongBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
@@ -1226,30 +1057,8 @@ public class LongBuffer
         }
 
         @Override
-        public LongBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 3);
-            return new LongBuffer.DirectLongBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public LongBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 3);
-            return new LongBuffer.DirectLongBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public LongBuffer asReadOnlyBuffer() {
-            return new LongBuffer.DirectLongBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public LongBuffer duplicate() {
-            return new LongBuffer.DirectLongBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        LongBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectLongBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

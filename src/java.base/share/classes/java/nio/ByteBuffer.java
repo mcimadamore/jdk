@@ -234,13 +234,23 @@ public class ByteBuffer
     }
 
     @Override
-    void getAndPut(byte[] arr, int i, int j) {
+    void loadAndPutAbsolute(byte[] arr, int i, int j) {
         put(j, arr[i]);
     }
 
     @Override
-    void putAndGet(byte[] arr, int i, int j) {
+    void getAbsoluteAndStore(byte[] arr, int i, int j) {
         arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(byte[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(byte[] arr, int i) {
+        arr[i] = get();
     }
 
     @Override
@@ -251,6 +261,11 @@ public class ByteBuffer
     @Override
     int mismatchInternal(ByteBuffer src, int srcPos, ByteBuffer dest, int destPos, int n) {
         return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    ByteBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new ByteBuffer(addr, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
     }
 
     /**
@@ -386,10 +401,7 @@ public class ByteBuffer
      */
     @Override
     public ByteBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        return new ByteBuffer(address + position(), base(), markValue(), 0, rem, rem, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -428,8 +440,7 @@ public class ByteBuffer
      */
     @Override
     public ByteBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        return new ByteBuffer(address + index, base(), markValue(), 0, length, length, readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -454,7 +465,7 @@ public class ByteBuffer
      */
     @Override
     public ByteBuffer duplicate() {
-        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(), readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -481,8 +492,7 @@ public class ByteBuffer
      * @return  The new, read-only byte buffer
      */
     public ByteBuffer asReadOnlyBuffer() {
-        return new ByteBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
 
 
@@ -620,7 +630,7 @@ public class ByteBuffer
      *          parameters do not hold
      */
     public ByteBuffer get(byte[] dst, int offset, int length) {
-        return get(offset, dst, offset, length);
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -827,7 +837,7 @@ public class ByteBuffer
      *          If this buffer is read-only
      */
     public ByteBuffer put(byte[] src, int offset, int length) {
-        return put(offset, src, offset, length);
+        return super.put(src, offset, length);
     }
 
     /**
@@ -1454,7 +1464,9 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
-        return new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new CharBuffer.DirectCharBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -1571,7 +1583,9 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
-        return new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new ShortBuffer.DirectShortBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
     /**
@@ -1687,7 +1701,9 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
-        return new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new IntBuffer.DirectIntBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -1804,7 +1820,9 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
-        return new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new LongBuffer.DirectLongBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -1921,7 +1939,9 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
-        return new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new FloatBuffer.DirectFloatBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 
 
@@ -2038,6 +2058,8 @@ public class ByteBuffer
         assert (off <= lim);
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
-        return new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+        return isDirect() ?
+                new DoubleBuffer.DirectDoubleBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
+                new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
     }
 }

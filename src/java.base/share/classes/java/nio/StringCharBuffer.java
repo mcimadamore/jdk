@@ -25,6 +25,8 @@
 
 package java.nio;
 
+import jdk.internal.access.foreign.MemorySegmentProxy;
+
 import java.util.Objects;
 
 // ## If the sequence is a string, use reflection to share its array

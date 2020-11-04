@@ -85,7 +85,7 @@ import java.util.Objects;
  */
 
 public class DoubleBuffer
-    extends Buffer
+    extends AbstractBufferImpl<DoubleBuffer, double[]>
     implements Comparable<DoubleBuffer>
 {
 
@@ -96,6 +96,56 @@ public class DoubleBuffer
                  boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 3;
+    }
+
+    @Override
+    Class<double[]> carrier() {
+        return double[].class;
+    }
+
+    @Override
+    int length(double[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(double[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(double[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(double[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(double[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return (int)get(index);
+    }
+
+    @Override
+    int mismatchInternal(DoubleBuffer src, int srcPos, DoubleBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    DoubleBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new DoubleBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -220,11 +270,7 @@ public class DoubleBuffer
      */
     @Override
     public DoubleBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 3);
-        return new DoubleBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -261,9 +307,7 @@ public class DoubleBuffer
      */
     @Override
     public DoubleBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 3);
-        return new DoubleBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -284,8 +328,7 @@ public class DoubleBuffer
      */
     @Override
     public DoubleBuffer duplicate() {
-        return new DoubleBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -308,15 +351,8 @@ public class DoubleBuffer
      * @return  The new, read-only double buffer
      */
     public DoubleBuffer asReadOnlyBuffer() {
-        return new DoubleBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 3);
-    }
-
 
     // -- Singleton get/put methods --
 
@@ -451,13 +487,7 @@ public class DoubleBuffer
      *          parameters do not hold
      */
     public DoubleBuffer get(double[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -528,12 +558,7 @@ public class DoubleBuffer
      * @since 13
      */
     public DoubleBuffer get(int index, double[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -614,58 +639,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(DoubleBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 3);
-        long addr = address + ((long)pos << 3);
-        long len = (long)n << 3;
-
-
-        if (this.order() == src.order()) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                                  srcAddr,
-                                  base,
-                                  addr,
-                                  len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len,
-                                      (long)1 << 3);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -720,13 +694,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer put(double[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -801,14 +769,7 @@ public class DoubleBuffer
      * @since 13
      */
     public DoubleBuffer put(int index, double[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -858,7 +819,7 @@ public class DoubleBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof double[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -881,11 +842,7 @@ public class DoubleBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final double[] array() {
-        if (!(hb instanceof double[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (double[])hb;
+        return super.array();
     }
 
     /**
@@ -909,76 +866,7 @@ public class DoubleBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof double[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_DOUBLE_BASE_OFFSET) / 8;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final DoubleBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1006,16 +894,7 @@ public class DoubleBuffer
      *          If this buffer is read-only
      */
     public DoubleBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 3);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1033,16 +912,7 @@ public class DoubleBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
     /**
@@ -1059,11 +929,7 @@ public class DoubleBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1097,20 +963,7 @@ public class DoubleBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof DoubleBuffer))
-            return false;
-        DoubleBuffer that = (DoubleBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                                       that, thatPos,
-                                       thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1133,23 +986,13 @@ public class DoubleBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(DoubleBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(double x, double y) {
+    @Override
+    int compare(DoubleBuffer thisBuf, int i1, DoubleBuffer thatBuf, int i2) {
+        double x = thisBuf.get(i1);
+        double y = thatBuf.get(i2);
         return ((x < y)  ? -1 :
                 (x > y)  ? +1 :
                 (x == y) ?  0 :
@@ -1181,17 +1024,7 @@ public class DoubleBuffer
      * @since 11
      */
     public int mismatch(DoubleBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
@@ -1238,30 +1071,8 @@ public class DoubleBuffer
         }
 
         @Override
-        public DoubleBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 3);
-            return new DoubleBuffer.DirectDoubleBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public DoubleBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 3);
-            return new DoubleBuffer.DirectDoubleBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public DoubleBuffer asReadOnlyBuffer() {
-            return new DoubleBuffer.DirectDoubleBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public DoubleBuffer duplicate() {
-            return new DoubleBuffer.DirectDoubleBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        DoubleBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectDoubleBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

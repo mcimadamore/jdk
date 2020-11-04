@@ -6,41 +6,69 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.ref.Reference;
 import java.util.Objects;
-import java.util.function.IntConsumer;
-import java.util.function.ToIntFunction;
 
 abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends Buffer {
 
     // Cached unsafe-access object
     static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    // Used by heap byte buffers or direct buffers with Unsafe access
-    // For heap byte buffers this field will be the address relative to the
-    // array base address and offset into that array. The address might
-    // not align on a word boundary for slices, nor align at a long word
-    // (8 byte) boundary for byte[] allocations on 32-bit systems.
-    // For direct buffers it is the start address of the memory region. The
-    // address might not align on a word boundary for slices, nor when created
-    // using JNI, see NewDirectByteBuffer(void*, long).
-    // Should ideally be declared final
-    // NOTE: hoisted here for speed in JNI GetDirectBufferAddress
-    final long address;
-    final Object hb;
     final Object attachment;
 
     AbstractBufferImpl(long addr, Object hb, int mark, int pos, int lim, int cap,
                boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
-        super(mark, pos, lim, cap, readOnly, order, segment);
-        this.address = addr;
-        this.hb = hb;
+        super(addr, hb, mark, pos, lim, cap, readOnly, order, segment);
         this.attachment = attachment;
     }
 
-    abstract void getAndPut(A arr, int i, int j);
+    abstract void loadAndPutAbsolute(A arr, int i, int j);
 
-    abstract void putAndGet(A arr, int i, int j);
+    abstract void getAbsoluteAndStore(A arr, int i, int j);
+
+    abstract void loadAndPutRelative(A arr, int i);
+
+    abstract void getRelativeAndStore(A arr, int i);
 
     abstract int length(A a);
+
+    abstract B dup(long addr, Object hb, int mark, int pos, int lim, int cap,
+                   boolean readOnly, Object attachment, MemorySegmentProxy segment);
+
+    B asReadOnlyBuffer() {
+        return dup(address, base(), markValue(), position(), limit(), capacity(),
+                true, attachmentValue(), segment);
+    }
+
+    @Override
+    public B slice() {
+        int pos = this.position();
+        int lim = this.limit();
+        int rem = (pos <= lim ? lim - pos : 0);
+        int off = (pos << carrierSize());
+        return dup(address + off, base(), markValue(), 0, rem, rem, readOnly, attachmentValue(), segment);
+    }
+
+    @Override
+    public B slice(int index, int length) {
+        Objects.checkFromIndexSize(index, length, limit());
+        int off = (index << carrierSize());
+        return dup(address + off, base(), markValue(), 0, length, length, readOnly, attachmentValue(), segment);
+    }
+
+    @Override
+    public B duplicate() {
+        return dup(address, base(), markValue(), position(), limit(), capacity(), readOnly, attachmentValue(), segment);
+    }
+
+    @SuppressWarnings("unchecked")
+    public B put(A src, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, length(src));
+        if (length > remaining())
+            throw new BufferOverflowException();
+        int end = offset + length;
+        for (int i = offset; i < end; i++)
+            loadAndPutRelative(src, i);
+        return (B)this;
+    }
 
     @SuppressWarnings("unchecked")
     public B put(int index, A src, int offset, int length) {
@@ -48,19 +76,28 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         Objects.checkFromIndexSize(offset, length, length(src));
         int end = offset + length;
         for (int i = offset, j = index; i < end; i++, j++)
-            getAndPut(src, i, j);
+            loadAndPutAbsolute(src, i, j);
+        return (B)this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public B get(A dst, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, length(dst));
+        if (length > remaining())
+            throw new BufferUnderflowException();
+        int end = offset + length;
+        for (int i = offset; i < end; i++)
+            getRelativeAndStore(dst, i);
         return (B)this;
     }
 
     @SuppressWarnings("unchecked")
     public B get(int index, A dst, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
         Objects.checkFromIndexSize(index, length, limit());
         Objects.checkFromIndexSize(offset, length, length(dst));
         int end = offset + length;
         for (int i = offset, j = index; i < end; i++, j++)
-            putAndGet(dst, i, j);
+            getAbsoluteAndStore(dst, i, j);
         return (B)this;
     }
 
@@ -88,15 +125,31 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         long addr = address + ((long)pos << carrierSize());
         long len = (long)n << carrierSize();
 
-        try {
-            UNSAFE.copyMemory(srcBase,
-                    srcAddr,
-                    base,
-                    addr,
-                    len);
-        } finally {
-            Reference.reachabilityFence(src);
-            Reference.reachabilityFence(this);
+        if (carrierSize() == 0 || order == src.order) {
+
+            try {
+                UNSAFE.copyMemory(srcBase,
+                        srcAddr,
+                        base,
+                        addr,
+                        len);
+            } finally {
+                Reference.reachabilityFence(src);
+                Reference.reachabilityFence(this);
+            }
+
+        } else {
+            try {
+                UNSAFE.copySwapMemory(srcBase,
+                        srcAddr,
+                        base,
+                        addr,
+                        len,
+                        (long)1 << carrierSize());
+            } finally {
+                Reference.reachabilityFence(src);
+                Reference.reachabilityFence(this);
+            }
         }
 
         position(pos + n);
@@ -118,7 +171,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     // access primitives
 
-    long ix(int pos) {
+    final long ix(int pos) {
         return address + (pos << carrierSize());
     }
 
@@ -222,6 +275,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     abstract Class<A> carrier();
 
+    @SuppressWarnings("unchecked")
     public B compact() {
         if (readOnly) {
             throw new ReadOnlyBufferException();
@@ -241,7 +295,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     @SuppressWarnings("unchecked")
     public A array() {
-        if (hb == null || hb.getClass() == carrier())
+        if (hb == null || hb.getClass() != carrier())
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
@@ -253,7 +307,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return (int)address - UNSAFE.arrayBaseOffset(carrier());
+        return ((int)address - UNSAFE.arrayBaseOffset(carrier())) >> carrierSize();
     }
 
     public String toString() {
@@ -273,7 +327,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int h = 1;
         int p = position();
         for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)getAsInt(i);
+            h = 31 * h + getAsInt(i);
         return h;
     }
 
@@ -283,7 +337,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     public boolean equals(Object ob) {
         if (this == ob)
             return true;
-        if (!getClass().isAssignableFrom(ob.getClass()) && !ob.getClass().isAssignableFrom(getClass()))
+        if (!(ob instanceof AbstractBufferImpl) || ((AbstractBufferImpl<?, ?>)ob).carrier() != carrier())
             return false;
         Buffer that = (Buffer)ob;
         int thisPos = this.position();
@@ -296,7 +350,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     @SuppressWarnings("unchecked")
-    public int mismatch(ByteBuffer that) {
+    public int mismatch(B that) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -305,7 +359,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         if (length < 0)
             return -1;
         int r = mismatchInternal((B)this, thisPos,
-                (B)that, thatPos,
+                that, thatPos,
                 length);
         return (r == -1 && thisRem != thatRem) ? length : r;
     }
@@ -313,7 +367,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     abstract int mismatchInternal(B src, int srcPos, B dest, int destPos, int n);
 
     @SuppressWarnings("unchecked")
-    public int compareTo(ByteBuffer that) {
+    public int compareTo(B that) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -322,10 +376,10 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         if (length < 0)
             return -1;
         int i = mismatchInternal((B)this, thisPos,
-                (B)that, thatPos,
+                that, thatPos,
                 length);
         if (i >= 0) {
-            return compare((B)this, thisPos + i, (B)that, thatPos + i);
+            return compare((B)this, thisPos + i, that, thatPos + i);
         }
         return thisRem - thatRem;
     }

@@ -85,7 +85,7 @@ import java.util.Objects;
  */
 
 public class ShortBuffer
-    extends Buffer
+    extends AbstractBufferImpl<ShortBuffer, short[]>
     implements Comparable<ShortBuffer>
 {
 
@@ -96,6 +96,56 @@ public class ShortBuffer
                 boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 1;
+    }
+
+    @Override
+    Class<short[]> carrier() {
+        return short[].class;
+    }
+
+    @Override
+    int length(short[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(short[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(short[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(short[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(short[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return get(index);
+    }
+
+    @Override
+    int mismatchInternal(ShortBuffer src, int srcPos, ShortBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    ShortBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new ShortBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -220,11 +270,7 @@ public class ShortBuffer
      */
     @Override
     public ShortBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 1);
-        return new ShortBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -261,9 +307,7 @@ public class ShortBuffer
      */
     @Override
     public ShortBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 1);
-        return new ShortBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -308,15 +352,8 @@ public class ShortBuffer
      * @return  The new, read-only short buffer
      */
     public ShortBuffer asReadOnlyBuffer() {
-        return new ShortBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
+        return super.asReadOnlyBuffer();
     }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 1);
-    }
-
 
     // -- Singleton get/put methods --
 
@@ -451,13 +488,7 @@ public class ShortBuffer
      *          parameters do not hold
      */
     public ShortBuffer get(short[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -528,12 +559,7 @@ public class ShortBuffer
      * @since 13
      */
     public ShortBuffer get(int index, short[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -614,58 +640,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(ShortBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << 1);
-        long addr = address + ((long)pos << 1);
-        long len = (long)n << 1;
-
-
-        if (this.order() == src.order()) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                                  srcAddr,
-                                  base,
-                                  addr,
-                                  len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len,
-                                      (long)1 << 1);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-        position(pos + n);
-        src.position(srcPos + n);
-        return this;
+        return super.put(src);
     }
 
     /**
@@ -720,13 +695,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer put(short[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -801,14 +770,7 @@ public class ShortBuffer
      * @since 13
      */
     public ShortBuffer put(int index, short[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -858,7 +820,7 @@ public class ShortBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof short[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -881,11 +843,7 @@ public class ShortBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final short[] array() {
-        if (!(hb instanceof short[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (short[])hb;
+        return super.array();
     }
 
     /**
@@ -909,76 +867,7 @@ public class ShortBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof short[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_SHORT_BASE_OFFSET) / 2;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final ShortBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1006,16 +895,7 @@ public class ShortBuffer
      *          If this buffer is read-only
      */
     public ShortBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 1);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1033,16 +913,7 @@ public class ShortBuffer
      * @return  A summary string
      */
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(getClass().getName());
-        sb.append("[pos=");
-        sb.append(position());
-        sb.append(" lim=");
-        sb.append(limit());
-        sb.append(" cap=");
-        sb.append(capacity());
-        sb.append("]");
-        return sb.toString();
+        return super.toString();
     }
 
 
@@ -1060,11 +931,7 @@ public class ShortBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1093,20 +960,7 @@ public class ShortBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof ShortBuffer))
-            return false;
-        ShortBuffer that = (ShortBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1125,24 +979,12 @@ public class ShortBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(ShortBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                that, thatPos,
-                length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(short x, short y) {
-        return Short.compare(x, y);
+    @Override
+    int compare(ShortBuffer thisBuf, int x, ShortBuffer thatBuf, int y) {
+        return Short.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
     /**
@@ -1170,17 +1012,7 @@ public class ShortBuffer
      * @since 11
      */
     public int mismatch(ShortBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other byte stuff: Access to binary data --
@@ -1227,30 +1059,8 @@ public class ShortBuffer
         }
 
         @Override
-        public ShortBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 1);
-            return new ShortBuffer.DirectShortBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public ShortBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 1);
-            return new ShortBuffer.DirectShortBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public ShortBuffer asReadOnlyBuffer() {
-            return new ShortBuffer.DirectShortBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public ShortBuffer duplicate() {
-            return new ShortBuffer.DirectShortBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
+        ShortBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectShortBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

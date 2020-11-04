@@ -120,7 +120,7 @@ import java.util.stream.StreamSupport;
  * @since 1.4
  */
 public class CharBuffer
-    extends Buffer
+    extends AbstractBufferImpl<CharBuffer, char[]>
     implements Comparable<CharBuffer>, Appendable, CharSequence, Readable
 {
 
@@ -132,6 +132,56 @@ public class CharBuffer
                boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment)
     {
         super(address, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    }
+
+    @Override
+    int carrierSize() {
+        return 1;
+    }
+
+    @Override
+    Class<char[]> carrier() {
+        return char[].class;
+    }
+
+    @Override
+    int length(char[] bytes) {
+        return bytes.length;
+    }
+
+    @Override
+    void loadAndPutAbsolute(char[] arr, int i, int j) {
+        put(j, arr[i]);
+    }
+
+    @Override
+    void getAbsoluteAndStore(char[] arr, int i, int j) {
+        arr[i] = get(j);
+    }
+
+    @Override
+    void loadAndPutRelative(char[] arr, int i) {
+        put(arr[i]);
+    }
+
+    @Override
+    void getRelativeAndStore(char[] arr, int i) {
+        arr[i] = get();
+    }
+
+    @Override
+    int getAsInt(int index) {
+        return get(index);
+    }
+
+    @Override
+    int mismatchInternal(CharBuffer src, int srcPos, CharBuffer dest, int destPos, int n) {
+        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
+    }
+
+    @Override
+    CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new CharBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -337,11 +387,7 @@ public class CharBuffer
      */
     @Override
     public CharBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << 1);
-        return new CharBuffer(address + off, base(), markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
+        return super.slice();
     }
 
     /**
@@ -383,9 +429,7 @@ public class CharBuffer
      */
     @Override
     public CharBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << 1);
-        return new CharBuffer(address + off, base(), markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
+        return super.slice(index, length);
     }
 
     /**
@@ -405,8 +449,7 @@ public class CharBuffer
      */
     @Override
     public CharBuffer duplicate() {
-        return new CharBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**
@@ -428,13 +471,7 @@ public class CharBuffer
      * @return  The new, read-only char buffer
      */
     public CharBuffer asReadOnlyBuffer() {
-        return new CharBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                true, order, attachmentValue(), segment);
-    }
-
-    @Override
-    long ix(int pos) {
-        return address + (pos << 1);
+        return super.asReadOnlyBuffer();
     }
 
     // -- Singleton get/put methods --
@@ -571,13 +608,7 @@ public class CharBuffer
      *          parameters do not hold
      */
     public CharBuffer get(char[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            dst[i] = get();
-        return this;
+        return super.get(dst, offset, length);
     }
 
     /**
@@ -648,12 +679,7 @@ public class CharBuffer
      * @since 13
      */
     public CharBuffer get(int index, char[] dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, dst.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            dst[i] = get(j);
-        return this;
+        return super.get(index, dst, offset, length);
     }
 
     /**
@@ -734,72 +760,20 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(CharBuffer src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-
         if (src.isAddressable()) {
+            return super.put(src);
+        } else {
+            if (src == this)
+                throw createSameBufferException();
+            if (isReadOnly())
+                throw new ReadOnlyBufferException();
 
-
-
-
-            Object base = base();
-            assert base != null || isDirect();
-
-            long srcAddr = src.address + ((long)srcPos << 1);
-            long addr = address + ((long)pos << 1);
-            long len = (long)n << 1;
-
-
-            if (this.order() == src.order()) {
-
-                try {
-                    UNSAFE.copyMemory(srcBase,
-                                      srcAddr,
-                                      base,
-                                      addr,
-                                      len);
-                } finally {
-                    Reference.reachabilityFence(src);
-                    Reference.reachabilityFence(this);
-                }
-
-            } else {
-                try {
-                    UNSAFE.copySwapMemory(srcBase,
-                                          srcAddr,
-                                          base,
-                                          addr,
-                                          len,
-                                          (long)1 << 1);
-                } finally {
-                    Reference.reachabilityFence(src);
-                    Reference.reachabilityFence(this);
-                }
-            }
-
-
-            position(pos + n);
-            src.position(srcPos + n);
-
-        } else { // src.isAddressable() == false
-            assert StringCharBuffer.class.isInstance(src);
+            int srcPos = src.position();
+            int n = src.limit() - srcPos;
             for (int i = 0; i < n; i++)
                 put(src.get());
+            return this;
         }
-
-
-        return this;
     }
 
     /**
@@ -854,13 +828,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer put(char[] src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, src.length);
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            this.put(src[i]);
-        return this;
+        return super.put(src, offset, length);
     }
 
     /**
@@ -935,14 +903,7 @@ public class CharBuffer
      * @since 13
      */
     public CharBuffer put(int index, char[] src, int offset, int length) {
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, src.length);
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            this.put(j, src[i]);
-        return this;
+        return super.put(index, src, offset, length);
     }
 
     /**
@@ -1086,7 +1047,7 @@ public class CharBuffer
      *          is backed by an array and is not read-only
      */
     public final boolean hasArray() {
-        return (hb instanceof char[]) && !readOnly;
+        return super.hasArray();
     }
 
     /**
@@ -1109,11 +1070,7 @@ public class CharBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final char[] array() {
-        if (!(hb instanceof char[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return (char[])hb;
+        return super.array();
     }
 
     /**
@@ -1137,76 +1094,7 @@ public class CharBuffer
      *          If this buffer is not backed by an accessible array
      */
     public final int arrayOffset() {
-        if (!(hb instanceof char[]))
-            throw new UnsupportedOperationException();
-        if (readOnly)
-            throw new ReadOnlyBufferException();
-        return ((int)address - Unsafe.ARRAY_CHAR_BASE_OFFSET) / 2;
-    }
-
-    // -- Covariant return type overrides
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer position(int newPosition) {
-        super.position(newPosition);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer limit(int newLimit) {
-        super.limit(newLimit);
-        return this;
-    }
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer mark() {
-        super.mark();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer reset() {
-        super.reset();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer clear() {
-        super.clear();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer flip() {
-        super.flip();
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public final CharBuffer rewind() {
-        super.rewind();
-        return this;
+        return super.arrayOffset();
     }
 
     /**
@@ -1234,16 +1122,7 @@ public class CharBuffer
      *          If this buffer is read-only
      */
     public CharBuffer compact() {
-        if (readOnly) {
-            throw new ReadOnlyBufferException();
-        }
-        int pos = position();
-        int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << 1);
-        position(rem);
-        limit(capacity());
-        discardMark();
-        return this;
+        return super.compact();
     }
 
     /**
@@ -1282,11 +1161,7 @@ public class CharBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
+        return super.hashCode();
     }
 
     /**
@@ -1315,20 +1190,7 @@ public class CharBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof CharBuffer))
-            return false;
-        CharBuffer that = (CharBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                                       that, thatPos,
-                                       thisRem) < 0;
+        return super.equals(ob);
     }
 
     /**
@@ -1347,24 +1209,12 @@ public class CharBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(CharBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        if (i >= 0) {
-            return compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
+        return super.compareTo(that);
     }
 
-    private static int compare(char x, char y) {
-        return Character.compare(x, y);
+    @Override
+    int compare(CharBuffer thisBuffer, int x, CharBuffer thatBuffer, int y) {
+        return Character.compare(thisBuffer.get(x), thatBuffer.get(y));
     }
 
     /**
@@ -1392,17 +1242,7 @@ public class CharBuffer
      * @since 11
      */
     public int mismatch(CharBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int r = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        return (r == -1 && thisRem != thatRem) ? length : r;
+        return super.mismatch(that);
     }
 
     // -- Other char stuff --
@@ -1527,13 +1367,13 @@ public class CharBuffer
     public CharBuffer subSequence(int start, int end) {
         int pos = position();
         Objects.checkFromToIndex(start, end, limit() - pos);
-        return new CharBuffer(address,
+        return dup(address,
                 base(),
                 -1,
                 pos + start,
                 pos + end,
                 capacity(),
-                readOnly, order, attachmentValue(), segment);
+                readOnly, attachmentValue(), segment);
     }
 
     // --- Methods to support Appendable ---
@@ -1701,42 +1541,8 @@ public class CharBuffer
         }
 
         @Override
-        public CharBuffer slice() {
-            int pos = this.position();
-            int lim = this.limit();
-            int rem = (pos <= lim ? lim - pos : 0);
-            int off = (pos << 1);
-            return new CharBuffer.DirectCharBuffer( address + off, markValue(), 0, rem, rem, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public CharBuffer slice(int index, int length) {
-            Objects.checkFromIndexSize(index, length, limit());
-            int off = (index << 1);
-            return new CharBuffer.DirectCharBuffer(address + off, markValue(), 0, length, length, readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public CharBuffer asReadOnlyBuffer() {
-            return new CharBuffer.DirectCharBuffer(address, markValue(), position(), limit(), capacity(),
-                    true, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public CharBuffer duplicate() {
-            return new CharBuffer.DirectCharBuffer(address, markValue(), position(), limit(), capacity(), readOnly, order, attachmentValue(), segment);
-        }
-
-        @Override
-        public CharBuffer subSequence(int start, int end) {
-            int pos = position();
-            Objects.checkFromToIndex(start, end, limit() - pos);
-            return new DirectCharBuffer(address,
-                    -1,
-                    pos + start,
-                    pos + end,
-                    capacity(),
-                    readOnly, order, attachmentValue(), segment);
+        CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+            return new DirectCharBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }
