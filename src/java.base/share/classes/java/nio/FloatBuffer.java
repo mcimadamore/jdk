@@ -99,23 +99,8 @@ public class FloatBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 2;
-    }
-
-    @Override
     Class<float[]> carrier() {
         return float[].class;
-    }
-
-    @Override
-    int length(float[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return (int)get(index);
     }
 
     @Override

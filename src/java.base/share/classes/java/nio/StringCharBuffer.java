@@ -198,6 +198,14 @@ class StringCharBuffer                                  // package-private
                                        thisRem) < 0;
     }
 
+    public int hashCode() {
+        int h = 1;
+        int p = position();
+        for (int i = limit() - 1; i >= p; i--)
+            h = 31 * h + (int)get(i);
+        return h;
+    }
+
     public int compareTo(CharBuffer that) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;

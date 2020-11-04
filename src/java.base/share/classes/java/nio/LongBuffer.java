@@ -99,23 +99,8 @@ public class LongBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 3;
-    }
-
-    @Override
     Class<long[]> carrier() {
         return long[].class;
-    }
-
-    @Override
-    int length(long[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return (int)get(index);
     }
 
     @Override

@@ -219,23 +219,8 @@ public class ByteBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 0;
-    }
-
-    @Override
     Class<byte[]> carrier() {
         return byte[].class;
-    }
-
-    @Override
-    int length(byte[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return get(index);
     }
 
     @Override

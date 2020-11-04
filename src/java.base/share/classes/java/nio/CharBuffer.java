@@ -135,23 +135,8 @@ public class CharBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 1;
-    }
-
-    @Override
     Class<char[]> carrier() {
         return char[].class;
-    }
-
-    @Override
-    int length(char[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return get(index);
     }
 
     @Override

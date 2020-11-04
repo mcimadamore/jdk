@@ -99,23 +99,8 @@ public class IntBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 2;
-    }
-
-    @Override
     Class<int[]> carrier() {
         return int[].class;
-    }
-
-    @Override
-    int length(int[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return get(index);
     }
 
     @Override

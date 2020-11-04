@@ -5,6 +5,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.ref.Reference;
+import java.lang.reflect.Array;
 import java.util.Objects;
 
 abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends Buffer {
@@ -22,20 +23,20 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     abstract Class<A> carrier();
 
-    abstract int scaleFactor();
-
-//    abstract void loadAndPutAbsolute(A arr, int i, int j);
-//
-//    abstract void getAbsoluteAndStore(A arr, int i, int j);
-//
-//    abstract void loadAndPutRelative(A arr, int i);
-//
-//    abstract void getRelativeAndStore(A arr, int i);
-//
-    abstract int length(A a);
-
     abstract B dup(long addr, Object hb, int mark, int pos, int lim, int cap,
                    boolean readOnly, Object attachment, MemorySegmentProxy segment);
+
+    // access primitives
+
+    final int scaleFactor() {
+        return switch(UNSAFE.arrayIndexScale(carrier())) {
+            case 1 -> 0;
+            case 2 -> 1;
+            case 4 -> 2;
+            case 8 -> 3;
+            default -> throw new IllegalStateException("Cannot get here");
+        };
+    }
 
     /**
      *
@@ -47,8 +48,6 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return hb;
         //isDirect() ? null : carrier().cast(Objects.requireNonNull(hb));
     }
-
-    // access primitives
 
     final long ix(int pos) {
         return address + (pos << scaleFactor());
@@ -143,6 +142,10 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     // bulk access
+
+    final int length(A a) {
+        return Array.getLength(a);
+    }
 
     @SuppressWarnings("unchecked")
     public B put(A src, int offset, int length) {
@@ -303,14 +306,14 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
         int off = (pos << scaleFactor());
-        return dup(address + off, base(), markValue(), 0, rem, rem, readOnly, attachmentValue(), segment);
+        return dup(address + off, base(), -1, 0, rem, rem, readOnly, attachmentValue(), segment);
     }
 
     @Override
     public B slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
         int off = (index << scaleFactor());
-        return dup(address + off, base(), markValue(), 0, length, length, readOnly, attachmentValue(), segment);
+        return dup(address + off, base(), -1, 0, length, length, readOnly, attachmentValue(), segment);
     }
 
     @Override
@@ -382,7 +385,15 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return h;
     }
 
-    abstract int getAsInt(int index);
+    final int getAsInt(int index) {
+        return switch(UNSAFE.arrayIndexScale(carrier())) {
+            case 1 -> UNSAFE.getByte(base(), ix(index));
+            case 2 -> UNSAFE.getShort(base(), ix(index));
+            case 4 -> UNSAFE.getInt(base(), ix(index));
+            case 8 -> (int)UNSAFE.getLong(base(), ix(index));
+            default -> throw new IllegalStateException("Cannot get here");
+        };
+    }
 
     @SuppressWarnings("unchecked")
     public boolean equals(Object ob) {

@@ -99,23 +99,8 @@ public class ShortBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 1;
-    }
-
-    @Override
     Class<short[]> carrier() {
         return short[].class;
-    }
-
-    @Override
-    int length(short[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return get(index);
     }
 
     @Override
@@ -308,8 +293,7 @@ public class ShortBuffer
      */
     @Override
     public ShortBuffer duplicate() {
-        return new ShortBuffer(address, base(), markValue(), position(), limit(), capacity(),
-                readOnly, order, attachmentValue(), segment);
+        return super.duplicate();
     }
 
     /**

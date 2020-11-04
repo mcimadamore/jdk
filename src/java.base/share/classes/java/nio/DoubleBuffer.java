@@ -99,23 +99,8 @@ public class DoubleBuffer
     }
 
     @Override
-    int scaleFactor() {
-        return 3;
-    }
-
-    @Override
     Class<double[]> carrier() {
         return double[].class;
-    }
-
-    @Override
-    int length(double[] bytes) {
-        return bytes.length;
-    }
-
-    @Override
-    int getAsInt(int index) {
-        return (int)get(index);
     }
 
     @Override
