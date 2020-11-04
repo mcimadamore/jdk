@@ -99,7 +99,7 @@ public class IntBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 2;
     }
 
@@ -111,26 +111,6 @@ public class IntBuffer
     @Override
     int length(int[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(int[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(int[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(int[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(int[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

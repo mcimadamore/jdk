@@ -101,7 +101,36 @@ class StringCharBuffer                                  // package-private
         return str.charAt(index + stringOffset());
     }
 
-    // ## Override bulk get methods for better performance
+    @Override
+    public CharBuffer get(char[] dst, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, dst.length);
+        if (length > remaining())
+            throw new BufferUnderflowException();
+        int end = offset + length;
+        for (int i = offset; i < end; i++)
+            dst[i] = get();
+        return this;
+    }
+
+    @Override
+    public CharBuffer get(int index, char[] dst, int offset, int length) {
+        Objects.checkFromIndexSize(index, length, limit());
+        Objects.checkFromIndexSize(offset, length, dst.length);
+        int end = offset + length;
+        for (int i = offset, j = index; i < end; i++, j++)
+            dst[i] = get(j);
+        return this;
+    }
+
+    @Override
+    public CharBuffer put(char[] src, int offset, int length) {
+        throw new ReadOnlyBufferException();
+    }
+
+    @Override
+    public CharBuffer put(int index, char[] src, int offset, int length) {
+        throw new ReadOnlyBufferException();
+    }
 
     public final CharBuffer put(char c) {
         throw new ReadOnlyBufferException();

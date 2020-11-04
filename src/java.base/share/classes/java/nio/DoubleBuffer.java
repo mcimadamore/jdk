@@ -99,7 +99,7 @@ public class DoubleBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 3;
     }
 
@@ -111,26 +111,6 @@ public class DoubleBuffer
     @Override
     int length(double[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(double[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(double[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(double[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(double[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

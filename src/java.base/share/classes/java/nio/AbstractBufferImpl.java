@@ -20,144 +20,22 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         this.attachment = attachment;
     }
 
-    abstract void loadAndPutAbsolute(A arr, int i, int j);
+    abstract Class<A> carrier();
 
-    abstract void getAbsoluteAndStore(A arr, int i, int j);
+    abstract int scaleFactor();
 
-    abstract void loadAndPutRelative(A arr, int i);
-
-    abstract void getRelativeAndStore(A arr, int i);
-
+//    abstract void loadAndPutAbsolute(A arr, int i, int j);
+//
+//    abstract void getAbsoluteAndStore(A arr, int i, int j);
+//
+//    abstract void loadAndPutRelative(A arr, int i);
+//
+//    abstract void getRelativeAndStore(A arr, int i);
+//
     abstract int length(A a);
 
     abstract B dup(long addr, Object hb, int mark, int pos, int lim, int cap,
                    boolean readOnly, Object attachment, MemorySegmentProxy segment);
-
-    B asReadOnlyBuffer() {
-        return dup(address, base(), markValue(), position(), limit(), capacity(),
-                true, attachmentValue(), segment);
-    }
-
-    @Override
-    public B slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        int off = (pos << carrierSize());
-        return dup(address + off, base(), markValue(), 0, rem, rem, readOnly, attachmentValue(), segment);
-    }
-
-    @Override
-    public B slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        int off = (index << carrierSize());
-        return dup(address + off, base(), markValue(), 0, length, length, readOnly, attachmentValue(), segment);
-    }
-
-    @Override
-    public B duplicate() {
-        return dup(address, base(), markValue(), position(), limit(), capacity(), readOnly, attachmentValue(), segment);
-    }
-
-    @SuppressWarnings("unchecked")
-    public B put(A src, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, length(src));
-        if (length > remaining())
-            throw new BufferOverflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            loadAndPutRelative(src, i);
-        return (B)this;
-    }
-
-    @SuppressWarnings("unchecked")
-    public B put(int index, A src, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, length(src));
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            loadAndPutAbsolute(src, i, j);
-        return (B)this;
-    }
-
-    @SuppressWarnings("unchecked")
-    public B get(A dst, int offset, int length) {
-        Objects.checkFromIndexSize(offset, length, length(dst));
-        if (length > remaining())
-            throw new BufferUnderflowException();
-        int end = offset + length;
-        for (int i = offset; i < end; i++)
-            getRelativeAndStore(dst, i);
-        return (B)this;
-    }
-
-    @SuppressWarnings("unchecked")
-    public B get(int index, A dst, int offset, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        Objects.checkFromIndexSize(offset, length, length(dst));
-        int end = offset + length;
-        for (int i = offset, j = index; i < end; i++, j++)
-            getAbsoluteAndStore(dst, i, j);
-        return (B)this;
-    }
-
-    @SuppressWarnings("unchecked")
-    public B put(B src) {
-        if (src == this)
-            throw createSameBufferException();
-        if (isReadOnly())
-            throw new ReadOnlyBufferException();
-
-        int srcPos = src.position();
-        int n = src.limit() - srcPos;
-        int pos = position();
-        if (n > limit() - pos)
-            throw new BufferOverflowException();
-
-        Object srcBase = src.base();
-
-        assert srcBase != null || src.isDirect();
-
-        Object base = base();
-        assert base != null || isDirect();
-
-        long srcAddr = src.address + ((long)srcPos << carrierSize());
-        long addr = address + ((long)pos << carrierSize());
-        long len = (long)n << carrierSize();
-
-        if (carrierSize() == 0 || order == src.order) {
-
-            try {
-                UNSAFE.copyMemory(srcBase,
-                        srcAddr,
-                        base,
-                        addr,
-                        len);
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-
-        } else {
-            try {
-                UNSAFE.copySwapMemory(srcBase,
-                        srcAddr,
-                        base,
-                        addr,
-                        len,
-                        (long)1 << carrierSize());
-            } finally {
-                Reference.reachabilityFence(src);
-                Reference.reachabilityFence(this);
-            }
-        }
-
-        position(pos + n);
-        src.position(srcPos + n);
-        return (B)this;
-    }
-
-    abstract int carrierSize();
 
     /**
      *
@@ -165,14 +43,15 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
      * field, which in combination can be used for unsafe access into a heap
      * buffer or direct byte buffer (and views of).
      */
-    final Object base() {
+    Object base() {
         return hb;
+        //isDirect() ? null : carrier().cast(Objects.requireNonNull(hb));
     }
 
     // access primitives
 
     final long ix(int pos) {
-        return address + (pos << carrierSize());
+        return address + (pos << scaleFactor());
     }
 
     byte getByteInternal(int offset) {
@@ -263,7 +142,181 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return Double.longBitsToDouble(xs);
     }
 
+    // bulk access
+
+    @SuppressWarnings("unchecked")
+    public B put(A src, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, length(src));
+        int pos = position();
+        int lim = limit();
+        assert (pos <= lim);
+        int rem = lim - pos;
+        if (length > rem)
+            throw new BufferOverflowException();
+
+        try {
+            return putInternal(pos, src, offset, length);
+        } finally {
+            position(pos + length);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public B put(int index, A src, int offset, int length) {
+        Objects.checkFromIndexSize(index, length, limit());
+        Objects.checkFromIndexSize(offset, length, length(src));
+
+        return putInternal(index, src, offset, length);
+    }
+
+    @SuppressWarnings("unchecked")
+    B putInternal(int index, A src, int offset, int length) {
+        if (isReadOnly())
+            throw new ReadOnlyBufferException();
+
+        long srcOffset = Unsafe.getUnsafe().arrayBaseOffset(carrier()) +
+                ((long)offset << scaleFactor());
+        try {
+            if (scaleFactor() > 0 && order != ByteOrder.nativeOrder())
+                UNSAFE.copySwapMemory(src,
+                        srcOffset,
+                        base(),
+                        ix(index),
+                        (long)length << scaleFactor(),
+                        (long)1 << scaleFactor());
+            else
+                UNSAFE.copyMemory(src,
+                        srcOffset,
+                        base(),
+                        ix(index),
+                        (long)length << scaleFactor());
+        } finally {
+            Reference.reachabilityFence(this);
+        }
+        return (B)this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public B get(A dst, int offset, int length) {
+        Objects.checkFromIndexSize(offset, length, length(dst));
+        int pos = position();
+        int lim = limit();
+        assert (pos <= lim);
+        int rem = lim - pos;
+        if (length > rem)
+            throw new BufferUnderflowException();
+
+        try {
+            return getInternal(pos, dst, offset, length);
+        } finally {
+            position(pos + length);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public B get(int index, A dst, int offset, int length) {
+        Objects.checkFromIndexSize(index, length, limit());
+        Objects.checkFromIndexSize(offset, length, length(dst));
+
+        return getInternal(index, dst, offset, length);
+    }
+
+    @SuppressWarnings("unchecked")
+    B getInternal(int index, A dst, int offset, int length) {
+        long dstOffset = Unsafe.getUnsafe().arrayBaseOffset(carrier()) +
+                ((long)offset << scaleFactor());
+        try {
+            if (scaleFactor() > 0 && order != ByteOrder.nativeOrder())
+                UNSAFE.copySwapMemory(base(),
+                        ix(index),
+                        dst,
+                        dstOffset,
+                        (long)length << scaleFactor(),
+                        (long)1 << scaleFactor());
+            else
+                UNSAFE.copyMemory(base(),
+                        ix(index),
+                        dst,
+                        dstOffset,
+                        (long)length << scaleFactor());
+        } finally {
+            Reference.reachabilityFence(this);
+        }
+        return (B)this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public B put(B src) {
+        if (src == this)
+            throw createSameBufferException();
+        if (isReadOnly())
+            throw new ReadOnlyBufferException();
+
+        int srcPos = src.position();
+        int n = src.limit() - srcPos;
+        int pos = position();
+        if (n > limit() - pos)
+            throw new BufferOverflowException();
+
+        if (scaleFactor() == 0 || order == src.order) {
+
+            try {
+                UNSAFE.copyMemory(src.base(),
+                        src.ix(srcPos),
+                        base(),
+                        ix(pos),
+                        (long)n << scaleFactor());
+            } finally {
+                Reference.reachabilityFence(src);
+                Reference.reachabilityFence(this);
+            }
+
+        } else {
+            try {
+                UNSAFE.copySwapMemory(src.base(),
+                        src.ix(srcPos),
+                        base(),
+                        ix(pos),
+                        (long)n << scaleFactor(),
+                        (long)1 << scaleFactor());
+            } finally {
+                Reference.reachabilityFence(src);
+                Reference.reachabilityFence(this);
+            }
+        }
+
+        position(pos + n);
+        src.position(srcPos + n);
+        return (B)this;
+    }
+
     // other
+
+    B asReadOnlyBuffer() {
+        return dup(address, base(), markValue(), position(), limit(), capacity(),
+                true, attachmentValue(), segment);
+    }
+
+    @Override
+    public B slice() {
+        int pos = this.position();
+        int lim = this.limit();
+        int rem = (pos <= lim ? lim - pos : 0);
+        int off = (pos << scaleFactor());
+        return dup(address + off, base(), markValue(), 0, rem, rem, readOnly, attachmentValue(), segment);
+    }
+
+    @Override
+    public B slice(int index, int length) {
+        Objects.checkFromIndexSize(index, length, limit());
+        int off = (index << scaleFactor());
+        return dup(address + off, base(), markValue(), 0, length, length, readOnly, attachmentValue(), segment);
+    }
+
+    @Override
+    public B duplicate() {
+        return dup(address, base(), markValue(), position(), limit(), capacity(), readOnly, attachmentValue(), segment);
+    }
 
     Object attachmentValue() {
         if (attachment == null && isDirect()) {
@@ -273,8 +326,6 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         }
     }
 
-    abstract Class<A> carrier();
-
     @SuppressWarnings("unchecked")
     public B compact() {
         if (readOnly) {
@@ -282,7 +333,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         }
         int pos = position();
         int rem = limit() - pos;
-        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << carrierSize());
+        UNSAFE.copyMemory(base(), ix(pos), base(), ix(0), rem << scaleFactor());
         position(rem);
         limit(capacity());
         discardMark();
@@ -307,7 +358,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
             throw new UnsupportedOperationException();
         if (readOnly)
             throw new ReadOnlyBufferException();
-        return ((int)address - UNSAFE.arrayBaseOffset(carrier())) >> carrierSize();
+        return ((int)address - UNSAFE.arrayBaseOffset(carrier())) >> scaleFactor();
     }
 
     public String toString() {

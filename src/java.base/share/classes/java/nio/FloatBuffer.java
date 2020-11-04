@@ -99,7 +99,7 @@ public class FloatBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 2;
     }
 
@@ -111,26 +111,6 @@ public class FloatBuffer
     @Override
     int length(float[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(float[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(float[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(float[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(float[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

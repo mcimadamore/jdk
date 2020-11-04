@@ -219,7 +219,7 @@ public class ByteBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 0;
     }
 
@@ -231,26 +231,6 @@ public class ByteBuffer
     @Override
     int length(byte[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(byte[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(byte[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(byte[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(byte[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

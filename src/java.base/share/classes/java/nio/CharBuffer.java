@@ -135,7 +135,7 @@ public class CharBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 1;
     }
 
@@ -147,26 +147,6 @@ public class CharBuffer
     @Override
     int length(char[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(char[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(char[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(char[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(char[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

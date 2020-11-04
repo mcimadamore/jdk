@@ -99,7 +99,7 @@ public class ShortBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 1;
     }
 
@@ -111,26 +111,6 @@ public class ShortBuffer
     @Override
     int length(short[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(short[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(short[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(short[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(short[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override

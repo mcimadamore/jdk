@@ -99,7 +99,7 @@ public class LongBuffer
     }
 
     @Override
-    int carrierSize() {
+    int scaleFactor() {
         return 3;
     }
 
@@ -111,26 +111,6 @@ public class LongBuffer
     @Override
     int length(long[] bytes) {
         return bytes.length;
-    }
-
-    @Override
-    void loadAndPutAbsolute(long[] arr, int i, int j) {
-        put(j, arr[i]);
-    }
-
-    @Override
-    void getAbsoluteAndStore(long[] arr, int i, int j) {
-        arr[i] = get(j);
-    }
-
-    @Override
-    void loadAndPutRelative(long[] arr, int i) {
-        put(arr[i]);
-    }
-
-    @Override
-    void getRelativeAndStore(long[] arr, int i) {
-        arr[i] = get();
     }
 
     @Override
