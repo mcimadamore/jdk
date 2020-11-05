@@ -30,6 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -341,7 +342,7 @@ public class LongBuffer
      * <p> Writes the given long into this buffer at the current
      * position, and then increments the position. </p>
      *
-     * @param  d
+     * @param  l
      *         The long to be written
      *
      * @return  This buffer
@@ -352,8 +353,8 @@ public class LongBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public LongBuffer put(long d) {
-        putLongInternal(nextPutIndex(), d);
+    public LongBuffer put(long l) {
+        putLongInternal(nextPutIndex(), l);
         return this;
     }
 
@@ -383,7 +384,7 @@ public class LongBuffer
      * @param  index
      *         The index at which the long will be written
      *
-     * @param  d
+     * @param  l
      *         The long value to be written
      *
      * @return  This buffer
@@ -395,8 +396,8 @@ public class LongBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public LongBuffer put(int index, long d) {
-        putLongInternal(checkPutIndex(index), d);
+    public LongBuffer put(int index, long l) {
+        putLongInternal(checkPutIndex(index), l);
         return this;
     }
 
@@ -1032,6 +1033,18 @@ public class LongBuffer
         @Override
         LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
             return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
+        }
+
+        public long address() {
+            return address;
+        }
+
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        public Object attachment() {
+            return attachment;
         }
     }
 }

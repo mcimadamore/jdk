@@ -387,7 +387,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     @SuppressWarnings("unchecked")
-    public int hashCode(BufferHashOp<B, A> bufferHashOp) {
+    int hashCode(BufferHashOp<B, A> bufferHashOp) {
         int h = 1;
         int p = position();
         for (int i = limit() - 1; i >= p; i--)
@@ -404,7 +404,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     @SuppressWarnings("unchecked")
-    public boolean equals(Object ob, BufferMismatchOp<B, A> baBufferMismatchOp) {
+    boolean equals(Object ob, BufferMismatchOp<B, A> baBufferMismatchOp) {
         if (this == ob)
             return true;
         if (!(ob instanceof AbstractBufferImpl) || ((AbstractBufferImpl<?, ?>)ob).carrier() != carrier())
@@ -420,7 +420,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     @SuppressWarnings("unchecked")
-    public int mismatch(B that, BufferMismatchOp<B, A> baBufferMismatchOp) {
+    int mismatch(B that, BufferMismatchOp<B, A> baBufferMismatchOp) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -442,7 +442,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     @SuppressWarnings("unchecked")
-    public int compareTo(B that, BufferMismatchOp<B, A> baBufferMismatchOp, BufferComparatorOp<B, A> baBufferComparatorOp) {
+    int compareTo(B that, BufferMismatchOp<B, A> baBufferMismatchOp, BufferComparatorOp<B, A> baBufferComparatorOp) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -531,19 +531,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return (B)this;
     }
 
-    // direct buffer default impl - good in most cases
-
-    public long address() {
-        return address;
-    }
-
-    public Cleaner cleaner() {
-        return null;
-    }
-
-    public Object attachment() {
-        return attachment;
-    }
+    // direct buffers utils
 
     final Object attachmentValue() {
         return attachment != null ?

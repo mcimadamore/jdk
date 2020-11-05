@@ -30,10 +30,11 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**
- * A int buffer.
+ * An int buffer.
  *
  * <p> This class defines four categories of operations upon
  * int buffers:
@@ -49,13 +50,13 @@ import sun.nio.ch.DirectBuffer;
  *   into an array; and</p></li>
  *
  *   <li><p> Absolute and relative {@link #put(int[]) <i>bulk put</i>}
- *   methods that transfer contiguous sequences of ints from a
+ *   methods that transfer contiguous sequences of ints from an
  *   int array{#if[char]?,&#32;a&#32;string,} or some other int
  *   buffer into this buffer;{#if[!byte]?&#32;and} </p></li>
  *
  *
  *   <li><p> A method for {@link #compact compacting}
- *   a int buffer.  </p></li>
+ *   an int buffer.  </p></li>
  *
  * </ul>
  *
@@ -64,12 +65,12 @@ import sun.nio.ch.DirectBuffer;
  * content, by {@link #wrap(int[]) <i>wrapping</i>} an existing
  * int array {#if[char]?or&#32;string} into a buffer, or by creating a
  * <a href="ByteBuffer.html#views"><i>view</i></a> of an existing byte buffer.
- * <p> Like a byte buffer, a int buffer is either <a
+ * <p> Like a byte buffer, an int buffer is either <a
  * href="ByteBuffer.html#direct"><i>direct</i> or <i>non-direct</i></a>.  A
  * int buffer created via the {@code wrap} methods of this class will
- * be non-direct.  A int buffer created as a view of a byte buffer will
+ * be non-direct.  An int buffer created as a view of a byte buffer will
  * be direct if, and only if, the byte buffer itself is direct.  Whether or not
- * a int buffer is direct may be determined by invoking the {@link
+ * an int buffer is direct may be determined by invoking the {@link
  * #isDirect isDirect} method.  </p>
  * <p> Methods in this class that do not otherwise have a value to return are
  * specified to return the buffer upon which they are invoked.  This allows
@@ -145,7 +146,7 @@ public class IntBuffer
     }
 
     /**
-     * Wraps a int array into a buffer.
+     * Wraps an int array into a buffer.
      *
      * <p> The new buffer will be backed by the given int array;
      * that is, modifications to the buffer will cause the array to be modified
@@ -194,7 +195,7 @@ public class IntBuffer
     }
 
     /**
-     * Wraps a int array into a buffer.
+     * Wraps an int array into a buffer.
      *
      * <p> The new buffer will be backed by the given int array;
      * that is, modifications to the buffer will cause the array to be modified
@@ -341,7 +342,7 @@ public class IntBuffer
      * <p> Writes the given int into this buffer at the current
      * position, and then increments the position. </p>
      *
-     * @param  d
+     * @param  i
      *         The int to be written
      *
      * @return  This buffer
@@ -352,8 +353,8 @@ public class IntBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public IntBuffer put(int d) {
-        putIntInternal(nextPutIndex(), d);
+    public IntBuffer put(int i) {
+        putIntInternal(nextPutIndex(), i);
         return this;
     }
 
@@ -383,7 +384,7 @@ public class IntBuffer
      * @param  index
      *         The index at which the int will be written
      *
-     * @param  d
+     * @param  i
      *         The int value to be written
      *
      * @return  This buffer
@@ -395,8 +396,8 @@ public class IntBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public IntBuffer put(int index, int d) {
-        putIntInternal(checkPutIndex(index), d);
+    public IntBuffer put(int index, int i) {
+        putIntInternal(checkPutIndex(index), i);
         return this;
     }
 
@@ -884,7 +885,7 @@ public class IntBuffer
     /**
      * Returns the current hash code of this buffer.
      *
-     * <p> The hash code of a int buffer depends only upon its remaining
+     * <p> The hash code of an int buffer depends only upon its remaining
      * elements; that is, upon the elements from {@code position()} up to, and
      * including, the element at {@code limit()}&nbsp;-&nbsp;{@code 1}.
      *
@@ -916,7 +917,7 @@ public class IntBuffer
      *
      * </ol>
      *
-     * <p> A int buffer is not equal to any other type of object.  </p>
+     * <p> An int buffer is not equal to any other type of object.  </p>
      *
      * @param  ob  The object to which this buffer is to be compared
      *
@@ -936,7 +937,7 @@ public class IntBuffer
      * Pairs of {@code int} elements are compared as if by invoking
      * {@link Integer#compare(int,int)}.
      *
-     * <p> A int buffer is not comparable to any other type of object.
+     * <p> An int buffer is not comparable to any other type of object.
      *
      * @return  A negative integer, zero, or a positive integer as this buffer
      *          is less than, equal to, or greater than the given buffer
@@ -982,10 +983,10 @@ public class IntBuffer
     /**
      * Retrieves this buffer's byte order.
      *
-     * <p> The byte order of a int buffer created by allocation or by
+     * <p> The byte order of an int buffer created by allocation or by
      * wrapping an existing {@code int} array is the {@link
      * ByteOrder#nativeOrder native order} of the underlying
-     * hardware.  The byte order of a int buffer created as a <a
+     * hardware.  The byte order of an int buffer created as a <a
      * href="ByteBuffer.html#views">view</a> of a byte buffer is that of the
      * byte buffer at the moment that the view is created.  </p>
      *
@@ -1031,6 +1032,18 @@ public class IntBuffer
         @Override
         IntBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
             return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
+        }
+
+        public long address() {
+            return address;
+        }
+
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        public Object attachment() {
+            return attachment;
         }
     }
 }

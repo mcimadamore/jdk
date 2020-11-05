@@ -30,6 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -1038,6 +1039,18 @@ public class DoubleBuffer
         @Override
         DoubleBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
             return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
+        }
+
+        public long address() {
+            return address;
+        }
+
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        public Object attachment() {
+            return attachment;
         }
     }
 }

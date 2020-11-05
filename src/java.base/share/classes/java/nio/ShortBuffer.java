@@ -30,6 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -341,7 +342,7 @@ public class ShortBuffer
      * <p> Writes the given short into this buffer at the current
      * position, and then increments the position. </p>
      *
-     * @param  d
+     * @param  s
      *         The short to be written
      *
      * @return  This buffer
@@ -352,8 +353,8 @@ public class ShortBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public ShortBuffer put(short d) {
-        putShortInternal(nextPutIndex(), d);
+    public ShortBuffer put(short s) {
+        putShortInternal(nextPutIndex(), s);
         return this;
     }
 
@@ -383,7 +384,7 @@ public class ShortBuffer
      * @param  index
      *         The index at which the short will be written
      *
-     * @param  d
+     * @param  s
      *         The short value to be written
      *
      * @return  This buffer
@@ -395,8 +396,8 @@ public class ShortBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public ShortBuffer put(int index, short d) {
-        putShortInternal(checkPutIndex(index), d);
+    public ShortBuffer put(int index, short s) {
+        putShortInternal(checkPutIndex(index), s);
         return this;
     }
 
@@ -1033,6 +1034,18 @@ public class ShortBuffer
         @Override
         ShortBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
             return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
+        }
+
+        public long address() {
+            return address;
+        }
+
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        public Object attachment() {
+            return attachment;
         }
     }
 }

@@ -30,6 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -335,7 +336,7 @@ public class FloatBuffer
      * <p> Writes the given float into this buffer at the current
      * position, and then increments the position. </p>
      *
-     * @param  d
+     * @param  f
      *         The float to be written
      *
      * @return  This buffer
@@ -346,8 +347,8 @@ public class FloatBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public FloatBuffer put(float d) {
-        putFloatInternal(nextPutIndex(), d);
+    public FloatBuffer put(float f) {
+        putFloatInternal(nextPutIndex(), f);
         return this;
     }
 
@@ -377,7 +378,7 @@ public class FloatBuffer
      * @param  index
      *         The index at which the float will be written
      *
-     * @param  d
+     * @param  f
      *         The float value to be written
      *
      * @return  This buffer
@@ -389,8 +390,8 @@ public class FloatBuffer
      * @throws  ReadOnlyBufferException
      *          If this buffer is read-only
      */
-    public FloatBuffer put(int index, float d) {
-        putFloatInternal(checkPutIndex(index), d);
+    public FloatBuffer put(int index, float f) {
+        putFloatInternal(checkPutIndex(index), f);
         return this;
     }
 
@@ -1039,6 +1040,18 @@ public class FloatBuffer
         @Override
         FloatBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
             return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
+        }
+
+        public long address() {
+            return address;
+        }
+
+        public Cleaner cleaner() {
+            return null;
+        }
+
+        public Object attachment() {
+            return attachment;
         }
     }
 }

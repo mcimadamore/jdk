@@ -44,8 +44,18 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     }
 
     @Override
+    public long address() {
+        return address;
+    }
+
+    @Override
     public Cleaner cleaner() {
         return cleaner;
+    }
+
+    @Override
+    public Object attachment() {
+        return attachment;
     }
 
     @Override
