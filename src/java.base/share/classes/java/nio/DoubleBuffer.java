@@ -104,11 +104,6 @@ public class DoubleBuffer
     }
 
     @Override
-    int mismatchInternal(DoubleBuffer src, int srcPos, DoubleBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     DoubleBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new DoubleBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
@@ -119,12 +114,8 @@ public class DoubleBuffer
      * <p> The new buffer's position will be zero, its limit will be its
      * capacity, its mark will be undefined, each of its elements will be
      * initialized to zero, and its byte order will be
-
-
-
      * the {@link ByteOrder#nativeOrder native order} of the underlying
      * hardware.
-
      * It will have a {@link #array backing array}, and its
      * {@link #arrayOffset array offset} will be zero.
      *
@@ -152,12 +143,8 @@ public class DoubleBuffer
      * {@code array.length}, its position will be {@code offset}, its limit
      * will be {@code offset + length}, its mark will be undefined, and its
      * byte order will be
-
-
-
      * the {@link ByteOrder#nativeOrder native order} of the underlying
      * hardware.
-
      * Its {@link #array backing array} will be the given array, and
      * its {@link #arrayOffset array offset} will be zero.  </p>
      *
@@ -894,7 +881,7 @@ public class DoubleBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode((db, i) -> (int)db.get(i));
     }
 
     /**
@@ -928,7 +915,7 @@ public class DoubleBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -951,11 +938,10 @@ public class DoubleBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(DoubleBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, DoubleBuffer::compare);
     }
 
-    @Override
-    int compare(DoubleBuffer thisBuf, int i1, DoubleBuffer thatBuf, int i2) {
+    static int compare(DoubleBuffer thisBuf, int i1, DoubleBuffer thatBuf, int i2) {
         double x = thisBuf.get(i1);
         double y = thatBuf.get(i2);
         return ((x < y)  ? -1 :
@@ -989,7 +975,7 @@ public class DoubleBuffer
      * @since 11
      */
     public int mismatch(DoubleBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other byte stuff: Access to binary data --

@@ -140,11 +140,6 @@ public class CharBuffer
     }
 
     @Override
-    int mismatchInternal(CharBuffer src, int srcPos, CharBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new CharBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
@@ -1126,7 +1121,7 @@ public class CharBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode(CharBuffer::get);
     }
 
     /**
@@ -1155,7 +1150,7 @@ public class CharBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -1174,11 +1169,10 @@ public class CharBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(CharBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, CharBuffer::compare);
     }
 
-    @Override
-    int compare(CharBuffer thisBuffer, int x, CharBuffer thatBuffer, int y) {
+    static int compare(CharBuffer thisBuffer, int x, CharBuffer thatBuffer, int y) {
         return Character.compare(thisBuffer.get(x), thatBuffer.get(y));
     }
 
@@ -1207,7 +1201,7 @@ public class CharBuffer
      * @since 11
      */
     public int mismatch(CharBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other char stuff --
@@ -1466,12 +1460,6 @@ public class CharBuffer
      */
     public ByteOrder order() {
         return order;
-    }
-
-    // The order or null if the buffer does not cover a memory region,
-    // such as StringCharBuffer
-    ByteOrder charRegionOrder() {
-        return order();
     }
 
     @Override

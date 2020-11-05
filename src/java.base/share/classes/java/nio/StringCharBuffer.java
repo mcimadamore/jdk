@@ -43,27 +43,14 @@ class StringCharBuffer                                  // package-private
         str = s;
     }
 
-    public CharBuffer slice() {
-        int pos = this.position();
-        int lim = this.limit();
-        int rem = (pos <= lim ? lim - pos : 0);
-        return new StringCharBuffer(str,
-                                    address + pos,
-                                    -1,
-                                    0,
-                                    rem,
-                                    rem);
-    }
-
     @Override
-    public CharBuffer slice(int index, int length) {
-        Objects.checkFromIndexSize(index, length, limit());
-        return new StringCharBuffer(str,
-                                    address + index,
-                                    -1,
-                                    0,
-                                    length,
-                                    length);
+    int scaleFactor() {
+        // we need to remove any scaling factor, otherwise the slice implementation in AbstractBufferImpl
+        // will create slices with the wrong starting offset. This is caused by the fact that we are reusing
+        // the address field to store the offset into the char sequence. Ideally, StringCharBuffer should not
+        // be a subclass of AbstractBufferImpl (although doing so allows to reuse code); that choice also leads
+        // to the need to the isAddressable predicate.
+        return 0;
     }
 
     private StringCharBuffer(CharSequence s,
@@ -76,16 +63,12 @@ class StringCharBuffer                                  // package-private
         str = s;
     }
 
-    public CharBuffer duplicate() {
-        return new StringCharBuffer(str, address, markValue(),
-                                    position(), limit(), capacity());
+    @Override
+    CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
+        return new StringCharBuffer(str, addr, mark, pos, lim, cap);
     }
 
-    public CharBuffer asReadOnlyBuffer() {
-        return duplicate();
-    }
-
-    int stringOffset() {
+    private int stringOffset() {
         return (int)address;
     }
 
@@ -95,10 +78,6 @@ class StringCharBuffer                                  // package-private
 
     public final char get(int index) {
         return str.charAt(checkGetIndex(index) + stringOffset());
-    }
-
-    char getUnchecked(int index) {
-        return str.charAt(index + stringOffset());
     }
 
     @Override
@@ -122,104 +101,11 @@ class StringCharBuffer                                  // package-private
         return this;
     }
 
-    @Override
-    public CharBuffer put(char[] src, int offset, int length) {
-        throw new ReadOnlyBufferException();
-    }
-
-    @Override
-    public CharBuffer put(int index, char[] src, int offset, int length) {
-        throw new ReadOnlyBufferException();
-    }
-
-    public final CharBuffer put(char c) {
-        throw new ReadOnlyBufferException();
-    }
-
-    public final CharBuffer put(int index, char c) {
-        throw new ReadOnlyBufferException();
-    }
-
-    public final CharBuffer compact() {
-        throw new ReadOnlyBufferException();
-    }
-
-    public final boolean isReadOnly() {
-        return true;
-    }
-
     final String toString(int start, int end) {
         return str.subSequence(start + stringOffset(), end + stringOffset()).toString();
     }
 
-    public final CharBuffer subSequence(int start, int end) {
-        try {
-            int pos = position();
-            return new StringCharBuffer(str, stringOffset(),
-                                        -1,
-                                        pos + checkGetIndex(start, pos),
-                                        pos + checkGetIndex(end, pos),
-                                        capacity());
-        } catch (IllegalArgumentException x) {
-            throw new IndexOutOfBoundsException();
-        }
-    }
-
-    public boolean isDirect() {
-        return false;
-    }
-
-    public ByteOrder order() {
-        return ByteOrder.nativeOrder();
-    }
-
-    ByteOrder charRegionOrder() {
-        return null;
-    }
-
     boolean isAddressable() {
         return false;
-    }
-
-    public boolean equals(Object ob) {
-        if (this == ob)
-            return true;
-        if (!(ob instanceof CharBuffer))
-            return false;
-        CharBuffer that = (CharBuffer)ob;
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        if (thisRem < 0 || thisRem != thatRem)
-            return false;
-        return BufferMismatch.mismatch(this, thisPos,
-                                       that, thatPos,
-                                       thisRem) < 0;
-    }
-
-    public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + (int)get(i);
-        return h;
-    }
-
-    public int compareTo(CharBuffer that) {
-        int thisPos = this.position();
-        int thisRem = this.limit() - thisPos;
-        int thatPos = that.position();
-        int thatRem = that.limit() - thatPos;
-        int length = Math.min(thisRem, thatRem);
-        if (length < 0)
-            return -1;
-        int i = BufferMismatch.mismatch(this, thisPos,
-                                        that, thatPos,
-                                        length);
-        if (i >= 0) {
-            return Character.compare(this.get(thisPos + i), that.get(thatPos + i));
-        }
-        return thisRem - thatRem;
     }
 }

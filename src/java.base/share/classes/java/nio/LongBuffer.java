@@ -104,11 +104,6 @@ public class LongBuffer
     }
 
     @Override
-    int mismatchInternal(LongBuffer src, int srcPos, LongBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     LongBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new LongBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
@@ -894,7 +889,7 @@ public class LongBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode((lb, i) -> (int)lb.get(i));
     }
 
     /**
@@ -923,7 +918,7 @@ public class LongBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -942,11 +937,10 @@ public class LongBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(LongBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, LongBuffer::compare);
     }
 
-    @Override
-    int compare(LongBuffer thisBuf, int x, LongBuffer thatBuf, int y) {
+    static int compare(LongBuffer thisBuf, int x, LongBuffer thatBuf, int y) {
         return Long.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
@@ -975,7 +969,7 @@ public class LongBuffer
      * @since 11
      */
     public int mismatch(LongBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other byte stuff: Access to binary data --

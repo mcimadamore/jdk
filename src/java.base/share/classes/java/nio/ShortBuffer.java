@@ -104,11 +104,6 @@ public class ShortBuffer
     }
 
     @Override
-    int mismatchInternal(ShortBuffer src, int srcPos, ShortBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     ShortBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new ShortBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
@@ -895,7 +890,7 @@ public class ShortBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode(ShortBuffer::get);
     }
 
     /**
@@ -924,7 +919,7 @@ public class ShortBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -943,11 +938,10 @@ public class ShortBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(ShortBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, ShortBuffer::compare);
     }
 
-    @Override
-    int compare(ShortBuffer thisBuf, int x, ShortBuffer thatBuf, int y) {
+    static int compare(ShortBuffer thisBuf, int x, ShortBuffer thatBuf, int y) {
         return Short.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
@@ -976,7 +970,7 @@ public class ShortBuffer
      * @since 11
      */
     public int mismatch(ShortBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other byte stuff: Access to binary data --

@@ -224,11 +224,6 @@ public class ByteBuffer
     }
 
     @Override
-    int mismatchInternal(ByteBuffer src, int srcPos, ByteBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     ByteBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new ByteBuffer(addr, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
     }
@@ -1053,7 +1048,7 @@ public class ByteBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode(ByteBuffer::get);
     }
 
     /**
@@ -1082,7 +1077,7 @@ public class ByteBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -1100,11 +1095,10 @@ public class ByteBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(ByteBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, ByteBuffer::compare);
     }
 
-    @Override
-    int compare(ByteBuffer thisBuf, int x, ByteBuffer thatBuf, int y) {
+    static int compare(ByteBuffer thisBuf, int x, ByteBuffer thatBuf, int y) {
         return Byte.compare(thisBuf.get(x), thatBuf.get(y));
     }
 
@@ -1133,7 +1127,7 @@ public class ByteBuffer
      * @since 11
      */
     public int mismatch(ByteBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other byte stuff: Access to binary data --

@@ -104,11 +104,6 @@ public class FloatBuffer
     }
 
     @Override
-    int mismatchInternal(FloatBuffer src, int srcPos, FloatBuffer dest, int destPos, int n) {
-        return BufferMismatch.mismatch(src, srcPos, dest, destPos, n);
-    }
-
-    @Override
     FloatBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
         return new FloatBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
@@ -888,7 +883,7 @@ public class FloatBuffer
      * @return  The current hash code of this buffer
      */
     public int hashCode() {
-        return super.hashCode();
+        return super.hashCode((fb, i) -> (int)fb.get(i));
     }
 
     /**
@@ -922,7 +917,7 @@ public class FloatBuffer
      *           given object
      */
     public boolean equals(Object ob) {
-        return super.equals(ob);
+        return super.equals(ob, BufferMismatch::mismatch);
     }
 
     /**
@@ -944,11 +939,10 @@ public class FloatBuffer
      *          is less than, equal to, or greater than the given buffer
      */
     public int compareTo(FloatBuffer that) {
-        return super.compareTo(that);
+        return super.compareTo(that, BufferMismatch::mismatch, FloatBuffer::compare);
     }
 
-    @Override
-    int compare(FloatBuffer thisBuf, int i1, FloatBuffer thatBuf, int i2) {
+    static int compare(FloatBuffer thisBuf, int i1, FloatBuffer thatBuf, int i2) {
         float x = thisBuf.get(i1);
         float y = thatBuf.get(i2);
         return ((x < y)  ? -1 :
@@ -982,7 +976,7 @@ public class FloatBuffer
      * @since 11
      */
     public int mismatch(FloatBuffer that) {
-        return super.mismatch(that);
+        return super.mismatch(that, BufferMismatch::mismatch);
     }
 
     // -- Other byte stuff: Access to binary data --

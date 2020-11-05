@@ -28,7 +28,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     // access primitives
 
-    final int scaleFactor() {
+    int scaleFactor() {
         return switch(UNSAFE.arrayIndexScale(carrier())) {
             case 1 -> 0;
             case 2 -> 1;
@@ -377,26 +377,25 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return sb.toString();
     }
 
-    public int hashCode() {
-        int h = 1;
-        int p = position();
-        for (int i = limit() - 1; i >= p; i--)
-            h = 31 * h + getAsInt(i);
-        return h;
-    }
-
-    final int getAsInt(int index) {
-        return switch(UNSAFE.arrayIndexScale(carrier())) {
-            case 1 -> UNSAFE.getByte(base(), ix(index));
-            case 2 -> UNSAFE.getShort(base(), ix(index));
-            case 4 -> UNSAFE.getInt(base(), ix(index));
-            case 8 -> (int)UNSAFE.getLong(base(), ix(index));
-            default -> throw new IllegalStateException("Cannot get here");
-        };
+    interface BufferHashOp<B extends AbstractBufferImpl<B, A>, A> {
+        int hash(B b, int index);
     }
 
     @SuppressWarnings("unchecked")
-    public boolean equals(Object ob) {
+    public int hashCode(BufferHashOp<B, A> bufferHashOp) {
+        int h = 1;
+        int p = position();
+        for (int i = limit() - 1; i >= p; i--)
+            h = 31 * h + bufferHashOp.hash((B)this, i);
+        return h;
+    }
+
+    interface BufferMismatchOp<B extends AbstractBufferImpl<B, A>, A> {
+        int mismatch(B srcBuf, int srcPos, B dstBuf, int dstPos, int nelems);
+    }
+
+    @SuppressWarnings("unchecked")
+    public boolean equals(Object ob, BufferMismatchOp<B, A> baBufferMismatchOp) {
         if (this == ob)
             return true;
         if (!(ob instanceof AbstractBufferImpl) || ((AbstractBufferImpl<?, ?>)ob).carrier() != carrier())
@@ -408,11 +407,11 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int thatRem = that.limit() - thatPos;
         if (thisRem < 0 || thisRem != thatRem)
             return false;
-        return mismatchInternal((B)this, thisPos, (B)that, thatPos, thisRem) < 0;
+        return baBufferMismatchOp.mismatch((B)this, thisPos, (B)that, thatPos, thisRem) < 0;
     }
 
     @SuppressWarnings("unchecked")
-    public int mismatch(B that) {
+    public int mismatch(B that, BufferMismatchOp<B, A> baBufferMismatchOp) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -420,16 +419,18 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int length = Math.min(thisRem, thatRem);
         if (length < 0)
             return -1;
-        int r = mismatchInternal((B)this, thisPos,
+        int r = baBufferMismatchOp.mismatch((B)this, thisPos,
                 that, thatPos,
                 length);
         return (r == -1 && thisRem != thatRem) ? length : r;
     }
 
-    abstract int mismatchInternal(B src, int srcPos, B dest, int destPos, int n);
+    interface BufferComparatorOp<B extends AbstractBufferImpl<B, A>, A> {
+        int compare(B srcBuf, int srcPos, B dstBuf, int dstPos);
+    }
 
     @SuppressWarnings("unchecked")
-    public int compareTo(B that) {
+    public int compareTo(B that, BufferMismatchOp<B, A> baBufferMismatchOp, BufferComparatorOp<B, A> baBufferComparatorOp) {
         int thisPos = this.position();
         int thisRem = this.limit() - thisPos;
         int thatPos = that.position();
@@ -437,16 +438,14 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int length = Math.min(thisRem, thatRem);
         if (length < 0)
             return -1;
-        int i = mismatchInternal((B)this, thisPos,
+        int i = baBufferMismatchOp.mismatch((B)this, thisPos,
                 that, thatPos,
                 length);
         if (i >= 0) {
-            return compare((B)this, thisPos + i, that, thatPos + i);
+            return baBufferComparatorOp.compare((B)this, thisPos + i, that, thatPos + i);
         }
         return thisRem - thatRem;
     }
-
-    abstract int compare(B thisBuf, int thisPos, B thatBuf, int thatPos);
 
     // covariant overrides
 

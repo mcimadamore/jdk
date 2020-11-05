@@ -56,8 +56,8 @@ final class BufferMismatch {
         // Ensure only heap or off-heap buffer instances use the
         // vectorized mismatch. If either buffer is a StringCharBuffer
         // (order is null) then the slow path is taken
-        if (length > 3 && a.charRegionOrder() == b.charRegionOrder()
-            && a.charRegionOrder() != null && b.charRegionOrder() != null) {
+        if (length > 3 && a.order() == b.order()
+            && a.isAddressable() && b.isAddressable()) {
             if (a.get(aOff) != b.get(bOff))
                 return 0;
             i = ArraysSupport.vectorizedMismatch(
