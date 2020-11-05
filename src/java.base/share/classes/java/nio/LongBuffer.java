@@ -30,11 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
-
-import java.lang.ref.Reference;
-import java.util.Objects;
 
 /**
  * A long buffer.
@@ -99,13 +95,23 @@ public class LongBuffer
     }
 
     @Override
+    int scaleFactor() {
+        return 3;
+    }
+
+    @Override
+    Object base() {
+        return (long[])hb;
+    }
+
+    @Override
     Class<long[]> carrier() {
         return long[].class;
     }
 
     @Override
     LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-        return new LongBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        return new LongBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, null, segment);
     }
 
     /**
@@ -990,24 +996,32 @@ public class LongBuffer
         return order;
     }
 
-    static class DirectLongBuffer extends LongBuffer implements DirectBuffer {
-        DirectLongBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+    static class HeapView extends LongBuffer {
+        public HeapView(long address, Object hb, int mark, int pos, int lim, int cap, boolean readOnly,
+                        ByteOrder order, MemorySegmentProxy segment) {
+            super(address, hb, mark, pos, lim, cap, readOnly, order, null, segment);
+        }
+
+        @Override
+        LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new HeapView(address + offset, hb, mark, pos, lim, cap, readOnly, order, segment);
+        }
+
+        @Override
+        Object base() {
+            return (byte[])hb;
+        }
+    }
+
+    static class DirectView extends LongBuffer implements DirectBuffer {
+        DirectView(long address, int mark, int pos, int lim, int cap, boolean readOnly,
+                   ByteOrder order, Object attachment, MemorySegmentProxy segment) {
             super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
 
         @Override
-        public long address() {
-            return address;
-        }
-
-        @Override
-        public Cleaner cleaner() {
+        Object base() {
             return null;
-        }
-
-        @Override
-        public Object attachment() {
-            return attachment;
         }
 
         @Override
@@ -1017,7 +1031,7 @@ public class LongBuffer
 
         @Override
         LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-            return new DirectLongBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
+            return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
         }
     }
 }

@@ -643,11 +643,6 @@ public class EqualsCompareTest {
                                        : b;
 
                                 boolean eq = bt.pairWiseEquals(as, bs);
-                                if (bt instanceof BufferType.Chars &&
-                                        bt.k == BufferKind.DIRECT &&
-                                        bt.equals(as, bs) != eq) {
-                                    System.err.println("MMMMMEEEE");
-                                }
                                 Assert.assertEquals(bt.equals(as, bs), eq);
                                 Assert.assertEquals(bt.equals(bs, as), eq);
                                 if (eq) {

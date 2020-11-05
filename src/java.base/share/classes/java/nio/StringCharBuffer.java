@@ -44,6 +44,11 @@ class StringCharBuffer                                  // package-private
     }
 
     @Override
+    Object base() {
+        throw new AssertionError("We should not get here");
+    }
+
+    @Override
     int scaleFactor() {
         // we need to remove any scaling factor, otherwise the slice implementation in AbstractBufferImpl
         // will create slices with the wrong starting offset. This is caused by the fact that we are reusing

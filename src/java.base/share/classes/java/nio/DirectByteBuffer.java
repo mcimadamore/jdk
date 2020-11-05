@@ -12,7 +12,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
 
     Cleaner cleaner;
 
-    public DirectByteBuffer(Deallocator deallocator, long addr, int mark, int pos, int lim, int cap, FileDescriptor fd, boolean isSync, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+    public DirectByteBuffer(Deallocator deallocator, long addr, int mark, int pos, int lim, int cap, FileDescriptor fd,
+                            boolean isSync, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
         super(addr, mark, pos, lim, cap, fd, isSync, readOnly, order, attachment, segment);
         if (deallocator != null) {
             this.cleaner = Cleaner.create(this, deallocator);
@@ -38,8 +39,8 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     }
 
     @Override
-    public long address() {
-        return address;
+    Object base() {
+        return null;
     }
 
     @Override
@@ -48,14 +49,9 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     }
 
     @Override
-    public Object attachment() {
-        return attachment;
-    }
-
-    @Override
     ByteBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
         return new DirectByteBuffer(null, address + offset, mark, pos, lim, cap, fd, isSync,
-                readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
+                readOnly, ByteOrder.BIG_ENDIAN, attachmentValue(), segment);
     }
 
     private static class Deallocator

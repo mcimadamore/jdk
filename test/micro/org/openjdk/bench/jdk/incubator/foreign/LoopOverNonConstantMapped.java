@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -172,4 +173,13 @@ public class LoopOverNonConstantMapped {
         return sum;
     }
 
+    @Benchmark
+    public int IB_loop() {
+        int sum = 0;
+        IntBuffer ib = byteBuffer.asIntBuffer();
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += ib.get(i);
+        }
+        return sum;
+    }
 }

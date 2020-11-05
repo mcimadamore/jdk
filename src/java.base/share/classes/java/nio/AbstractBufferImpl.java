@@ -2,6 +2,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.ref.Cleaner;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.ref.Reference;
@@ -21,32 +22,35 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         this.attachment = attachment;
     }
 
+    /**
+     * A scale factor, expressed in number of shift positions associated with the element size, which is
+     * used to turn a logical buffer index into a concrete address (usable from unsafe access). That is,
+     * for an int buffer, given that each buffer index covers 4 bytes, we need to shift the index
+     * by 2 in order to obtain the address offset corresponding to it. For performance reasons, it is best
+     * to override this method in each subclass, so that the scale factor becomes effectively a constant.
+     */
+    abstract int scaleFactor();
+
+    /**
+     * The base object for the unsafe access. Must be overridden by concrete subclasses so that
+     * (i) cases where base == null are explicit in the code and (ii) cases where base != null also
+     * feature a cast to the correct array type. Unsafe access intrinsics can work optimally
+     * only if both conditions are met.
+     */
+    abstract Object base();
+
+    /**
+     * The array carrier associated with this buffer; e.g. a ShortBuffer will have a short[] carrier.
+     */
     abstract Class<A> carrier();
 
+    /**
+     * Create a new buffer of the same type as this one, with given properties. This method is used to implement
+     * various methods featuring covariant override.
+     */
     abstract B dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly);
 
     // access primitives
-
-    int scaleFactor() {
-        return switch(UNSAFE.arrayIndexScale(carrier())) {
-            case 1 -> 0;
-            case 2 -> 1;
-            case 4 -> 2;
-            case 8 -> 3;
-            default -> throw new IllegalStateException("Cannot get here");
-        };
-    }
-
-    /**
-     *
-     * @return the base reference, paired with the address
-     * field, which in combination can be used for unsafe access into a heap
-     * buffer or direct byte buffer (and views of).
-     */
-    Object base() {
-        return hb;
-        //isDirect() ? null : carrier().cast(Objects.requireNonNull(hb));
-    }
 
     final long ix(int pos) {
         return address + (pos << scaleFactor());
@@ -319,14 +323,6 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return dup(0, markValue(), position(), limit(), capacity(), readOnly);
     }
 
-    Object attachmentValue() {
-        if (attachment == null && isDirect()) {
-            return this;
-        } else {
-            return attachment;
-        }
-    }
-
     @SuppressWarnings("unchecked")
     public B compact() {
         if (readOnly) {
@@ -375,6 +371,10 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return sb.toString();
     }
 
+    /**
+     * This functional interface features a method that is used to compute the hash of a buffer element
+     * at a given position.
+     */
     interface BufferHashOp<B extends AbstractBufferImpl<B, A>, A> {
         int hash(B b, int index);
     }
@@ -388,6 +388,10 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return h;
     }
 
+    /**
+     * This functional interface features a method that is used to compute mismatch between two byte buffer regions,
+     * starting at given positions and with given length.
+     */
     interface BufferMismatchOp<B extends AbstractBufferImpl<B, A>, A> {
         int mismatch(B srcBuf, int srcPos, B dstBuf, int dstPos, int nelems);
     }
@@ -423,6 +427,9 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         return (r == -1 && thisRem != thatRem) ? length : r;
     }
 
+    /**
+     * This functional interface features a method that is used to compare two buffer elements at given positions.
+     */
     interface BufferComparatorOp<B extends AbstractBufferImpl<B, A>, A> {
         int compare(B srcBuf, int srcPos, B dstBuf, int dstPos);
     }
@@ -446,8 +453,6 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     }
 
     // covariant overrides
-
-    // -- Covariant return type overrides
 
     /**
      * {@inheritDoc}
@@ -517,5 +522,24 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     public B rewind() {
         super.rewind();
         return (B)this;
+    }
+
+    // direct buffer default impl - good in most cases
+
+    public long address() {
+        return address;
+    }
+
+    public Cleaner cleaner() {
+        return null;
+    }
+
+    public Object attachment() {
+        return attachment;
+    }
+
+    final Object attachmentValue() {
+        return attachment != null ?
+                attachment : this;
     }
 }

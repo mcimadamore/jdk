@@ -40,6 +40,7 @@ import sun.misc.Unsafe;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.concurrent.TimeUnit;
 
 import static jdk.incubator.foreign.MemoryLayout.PathElement.sequenceElement;
@@ -151,6 +152,16 @@ public class LoopOverNonConstant {
         ByteBuffer bb = byteBuffer;
         for (int i = 0; i < ELEM_SIZE; i++) {
             sum += bb.getInt(i * CARRIER_SIZE);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int IB_loop() {
+        int sum = 0;
+        IntBuffer ib = byteBuffer.asIntBuffer();
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += ib.get(i);
         }
         return sum;
     }

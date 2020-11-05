@@ -30,11 +30,9 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
-import java.lang.ref.Reference;
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -135,13 +133,23 @@ public class CharBuffer
     }
 
     @Override
+    int scaleFactor() {
+        return 1;
+    }
+
+    @Override
+    Object base() {
+        return (char[])hb;
+    }
+
+    @Override
     Class<char[]> carrier() {
         return char[].class;
     }
 
     @Override
     CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-        return new CharBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        return new CharBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, null, segment);
     }
 
     /**
@@ -1467,24 +1475,32 @@ public class CharBuffer
             Buffer.SPLITERATOR_CHARACTERISTICS, false);
     }
 
-    static class DirectCharBuffer extends CharBuffer implements DirectBuffer {
-        DirectCharBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+    static class HeapView extends CharBuffer {
+        public HeapView(long address, Object hb, int mark, int pos, int lim, int cap, boolean readOnly,
+                        ByteOrder order, MemorySegmentProxy segment) {
+            super(address, hb, mark, pos, lim, cap, readOnly, order, null, segment);
+        }
+
+        @Override
+        CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new HeapView(address + offset, hb, mark, pos, lim, cap, readOnly, order, segment);
+        }
+
+        @Override
+        Object base() {
+            return (byte[])hb;
+        }
+    }
+
+    static class DirectView extends CharBuffer implements DirectBuffer {
+        DirectView(long address, int mark, int pos, int lim, int cap, boolean readOnly,
+                   ByteOrder order, Object attachment, MemorySegmentProxy segment) {
             super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
 
         @Override
-        public long address() {
-            return address;
-        }
-
-        @Override
-        public Cleaner cleaner() {
+        Object base() {
             return null;
-        }
-
-        @Override
-        public Object attachment() {
-            return attachment;
         }
 
         @Override
@@ -1494,7 +1510,7 @@ public class CharBuffer
 
         @Override
         CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-            return new DirectCharBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
+            return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
         }
     }
 }

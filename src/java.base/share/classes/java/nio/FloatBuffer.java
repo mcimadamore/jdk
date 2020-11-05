@@ -30,11 +30,7 @@ package java.nio;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.ref.Cleaner;
 import sun.nio.ch.DirectBuffer;
-
-import java.lang.ref.Reference;
-import java.util.Objects;
 
 /**
  * A float buffer.
@@ -99,13 +95,23 @@ public class FloatBuffer
     }
 
     @Override
+    int scaleFactor() {
+        return 2;
+    }
+
+    @Override
+    Object base() {
+        return (float[])hb;
+    }
+
+    @Override
     Class<float[]> carrier() {
         return float[].class;
     }
 
     @Override
     FloatBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-        return new FloatBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        return new FloatBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, null, segment);
     }
 
     /**
@@ -997,24 +1003,32 @@ public class FloatBuffer
         return order;
     }
 
-    static class DirectFloatBuffer extends FloatBuffer implements DirectBuffer {
-        DirectFloatBuffer(long address, int mark, int pos, int lim, int cap, boolean readOnly, ByteOrder order, Object attachment, MemorySegmentProxy segment) {
+    static class HeapView extends FloatBuffer {
+        public HeapView(long address, Object hb, int mark, int pos, int lim, int cap, boolean readOnly,
+                        ByteOrder order, MemorySegmentProxy segment) {
+            super(address, hb, mark, pos, lim, cap, readOnly, order, null, segment);
+        }
+
+        @Override
+        FloatBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new HeapView(address + offset, hb, mark, pos, lim, cap, readOnly, order, segment);
+        }
+
+        @Override
+        Object base() {
+            return (byte[])hb;
+        }
+    }
+
+    static class DirectView extends FloatBuffer implements DirectBuffer {
+        DirectView(long address, int mark, int pos, int lim, int cap, boolean readOnly,
+                   ByteOrder order, Object attachment, MemorySegmentProxy segment) {
             super(address, null, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
 
         @Override
-        public long address() {
-            return address;
-        }
-
-        @Override
-        public Cleaner cleaner() {
+        Object base() {
             return null;
-        }
-
-        @Override
-        public Object attachment() {
-            return attachment;
         }
 
         @Override
@@ -1024,7 +1038,7 @@ public class FloatBuffer
 
         @Override
         FloatBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-            return new DirectFloatBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
+            return new DirectView(address + offset, mark, pos, lim, cap, readOnly, order, attachmentValue(), segment);
         }
     }
 }

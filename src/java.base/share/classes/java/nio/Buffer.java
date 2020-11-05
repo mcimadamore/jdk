@@ -789,12 +789,12 @@ public abstract class Buffer {
 
                 @Override
                 public ByteBuffer newDirectByteBuffer(long addr, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new DirectByteBuffer(null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.BIG_ENDIAN, null, segment);
+                    return new DirectByteBuffer(null, addr, -1, 0, cap, cap, null, false, false, ByteOrder.BIG_ENDIAN, obj, segment);
                 }
 
                 @Override
                 public ByteBuffer newMappedByteBuffer(UnmapperProxy unmapperProxy, long address, int cap, Object obj, MemorySegmentProxy segment) {
-                    return new MappedByteBuffer(address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.BIG_ENDIAN, null, segment);
+                    return new MappedByteBuffer(address, -1, 0, cap, cap, unmapperProxy.fileDescriptor(), unmapperProxy.isSync(), false, ByteOrder.BIG_ENDIAN, obj, segment);
                 }
 
                 @Override

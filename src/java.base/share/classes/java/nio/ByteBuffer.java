@@ -31,9 +31,6 @@ package java.nio;
 import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.Unsafe;
 
-import java.lang.ref.Reference;
-import java.util.Objects;
-
 /**
  * A byte buffer.
  *
@@ -219,13 +216,23 @@ public class ByteBuffer
     }
 
     @Override
+    int scaleFactor() {
+        return 0;
+    }
+
+    @Override
+    Object base() {
+        return (byte[])hb;
+    }
+
+    @Override
     Class<byte[]> carrier() {
         return byte[].class;
     }
 
     @Override
     ByteBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
-        return new ByteBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
+        return new ByteBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, null, segment);
     }
 
     /**
@@ -1424,8 +1431,8 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
         return isDirect() ?
-                new CharBuffer.DirectCharBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new CharBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new CharBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new CharBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1543,8 +1550,8 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 1;
         return isDirect() ?
-                new ShortBuffer.DirectShortBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new ShortBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new ShortBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new ShortBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
     /**
@@ -1661,8 +1668,8 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
         return isDirect() ?
-                new IntBuffer.DirectIntBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new IntBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new IntBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new IntBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1780,8 +1787,8 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
         return isDirect() ?
-                new LongBuffer.DirectLongBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new LongBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new LongBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new LongBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -1899,8 +1906,8 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 2;
         return isDirect() ?
-                new FloatBuffer.DirectFloatBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new FloatBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new FloatBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new FloatBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 
 
@@ -2018,7 +2025,7 @@ public class ByteBuffer
         int rem = (off <= lim ? lim - off : 0);
         int size = rem >> 3;
         return isDirect() ?
-                new DoubleBuffer.DirectDoubleBuffer(address + off, -1, 0, size, size, readOnly, order, attachmentValue(), segment) :
-                new DoubleBuffer(address + off, hb, -1, 0, size, size, readOnly, order, attachmentValue(), segment);
+                new DoubleBuffer.DirectView(address + off, -1, 0, size, size, readOnly, order, this, segment) :
+                new DoubleBuffer.HeapView(address + off, hb, -1, 0, size, size, readOnly, order, segment);
     }
 }
