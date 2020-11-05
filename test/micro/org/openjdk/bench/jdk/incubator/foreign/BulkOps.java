@@ -36,6 +36,7 @@ import sun.misc.Unsafe;
 
 import jdk.incubator.foreign.MemorySegment;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
 
 import static jdk.incubator.foreign.MemoryLayouts.JAVA_INT;
@@ -56,6 +57,7 @@ public class BulkOps {
 
     static final long unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
     static final MemorySegment segment = MemorySegment.allocateNative(ALLOC_SIZE);
+    static final ByteBuffer buffer = ByteBuffer.allocateDirect(ALLOC_SIZE).order(ByteOrder.nativeOrder());
 
     static final int[] bytes = new int[ELEM_SIZE];
     static final MemorySegment bytesSegment = MemorySegment.ofArray(bytes);
@@ -119,6 +121,12 @@ public class BulkOps {
     @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public void segment_copy() {
         segment.copyFrom(bytesSegment);
+    }
+
+    @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public void buffer_copy() {
+        buffer.asIntBuffer().put(0, bytes);
     }
 
     @Benchmark
