@@ -43,11 +43,11 @@ import java.util.Objects;
 
     // ByteBuffer.hb
     static final long BYTE_BUFFER_HB
-            = U.objectFieldOffset(ByteBuffer.class, "hb");
+            = U.objectFieldOffset(Buffer.class, "hb");
 
     // ByteBuffer.isReadOnly
     static final long BYTE_BUFFER_IS_READ_ONLY
-            = U.objectFieldOffset(ByteBuffer.class, "isReadOnly");
+            = U.objectFieldOffset(Buffer.class, "readOnly");
 
     /* ============================================================================ */
 

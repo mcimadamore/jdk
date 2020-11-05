@@ -9,6 +9,13 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
+/**
+ * This class contains most of the logic associated with the various buffer subclasses. The methods in this class access
+ * the buffer's memory in an abstract fashion, using the Unsafe addressing API. Clients should implement some of
+ * the abstract methods in this class so that unsafe access can occur correctly and in the most efficient fashion.
+ * @param <B> the buffer class type
+ * @param <A> the array type associated with the buffer
+ */
 abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends Buffer {
 
     // Cached unsafe-access object
