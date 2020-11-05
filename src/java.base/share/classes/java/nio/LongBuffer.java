@@ -104,8 +104,8 @@ public class LongBuffer
     }
 
     @Override
-    LongBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new LongBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new LongBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -1016,8 +1016,8 @@ public class LongBuffer
         }
 
         @Override
-        LongBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-            return new DirectLongBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        LongBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new DirectLongBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

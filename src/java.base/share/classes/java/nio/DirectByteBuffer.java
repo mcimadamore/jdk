@@ -53,8 +53,9 @@ class DirectByteBuffer extends MappedByteBuffer implements DirectBuffer {
     }
 
     @Override
-    ByteBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new DirectByteBuffer(null, addr, mark, pos, lim, cap, fd, isSync, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
+    ByteBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new DirectByteBuffer(null, address + offset, mark, pos, lim, cap, fd, isSync,
+                readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
     }
 
     private static class Deallocator

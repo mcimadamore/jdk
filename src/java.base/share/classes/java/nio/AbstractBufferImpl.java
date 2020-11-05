@@ -23,8 +23,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
 
     abstract Class<A> carrier();
 
-    abstract B dup(long addr, Object hb, int mark, int pos, int lim, int cap,
-                   boolean readOnly, Object attachment, MemorySegmentProxy segment);
+    abstract B dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly);
 
     // access primitives
 
@@ -296,8 +295,7 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
     // other
 
     B asReadOnlyBuffer() {
-        return dup(address, base(), markValue(), position(), limit(), capacity(),
-                true, attachmentValue(), segment);
+        return dup(0, markValue(), position(), limit(), capacity(), true);
     }
 
     @Override
@@ -306,19 +304,19 @@ abstract class AbstractBufferImpl<B extends AbstractBufferImpl<B, A>, A> extends
         int lim = this.limit();
         int rem = (pos <= lim ? lim - pos : 0);
         int off = (pos << scaleFactor());
-        return dup(address + off, base(), -1, 0, rem, rem, readOnly, attachmentValue(), segment);
+        return dup(off, -1, 0, rem, rem, readOnly);
     }
 
     @Override
     public B slice(int index, int length) {
         Objects.checkFromIndexSize(index, length, limit());
         int off = (index << scaleFactor());
-        return dup(address + off, base(), -1, 0, length, length, readOnly, attachmentValue(), segment);
+        return dup(off, -1, 0, length, length, readOnly);
     }
 
     @Override
     public B duplicate() {
-        return dup(address, base(), markValue(), position(), limit(), capacity(), readOnly, attachmentValue(), segment);
+        return dup(0, markValue(), position(), limit(), capacity(), readOnly);
     }
 
     Object attachmentValue() {

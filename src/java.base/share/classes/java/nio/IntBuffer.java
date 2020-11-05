@@ -104,8 +104,8 @@ public class IntBuffer
     }
 
     @Override
-    IntBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new IntBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    IntBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new IntBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -1015,8 +1015,8 @@ public class IntBuffer
         }
 
         @Override
-        IntBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-            return new DirectIntBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        IntBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new DirectIntBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

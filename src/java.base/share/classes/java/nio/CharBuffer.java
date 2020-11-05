@@ -140,8 +140,8 @@ public class CharBuffer
     }
 
     @Override
-    CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new CharBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new CharBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -1326,13 +1326,12 @@ public class CharBuffer
     public CharBuffer subSequence(int start, int end) {
         int pos = position();
         Objects.checkFromToIndex(start, end, limit() - pos);
-        return dup(address,
-                base(),
+        return dup(0,
                 -1,
                 pos + start,
                 pos + end,
                 capacity(),
-                readOnly, attachmentValue(), segment);
+                readOnly);
     }
 
     // --- Methods to support Appendable ---
@@ -1494,8 +1493,8 @@ public class CharBuffer
         }
 
         @Override
-        CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-            return new DirectCharBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new DirectCharBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

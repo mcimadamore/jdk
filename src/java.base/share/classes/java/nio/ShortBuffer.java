@@ -104,8 +104,8 @@ public class ShortBuffer
     }
 
     @Override
-    ShortBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new ShortBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    ShortBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new ShortBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -1017,8 +1017,8 @@ public class ShortBuffer
         }
 
         @Override
-        ShortBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-            return new DirectShortBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        ShortBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new DirectShortBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

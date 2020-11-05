@@ -104,8 +104,8 @@ public class DoubleBuffer
     }
 
     @Override
-    DoubleBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new DoubleBuffer(addr, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
+    DoubleBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new DoubleBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, order, attachment, segment);
     }
 
     /**
@@ -1022,8 +1022,8 @@ public class DoubleBuffer
         }
 
         @Override
-        DoubleBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-            return new DirectDoubleBuffer(addr, mark, pos, lim, cap, readOnly, order, attachment, segment);
+        DoubleBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+            return new DirectDoubleBuffer(address + offset, mark, pos, lim, cap, readOnly, order, attachment, segment);
         }
     }
 }

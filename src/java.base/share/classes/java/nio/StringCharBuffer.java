@@ -64,8 +64,8 @@ class StringCharBuffer                                  // package-private
     }
 
     @Override
-    CharBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new StringCharBuffer(str, addr, mark, pos, lim, cap);
+    CharBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new StringCharBuffer(str, address + offset, mark, pos, lim, cap);
     }
 
     private int stringOffset() {

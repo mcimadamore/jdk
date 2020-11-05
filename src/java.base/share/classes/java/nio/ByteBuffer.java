@@ -224,8 +224,8 @@ public class ByteBuffer
     }
 
     @Override
-    ByteBuffer dup(long addr, Object hb, int mark, int pos, int lim, int cap, boolean readOnly, Object attachment, MemorySegmentProxy segment) {
-        return new ByteBuffer(addr, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
+    ByteBuffer dup(int offset, int mark, int pos, int lim, int cap, boolean readOnly) {
+        return new ByteBuffer(address + offset, hb, mark, pos, lim, cap, readOnly, ByteOrder.BIG_ENDIAN, attachment, segment);
     }
 
     /**
