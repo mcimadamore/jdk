@@ -193,6 +193,13 @@ address MethodHandles::generate_method_handle_interpreter_entry(MacroAssembler* 
     return NULL;
   }
 
+  // No need in interpreter entry for linkToNative for now.
+  // Interpreter calls compiled entry through i2c.
+  if (iid == vmIntrinsics::_linkToNative) {
+    __ should_not_reach_here();
+    return nullptr;
+  }
+
   // Rmethod: Method*
   // Rparams (SP on 32-bit ARM): pointer to parameters
   // Rsender_sp (R4/R19): sender SP (must preserve; see prepare_to_jump_from_interpreted)

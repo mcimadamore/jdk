@@ -250,6 +250,13 @@ address MethodHandles::generate_method_handle_interpreter_entry(MacroAssembler* 
     return NULL;
   }
 
+  // No need in interpreter entry for linkToNative for now.
+  // Interpreter calls compiled entry through i2c.
+  if (iid == vmIntrinsics::_linkToNative) {
+    __ should_not_reach_here();
+    return nullptr;
+  }
+
   // Z_R10: sender SP (must preserve; see prepare_to_jump_from_interprted)
   // Z_method: method
   // Z_ARG1 (Gargs): incoming argument list (must preserve)
