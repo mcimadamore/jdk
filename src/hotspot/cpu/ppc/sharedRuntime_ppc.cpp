@@ -3428,10 +3428,10 @@ void SharedRuntime::montgomery_square(jint *a_ints, jint *n_ints,
   reverse_words(m, (unsigned long *)m_ints, longwords);
 }
 
-address SharedRuntime::make_native_invoker(address call_target,
-                                           int shadow_space_bytes,
-                                           const GrowableArray<VMReg>& input_registers,
-                                           const GrowableArray<VMReg>& output_registers) {
+BufferBlob* SharedRuntime::make_native_invoker(address call_target,
+                                               int shadow_space_bytes,
+                                               const GrowableArray<VMReg>& input_registers,
+                                               const GrowableArray<VMReg>& output_registers) {
   ShouldNotCallThis();
   return nullptr;
 }
