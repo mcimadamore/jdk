@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,28 @@
  */
 
 #include "precompiled.hpp"
-#include "code/codeBlob.hpp"
 #include "prims/universalNativeInvoker.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
-#include "runtime/jniHandles.inline.hpp"
-#include "runtime/stubCodeGenerator.hpp"
-#include "prims/methodHandles.hpp"
 
-void ProgrammableInvoker::invoke_native(ProgrammableStub stub, address buff, JavaThread* thread) {
-  {
-    assert(thread->thread_state() == _thread_in_vm, "thread state is: %d", thread->thread_state());
-    ThreadToNativeFromVM ttnfvm(thread);
-    assert(thread->thread_state() == _thread_in_native, "thread state is: %d", thread->thread_state());
-    stub(buff);
-    assert(thread->thread_state() == _thread_in_native, "thread state is: %d", thread->thread_state());
-  }
-  assert(thread->thread_state() == _thread_in_vm, "thread state is: %d", thread->thread_state());
+ProgrammableInvoker::Generator::Generator(CodeBuffer* code, const ABIDescriptor* abi, const BufferLayout* layout)
+  : StubCodeGenerator(code),
+    _abi(abi),
+    _layout(layout) {}
+
+void ProgrammableInvoker::invoke_native(Stub stub, address buff, JavaThread* thread) {
+  ThreadToNativeFromVM ttnfvm(thread);
+  stub(buff);
 }
 
 JNI_ENTRY(void, PI_invokeNative(JNIEnv* env, jclass _unused, jlong adapter_stub, jlong buff))
   assert(thread->thread_state() == _thread_in_vm, "thread state is: %d", thread->thread_state());
-  ProgrammableStub stub = (ProgrammableStub) adapter_stub;
+  ProgrammableInvoker::Stub stub = (ProgrammableInvoker::Stub) adapter_stub;
   address c = (address) buff;
   ProgrammableInvoker::invoke_native(stub, c, thread);
 JNI_END
 
 JNI_ENTRY(jlong, PI_generateAdapter(JNIEnv* env, jclass _unused, jobject abi, jobject layout))
-  return ProgrammableInvoker::generate_adapter(abi, layout);
+  return (jlong) ProgrammableInvoker::generate_adapter(abi, layout);
 JNI_END
 
 #define CC (char*)  /*cast a literal from (const char*)*/

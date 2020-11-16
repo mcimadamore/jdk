@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @requires sun.arch.data.model == "64"
+ * @requires (os.arch=="amd64" | os.arch=="x86_64") & sun.arch.data.model == "64"
  * @run testng/othervm
  *   -Djdk.internal.foreign.ProgrammableInvoker.USE_SPEC=true
  *   -Djdk.internal.foreign.ProgrammableInvoker.USE_INTRINSICS=true

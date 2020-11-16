@@ -60,7 +60,6 @@ public class TestCondy {
         C_LONG_LONG,
         C_FLOAT,
         C_DOUBLE,
-        C_LONG_DOUBLE,
         C_POINTER
     };
 

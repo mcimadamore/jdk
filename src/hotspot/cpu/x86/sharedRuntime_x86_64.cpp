@@ -3462,10 +3462,10 @@ bool target_uses_register(VMReg reg) {
 #endif
 };
 
-address SharedRuntime::make_native_invoker(address call_target,
-                                           int shadow_space_bytes,
-                                           const GrowableArray<VMReg>& input_registers,
-                                           const GrowableArray<VMReg>& output_registers) {
+BufferBlob* SharedRuntime::make_native_invoker(address call_target,
+                                               int shadow_space_bytes,
+                                               const GrowableArray<VMReg>& input_registers,
+                                               const GrowableArray<VMReg>& output_registers) {
   BufferBlob* _invoke_native_blob = BufferBlob::create("nep_invoker_blob", native_invoker_code_size);
   if (_invoke_native_blob == NULL)
     return NULL; // allocation failure
@@ -3475,7 +3475,7 @@ address SharedRuntime::make_native_invoker(address call_target,
   g.generate();
   code.log_section_sizes("nep_invoker_blob");
 
-  return _invoke_native_blob->code_begin();
+  return _invoke_native_blob;
 }
 
 void NativeInvokerGenerator::generate() {
@@ -3518,12 +3518,10 @@ void NativeInvokerGenerator::generate() {
 
   __ movl(Address(r15_thread, JavaThread::thread_state_offset()), _thread_in_native_trans);
 
-  if (os::is_MP()) {
-    // Force this write out before the read below
-    __ membar(Assembler::Membar_mask_bits(
-            Assembler::LoadLoad | Assembler::LoadStore |
-            Assembler::StoreLoad | Assembler::StoreStore));
-  }
+  // Force this write out before the read below
+  __ membar(Assembler::Membar_mask_bits(
+          Assembler::LoadLoad | Assembler::LoadStore |
+          Assembler::StoreLoad | Assembler::StoreStore));
 
   Label L_after_safepoint_poll;
   Label L_safepoint_poll_slow_path;
