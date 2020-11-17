@@ -25,7 +25,6 @@
  */
 package jdk.incubator.foreign;
 
-import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.foreign.PlatformLayouts;
 import jdk.internal.foreign.Utils;
@@ -113,7 +112,6 @@ public interface CLinker {
      * @return a linker for this system.
      * @throws IllegalAccessError if the runtime property {@code foreign.restricted} is not set to either
      * {@code permit}, {@code warn} or {@code debug} (the default value is set to {@code deny}).
-     * @throws UnsupportedOperationException if called when running on an unsupported platform.
      */
     static CLinker getInstance() {
         Utils.checkRestrictedAccess("CLinker.getInstance");
@@ -151,39 +149,39 @@ public interface CLinker {
     MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function);
 
     /**
-     * The layout for the {@code char} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code char} C type
      */
     ValueLayout C_CHAR = pick(SysV.C_CHAR, Win64.C_CHAR, AArch64.C_CHAR);
     /**
-     * The layout for the {@code short} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code short} C type
      */
     ValueLayout C_SHORT = pick(SysV.C_SHORT, Win64.C_SHORT, AArch64.C_SHORT);
     /**
-     * The layout for the {@code int} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code int} C type
      */
     ValueLayout C_INT = pick(SysV.C_INT, Win64.C_INT, AArch64.C_INT);
     /**
-     * The layout for the {@code long} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code long} C type
      */
     ValueLayout C_LONG = pick(SysV.C_LONG, Win64.C_LONG, AArch64.C_LONG);
     /**
-     * The layout for the {@code long long} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code long long} C type
      */
     ValueLayout C_LONG_LONG = pick(SysV.C_LONG_LONG, Win64.C_LONG_LONG, AArch64.C_LONG_LONG);
     /**
-     * The layout for the {@code float} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code float} C type
      */
     ValueLayout C_FLOAT = pick(SysV.C_FLOAT, Win64.C_FLOAT, AArch64.C_FLOAT);
     /**
-     * The layout for the {@code double} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code double} C type
      */
     ValueLayout C_DOUBLE = pick(SysV.C_DOUBLE, Win64.C_DOUBLE, AArch64.C_DOUBLE);
     /**
-     * The {@code T*} native type, or {@code null} on unsupported platforms.
+     * The {@code T*} native type
      */
     ValueLayout C_POINTER = pick(SysV.C_POINTER, Win64.C_POINTER, AArch64.C_POINTER);
     /**
-     * The layout for the {@code va_list} C type, or {@code null} on unsupported platforms.
+     * The layout for the {@code va_list} C type
      */
     MemoryLayout C_VA_LIST = pick(SysV.C_VA_LIST, Win64.C_VA_LIST, AArch64.C_VA_LIST);
 
@@ -391,11 +389,9 @@ public interface CLinker {
      * @param size memory size to be allocated
      * @return addr memory address of the allocated memory
      * @throws OutOfMemoryError if malloc could not allocate the required amount of native memory.
-     * @throws UnsupportedOperationException if called when running on an unsupported platform.
      */
     static MemoryAddress allocateMemoryRestricted(long size) {
         Utils.checkRestrictedAccess("CLinker.allocateMemoryRestricted");
-        SharedUtils.checkPlatformSupported();
         MemoryAddress addr = SharedUtils.allocateMemoryInternal(size);
         if (addr.equals(MemoryAddress.NULL)) {
             throw new OutOfMemoryError();
@@ -412,13 +408,10 @@ public interface CLinker {
      * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param addr memory address of the native memory to be freed
-     * @throws NullPointerException if {@code addr == null}.
-     * @throws UnsupportedOperationException if called when running on an unsupported platform.
      */
     static void freeMemoryRestricted(MemoryAddress addr) {
         Utils.checkRestrictedAccess("CLinker.freeMemoryRestricted");
         Objects.requireNonNull(addr);
-        SharedUtils.checkPlatformSupported();
         SharedUtils.freeMemoryInternal(addr);
     }
 
@@ -600,7 +593,6 @@ public interface CLinker {
          *
          * @param address a memory address pointing to an existing C {@code va_list}.
          * @return a new {@code VaList} instance backed by the C {@code va_list} at {@code address}.
-         * @throws UnsupportedOperationException if called when running on an unsupported platform.
          */
         static VaList ofAddressRestricted(MemoryAddress address) {
             Utils.checkRestrictedAccess("VaList.ofAddressRestricted");
@@ -623,7 +615,6 @@ public interface CLinker {
          * @param actions a consumer for a builder (see {@link Builder}) which can be used to specify the elements
          *                of the underlying C {@code va_list}.
          * @return a new {@code VaList} instance backed by a fresh C {@code va_list}.
-         * @throws UnsupportedOperationException if called when running on an unsupported platform.
          */
         static VaList make(Consumer<Builder> actions) {
             return SharedUtils.newVaList(actions, MemorySegment::allocateNative);
@@ -645,7 +636,6 @@ public interface CLinker {
          *                of the underlying C {@code va_list}.
          * @param scope the scope to be used for the valist allocation.
          * @return a new {@code VaList} instance backed by a fresh C {@code va_list}.
-         * @throws UnsupportedOperationException if called when running on an unsupported platform.
          */
         static VaList make(Consumer<Builder> actions, NativeScope scope) {
             return SharedUtils.newVaList(actions, SharedUtils.Allocator.ofScope(scope));
@@ -657,7 +647,6 @@ public interface CLinker {
          * The returned {@code VaList} can not be closed.
          *
          * @return a {@code VaList} modelling an empty C {@code va_list}.
-         * @throws UnsupportedOperationException if called when running on an unsupported platform.
          */
         static VaList empty() {
             return SharedUtils.emptyVaList();

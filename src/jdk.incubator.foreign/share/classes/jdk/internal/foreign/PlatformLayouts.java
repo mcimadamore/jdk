@@ -40,7 +40,6 @@ public class PlatformLayouts {
             case SysV -> sysv;
             case Win64 -> win64;
             case AArch64 -> aarch64;
-            case UNSUPPORTED -> null;
         };
     }
 

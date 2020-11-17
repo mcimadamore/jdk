@@ -46,37 +46,9 @@ import static org.testng.Assert.assertNull;
 // tests run on 32-bit platforms, which are currently not supported
 public class TestUnsupportedPlatform {
 
-    @Test(dataProvider = "uoeCases", expectedExceptions = UnsupportedOperationException.class)
-    public void testUOE(Runnable testCase) {
-        testCase.run();
-    }
-
-    @DataProvider
-    public static Object[][] uoeCases() {
-        List<Runnable> cases = new ArrayList<>();
-
-        cases.add(CLinker::getInstance);
-        cases.add(() -> CLinker.VaList.make(b -> {}));
-        cases.add(() -> {
-            try (NativeScope scope = NativeScope.unboundedScope()) {
-                CLinker.VaList.make(b -> {}, scope);
-            }
-        });
-        cases.add(() -> CLinker.VaList.ofAddressRestricted(NULL));
-        cases.add(() -> CLinker.allocateMemoryRestricted(10));
-        cases.add(() -> CLinker.freeMemoryRestricted(NULL));
-
-        return cases.stream().map(r -> new Object[]{ r }).toArray(Object[][]::new);
-    }
-
-    @Test
-    public void testNullLayouts() throws IllegalAccessException {
-        for (Field f : CLinker.class.getFields()) {
-            if (MemoryLayout.class.isAssignableFrom(f.getType()) && f.getName().startsWith("C_")) {
-                MemoryLayout ml = (MemoryLayout) f.get(null);
-                assertNull(ml);
-            }
-        }
+    @Test(expectedExceptions = ExceptionInInitializerError.class)
+    public void testNoInitialization() {
+        CLinker.getInstance(); // trigger initialization
     }
 
 }

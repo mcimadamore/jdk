@@ -32,8 +32,7 @@ import static jdk.incubator.foreign.MemoryLayouts.ADDRESS;
 public enum CABI {
     SysV,
     Win64,
-    AArch64,
-    UNSUPPORTED;
+    AArch64;
 
     private static final CABI current;
 
@@ -52,7 +51,8 @@ public enum CABI {
         } else if (arch.equals("aarch64")) {
             current = AArch64;
         } else {
-            current = UNSUPPORTED;
+            throw new ExceptionInInitializerError(
+                "Unsupported os, arch, or address size: " + os + ", " + arch + ", " + addressSize);
         }
     }
 
