@@ -409,14 +409,6 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
         return scope;
     }
 
-    private void checkBoundsSmall(int offset, int length) {
-        if (length < 0 ||
-                offset < 0 ||
-                offset > (int)this.length - length) { // careful of overflow
-            throw outOfBoundException(offset, length);
-        }
-    }
-
     UnsupportedOperationException unsupportedAccessMode(int expected) {
         return new UnsupportedOperationException((String.format("Required access mode %s ; current access modes: %s",
                 modeStrings(expected).get(0), modeStrings(mask))));
