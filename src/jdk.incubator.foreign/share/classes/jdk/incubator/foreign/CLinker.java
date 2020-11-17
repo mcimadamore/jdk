@@ -165,7 +165,7 @@ public interface CLinker {
      */
     ValueLayout C_LONG = pick(SysV.C_LONG, Win64.C_LONG, AArch64.C_LONG);
     /**
-     * The layout for the {@code long long} C type
+     * The layout for the {@code long long} C type.
      */
     ValueLayout C_LONG_LONG = pick(SysV.C_LONG_LONG, Win64.C_LONG_LONG, AArch64.C_LONG_LONG);
     /**
@@ -177,7 +177,7 @@ public interface CLinker {
      */
     ValueLayout C_DOUBLE = pick(SysV.C_DOUBLE, Win64.C_DOUBLE, AArch64.C_DOUBLE);
     /**
-     * The {@code T*} native type
+     * The {@code T*} native type.
      */
     ValueLayout C_POINTER = pick(SysV.C_POINTER, Win64.C_POINTER, AArch64.C_POINTER);
     /**
@@ -408,6 +408,7 @@ public interface CLinker {
      * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param addr memory address of the native memory to be freed
+     * @throws NullPointerException if {@code addr == null}.
      */
     static void freeMemoryRestricted(MemoryAddress addr) {
         Utils.checkRestrictedAccess("CLinker.freeMemoryRestricted");
