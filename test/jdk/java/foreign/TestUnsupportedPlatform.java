@@ -63,7 +63,6 @@ public class TestUnsupportedPlatform {
             }
         });
         cases.add(() -> CLinker.VaList.ofAddressRestricted(NULL));
-        cases.add(() -> CLinker.asVarArg(JAVA_BYTE));
         cases.add(() -> CLinker.allocateMemoryRestricted(10));
         cases.add(() -> CLinker.freeMemoryRestricted(NULL));
 

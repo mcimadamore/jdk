@@ -58,6 +58,7 @@ import static java.lang.invoke.MethodHandles.insertArguments;
 import static java.lang.invoke.MethodHandles.permuteArguments;
 import static java.lang.invoke.MethodType.methodType;
 import static jdk.incubator.foreign.CLinker.*;
+import static jdk.incubator.foreign.MemoryLayouts.ADDRESS;
 
 public class SharedUtils {
 
@@ -242,6 +243,7 @@ public class SharedUtils {
             case Win64 -> Windowsx64Linker.getInstance();
             case SysV -> SysVx64Linker.getInstance();
             case AArch64 -> AArch64Linker.getInstance();
+            case UNSUPPORTED -> throwUnsupportedPlatform();
         };
     }
 
@@ -262,6 +264,19 @@ public class SharedUtils {
             }
         }
         throw new IllegalArgumentException("String too large");
+    }
+    
+    public static void checkPlatformSupported() {
+        if (CABI.current() == CABI.UNSUPPORTED)
+            throwUnsupportedPlatform();
+    }
+
+    public static <T> T throwUnsupportedPlatform() {
+        String arch = System.getProperty("os.arch");
+        String os = System.getProperty("os.name");
+        long addressSize = ADDRESS.bitSize();
+        throw new UnsupportedOperationException("Unsupported os, arch, or address size:" +
+                    " " + os + ", " + arch + ", " + addressSize);
     }
 
     // lazy init MH_ALLOC and MH_FREE handles
@@ -299,6 +314,7 @@ public class SharedUtils {
             case Win64 -> Windowsx64Linker.newVaList(actions, allocator);
             case SysV -> SysVx64Linker.newVaList(actions, allocator);
             case AArch64 -> AArch64Linker.newVaList(actions, allocator);
+            case UNSUPPORTED -> throwUnsupportedPlatform();
         };
     }
 
@@ -313,6 +329,7 @@ public class SharedUtils {
             case Win64 -> Windowsx64Linker.newVaListOfAddress(ma);
             case SysV -> SysVx64Linker.newVaListOfAddress(ma);
             case AArch64 -> AArch64Linker.newVaListOfAddress(ma);
+            case UNSUPPORTED -> throwUnsupportedPlatform();
         };
     }
 
@@ -321,6 +338,7 @@ public class SharedUtils {
             case Win64 -> Windowsx64Linker.emptyVaList();
             case SysV -> SysVx64Linker.emptyVaList();
             case AArch64 -> AArch64Linker.emptyVaList();
+            case UNSUPPORTED -> throwUnsupportedPlatform();
         };
     }
 

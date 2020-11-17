@@ -25,12 +25,15 @@
  */
 package jdk.internal.foreign;
 
+import jdk.internal.foreign.abi.SharedUtils;
+
 import static jdk.incubator.foreign.MemoryLayouts.ADDRESS;
 
 public enum CABI {
     SysV,
     Win64,
-    AArch64;
+    AArch64,
+    UNSUPPORTED;
 
     private static final CABI current;
 
@@ -49,25 +52,11 @@ public enum CABI {
         } else if (arch.equals("aarch64")) {
             current = AArch64;
         } else {
-            current = null;
+            current = UNSUPPORTED;
         }
     }
 
-    private static void throwUnsupportedPlatform() {
-        String arch = System.getProperty("os.arch");
-        String os = System.getProperty("os.name");
-        long addressSize = ADDRESS.bitSize();
-        throw new UnsupportedOperationException("Unsupported os, arch, or address size:" +
-                    " " + os + ", " + arch + ", " + addressSize);
-    }
-
-    public static boolean isPlatformSupport() {
-        return current != null;
-    }
-
     public static CABI current() {
-        if (!isPlatformSupport())
-            throwUnsupportedPlatform();
         return current;
     }
 }

@@ -36,12 +36,11 @@ import static jdk.incubator.foreign.MemoryLayouts.ADDRESS;
 
 public class PlatformLayouts {
     public static <Z extends MemoryLayout> Z pick(Z sysv, Z win64, Z aarch64) {
-        if (!CABI.isPlatformSupport())
-            return null;
         return switch (CABI.current()) {
             case SysV -> sysv;
             case Win64 -> win64;
             case AArch64 -> aarch64;
+            case UNSUPPORTED -> null;
         };
     }
 

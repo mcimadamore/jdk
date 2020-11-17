@@ -121,18 +121,6 @@ public interface CLinker {
     }
 
     /**
-     * Returns whether the current platform is supported.
-     * Some methods in {@link CLinker} will fail with an
-     * {@link UnsupportedOperationException} if called
-     * when running on an unsupported platform.
-     *
-     * @return true if the current platform is supported
-     */
-    static boolean isPlatformSupported() {
-        return CABI.isPlatformSupport();
-    }
-
-    /**
      * Obtain a foreign method handle, with given type, which can be used to call a
      * target foreign function at a given address and featuring a given function descriptor.
      *
@@ -407,7 +395,7 @@ public interface CLinker {
      */
     static MemoryAddress allocateMemoryRestricted(long size) {
         Utils.checkRestrictedAccess("CLinker.allocateMemoryRestricted");
-        CABI.current(); // trigger platform check
+        SharedUtils.checkPlatformSupported();
         MemoryAddress addr = SharedUtils.allocateMemoryInternal(size);
         if (addr.equals(MemoryAddress.NULL)) {
             throw new OutOfMemoryError();
@@ -430,7 +418,7 @@ public interface CLinker {
     static void freeMemoryRestricted(MemoryAddress addr) {
         Utils.checkRestrictedAccess("CLinker.freeMemoryRestricted");
         Objects.requireNonNull(addr);
-        CABI.current(); // trigger platform check
+        SharedUtils.checkPlatformSupported();
         SharedUtils.freeMemoryInternal(addr);
     }
 
