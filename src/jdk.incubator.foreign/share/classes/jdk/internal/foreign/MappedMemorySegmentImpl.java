@@ -114,7 +114,7 @@ public class MappedMemorySegmentImpl extends NativeMemorySegmentImpl {
         try (FileChannelImpl channelImpl = (FileChannelImpl)FileChannel.open(path, openOptions(mapMode))) {
             UnmapperProxy unmapperProxy = channelImpl.mapInternal(mapMode, bytesOffset, bytesSize);
             MemoryScope scope = MemoryScope.createConfined(null, unmapperProxy::unmap, null);
-            int modes = defaultAccessModes(bytesSize);
+            int modes = ALL_ACCESS;
             if (mapMode == FileChannel.MapMode.READ_ONLY) {
                 modes &= ~WRITE;
             }

@@ -65,7 +65,7 @@ public class LayoutPath {
     static {
         try {
             ADD_STRIDE = MethodHandles.lookup().findStatic(LayoutPath.class, "addStride",
-                    MethodType.methodType(long.class, MemorySegment.class, long.class, long.class, long.class));
+                    MethodType.methodType(long.class, long.class, long.class, long.class));
         } catch (Throwable ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -159,29 +159,16 @@ public class LayoutPath {
 
         checkAlignment(this);
 
-        List<Class<?>> expectedCoordinates = new ArrayList<>();
-        Deque<Integer> perms = new ArrayDeque<>();
-        perms.addFirst(0);
-        expectedCoordinates.add(MemorySegment.class);
-
         VarHandle handle = Utils.fixUpVarHandle(JLI.memoryAccessVarHandle(carrier, true, layout.byteAlignment() - 1,
                 ((ValueLayout)layout).order()));
 
         for (int i = 0 ; i < strides.length ; i++) {
-            expectedCoordinates.add(long.class);
-            perms.addFirst(0);
-            perms.addLast(i + 1);
             //add stride
-            handle = MemoryHandles.collectCoordinates(handle, 1 + i,
-                    MethodHandles.insertArguments(ADD_STRIDE, 1, Utils.bitsToBytesOrThrow(strides[strides.length - 1 - i], IllegalStateException::new))); // MS, long, MS_n, long_n, long
+            handle = MemoryHandles.collectCoordinates(handle, 1,
+                    MethodHandles.insertArguments(ADD_STRIDE, 0, Utils.bitsToBytesOrThrow(strides[strides.length - 1 - i], IllegalStateException::new))); // MS, long, ... long_n-1, long_n,
         }
         //add offset
-        handle = MemoryHandles.insertCoordinates(handle, 1 + strides.length, Utils.bitsToBytesOrThrow(offset, IllegalStateException::new));
-
-        if (strides.length > 0) {
-            // remove duplicate MS args
-            handle = MemoryHandles.permuteCoordinates(handle, expectedCoordinates, perms.stream().mapToInt(i -> i).toArray());
-        }
+        handle = MemoryHandles.insertCoordinates(handle, 1, Utils.bitsToBytesOrThrow(offset, IllegalStateException::new));
         return handle;
     }
 
@@ -321,8 +308,7 @@ public class LayoutPath {
         }
     }
 
-    private static long addStride(MemorySegment segment, long stride, long base, long index) {
-        return MemorySegmentProxy.addOffsets(base,
-                    MemorySegmentProxy.multiplyOffsets(stride, index, ((MemorySegmentProxy)segment)), (MemorySegmentProxy)segment);
+    private static long addStride(long stride, long base, long index) {
+        return base + (stride * index);
     }
 }

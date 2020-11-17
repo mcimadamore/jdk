@@ -32,6 +32,7 @@ import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.util.ArraysSupport;
+import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
 import sun.security.action.GetPropertyAction;
 
@@ -57,11 +58,6 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
-    private static final boolean enableSmallSegments =
-            Boolean.parseBoolean(GetPropertyAction.privilegedGetProperty("jdk.incubator.foreign.SmallSegments", "true"));
-
-    final static int FIRST_RESERVED_FLAG = 1 << 16; // upper 16 bits are reserved
-    final static int SMALL = FIRST_RESERVED_FLAG;
     final static long NONCE = new Random().nextLong();
 
     final static JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
@@ -84,12 +80,6 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     abstract AbstractMemorySegmentImpl dup(long offset, long size, int mask, MemoryScope scope);
 
     abstract ByteBuffer makeByteBuffer();
-
-    static int defaultAccessModes(long size) {
-        return (enableSmallSegments && size < Integer.MAX_VALUE) ?
-                ALL_ACCESS | SMALL :
-                ALL_ACCESS;
-    }
 
     @Override
     public AbstractMemorySegmentImpl asSlice(long offset, long newSize) {
@@ -361,11 +351,6 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     }
 
     @Override
-    public boolean isSmall() {
-        return isSet(SMALL);
-    }
-
-    @Override
     public void checkAccess(long offset, long length, boolean readOnly) {
         if (!readOnly && !isSet(WRITE)) {
             throw unsupportedAccessMode(WRITE);
@@ -416,15 +401,7 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     }
 
     private void checkBounds(long offset, long length) {
-        if (isSmall()) {
-            checkBoundsSmall((int)offset, (int)length);
-        } else {
-            if (length < 0 ||
-                    offset < 0 ||
-                    offset > this.length - length) { // careful of overflow
-                throw outOfBoundException(offset, length);
-            }
-        }
+        Preconditions.checkIndex(offset, this.length - length + 1, (s, args) -> outOfBoundException(offset, length));
     }
 
     @Override
@@ -528,17 +505,8 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
             if (currentIndex < elemCount) {
                 AbstractMemorySegmentImpl acquired = segment;
                 try {
-                    if (acquired.isSmall()) {
-                        int index = (int) currentIndex;
-                        int limit = (int) elemCount;
-                        int elemSize = (int) elementSize;
-                        for (; index < limit; index++) {
-                            action.accept(acquired.asSliceNoCheck(index * elemSize, elemSize));
-                        }
-                    } else {
-                        for (long i = currentIndex ; i < elemCount ; i++) {
-                            action.accept(acquired.asSliceNoCheck(i * elementSize, elementSize));
-                        }
+                    for (long i = currentIndex ; i < elemCount ; i++) {
+                        action.accept(acquired.asSliceNoCheck(i * elementSize, elementSize));
                     }
                 } finally {
                     currentIndex = elemCount;
@@ -582,7 +550,7 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
             modes = bufferSegment.mask;
         } else {
             bufferScope = MemoryScope.createConfined(bb, MemoryScope.DUMMY_CLEANUP_ACTION, null);
-            modes = defaultAccessModes(size);
+            modes = ALL_ACCESS;
         }
         if (bb.isReadOnly()) {
             modes &= ~WRITE;

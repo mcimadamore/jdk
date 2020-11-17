@@ -102,8 +102,7 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
                 unsafe.freeMemory(buf);
                 nioAccess.unreserveMemory(alignedSize, bytesSize);
             }, null);
-        MemorySegment segment = new NativeMemorySegmentImpl(buf, alignedSize,
-                defaultAccessModes(alignedSize), scope);
+        MemorySegment segment = new NativeMemorySegmentImpl(buf, alignedSize, ALL_ACCESS, scope);
         if (alignedSize != bytesSize) {
             long delta = alignedBuf - buf;
             segment = segment.asSlice(delta, bytesSize);
@@ -112,7 +111,7 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
     }
 
     public static MemorySegment makeNativeSegmentUnchecked(MemoryAddress min, long bytesSize, Runnable cleanupAction, Object ref) {
-        return new NativeMemorySegmentImpl(min.toRawLongValue(), bytesSize, defaultAccessModes(bytesSize),
+        return new NativeMemorySegmentImpl(min.toRawLongValue(), bytesSize, ALL_ACCESS,
                 MemoryScope.createConfined(ref, cleanupAction == null ? MemoryScope.DUMMY_CLEANUP_ACTION : cleanupAction, null));
     }
 }
