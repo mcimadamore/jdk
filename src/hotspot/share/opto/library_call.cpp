@@ -55,6 +55,7 @@
 #include "prims/unsafe.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/powerOfTwo.hpp"
 
@@ -3587,8 +3588,7 @@ LibraryCallKit::generate_method_call(vmIntrinsics::ID method_id, bool is_virtual
   if (is_static) {
     assert(!is_virtual, "");
     slow_call = new CallStaticJavaNode(C, tf,
-                           SharedRuntime::get_resolve_static_call_stub(),
-                           method, bci());
+                           SharedRuntime::get_resolve_static_call_stub(), method);
   } else if (is_virtual) {
     null_check_receiver();
     int vtable_index = Method::invalid_vtable_index;
@@ -3604,12 +3604,11 @@ LibraryCallKit::generate_method_call(vmIntrinsics::ID method_id, bool is_virtual
     }
     slow_call = new CallDynamicJavaNode(tf,
                           SharedRuntime::get_resolve_virtual_call_stub(),
-                          method, vtable_index, bci());
+                          method, vtable_index);
   } else {  // neither virtual nor static:  opt_virtual
     null_check_receiver();
     slow_call = new CallStaticJavaNode(C, tf,
-                                SharedRuntime::get_resolve_opt_virtual_call_stub(),
-                                method, bci());
+                                SharedRuntime::get_resolve_opt_virtual_call_stub(), method);
     slow_call->set_optimized_virtual(true);
   }
   if (CallGenerator::is_inlined_method_handle_intrinsic(this->method(), bci(), callee())) {

@@ -1,5 +1,6 @@
+#!/bin/ksh -p
 #
-# Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -20,47 +21,44 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+#
+#   @test
+#   @bug        8257809
+#   @summary    Tests that there are no JNI warnings.
+#   @compile GetImageJNICheck.java
+#   @run shell/timeout=300 GetImageJNICheck.sh
+#
+OS=`uname`
 
-# @test
-# @summary Basic test of -Djava.security.manager to a class in named module.
-
-set -e
-
-if [ -z "$TESTJAVA" ]; then
-  if [ $# -lt 1 ]; then exit 1; fi
-  TESTJAVA="$1"; shift
-  COMPILEJAVA="${TESTJAVA}"
-  TESTSRC=`pwd`
-  TESTCLASSES=`pwd`
+if [ "${TESTJAVA}" = "" ]
+then
+  echo "TESTJAVA not set.  Test cannot execute.  Failed."
+  exit 1
 fi
 
-OS=`uname -s`
-case "$OS" in
-  Windows*)
-    PS=";"
-    ;;
-  CYGWIN* )
-    PS=";"
-    ;;
-  * )
-    PS=":"
-    ;;
-esac
+# pick up the compiled class files.
+if [ -z "${TESTCLASSES}" ]; then
+  CP="."
+  $TESTJAVA/bin/javac GetImageJNICheck.java
+else
+  CP="${TESTCLASSES}"
+fi
 
-JAVAC="$COMPILEJAVA/bin/javac"
-JAVA="$TESTJAVA/bin/java ${TESTVMOPTS}"
+$TESTJAVA/bin/java ${TESTVMOPTS} \
+    -cp "${CP}" -Xcheck:jni GetImageJNICheck | grep ReleasePrimitiveArrayCritical > "${CP}"/log.txt
 
-mkdir -p mods
-$JAVAC -d mods --module-source-path ${TESTSRC} `find ${TESTSRC}/m -name "*.java"`
+#if [ $? -ne 0 ]
+#    then
+#      echo "Test fails: exception thrown!"
+#      exit 1
+#fi
 
-mkdir -p classes
-$JAVAC -d classes ${TESTSRC}/Test.java
+# any messages logged indicate a failure.
+if [ -s "${CP}"/log.txt ]; then
+    echo "Test failed"
+    cat "${CP}"/log.txt
+    exit 1
+fi
 
-$JAVA -cp classes --module-path mods --add-modules m \
-    -Djava.security.manager \
-    -Djava.security.policy=${TESTSRC}/test.policy Test
-$JAVA -cp classes --module-path mods --add-modules m \
-    -Djava.security.manager=p.CustomSecurityManager \
-    -Djava.security.policy=${TESTSRC}/test.policy Test
-
+echo "Test passed"
 exit 0

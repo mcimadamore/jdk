@@ -37,6 +37,7 @@
 #include "opto/stringopts.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "runtime/stubRoutines.hpp"
 
 #define __ kit.
 
@@ -232,7 +233,7 @@ class StringConcat : public ResourceObj {
       const TypePtr* no_memory_effects = NULL;
       Compile* C = _stringopts->C;
       CallStaticJavaNode* call = new CallStaticJavaNode(call_type, call_addr, "uncommon_trap",
-                                                        jvms->bci(), no_memory_effects);
+                                                        no_memory_effects);
       for (int e = 0; e < TypeFunc::Parms; e++) {
         call->init_req(e, uct->in(e));
       }
