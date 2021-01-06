@@ -851,13 +851,13 @@ const intx ObjectAlignmentInBytes = 8;
           range(500, max_intx)                                              \
           constraint(BiasedLockingDecayTimeFunc,AfterErgo)                  \
                                                                             \
-  product(intx, DiagnoseSyncOnPrimitiveWrappers, 0, DIAGNOSTIC,             \
+  product(intx, DiagnoseSyncOnValueBasedClasses, 0, DIAGNOSTIC,             \
              "Detect and take action upon identifying synchronization on "  \
-             "primitive wrappers. Modes: "                                  \
+             "value based classes. Modes: "                                 \
              "0: off; "                                                     \
              "1: exit with fatal error; "                                   \
              "2: log message to stdout. Output file can be specified with " \
-             "   -Xlog:primitivewrappers. If JFR is running it will "       \
+             "   -Xlog:valuebasedclasses. If JFR is running it will "       \
              "   also generate JFR events.")                                \
              range(0, 2)                                                    \
                                                                             \
@@ -954,9 +954,6 @@ const intx ObjectAlignmentInBytes = 8;
           range(0.0, 100.0)                                                 \
                                                                             \
   /* JVMTI heap profiling */                                                \
-                                                                            \
-  product(bool, TraceJVMTIObjectTagging, false, DIAGNOSTIC,                 \
-          "Trace JVMTI object tagging calls")                               \
                                                                             \
   product(bool, VerifyBeforeIteration, false, DIAGNOSTIC,                   \
           "Verify memory system before JVMTI iteration")                    \
@@ -2490,7 +2487,12 @@ const intx ObjectAlignmentInBytes = 8;
                 "Allow allocating fields in empty slots of super-classes")  \
                                                                             \
   product(bool, DeoptimizeNMethodBarriersALot, false, DIAGNOSTIC,           \
-                "Make nmethod barriers deoptimise a lot.")
+                "Make nmethod barriers deoptimise a lot.")                  \
+                                                                            \
+  develop(bool, VerifyCrossModifyFence,                                     \
+          false AARCH64_ONLY(DEBUG_ONLY(||true)),                           \
+             "Mark all threads after a safepoint, and clear on a modify "   \
+             "fence. Add cleanliness checks.")                              \
 
 // end of RUNTIME_FLAGS
 

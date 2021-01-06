@@ -58,6 +58,8 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
+    final static int FIRST_RESERVED_FLAG = 1 << 16; // upper 16 bits are reserved
+    final static int SKIP_BOUND_CHECK = FIRST_RESERVED_FLAG;
     final static long NONCE = new Random().nextLong();
 
     final static JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
@@ -99,6 +101,7 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
 
     @Override
     public Spliterator<MemorySegment> spliterator(SequenceLayout sequenceLayout) {
+        Objects.requireNonNull(sequenceLayout);
         checkValidState();
         if (sequenceLayout.byteSize() != byteSize()) {
             throw new IllegalArgumentException();
@@ -115,7 +118,7 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     }
 
     public void copyFrom(MemorySegment src) {
-        AbstractMemorySegmentImpl that = (AbstractMemorySegmentImpl)src;
+        AbstractMemorySegmentImpl that = (AbstractMemorySegmentImpl)Objects.requireNonNull(src);
         long size = that.byteSize();
         checkAccess(0, size, false);
         that.checkAccess(0, size, true);
@@ -124,9 +127,19 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
                 base(), min(), size);
     }
 
+    public void copyFromSwap(MemorySegment src, long elemSize) {
+        AbstractMemorySegmentImpl that = (AbstractMemorySegmentImpl)src;
+        long size = that.byteSize();
+        checkAccess(0, size, false);
+        that.checkAccess(0, size, true);
+        SCOPED_MEMORY_ACCESS.copySwapMemory(scope, that.scope,
+                        that.base(), that.min(),
+                        base(), min(), size, elemSize);
+    }
+
     @Override
     public long mismatch(MemorySegment other) {
-        AbstractMemorySegmentImpl that = (AbstractMemorySegmentImpl)other;
+        AbstractMemorySegmentImpl that = (AbstractMemorySegmentImpl)Objects.requireNonNull(other);
         final long thisSize = this.byteSize();
         final long thatSize = that.byteSize();
         final long length = Math.min(thisSize, thatSize);
@@ -284,6 +297,21 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     }
 
     @Override
+    public MemorySegment handoff(NativeScope scope) {
+        Objects.requireNonNull(scope);
+        checkValidState();
+        if (!isSet(HANDOFF)) {
+            throw unsupportedAccessMode(HANDOFF);
+        }
+        if (!isSet(CLOSE)) {
+            throw unsupportedAccessMode(CLOSE);
+        }
+        MemorySegment dup = handoff(scope.ownerThread());
+        ((AbstractNativeScope)scope).register(dup);
+        return dup.withAccessModes(accessModes() & (READ | WRITE));
+    }
+
+    @Override
     public MemorySegment registerCleaner(Cleaner cleaner) {
         Objects.requireNonNull(cleaner);
         checkValidState();
@@ -400,8 +428,11 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
         return (int)arraySize;
     }
 
-    private void checkBounds(long offset, long length) {
-        Preconditions.checkIndex(offset, this.length - length + 1, (s, args) -> outOfBoundException(offset, length));
+    final void checkBounds(long offset, long length) {
+        if (!isSet(SKIP_BOUND_CHECK)) {
+            // this check fails for the everything segment
+            Preconditions.checkIndex(offset, this.length - length + 1, (s, args) -> outOfBoundException(offset, length));
+        }
     }
 
     @Override
@@ -526,6 +557,7 @@ public abstract class AbstractMemorySegmentImpl implements MemorySegment, Memory
     }
 
     public static AbstractMemorySegmentImpl ofBuffer(ByteBuffer bb) {
+        Objects.requireNonNull(bb);
         long bbAddress = nioAccess.getBufferAddress(bb);
         Object base = nioAccess.getBufferBase(bb);
         UnmapperProxy unmapper = nioAccess.unmapper(bb);

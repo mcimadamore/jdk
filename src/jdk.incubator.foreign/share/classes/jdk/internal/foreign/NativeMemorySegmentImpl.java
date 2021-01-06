@@ -111,7 +111,7 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
     }
 
     public static MemorySegment makeNativeSegmentUnchecked(MemoryAddress min, long bytesSize, Runnable cleanupAction, Object ref) {
-        return new NativeMemorySegmentImpl(min.toRawLongValue(), bytesSize, ALL_ACCESS,
+        return new NativeMemorySegmentImpl(min.toRawLongValue(), bytesSize, ALL_ACCESS | SKIP_BOUND_CHECK,
                 MemoryScope.createConfined(ref, cleanupAction == null ? MemoryScope.DUMMY_CLEANUP_ACTION : cleanupAction, null));
     }
 }
