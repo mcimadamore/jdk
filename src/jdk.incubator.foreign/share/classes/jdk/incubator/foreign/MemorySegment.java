@@ -36,6 +36,7 @@ import jdk.internal.foreign.ResourceScopeImpl;
 import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
+import jdk.internal.vm.annotation.ForceInline;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -166,7 +167,10 @@ public interface MemorySegment extends Addressable {
      * @return The base memory address.
      */
     @Override
-    MemoryAddress address();
+    @ForceInline
+    default MemoryAddress address() {
+        return new MemoryAddress((AbstractMemorySegmentImpl)this, 0L);
+    }
 
     /**
      * Returns a spliterator for this memory segment. The returned spliterator reports {@link Spliterator#SIZED},

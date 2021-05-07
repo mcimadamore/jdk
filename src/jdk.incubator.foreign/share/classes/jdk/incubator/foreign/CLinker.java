@@ -136,11 +136,6 @@ public interface CLinker {
      * If the provided method type's return type is {@code MemorySegment}, then the resulting method handle features
      * an additional prefix parameter, of type {@link SegmentAllocator}, which will be used by the linker runtime
      * to allocate structs returned by-value.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted method are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @see LibraryLookup#lookup(String)
      *
@@ -153,7 +148,6 @@ public interface CLinker {
      * {@code --enable-native-access} is either absent, or does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
-    @CallerSensitive
     MethodHandle downcallHandle(Addressable symbol, MethodType type, FunctionDescriptor function);
 
     /**
@@ -162,11 +156,6 @@ public interface CLinker {
      * <p>
      * If the provided method type's return type is {@code MemorySegment}, then the provided allocator will be used by
      * the linker runtime to allocate structs returned by-value.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted method are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @see LibraryLookup#lookup(String)
      *
@@ -180,7 +169,6 @@ public interface CLinker {
      * {@code --enable-native-access} is either absent, or does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
-    @CallerSensitive
     MethodHandle downcallHandle(Addressable symbol, SegmentAllocator allocator, MethodType type, FunctionDescriptor function);
 
     /**
@@ -192,12 +180,7 @@ public interface CLinker {
      * If the provided method type's return type is {@code MemorySegment}, then the resulting method handle features an
      * additional prefix parameter (inserted immediately after the address parameter), of type {@link SegmentAllocator}),
      * which will be used by the linker runtime to allocate structs returned by-value.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted method are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
-     **
+     *
      * @see LibraryLookup#lookup(String)
      *
      * @param type     the method type.
@@ -208,7 +191,6 @@ public interface CLinker {
      * {@code --enable-native-access} is either absent, or does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
-    @CallerSensitive
     MethodHandle downcallHandle(MethodType type, FunctionDescriptor function);
 
     /**
@@ -217,11 +199,6 @@ public interface CLinker {
      *
      * <p>The returned memory address is associated with the provided scope. When such scope is closed,
      * the corresponding native stub will be deallocated.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted method are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param target   the target method handle.
      * @param function the function descriptor.
@@ -234,7 +211,6 @@ public interface CLinker {
      * {@code --enable-native-access} is either absent, or does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
-    @CallerSensitive
     MemoryAddress upcallStub(MethodHandle target, FunctionDescriptor function, ResourceScope scope);
 
     /**

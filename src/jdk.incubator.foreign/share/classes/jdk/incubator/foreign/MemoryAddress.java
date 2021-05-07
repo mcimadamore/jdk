@@ -26,11 +26,14 @@
 
 package jdk.incubator.foreign;
 
-import jdk.internal.foreign.MemoryAddressImpl;
-import jdk.internal.ref.CleanerFactory;
+import jdk.internal.ValueBased;
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.NativeMemorySegmentImpl;
+import jdk.internal.foreign.ResourceScopeImpl;
 import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 
-import java.lang.ref.Cleaner;
+import java.util.Objects;
 
 /**
  * A memory address models a reference into a memory location. Memory addresses are typically obtained using the
@@ -63,12 +66,30 @@ import java.lang.ref.Cleaner;
  * explicitly permitted types.
  *
  * @implSpec
- * Implementations of this interface are immutable, thread-safe and <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
+ * The implementation of this class is immutable, thread-safe and <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
  */
-public interface MemoryAddress extends Addressable {
+@ValueBased
+public final class MemoryAddress implements Addressable {
+
+    private final AbstractMemorySegmentImpl segment;
+    private final long offset;
+
+    MemoryAddress(AbstractMemorySegmentImpl segment, long offset) {
+        this.segment = segment;
+        this.offset = offset;
+    }
+
+    private Object base() {
+        return segment != null ? segment.base() : null;
+    }
+
+    private long offset() {
+        return segment != null ?
+                segment.min() + offset : offset;
+    }
 
     @Override
-    default MemoryAddress address() {
+    public MemoryAddress address() {
         return this;
     }
 
@@ -77,13 +98,18 @@ public interface MemoryAddress extends Addressable {
      * @param offset specified offset (in bytes), relative to this address, which should be used to create the new address.
      * @return a new memory address with given offset from current one.
      */
-    MemoryAddress addOffset(long offset);
+    public MemoryAddress addOffset(long offset) {
+        return new MemoryAddress(segment, this.offset + offset);
+    }
 
     /**
      * Returns the resource scope associated with this memory address.
      * @return the resource scope associated with this memory address.
      */
-    ResourceScope scope();
+    public ResourceScope scope() {
+        return segment != null ?
+                segment.scope() : ResourceScope.globalScope();
+    }
 
     /**
      * Returns the offset of this memory address into the given segment. More specifically, if both the segment's
@@ -103,7 +129,14 @@ public interface MemoryAddress extends Addressable {
      * @throws IllegalArgumentException if {@code segment} is not compatible with this address; this can happen, for instance,
      * when {@code segment} models an heap memory region, while this address is a {@linkplain #isNative() native} address.
      */
-    long segmentOffset(MemorySegment segment);
+    public long segmentOffset(MemorySegment segment) {
+        Objects.requireNonNull(segment);
+        AbstractMemorySegmentImpl segmentImpl = (AbstractMemorySegmentImpl)segment;
+        if (segmentImpl.base() != base()) {
+            throw new IllegalArgumentException("Incompatible segment: " + segment);
+        }
+        return offset() - segmentImpl.min();
+    }
 
     /**
      Returns a new native memory segment with given size and resource scope (replacing the scope already associated
@@ -140,7 +173,10 @@ public interface MemoryAddress extends Addressable {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    MemorySegment asSegment(long bytesSize, ResourceScope scope);
+    public MemorySegment asSegment(long bytesSize, ResourceScope scope) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass());
+        return asSegment(bytesSize, null, scope);
+    }
 
     /**
      * Returns a new native memory segment with given size and resource scope (replacing the scope already associated
@@ -175,13 +211,24 @@ public interface MemoryAddress extends Addressable {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    MemorySegment asSegment(long bytesSize, Runnable cleanupAction, ResourceScope scope);
+    public MemorySegment asSegment(long bytesSize, Runnable cleanupAction, ResourceScope scope) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass());
+        Objects.requireNonNull(scope);
+        if (bytesSize <= 0) {
+            throw new IllegalArgumentException("Invalid size : " + bytesSize);
+        }
+        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(this, bytesSize,
+                cleanupAction,
+                (ResourceScopeImpl) scope);
+    }
 
     /**
      * Is this an off-heap memory address?
      * @return true, if this is an off-heap memory address.
      */
-    boolean isNative();
+    public boolean isNative() {
+        return base() == null;
+    }
 
     /**
      * Returns the raw long value associated with this native memory address.
@@ -190,7 +237,15 @@ public interface MemoryAddress extends Addressable {
      * @throws IllegalStateException if the scope associated with this segment has been already closed,
      * or if access occurs from a thread other than the thread owning either segment.
      */
-    long toRawLongValue();
+    public long toRawLongValue() {
+        if (segment != null) {
+            if (segment.base() != null) {
+                throw new UnsupportedOperationException("Not a native address");
+            }
+            segment.checkValidState();
+        }
+        return offset();
+    }
 
     /**
      * Compares the specified object with this address for equality. Returns {@code true} if and only if the specified
@@ -205,20 +260,35 @@ public interface MemoryAddress extends Addressable {
      * @return {@code true} if the specified object is equal to this address.
      */
     @Override
-    boolean equals(Object that);
+    public boolean equals(Object that) {
+        return that instanceof MemoryAddress addr &&
+                Objects.equals(base(), addr.base()) &&
+                offset() == addr.offset();
+    }
 
     /**
      * Returns the hash code value for this address.
      * @return the hash code value for this address.
      */
     @Override
-    int hashCode();
+    public int hashCode() {
+        return Objects.hash(base(), offset());
+    }
+
+    /**
+     * Returns a string representation of this memory address.
+     * @return A string representation of this memory address.
+     */
+    @Override
+    public String toString() {
+        return "MemoryAddress{ base: " + base() + " offset=0x" + Long.toHexString(offset()) + " }";
+    }
 
     /**
      * The native memory address instance modelling the {@code NULL} address, associated
      * with the {@linkplain ResourceScope#globalScope() global} resource scope.
      */
-    MemoryAddress NULL = new MemoryAddressImpl(null, 0L);
+    public static MemoryAddress NULL = new MemoryAddress(null, 0L);
 
     /**
      * Obtain a native memory address instance from given long address. The returned address is associated
@@ -226,9 +296,9 @@ public interface MemoryAddress extends Addressable {
      * @param value the long address.
      * @return the new memory address instance.
      */
-    static MemoryAddress ofLong(long value) {
+    public static MemoryAddress ofLong(long value) {
         return value == 0 ?
                 NULL :
-                new MemoryAddressImpl(null, value);
+                new MemoryAddress(null, value);
     }
 }

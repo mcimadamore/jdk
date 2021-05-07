@@ -26,7 +26,7 @@ package jdk.internal.foreign.abi;
 
 import jdk.incubator.foreign.MemoryLayouts;
 import jdk.incubator.foreign.MemorySegment;
-import jdk.internal.foreign.MemoryAddressImpl;
+import jdk.internal.foreign.NativeMemorySegmentImpl;
 
 import java.io.PrintStream;
 import java.lang.invoke.VarHandle;
@@ -131,7 +131,7 @@ class BufferLayout {
         }
         long stack_ptr = (long) VH_LONG.get(buff.asSlice(stack_args));
         long stack_bytes = (long) VH_LONG.get(buff.asSlice(stack_args_bytes));
-        MemorySegment stackArgs = MemoryAddressImpl.ofLongUnchecked(stack_ptr, stack_bytes);
+        MemorySegment stackArgs = NativeMemorySegmentImpl.ofLongUnchecked(stack_ptr, stack_bytes);
         stream.println("Stack {");
         for (int i = 0; i < stack_bytes / 8; i += 8) {
             stream.printf("    @%d: %s%n", i, getLongString(stackArgs, i));

@@ -76,9 +76,9 @@ public abstract class AbstractMemorySegmentImpl extends MemorySegmentProxy imple
         this.scope = scope;
     }
 
-    abstract long min();
+    public abstract long min();
 
-    abstract Object base();
+    public abstract Object base();
 
     abstract AbstractMemorySegmentImpl dup(long offset, long size, int mask, ResourceScopeImpl scope);
 
@@ -230,12 +230,6 @@ public abstract class AbstractMemorySegmentImpl extends MemorySegmentProxy imple
     }
 
     @Override
-    @ForceInline
-    public final MemoryAddress address() {
-        return new MemoryAddressImpl(this, 0L);
-    }
-
-    @Override
     public final ByteBuffer asByteBuffer() {
         checkArraySize("ByteBuffer", 1);
         ByteBuffer _bb = makeByteBuffer();
@@ -345,7 +339,7 @@ public abstract class AbstractMemorySegmentImpl extends MemorySegmentProxy imple
         checkBounds(offset, length);
     }
 
-    void checkValidState() {
+    public void checkValidState() {
         try {
             scope.checkValidState();
         } catch (ScopedMemoryAccess.Scope.ScopedAccessError ex) {

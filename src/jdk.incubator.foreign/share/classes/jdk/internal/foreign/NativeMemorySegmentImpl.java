@@ -80,12 +80,12 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
     }
 
     @Override
-    long min() {
+    public long min() {
         return min;
     }
 
     @Override
-    Object base() {
+    public Object base() {
         return null;
     }
 
@@ -130,5 +130,17 @@ public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
             scope.addCloseAction(cleanupAction);
         }
         return segment;
+    }
+
+    public static MemorySegment ofLongUnchecked(long value) {
+        return ofLongUnchecked(value, Long.MAX_VALUE);
+    }
+
+    public static MemorySegment ofLongUnchecked(long value, long byteSize, ResourceScopeImpl resourceScope) {
+        return makeNativeSegmentUnchecked(MemoryAddress.ofLong(value), byteSize, null, resourceScope);
+    }
+
+    public static MemorySegment ofLongUnchecked(long value, long byteSize) {
+        return makeNativeSegmentUnchecked(MemoryAddress.ofLong(value), byteSize, null, ResourceScopeImpl.GLOBAL);
     }
 }

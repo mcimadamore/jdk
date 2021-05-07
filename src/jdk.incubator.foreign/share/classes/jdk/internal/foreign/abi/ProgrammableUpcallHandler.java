@@ -28,11 +28,9 @@ package jdk.internal.foreign.abi;
 import jdk.incubator.foreign.MemoryAddress;
 import jdk.incubator.foreign.MemoryLayouts;
 import jdk.incubator.foreign.MemorySegment;
-import jdk.incubator.foreign.ResourceScope;
-import jdk.incubator.foreign.SegmentAllocator;
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.foreign.MemoryAddressImpl;
+import jdk.internal.foreign.NativeMemorySegmentImpl;
 import sun.security.action.GetPropertyAction;
 
 import java.lang.invoke.MethodHandle;
@@ -210,14 +208,14 @@ public class ProgrammableUpcallHandler {
     private static void invokeMoves(MemoryAddress buffer, MethodHandle leaf,
                                     Binding.VMLoad[] argBindings, Binding.VMStore[] returnBindings,
                                     ABIDescriptor abi, BufferLayout layout) throws Throwable {
-        MemorySegment bufferBase = MemoryAddressImpl.ofLongUnchecked(buffer.toRawLongValue(), layout.size);
+        MemorySegment bufferBase = NativeMemorySegmentImpl.ofLongUnchecked(buffer.toRawLongValue(), layout.size);
 
         if (DEBUG) {
             System.err.println("Buffer state before:");
             layout.dump(abi.arch, bufferBase, System.err);
         }
 
-        MemorySegment stackArgsBase = MemoryAddressImpl.ofLongUnchecked((long)VH_LONG.get(bufferBase.asSlice(layout.stack_args)));
+        MemorySegment stackArgsBase = NativeMemorySegmentImpl.ofLongUnchecked((long)VH_LONG.get(bufferBase.asSlice(layout.stack_args)));
         Object[] moves = new Object[argBindings.length];
         for (int i = 0; i < moves.length; i++) {
             Binding.VMLoad binding = argBindings[i];

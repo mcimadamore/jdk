@@ -58,10 +58,10 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
     }
 
     @Override
-    abstract H base();
+    public abstract H base();
 
     @Override
-    long min() {
+    public long min() {
         return offset;
     }
 
@@ -91,7 +91,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        byte[] base() {
+        public byte[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -114,7 +114,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        char[] base() {
+        public char[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -137,7 +137,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        short[] base() {
+        public short[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -160,7 +160,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        int[] base() {
+        public int[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -183,7 +183,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        long[] base() {
+        public long[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -206,7 +206,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        float[] base() {
+        public float[] base() {
             return Objects.requireNonNull(base);
         }
 
@@ -229,7 +229,7 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
         }
 
         @Override
-        double[] base() {
+        public double[] base() {
             return Objects.requireNonNull(base);
         }
 

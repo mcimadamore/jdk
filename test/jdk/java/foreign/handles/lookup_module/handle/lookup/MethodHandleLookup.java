@@ -23,7 +23,6 @@
 
 package handle.lookup;
 
-import jdk.incubator.foreign.Addressable;
 import jdk.incubator.foreign.CLinker;
 
 import java.lang.invoke.MethodHandle;
@@ -31,15 +30,11 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
-import java.util.Optional;
 
-import jdk.incubator.foreign.FunctionDescriptor;
 import jdk.incubator.foreign.LibraryLookup;
 import jdk.incubator.foreign.MemoryAddress;
-import jdk.incubator.foreign.MemoryLayout;
 import jdk.incubator.foreign.MemorySegment;
 import jdk.incubator.foreign.ResourceScope;
-import jdk.incubator.foreign.SegmentAllocator;
 
 import org.testng.annotations.*;
 
@@ -56,18 +51,6 @@ public class MethodHandleLookup {
             return new Object[][]{
                     { MethodHandles.lookup().findStatic(CLinker.class, "getInstance",
                             MethodType.methodType(CLinker.class)), "CLinker::getInstance" },
-                    { MethodHandles.lookup().findVirtual(CLinker.class, "downcallHandle",
-                            MethodType.methodType(MethodHandle.class, Addressable.class, MethodType.class, FunctionDescriptor.class)),
-                            "CLinker::downcallHandle/1" },
-                    { MethodHandles.lookup().findVirtual(CLinker.class, "downcallHandle",
-                            MethodType.methodType(MethodHandle.class, Addressable.class, SegmentAllocator.class, MethodType.class, FunctionDescriptor.class)),
-                            "CLinker::downcallHandle/2" },
-                    { MethodHandles.lookup().findVirtual(CLinker.class, "downcallHandle",
-                            MethodType.methodType(MethodHandle.class, MethodType.class, FunctionDescriptor.class)),
-                            "CLinker::downcallHandle/3" },
-                    { MethodHandles.lookup().findVirtual(CLinker.class, "upcallStub",
-                            MethodType.methodType(MemoryAddress.class, MethodHandle.class, FunctionDescriptor.class, ResourceScope.class)),
-                            "CLinker::upcallStub" },
                     { MethodHandles.lookup().findStatic(CLinker.class, "toJavaString",
                             MethodType.methodType(String.class, MemoryAddress.class)),
                             "CLinker::toJavaString/1" },
@@ -95,9 +78,6 @@ public class MethodHandleLookup {
                     { MethodHandles.lookup().findStatic(LibraryLookup.class, "ofDefault",
                             MethodType.methodType(LibraryLookup.class)),
                             "LibraryLookup::ofDefault" },
-                    { MethodHandles.lookup().findVirtual(LibraryLookup.class, "lookup",
-                            MethodType.methodType(Optional.class, String.class, MemoryLayout.class)),
-                            "LibraryLookup::lookup" },
                     { MethodHandles.lookup().findVirtual(MemoryAddress.class, "asSegment",
                             MethodType.methodType(MemorySegment.class, long.class, ResourceScope.class)),
                             "MemoryAddress::asSegment/1" },
