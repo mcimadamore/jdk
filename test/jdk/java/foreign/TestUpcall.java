@@ -29,7 +29,7 @@
  * @build NativeTestHelper CallGeneratorHelper TestUpcall
  *
  * @run testng/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:-VerifyDependencies
- *   --enable-native-access=ALL-UNNAMED
+ *   --enable-native-access=ALL-UNNAMED -ea -esa -Xcheck:jni
  *   TestUpcall
  */
 
@@ -44,6 +44,7 @@ import jdk.incubator.foreign.ResourceScope;
 import jdk.incubator.foreign.SegmentAllocator;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+import org.testng.annotations.Listeners;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -58,7 +59,7 @@ import static java.lang.invoke.MethodHandles.insertArguments;
 import static jdk.incubator.foreign.CLinker.C_POINTER;
 import static org.testng.Assert.assertEquals;
 
-
+@Listeners({})
 public class TestUpcall extends CallGeneratorHelper {
 
     static {
@@ -88,40 +89,23 @@ public class TestUpcall extends CallGeneratorHelper {
         dummyStub = abi.upcallStub(DUMMY, FunctionDescriptor.ofVoid(), ResourceScope.newImplicitScope());
     }
 
-    @Test(dataProvider="functions", dataProviderClass=CallGeneratorHelper.class)
+    @Test(dataProvider="functionsOne", dataProviderClass=CallGeneratorHelper.class)
     public void testUpcalls(int count, String fName, Ret ret, List<ParamType> paramTypes, List<StructFieldType> fields) throws Throwable {
-        List<Consumer<Object>> returnChecks = new ArrayList<>();
-        List<Consumer<Object[]>> argChecks = new ArrayList<>();
-        MemoryAddress addr = LOOKUP.lookup(fName).get();
-        MethodType mtype = methodType(ret, paramTypes, fields);
-        try (NativeScope scope = new NativeScope()) {
-            MethodHandle mh = abi.downcallHandle(addr, scope, mtype, function(ret, paramTypes, fields));
-            Object[] args = makeArgs(scope.scope(), ret, paramTypes, fields, returnChecks, argChecks);
-            Object[] callArgs = args;
-            Object res = mh.invokeWithArguments(callArgs);
-            argChecks.forEach(c -> c.accept(args));
-            if (ret == Ret.NON_VOID) {
-                returnChecks.forEach(c -> c.accept(res));
+        for (int i = 0 ; i < 48_000 ; i++) {
+            List<Consumer<Object>> returnChecks = new ArrayList<>();
+            List<Consumer<Object[]>> argChecks = new ArrayList<>();
+            MemoryAddress addr = LOOKUP.lookup(fName).get();
+            MethodType mtype = methodType(ret, paramTypes, fields);
+            try (NativeScope scope = new NativeScope()) {
+                MethodHandle mh = abi.downcallHandle(addr, scope, mtype, function(ret, paramTypes, fields));
+                Object[] args = makeArgs(scope.scope(), ret, paramTypes, fields, returnChecks, argChecks);
+                Object[] callArgs = args;
+                Object res = mh.invokeWithArguments(callArgs);
+                argChecks.forEach(c -> c.accept(args));
+                if (ret == Ret.NON_VOID) {
+                    returnChecks.forEach(c -> c.accept(res));
+                }
             }
-        }
-    }
-
-    @Test(dataProvider="functions", dataProviderClass=CallGeneratorHelper.class)
-    public void testUpcallsNoScope(int count, String fName, Ret ret, List<ParamType> paramTypes, List<StructFieldType> fields) throws Throwable {
-        List<Consumer<Object>> returnChecks = new ArrayList<>();
-        List<Consumer<Object[]>> argChecks = new ArrayList<>();
-        MemoryAddress addr = LOOKUP.lookup(fName).get();
-        MethodType mtype = methodType(ret, paramTypes, fields);
-        MethodHandle mh = abi.downcallHandle(addr, IMPLICIT_ALLOCATOR, mtype, function(ret, paramTypes, fields));
-        Object[] args = makeArgs(ResourceScope.newImplicitScope(), ret, paramTypes, fields, returnChecks, argChecks);
-        Object[] callArgs = args;
-        if (count % 100 == 0) {
-            System.gc();
-        }
-        Object res = mh.invokeWithArguments(callArgs);
-        argChecks.forEach(c -> c.accept(args));
-        if (ret == Ret.NON_VOID) {
-            returnChecks.forEach(c -> c.accept(res));
         }
     }
 

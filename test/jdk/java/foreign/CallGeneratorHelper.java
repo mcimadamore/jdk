@@ -215,6 +215,11 @@ public class CallGeneratorHelper extends NativeTestHelper {
         return downcalls.toArray(new Object[0][]);
     }
 
+    @DataProvider(name = "functionsOne")
+    public static Object[][] functionsOne() {
+        return new Object[][] { functions()[100] };
+    }
+
     static <Z extends Enum<Z>> String sigCode(List<Z> elems) {
         return elems.stream().map(p -> p.name().charAt(0) + "").collect(Collectors.joining());
     }

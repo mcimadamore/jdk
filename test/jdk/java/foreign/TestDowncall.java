@@ -29,7 +29,7 @@
  * @build NativeTestHelper CallGeneratorHelper TestDowncall
  *
  * @run testng/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:-VerifyDependencies
- *   --enable-native-access=ALL-UNNAMED
+ *   --enable-native-access=ALL-UNNAMED -Xmx768m -XX:MaxRAMPercentage=6.25 -ea -esa -Xcheck:jni
  *   TestDowncall
  */
 
@@ -59,54 +59,30 @@ public class TestDowncall extends CallGeneratorHelper {
 
     static final SymbolLookup LOOKUP = SymbolLookup.loaderLookup();
 
-    @Test(dataProvider="functions", dataProviderClass=CallGeneratorHelper.class)
+    @Test(dataProvider="functionsOne", dataProviderClass=CallGeneratorHelper.class)
     public void testDowncall(int count, String fName, Ret ret, List<ParamType> paramTypes, List<StructFieldType> fields) throws Throwable {
-        List<Consumer<Object>> checks = new ArrayList<>();
-        MemoryAddress addr = LOOKUP.lookup(fName).get();
-        MethodType mt = methodType(ret, paramTypes, fields);
-        FunctionDescriptor descriptor = function(ret, paramTypes, fields);
-        Object[] args = makeArgs(paramTypes, fields, checks);
-        try (NativeScope scope = new NativeScope()) {
-            boolean needsScope = mt.returnType().equals(MemorySegment.class);
-            Object res = doCall(addr, scope, mt, descriptor, args);
-            if (ret == Ret.NON_VOID) {
-                checks.forEach(c -> c.accept(res));
-                if (needsScope) {
-                    // check that return struct has indeed been allocated in the native scope
-                    assertEquals(((MemorySegment) res).scope(), scope.scope());
-                    assertEquals(scope.allocatedBytes(), descriptor.returnLayout().get().byteSize());
+        for (int i = 0 ; i < 48_000 ; i++) {
+            List<Consumer<Object>> checks = new ArrayList<>();
+            MemoryAddress addr = LOOKUP.lookup(fName).get();
+            MethodType mt = methodType(ret, paramTypes, fields);
+            FunctionDescriptor descriptor = function(ret, paramTypes, fields);
+            Object[] args = makeArgs(paramTypes, fields, checks);
+            try (NativeScope scope = new NativeScope()) {
+                boolean needsScope = mt.returnType().equals(MemorySegment.class);
+                Object res = doCall(addr, scope, mt, descriptor, args);
+                if (ret == Ret.NON_VOID) {
+                    checks.forEach(c -> c.accept(res));
+                    if (needsScope) {
+                        // check that return struct has indeed been allocated in the native scope
+                        assertEquals(((MemorySegment) res).scope(), scope.scope());
+                        assertEquals(scope.allocatedBytes(), descriptor.returnLayout().get().byteSize());
+                    } else {
+                        // if here, there should be no allocation through the scope!
+                        assertEquals(scope.allocatedBytes(), 0L);
+                    }
                 } else {
                     // if here, there should be no allocation through the scope!
                     assertEquals(scope.allocatedBytes(), 0L);
-                }
-            } else {
-                // if here, there should be no allocation through the scope!
-                assertEquals(scope.allocatedBytes(), 0L);
-            }
-        }
-    }
-
-    @Test(dataProvider="functions", dataProviderClass=CallGeneratorHelper.class)
-    public void testDowncallNoScope(int count, String fName, Ret ret, List<ParamType> paramTypes, List<StructFieldType> fields) throws Throwable {
-        List<Consumer<Object>> checks = new ArrayList<>();
-        MemoryAddress addr = LOOKUP.lookup(fName).get();
-        MethodType mt = methodType(ret, paramTypes, fields);
-        FunctionDescriptor descriptor = function(ret, paramTypes, fields);
-        Object[] args = makeArgs(paramTypes, fields, checks);
-        boolean needsScope = mt.returnType().equals(MemorySegment.class);
-        if (count % 100 == 0) {
-            System.gc();
-        }
-        Object res = doCall(addr, IMPLICIT_ALLOCATOR, mt, descriptor, args);
-        if (ret == Ret.NON_VOID) {
-            checks.forEach(c -> c.accept(res));
-            if (needsScope) {
-                // check that return struct has indeed been allocated in the default scope
-                try {
-                    ((MemorySegment)res).scope().close(); // should throw
-                    fail("Expected exception!");
-                } catch (UnsupportedOperationException ex) {
-                    // ok
                 }
             }
         }
