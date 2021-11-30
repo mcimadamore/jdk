@@ -47,11 +47,10 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final int BYTE_ARR_BASE = UNSAFE.arrayBaseOffset(byte[].class);
 
-    private static final long SIGN_MASK = ~(1L << 63);
-    private static final long MAX_ALIGN_1 = ~(0L) & SIGN_MASK;
-    private static final long MAX_ALIGN_2 = ~(1L) & SIGN_MASK;
-    private static final long MAX_ALIGN_4 = ~(3L) & SIGN_MASK;
-    private static final long MAX_ALIGN_8 = ~(7L) & SIGN_MASK;
+    private static final long MAX_ALIGN_1 = ~(0L);
+    private static final long MAX_ALIGN_2 = ~(1L);
+    private static final long MAX_ALIGN_4 = ~(3L);
+    private static final long MAX_ALIGN_8 = ~(7L);
 
     final long offset;
     final H base;
