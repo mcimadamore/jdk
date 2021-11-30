@@ -1004,10 +1004,12 @@ for (long l = 0; l < segment.byteSize(); l++) {
         if (srcElementLayout.byteSize() != dstElementLayout.byteSize()) {
             throw new IllegalArgumentException("Source and destination layouts must have same sizes");
         }
-        if (srcOffset % srcElementLayout.byteAlignment() != 0) {
+        if (srcOffset % srcElementLayout.byteAlignment() != 0 ||
+                ((srcImpl.unsafeGetOffset() | srcImpl.maxAlignMask()) & (srcElementLayout.byteAlignment() - 1)) != 0) {
             throw new IllegalArgumentException("Source segment incompatible with alignment constraints");
         }
-        if (dstOffset % dstElementLayout.byteAlignment() != 0) {
+        if (dstOffset % dstElementLayout.byteAlignment() != 0 ||
+                ((dstImpl.unsafeGetOffset() | dstImpl.maxAlignMask()) & (dstElementLayout.byteAlignment() - 1)) != 0) {
             throw new IllegalArgumentException("Target segment incompatible with alignment constraints");
         }
         long size = elementCount * srcElementLayout.byteSize();
@@ -1581,6 +1583,10 @@ for (long l = 0; l < segment.byteSize(); l++) {
         int dstBase = (int)baseAndScale;
         int dstWidth = (int)(baseAndScale >> 32);
         AbstractMemorySegmentImpl srcImpl = (AbstractMemorySegmentImpl)srcSegment;
+        if (srcOffset % srcLayout.byteAlignment() != 0 ||
+                ((srcImpl.unsafeGetOffset() | srcImpl.maxAlignMask()) & (srcLayout.byteAlignment() - 1)) != 0) {
+            throw new IllegalArgumentException("Source segment incompatible with alignment constraints");
+        }
         srcImpl.checkAccess(srcOffset, elementCount * dstWidth, true);
         Objects.checkFromIndexSize(dstIndex, elementCount, Array.getLength(dstArray));
         if (dstWidth == 1 || srcLayout.order() == ByteOrder.nativeOrder()) {
@@ -1623,6 +1629,10 @@ for (long l = 0; l < segment.byteSize(); l++) {
         int srcWidth = (int)(baseAndScale >> 32);
         Objects.checkFromIndexSize(srcIndex, elementCount, Array.getLength(srcArray));
         AbstractMemorySegmentImpl destImpl = (AbstractMemorySegmentImpl)dstSegment;
+        if (dstOffset % dstLayout.byteAlignment() != 0 ||
+                ((destImpl.unsafeGetOffset() | destImpl.maxAlignMask()) & (dstLayout.byteAlignment() - 1)) != 0) {
+            throw new IllegalArgumentException("Source segment incompatible with alignment constraints");
+        }
         destImpl.checkAccess(dstOffset, elementCount * srcWidth, false);
         if (srcWidth == 1 || dstLayout.order() == ByteOrder.nativeOrder()) {
             ScopedMemoryAccess.getScopedMemoryAccess().copyMemory(null, destImpl.scope(),

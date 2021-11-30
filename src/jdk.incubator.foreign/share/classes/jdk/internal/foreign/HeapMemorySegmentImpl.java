@@ -47,6 +47,12 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final int BYTE_ARR_BASE = UNSAFE.arrayBaseOffset(byte[].class);
 
+    private static final long SIGN_MASK = ~(1L << 63);
+    private static final long MAX_ALIGN_1 = ~(0L) & SIGN_MASK;
+    private static final long MAX_ALIGN_2 = ~(1L) & SIGN_MASK;
+    private static final long MAX_ALIGN_4 = ~(3L) & SIGN_MASK;
+    private static final long MAX_ALIGN_8 = ~(7L) & SIGN_MASK;
+
     final long offset;
     final H base;
 
@@ -100,6 +106,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             long byteSize = (long)arr.length * Unsafe.ARRAY_BYTE_INDEX_SCALE;
             return new OfByte(Unsafe.ARRAY_BYTE_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
         }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_1;
+        }
     }
 
     public static class OfChar extends HeapMemorySegmentImpl<char[]> {
@@ -122,6 +133,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             Objects.requireNonNull(arr);
             long byteSize = (long)arr.length * Unsafe.ARRAY_CHAR_INDEX_SCALE;
             return new OfChar(Unsafe.ARRAY_CHAR_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
+        }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_2;
         }
     }
 
@@ -146,6 +162,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             long byteSize = (long)arr.length * Unsafe.ARRAY_SHORT_INDEX_SCALE;
             return new OfShort(Unsafe.ARRAY_SHORT_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
         }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_2;
+        }
     }
 
     public static class OfInt extends HeapMemorySegmentImpl<int[]> {
@@ -168,6 +189,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             Objects.requireNonNull(arr);
             long byteSize = (long)arr.length * Unsafe.ARRAY_INT_INDEX_SCALE;
             return new OfInt(Unsafe.ARRAY_INT_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
+        }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_4;
         }
     }
 
@@ -192,6 +218,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             long byteSize = (long)arr.length * Unsafe.ARRAY_LONG_INDEX_SCALE;
             return new OfLong(Unsafe.ARRAY_LONG_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
         }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_8;
+        }
     }
 
     public static class OfFloat extends HeapMemorySegmentImpl<float[]> {
@@ -215,6 +246,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             long byteSize = (long)arr.length * Unsafe.ARRAY_FLOAT_INDEX_SCALE;
             return new OfFloat(Unsafe.ARRAY_FLOAT_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
         }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_4;
+        }
     }
 
     public static class OfDouble extends HeapMemorySegmentImpl<double[]> {
@@ -237,6 +273,11 @@ public abstract class HeapMemorySegmentImpl<H> extends AbstractMemorySegmentImpl
             Objects.requireNonNull(arr);
             long byteSize = (long)arr.length * Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
             return new OfDouble(Unsafe.ARRAY_DOUBLE_BASE_OFFSET, arr, byteSize, defaultAccessModes(byteSize));
+        }
+
+        @Override
+        public long maxAlignMask() {
+            return MAX_ALIGN_8;
         }
     }
 

@@ -115,13 +115,14 @@ final class MemoryAccessVarHandle$Type$Helper extends MemoryAccessVarHandleBase 
     static long offsetNoVMAlignCheck(boolean skipAlignmentMaskCheck, MemorySegmentProxy bb, long offset, long alignmentMask) {
         long base = bb.unsafeGetOffset();
         long address = base + offset;
-        if (skipAlignmentMaskCheck) {
+        long maxAlignMask = bb.maxAlignMask();
+        if (skipAlignmentMaskCheck && maxAlignMask == 0) {
             //note: the offset portion has already been aligned-checked, by construction
             if ((base & alignmentMask) != 0) {
                 throw MemoryAccessVarHandleBase.newIllegalStateExceptionForMisalignedAccess(address);
             }
         } else {
-            if ((address & alignmentMask) != 0) {
+            if (((address | maxAlignMask) & alignmentMask) != 0) {
                 throw MemoryAccessVarHandleBase.newIllegalStateExceptionForMisalignedAccess(address);
             }
         }
