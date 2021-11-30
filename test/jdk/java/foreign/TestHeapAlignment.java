@@ -30,6 +30,7 @@
 
 import jdk.incubator.foreign.MemoryAddress;
 import jdk.incubator.foreign.MemorySegment;
+import jdk.incubator.foreign.ResourceScope;
 import jdk.incubator.foreign.ValueLayout;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -61,7 +62,7 @@ public class TestHeapAlignment {
     }
 
     static void assertAligned(int align, ValueLayout layout, Runnable runnable) {
-        boolean shouldFail = layout.byteAlignment() > align;
+        boolean shouldFail = layout.byteAlignment() > align && align != -1;
         try {
             runnable.run();
             if (shouldFail) {
@@ -99,6 +100,7 @@ public class TestHeapAlignment {
                 new SegmentsAndAlignment(MemorySegment.ofArray(new float[2]), 4),
                 new SegmentsAndAlignment(MemorySegment.ofArray(new long[1]), 8),
                 new SegmentsAndAlignment(MemorySegment.ofArray(new double[1]), 8),
+                new SegmentsAndAlignment(MemorySegment.allocateNative(8, ResourceScope.newImplicitScope()), -1),
         };
     }
 
