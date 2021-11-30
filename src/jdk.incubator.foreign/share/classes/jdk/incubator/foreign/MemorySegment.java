@@ -1627,7 +1627,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
         Objects.checkFromIndexSize(srcIndex, elementCount, Array.getLength(srcArray));
         AbstractMemorySegmentImpl destImpl = (AbstractMemorySegmentImpl)dstSegment;
         if (!Utils.isAligned(dstOffset, dstLayout) || !destImpl.isAlignedForElement(dstLayout)) {
-            throw new IllegalArgumentException("Source segment incompatible with alignment constraints");
+            throw new IllegalArgumentException("Target segment incompatible with alignment constraints");
         }
         destImpl.checkAccess(dstOffset, elementCount * srcWidth, false);
         if (srcWidth == 1 || dstLayout.order() == ByteOrder.nativeOrder()) {
