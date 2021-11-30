@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ *  Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  *  This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,59 @@
  * @run testng/othervm --enable-native-access=ALL-UNNAMED TestHeapAlignment
  */
 
+import jdk.incubator.foreign.MemoryAddress;
 import jdk.incubator.foreign.MemorySegment;
 import jdk.incubator.foreign.ValueLayout;
-import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import static org.testng.Assert.fail;
+
 public class TestHeapAlignment {
+
+    @Test(dataProvider = "layouts")
+    public void testHeapAlignment(MemorySegment segment, int align, Object val, Object arr, ValueLayout layout, Function<Object, MemorySegment> segmentFactory) {
+        assertAligned(align, layout, () -> layout.varHandle().get(segment));
+        assertAligned(align, layout, () -> layout.varHandle().set(segment, val));
+        if (arr != null) {
+            assertAligned(align, layout, () -> MemorySegment.copy(arr, 0, segment, layout, 0, 1));
+            assertAligned(align, layout, () -> MemorySegment.copy(arr, 0, segment, layout, 0, 1));
+            assertAligned(align, layout, () -> {
+                MemorySegment other = segmentFactory.apply(arr);
+                MemorySegment.copy(other, layout, 0, segment, layout, 0, 1);
+            });
+            assertAligned(align, layout, () -> {
+                MemorySegment other = segmentFactory.apply(arr);
+                MemorySegment.copy(segment, layout, 0, other, layout, 0, 1);
+            });
+        }
+    }
+
+    static void assertAligned(int align, ValueLayout layout, Runnable runnable) {
+        boolean shouldFail = layout.byteAlignment() > align;
+        try {
+            runnable.run();
+            if (shouldFail) {
+                fail("Should not get here!");
+            }
+        } catch (Exception ex) {
+            if (!shouldFail) {
+                fail("Should not get here!");
+            } else if (!ex.getMessage().contains("alignment") && !ex.getMessage().contains("Misaligned")) {
+                fail("Unexpected exception: " + ex);
+            }
+        } catch (Throwable ex) {
+            if (!shouldFail) {
+                fail("Should not get here!");
+            } else {
+                fail("Unexpected exception" + ex);
+            }
+        }
+    }
 
     static final ValueLayout.OfChar JAVA_CHAR_ALIGNED = ValueLayout.JAVA_CHAR.withBitAlignment(16);
     static final ValueLayout.OfShort JAVA_SHORT_ALIGNED = ValueLayout.JAVA_SHORT.withBitAlignment(16);
@@ -41,104 +88,34 @@ public class TestHeapAlignment {
     static final ValueLayout.OfFloat JAVA_FLOAT_ALIGNED = ValueLayout.JAVA_FLOAT.withBitAlignment(32);
     static final ValueLayout.OfLong JAVA_LONG_ALIGNED = ValueLayout.JAVA_LONG.withBitAlignment(64);
     static final ValueLayout.OfDouble JAVA_DOUBLE_ALIGNED = ValueLayout.JAVA_DOUBLE.withBitAlignment(64);
+    static final ValueLayout.OfAddress ADDRESS_ALIGNED = ValueLayout.ADDRESS.withBitAlignment(ValueLayout.ADDRESS.bitSize());
 
-    @Test
-    public void testStoreIntoByteArray() {
-        var segment = MemorySegment.ofArray(new byte[8]);
-        segment.set(ValueLayout.JAVA_BYTE, 0, (byte)42);
-        segment.set(ValueLayout.JAVA_BOOLEAN, 0, true);
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_CHAR_ALIGNED, 0, (char)42));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_SHORT_ALIGNED, 0, (short)42));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_INT_ALIGNED, 0, 42));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_FLOAT_ALIGNED, 0, 42f));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_LONG_ALIGNED, 0, 42L));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_DOUBLE_ALIGNED, 0, 42d));
+    record SegmentsAndAlignment(MemorySegment segment, int align) {
+        static SegmentsAndAlignment[] HEAP_SEGMENTS_AND_ALIGNMENTS = {
+                new SegmentsAndAlignment(MemorySegment.ofArray(new byte[8]), 1),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new short[4]), 2),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new char[4]), 2),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new int[2]), 4),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new float[2]), 4),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new long[1]), 8),
+                new SegmentsAndAlignment(MemorySegment.ofArray(new double[1]), 8),
+        };
     }
 
-    @Test
-    public void testStoreIntoShortArray() {
-        var segment = MemorySegment.ofArray(new short[4]);
-        segment.set(ValueLayout.JAVA_BYTE, 0, (byte)42);
-        segment.set(ValueLayout.JAVA_BOOLEAN, 0, true);
-        segment.set(JAVA_CHAR_ALIGNED, 0, (char)42);
-        segment.set(JAVA_SHORT_ALIGNED, 0, (short)42);
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_INT_ALIGNED, 0, 42));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_FLOAT_ALIGNED, 0, 42f));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_LONG_ALIGNED, 0, 42L));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_DOUBLE_ALIGNED, 0, 42d));
-    }
-
-    @Test
-    public void testStoreIntoIntArray() {
-        var segment = MemorySegment.ofArray(new int[2]);
-        segment.set(ValueLayout.JAVA_BYTE, 0, (byte)42);
-        segment.set(ValueLayout.JAVA_BOOLEAN, 0, true);
-        segment.set(JAVA_CHAR_ALIGNED, 0, (char)42);
-        segment.set(JAVA_SHORT_ALIGNED, 0, (short)42);
-        segment.set(JAVA_INT_ALIGNED, 0, 42);
-        segment.set(JAVA_FLOAT_ALIGNED, 0, 42f);
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_LONG_ALIGNED, 0, 42L));
-        Assert.assertThrows(IllegalStateException.class, () -> segment.set(JAVA_DOUBLE_ALIGNED, 0, 42d));
-    }
-
-    @Test
-    public void testStoreIntoLongArray() {
-        var segment = MemorySegment.ofArray(new long[1]);
-        segment.set(ValueLayout.JAVA_BYTE, 0, (byte)42);
-        segment.set(ValueLayout.JAVA_BOOLEAN, 0, true);
-        segment.set(JAVA_CHAR_ALIGNED, 0, (char)42);
-        segment.set(JAVA_SHORT_ALIGNED, 0, (short)42);
-        segment.set(JAVA_INT_ALIGNED, 0, 42);
-        segment.set(JAVA_FLOAT_ALIGNED, 0, 42f);
-        segment.set(JAVA_LONG_ALIGNED, 0, 42L);
-        segment.set(JAVA_DOUBLE_ALIGNED, 0, 42d);
-    }
-
-    @Test
-    public void testCopyIntoByteArray() {
-        var segment = MemorySegment.ofArray(new byte[8]);
-        MemorySegment.copy(new byte[] { 42 }, 0, segment, ValueLayout.JAVA_BYTE, 0, 1);
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new char[] { 42 }, 0, segment, JAVA_CHAR_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new short[] { 42 }, 0, segment, JAVA_SHORT_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new int[] { 42 }, 0, segment, JAVA_INT_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new float[] { 42 }, 0, segment, JAVA_FLOAT_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new long[] { 42 }, 0, segment, JAVA_LONG_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new double[] { 42 }, 0, segment, JAVA_DOUBLE_ALIGNED, 0, 1));
-    }
-
-    @Test
-    public void testCopyIntoShortArray() {
-        var segment = MemorySegment.ofArray(new short[4]);
-        MemorySegment.copy(new byte[] { 42 }, 0, segment, ValueLayout.JAVA_BYTE, 0, 1);
-        MemorySegment.copy(new char[] { 42 }, 0, segment, JAVA_CHAR_ALIGNED, 0, 1);
-        MemorySegment.copy(new short[] { 42 }, 0, segment, JAVA_SHORT_ALIGNED, 0, 1);
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new int[] { 42 }, 0, segment, JAVA_INT_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new float[] { 42 }, 0, segment, JAVA_FLOAT_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new long[] { 42 }, 0, segment, JAVA_LONG_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new double[] { 42 }, 0, segment, JAVA_DOUBLE_ALIGNED, 0, 1));
-    }
-
-    @Test
-    public void testCopyIntoIntArray() {
-        var segment = MemorySegment.ofArray(new int[2]);
-        MemorySegment.copy(new byte[] { 42 }, 0, segment, ValueLayout.JAVA_BYTE, 0, 1);
-        MemorySegment.copy(new char[] { 42 }, 0, segment, JAVA_CHAR_ALIGNED, 0, 1);
-        MemorySegment.copy(new short[] { 42 }, 0, segment, JAVA_SHORT_ALIGNED, 0, 1);
-        MemorySegment.copy(new int[] { 42 }, 0, segment, JAVA_INT_ALIGNED, 0, 1);
-        MemorySegment.copy(new float[] { 42 }, 0, segment, JAVA_FLOAT_ALIGNED, 0, 1);
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new long[] { 42 }, 0, segment, JAVA_LONG_ALIGNED, 0, 1));
-        Assert.assertThrows(IllegalArgumentException.class, () -> MemorySegment.copy(new double[] { 42 }, 0, segment, JAVA_DOUBLE_ALIGNED, 0, 1));
-    }
-
-    @Test
-    public void testCopyIntoLongArray() {
-        var segment = MemorySegment.ofArray(new long[1]);
-        MemorySegment.copy(new byte[] { 42 }, 0, segment, ValueLayout.JAVA_BYTE, 0, 1);
-        MemorySegment.copy(new char[] { 42 }, 0, segment, JAVA_CHAR_ALIGNED, 0, 1);
-        MemorySegment.copy(new short[] { 42 }, 0, segment, JAVA_SHORT_ALIGNED, 0, 1);
-        MemorySegment.copy(new int[] { 42 }, 0, segment, JAVA_INT_ALIGNED, 0, 1);
-        MemorySegment.copy(new float[] { 42 }, 0, segment, JAVA_FLOAT_ALIGNED, 0, 1);
-        MemorySegment.copy(new long[] { 42 }, 0, segment, JAVA_LONG_ALIGNED, 0, 1);
-        MemorySegment.copy(new double[] { 42 }, 0, segment, JAVA_DOUBLE_ALIGNED, 0, 1);
+    @DataProvider
+    public static Object[][] layouts() {
+        List<Object[]> layouts = new ArrayList<>();
+        for (SegmentsAndAlignment testCase : SegmentsAndAlignment.HEAP_SEGMENTS_AND_ALIGNMENTS) {
+            layouts.add(new Object[] { testCase.segment, testCase.align, (byte) 42, new byte[]{42}, ValueLayout.JAVA_BYTE, (Function<byte[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, true, null, ValueLayout.JAVA_BOOLEAN, null });
+            layouts.add(new Object[] { testCase.segment, testCase.align, (char) 42, new char[]{42}, JAVA_CHAR_ALIGNED, (Function<char[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, (short) 42, new short[]{42}, JAVA_SHORT_ALIGNED, (Function<short[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, 42, new int[]{42}, JAVA_INT_ALIGNED, (Function<int[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, 42f, new float[]{42}, JAVA_FLOAT_ALIGNED, (Function<float[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, 42L, new long[]{42}, JAVA_LONG_ALIGNED, (Function<long[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, 42d, new double[]{42}, JAVA_DOUBLE_ALIGNED, (Function<double[], MemorySegment>)MemorySegment::ofArray });
+            layouts.add(new Object[] { testCase.segment, testCase.align, MemoryAddress.ofLong(42), null, ADDRESS_ALIGNED, null });
+        }
+        return layouts.toArray(new Object[0][]);
     }
 }
