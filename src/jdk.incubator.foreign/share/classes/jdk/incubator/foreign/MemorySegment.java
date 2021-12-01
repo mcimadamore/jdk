@@ -260,7 +260,8 @@ public sealed interface MemorySegment extends Addressable permits AbstractMemory
      * @param elementLayout the layout to be used for splitting.
      * @return the element spliterator for this segment
      * @throws IllegalArgumentException if the {@code elementLayout} size is zero, or the segment size modulo the
-     * {@code elementLayout} size is greater than zero.
+     * {@code elementLayout} size is greater than zero, or if this segment is
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      */
     Spliterator<MemorySegment> spliterator(MemoryLayout elementLayout);
 
@@ -274,7 +275,8 @@ public sealed interface MemorySegment extends Addressable permits AbstractMemory
      * @param elementLayout the layout to be used for splitting.
      * @return a sequential {@code Stream} over disjoint slices in this segment.
      * @throws IllegalArgumentException if the {@code elementLayout} size is zero, or the segment size modulo the
-     * {@code elementLayout} size is greater than zero.
+     * {@code elementLayout} size is greater than zero, or if this segment is
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      */
     Stream<MemorySegment> elements(MemoryLayout elementLayout);
 
@@ -1069,7 +1071,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1088,7 +1090,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
      */
@@ -1107,7 +1109,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1126,7 +1128,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
      */
@@ -1145,7 +1147,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1164,7 +1166,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1184,7 +1186,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1203,7 +1205,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1223,7 +1225,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1242,7 +1244,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1262,7 +1264,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1281,7 +1283,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1301,7 +1303,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1320,7 +1322,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1340,7 +1342,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1359,7 +1361,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1379,7 +1381,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1398,7 +1400,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1418,7 +1420,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1437,7 +1439,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1457,7 +1459,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1477,7 +1479,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1497,7 +1499,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1516,7 +1518,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1536,7 +1538,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1555,7 +1557,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1575,7 +1577,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1594,7 +1596,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1614,7 +1616,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1633,7 +1635,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
@@ -1653,7 +1655,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      */
@@ -1672,7 +1674,7 @@ for (long l = 0; l < segment.byteSize(); l++) {
      * @throws IllegalStateException if the scope associated with this segment has been closed, or if access occurs from
      * a thread other than the thread owning that scope.
      * @throws IllegalArgumentException if the dereference operation is
-     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints in the provided layout.
+     * <a href="MemorySegment.html#segment-alignment">incompatible with the alignment constraints</a> in the provided layout.
      * @throws IndexOutOfBoundsException when the dereference operation falls outside the <em>spatial bounds</em> of the
      * memory segment.
      * @throws UnsupportedOperationException if this segment is {@linkplain #isReadOnly() read-only}.
