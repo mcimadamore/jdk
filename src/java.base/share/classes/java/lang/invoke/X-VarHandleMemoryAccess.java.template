@@ -106,7 +106,7 @@ final class MemoryAccessVarHandle$Type$Helper extends MemoryAccessVarHandleBase 
     static long offset(boolean skipAlignmentMaskCheck, MemorySegmentProxy bb, long offset, long alignmentMask) {
         long address = offsetNoVMAlignCheck(skipAlignmentMaskCheck, bb, offset, alignmentMask);
         if ((address & VM_ALIGN) != 0) {
-            throw MemoryAccessVarHandleBase.newIllegalStateExceptionForMisalignedAccess(address);
+            throw MemoryAccessVarHandleBase.newIllegalArgumentExceptionForMisalignedAccess(address);
         }
         return address;
     }
@@ -119,11 +119,11 @@ final class MemoryAccessVarHandle$Type$Helper extends MemoryAccessVarHandleBase 
         if (skipAlignmentMaskCheck && maxAlignMask == 0) {
             //note: the offset portion has already been aligned-checked, by construction
             if ((base & alignmentMask) != 0) {
-                throw MemoryAccessVarHandleBase.newIllegalStateExceptionForMisalignedAccess(address);
+                throw MemoryAccessVarHandleBase.newIllegalArgumentExceptionForMisalignedAccess(address);
             }
         } else {
             if (((address | maxAlignMask) & alignmentMask) != 0) {
-                throw MemoryAccessVarHandleBase.newIllegalStateExceptionForMisalignedAccess(address);
+                throw MemoryAccessVarHandleBase.newIllegalArgumentExceptionForMisalignedAccess(address);
             }
         }
         return address;

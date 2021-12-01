@@ -124,6 +124,9 @@ public abstract non-sealed class AbstractMemorySegmentImpl extends MemorySegment
         if (elementLayout.byteSize() == 0) {
             throw new IllegalArgumentException("Element layout size cannot be zero");
         }
+        if (!isAlignedForElement(0, elementLayout)) {
+            throw new IllegalArgumentException("Incompatible alignment constraints");
+        }
         if (!Utils.isAligned(byteSize(), elementLayout.byteSize())) {
             throw new IllegalArgumentException("Segment size is no a multiple of layout size");
         }
@@ -384,8 +387,8 @@ public abstract non-sealed class AbstractMemorySegmentImpl extends MemorySegment
     }
 
     @ForceInline
-    public final boolean isAlignedForElement(MemoryLayout layout) {
-        return ((unsafeGetOffset() | maxAlignMask()) & (layout.byteAlignment() - 1)) == 0;
+    public final boolean isAlignedForElement(long offset, MemoryLayout layout) {
+        return (((unsafeGetOffset() + offset) | maxAlignMask()) & (layout.byteAlignment() - 1)) == 0;
     }
 
     private int checkArraySize(String typeName, int elemSize) {

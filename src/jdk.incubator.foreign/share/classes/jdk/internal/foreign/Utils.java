@@ -175,11 +175,6 @@ public final class Utils {
     }
 
     @ForceInline
-    public static boolean isAligned(long offset, MemoryLayout layout) {
-        return isAligned(offset, layout.byteAlignment());
-    }
-
-    @ForceInline
     public static boolean isAligned(long offset, long align) {
         return (offset & (align - 1)) == 0;
     }
