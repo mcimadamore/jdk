@@ -386,7 +386,7 @@ public abstract non-sealed class AbstractMemorySegmentImpl extends MemorySegment
     void checkBounds(long offset, long length) {
         if (length > 0) {
             long checkedOffset = Objects.checkIndex(offset, this.length);
-            Objects.checkIndex(checkedOffset + length - 1, this.length);
+            Objects.checkIndex(checkedOffset, this.length - length + 1);
         } else if (length < 0 || offset < 0 ||
                 offset > this.length - length) {
             throw outOfBoundException(offset, length);
