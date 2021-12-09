@@ -76,20 +76,20 @@ public class LoopOverPollutedSegments {
         heapSegmentBytes = MemorySegment.ofArray(new byte[ALLOC_SIZE]);
         heapSegmentFloats = MemorySegment.ofArray(new float[ELEM_SIZE]);
 
-        for (int rep = 0 ; rep < 5 ; rep++) {
-            for (int i = 0; i < ELEM_SIZE; i++) {
-                unsafe.putInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + (i * 4), i);
-                nativeSegment.setAtIndex(JAVA_INT, i, i);
-                nativeSegment.setAtIndex(JAVA_FLOAT, i, i);
-                intHandle.set(nativeSegment, (long)i, i);
-                heapSegmentBytes.setAtIndex(JAVA_INT, i, i);
-                heapSegmentBytes.setAtIndex(JAVA_FLOAT, i, i);
-                intHandle.set(heapSegmentBytes, (long)i, i);
-                heapSegmentFloats.setAtIndex(JAVA_INT, i, i);
-                heapSegmentFloats.setAtIndex(JAVA_FLOAT, i, i);
-                intHandle.set(heapSegmentFloats, (long)i, i);
-            }
-        }
+//        for (int rep = 0 ; rep < 5 ; rep++) {
+//            for (int i = 0; i < ELEM_SIZE; i++) {
+//                unsafe.putInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + (i * 4), i);
+//                nativeSegment.setAtIndex(JAVA_INT, i, i);
+//                nativeSegment.setAtIndex(JAVA_FLOAT, i, i);
+//                intHandle.set(nativeSegment, (long)i, i);
+//                heapSegmentBytes.setAtIndex(JAVA_INT, i, i);
+//                heapSegmentBytes.setAtIndex(JAVA_FLOAT, i, i);
+//                intHandle.set(heapSegmentBytes, (long)i, i);
+//                heapSegmentFloats.setAtIndex(JAVA_INT, i, i);
+//                heapSegmentFloats.setAtIndex(JAVA_FLOAT, i, i);
+//                intHandle.set(heapSegmentFloats, (long)i, i);
+//            }
+//        }
     }
 
     @TearDown
@@ -115,8 +115,8 @@ public class LoopOverPollutedSegments {
     @Benchmark
     public int native_segment_instance() {
         int sum = 0;
-        for (int k = 0; k < ELEM_SIZE; k++) {
-            nativeSegment.setAtIndex(JAVA_INT, k, k + 1);
+        for (long k = 0; k < ELEM_SIZE; k++) {
+            nativeSegment.setAtIndex(JAVA_INT, k, (int)k + 1);
             int v = nativeSegment.getAtIndex(JAVA_INT, k);
             sum += v;
         }
