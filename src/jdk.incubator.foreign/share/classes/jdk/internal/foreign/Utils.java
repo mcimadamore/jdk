@@ -105,13 +105,12 @@ public final class Utils {
         }
     }
 
-    public static VarHandle makeMemoryAccessVarHandle(ValueLayout layout, boolean skipAlignmentCheck) {
+    public static VarHandle makeMemoryAccessVarHandle(ValueLayout layout) {
         class VarHandleCache {
             private static final Map<ValueLayout, VarHandle> handleMap = new ConcurrentHashMap<>();
-            private static final Map<ValueLayout, VarHandle> handleMapNoAlignCheck = new ConcurrentHashMap<>();
 
-            static VarHandle put(ValueLayout layout, VarHandle handle, boolean skipAlignmentCheck) {
-                VarHandle prev = (skipAlignmentCheck ? handleMapNoAlignCheck : handleMap).putIfAbsent(layout, handle);
+            static VarHandle put(ValueLayout layout, VarHandle handle) {
+                VarHandle prev = handleMap.putIfAbsent(layout, handle);
                 return prev != null ? prev : handle;
             }
         }
@@ -126,7 +125,7 @@ public final class Utils {
             baseCarrier = byte.class;
         }
 
-        VarHandle handle = SharedSecrets.getJavaLangInvokeAccess().memoryAccessVarHandle(baseCarrier, skipAlignmentCheck,
+        VarHandle handle = SharedSecrets.getJavaLangInvokeAccess().memoryAccessVarHandle(baseCarrier,
                 layout.byteAlignment() - 1, layout.order());
 
         // This adaptation is required, otherwise the memory access var handle will have type MemorySegmentProxy,
@@ -141,7 +140,7 @@ public final class Utils {
                     MethodHandles.explicitCastArguments(ADDRESS_TO_LONG, MethodType.methodType(baseCarrier, MemoryAddress.class)),
                     MethodHandles.explicitCastArguments(LONG_TO_ADDRESS, MethodType.methodType(MemoryAddress.class, baseCarrier)));
         }
-        return VarHandleCache.put(layout, handle, skipAlignmentCheck);
+        return VarHandleCache.put(layout, handle);
     }
 
     private static MemorySegmentProxy filterSegment(MemorySegment segment) {

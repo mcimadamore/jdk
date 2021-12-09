@@ -163,7 +163,7 @@ public class LayoutPath {
         perms.addFirst(0);
         expectedCoordinates.add(MemorySegment.class);
 
-        VarHandle handle = Utils.makeMemoryAccessVarHandle(valueLayout, true);
+        VarHandle handle = Utils.makeMemoryAccessVarHandle(valueLayout);
 
         for (int i = 0 ; i < strides.length ; i++) {
             expectedCoordinates.add(long.class);

@@ -33,7 +33,6 @@ import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.vm.annotation.ForceInline;
-import sun.security.action.GetPropertyAction;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -340,6 +339,7 @@ public abstract non-sealed class AbstractMemorySegmentImpl extends MemorySegment
     }
 
     @Override
+    @ForceInline
     public void checkAccess(long offset, long length, boolean readOnly) {
         if (!readOnly && isSet(READ_ONLY)) {
             throw new UnsupportedOperationException("Attempt to write a read-only segment");
@@ -382,20 +382,12 @@ public abstract non-sealed class AbstractMemorySegmentImpl extends MemorySegment
         return (int)arraySize;
     }
 
-    private void checkBounds(long offset, long length) {
-        if (this != NativeMemorySegmentImpl.EVERYTHING) { // oob not possible for everything segment
-            if (length < 0 || offset < 0) {
-                throw outOfBoundException(offset, length);
-            }
-            if (this.length < Long.MAX_VALUE) {
-                try {
-                    Objects.checkIndex(offset, this.length - length + 1);
-                } catch (IndexOutOfBoundsException ex) {
-                    throw outOfBoundException(offset, length);
-                }
-            } else if (offset > this.length - length) { // careful of overflow
-                throw outOfBoundException(offset, length);
-            }
+    @ForceInline
+    void checkBounds(long offset, long length) {
+        if (length < 0 ||
+                offset < 0 ||
+                offset > this.length - length) { // careful of overflow
+            throw outOfBoundException(offset, length);
         }
     }
 

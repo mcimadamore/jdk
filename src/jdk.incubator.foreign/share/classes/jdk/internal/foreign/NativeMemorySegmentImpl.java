@@ -28,8 +28,6 @@ package jdk.internal.foreign;
 
 import jdk.incubator.foreign.MemoryAddress;
 import jdk.incubator.foreign.MemorySegment;
-import jdk.incubator.foreign.ResourceScope;
-import jdk.incubator.foreign.SegmentAllocator;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.ForceInline;
@@ -43,7 +41,17 @@ import java.nio.ByteBuffer;
  */
 public class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
-    public static final MemorySegment EVERYTHING = makeNativeSegmentUnchecked(MemoryAddress.NULL, Long.MAX_VALUE, ResourceScopeImpl.GLOBAL);
+    public static final MemorySegment EVERYTHING = new NativeMemorySegmentImpl(0, Long.MAX_VALUE, 0, ResourceScopeImpl.GLOBAL) {
+        @Override
+        void checkBounds(long offset, long length) {
+            // do nothing
+        }
+
+        @Override
+        NativeMemorySegmentImpl dup(long offset, long size, int mask, ResourceScopeImpl scope) {
+            throw new IllegalStateException();
+        }
+    };
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
 
