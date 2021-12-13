@@ -56,7 +56,7 @@ import java.util.stream.Stream;
  * A memory segment models a contiguous region of memory. A memory segment is associated with both spatial
  * and temporal bounds (e.g. a {@link ResourceScope}). Spatial bounds ensure that memory access operations on a memory segment cannot affect a memory location
  * which falls <em>outside</em> the boundaries of the memory segment being accessed. Temporal bounds ensure that memory access
- * operations on a segment cannot occur after the resource scope associated with a memory segment has been closed (see {@link ResourceScope#close()}).
+ * operations on a segment cannot occur <em>after</em> the resource scope associated with a memory segment has been closed (see {@link ResourceScope#close()}).
  * <p>
  * All implementations of this interface must be <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>;
  * programmers should treat instances that are {@linkplain Object#equals(Object) equal} as interchangeable and should not
