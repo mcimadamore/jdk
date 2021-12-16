@@ -72,6 +72,7 @@ import static java.lang.invoke.MethodHandles.constant;
 import static java.lang.invoke.MethodHandles.dropArguments;
 import static java.lang.invoke.MethodHandles.dropReturn;
 import static java.lang.invoke.MethodHandles.empty;
+import static java.lang.invoke.MethodHandles.filterArguments;
 import static java.lang.invoke.MethodHandles.foldArguments;
 import static java.lang.invoke.MethodHandles.identity;
 import static java.lang.invoke.MethodHandles.insertArguments;
@@ -103,12 +104,13 @@ public class SharedUtils {
     private static final MethodHandle MH_HANDLE_UNCAUGHT_EXCEPTION;
     private static final MethodHandle ACQUIRE_MH;
     private static final MethodHandle RELEASE_MH;
+    private static final MethodHandle MH_WRAP_ALLOCATOR;
 
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            MH_ALLOC_BUFFER = lookup.findVirtual(SegmentAllocator.class, "allocate",
-                    methodType(MemorySegment.class, MemoryLayout.class));
+            MH_ALLOC_BUFFER = lookup.findStatic(SharedUtils.class, "allocateBuffer",
+                    methodType(MemorySegment.class, Binding.Context.class, MemoryLayout.class));
             MH_BASEADDRESS = lookup.findVirtual(MemorySegment.class, "address",
                     methodType(MemoryAddress.class));
             MH_BUFFER_COPY = lookup.findStatic(SharedUtils.class, "bufferCopy",
@@ -127,6 +129,8 @@ public class SharedUtils {
                     MethodType.methodType(void.class, Scoped[].class));
             RELEASE_MH = MethodHandles.lookup().findStatic(SharedUtils.class, "release",
                     MethodType.methodType(void.class, Scoped[].class));
+            MH_WRAP_ALLOCATOR = lookup.findStatic(Binding.Context.class, "ofAllocator",
+                    methodType(Binding.Context.class, SegmentAllocator.class));
         } catch (ReflectiveOperationException e) {
             throw new BootstrapMethodError(e);
         }
@@ -191,6 +195,11 @@ public class SharedUtils {
         return ct.memberLayouts().stream().mapToLong(t -> alignment(t, false)).max().orElse(1);
     }
 
+    @ForceInline
+    static MemorySegment allocateBuffer(Binding.Context context, MemoryLayout layout) {
+        return context.allocator().allocate(layout);
+    }
+
     /**
      * Takes a MethodHandle that takes an input buffer as a first argument (a MemoryAddress), and returns nothing,
      * and adapts it to return a MemorySegment, by allocating a MemorySegment for the input
@@ -215,9 +224,9 @@ public class SharedUtils {
         handle = collectArguments(ret, 1, handle); // (MemorySegment, Addressable, SegmentAllocator, MemoryAddress, ...) MemorySegment
         handle = collectArguments(handle, 3, MH_BASEADDRESS); // (MemorySegment, Addressable, SegmentAllocator, MemorySegment, ...) MemorySegment
         handle = mergeArguments(handle, 0, 3);  // (MemorySegment, Addressable, SegmentAllocator, ...) MemorySegment
-        handle = collectArguments(handle, 0, insertArguments(MH_ALLOC_BUFFER, 1, cDesc.returnLayout().get())); // (SegmentAllocator, Addressable, SegmentAllocator, ...) MemoryAddress
-        handle = mergeArguments(handle, 0, 2);  // (SegmentAllocator, Addressable, ...) MemoryAddress
-        handle = swapArguments(handle, 0, 1); // (Addressable, SegmentAllocator, ...) MemoryAddress
+        handle = collectArguments(handle, 0, insertArguments(MH_ALLOC_BUFFER, 1, cDesc.returnLayout().get())); // (BindingContext, Addressable, SegmentAllocator, ...) MemoryAddress
+        handle = mergeArguments(handle, 0, 2);  // (BindingContext, Addressable, ...) MemoryAddress
+        handle = swapArguments(handle, 0, 1); // (Addressable, BindingContext, ...) MemoryAddress
         return handle;
     }
 
@@ -396,7 +405,7 @@ public class SharedUtils {
         // downcalls get the leading NativeSymbol/SegmentAllocator param as well
         if (!upcall) {
             closer = collectArguments(closer, insertPos++, reachabilityFenceHandle(NativeSymbol.class));
-            closer = dropArguments(closer, insertPos++, SegmentAllocator.class); // (Throwable, V?, NativeSymbol, SegmentAllocator) -> V/void
+            closer = dropArguments(closer, insertPos++, Binding.Context.class); // (Throwable, V?, NativeSymbol, BindingContext) -> V/void
         }
 
         closer = collectArguments(closer, insertPos++, MH_CLOSE_CONTEXT); // (Throwable, V?, NativeSymbol?, BindingContext) -> V/void
@@ -556,6 +565,16 @@ public class SharedUtils {
         if (exceptions != null && exceptions.length != 0) {
             throw new IllegalArgumentException("Target handle may throw exceptions: " + Arrays.toString(exceptions));
         }
+    }
+
+    public static MethodHandle maybeInsertAllocator(MethodHandle handle) {
+        if (!handle.type().returnType().equals(MemorySegment.class)) {
+            // not returning segment, just insert a dummy context
+            handle = insertArguments(handle, 1, Binding.Context.DUMMY);
+        } else {
+            handle = filterArguments(handle, 1, MH_WRAP_ALLOCATOR);
+        }
+        return handle;
     }
 
     // lazy init MH_ALLOC and MH_FREE handles
