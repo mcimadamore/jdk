@@ -32,6 +32,7 @@ import java.lang.foreign.ValueLayout;
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.MemoryAddressImpl;
+import jdk.internal.foreign.MemorySessionImpl;
 import sun.security.action.GetPropertyAction;
 
 import java.lang.invoke.MethodHandle;
@@ -120,20 +121,22 @@ public class ProgrammableUpcallHandler {
         boolean usesStackArgs = argMoveBindingsStream(callingSequence)
                 .map(Binding.VMLoad::storage)
                 .anyMatch(s -> abi.arch.isStackType(s.type()));
+        boolean useWeakRef = MemorySessionImpl.toSessionImpl(session).hasCleaner();
         if (USE_INTRINSICS && isSimple && !usesStackArgs && supportsOptimizedUpcalls()) {
             checkPrimitive(doBindings.type());
             JLI.ensureCustomized(doBindings);
             VMStorage[] args = Arrays.stream(argMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
             VMStorage[] rets = Arrays.stream(retMoves).map(Binding.Move::storage).toArray(VMStorage[]::new);
             CallRegs conv = new CallRegs(args, rets);
-            entryPoint = allocateOptimizedUpcallStub(doBindings, abi, conv);
+            entryPoint = allocateOptimizedUpcallStub(doBindings, abi, conv, useWeakRef);
+            return UpcallStubs.makeUpcall(entryPoint, session, doBindings, useWeakRef);
         } else {
             BufferLayout layout = BufferLayout.of(abi);
             MethodHandle doBindingsErased = doBindings.asSpreader(Object[].class, doBindings.type().parameterCount());
             MethodHandle invokeMoves = insertArguments(MH_invokeMoves, 1, doBindingsErased, argMoves, retMoves, abi, layout);
-            entryPoint = allocateUpcallStub(invokeMoves, abi, layout);
+            entryPoint = allocateUpcallStub(invokeMoves, abi, layout, useWeakRef);
+            return UpcallStubs.makeUpcall(entryPoint, session, invokeMoves, useWeakRef);
         }
-        return UpcallStubs.makeUpcall(entryPoint, session);
     }
 
     private static void checkPrimitive(MethodType type) {
@@ -303,8 +306,8 @@ public class ProgrammableUpcallHandler {
     // used for transporting data into native code
     private static record CallRegs(VMStorage[] argRegs, VMStorage[] retRegs) {}
 
-    static native long allocateOptimizedUpcallStub(MethodHandle mh, ABIDescriptor abi, CallRegs conv);
-    static native long allocateUpcallStub(MethodHandle mh, ABIDescriptor abi, BufferLayout layout);
+    static native long allocateOptimizedUpcallStub(MethodHandle mh, ABIDescriptor abi, CallRegs conv, boolean useWeakRef);
+    static native long allocateUpcallStub(MethodHandle mh, ABIDescriptor abi, BufferLayout layout, boolean useWeakRef);
     static native boolean supportsOptimizedUpcalls();
 
     private static native void registerNatives();

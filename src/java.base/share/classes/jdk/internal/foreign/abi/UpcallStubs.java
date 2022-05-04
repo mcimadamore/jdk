@@ -27,13 +27,15 @@ package jdk.internal.foreign.abi;
 import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySession;
+import java.lang.invoke.MethodHandle;
+import java.lang.ref.Reference;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
 public class UpcallStubs {
 
-    private static void freeUpcallStub(long stubAddress) {
-        if (!freeUpcallStub0(stubAddress)) {
+    private static void freeUpcallStub(long stubAddress, boolean useWeakRef) {
+        if (!freeUpcallStub0(stubAddress, useWeakRef)) {
             throw new IllegalStateException("Not a stub address: " + stubAddress);
         }
     }
@@ -41,20 +43,21 @@ public class UpcallStubs {
     // natives
 
     // returns true if the stub was found (and freed)
-    private static native boolean freeUpcallStub0(long addr);
+    private static native boolean freeUpcallStub0(long addr, boolean useWeakRef);
 
     private static native void registerNatives();
     static {
         registerNatives();
     }
 
-    static MemorySegment makeUpcall(long entry, MemorySession session) {
+    static MemorySegment makeUpcall(long entry, MemorySession session, MethodHandle handle, boolean useWeakRef) {
         MemorySessionImpl.toSessionImpl(session).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
             @Override
             public void cleanup() {
-                freeUpcallStub(entry);
+                freeUpcallStub(entry, useWeakRef);
             }
         });
+        MemorySessionImpl.toSessionImpl(session).addStrongRef(handle);
         return MemorySegment.ofAddress(MemoryAddress.ofLong(entry), 0, session);
     }
 }

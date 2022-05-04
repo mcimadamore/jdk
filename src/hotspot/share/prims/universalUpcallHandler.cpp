@@ -185,15 +185,15 @@ void ProgrammableUpcallHandler::handle_uncaught_exception(oop exception) {
   ShouldNotReachHere();
 }
 
-JVM_ENTRY(jlong, PUH_AllocateUpcallStub(JNIEnv *env, jclass unused, jobject rec, jobject abi, jobject buffer_layout))
+JVM_ENTRY(jlong, PUH_AllocateUpcallStub(JNIEnv *env, jclass unused, jobject rec, jobject abi, jobject buffer_layout, jboolean useWeakRef))
   Handle receiver(THREAD, JNIHandles::resolve(rec));
-  jobject global_rec = JNIHandles::make_global(receiver);
+  jobject global_rec = useWeakRef ? JNIHandles::make_weak_global(receiver) : JNIHandles::make_global(receiver);
   return (jlong) ProgrammableUpcallHandler::generate_upcall_stub(global_rec, abi, buffer_layout);
 JNI_END
 
-JVM_ENTRY(jlong, PUH_AllocateOptimizedUpcallStub(JNIEnv *env, jclass unused, jobject mh, jobject abi, jobject conv))
+JVM_ENTRY(jlong, PUH_AllocateOptimizedUpcallStub(JNIEnv *env, jclass unused, jobject mh, jobject abi, jobject conv, jboolean useWeakRef))
   Handle mh_h(THREAD, JNIHandles::resolve(mh));
-  jobject mh_j = JNIHandles::make_global(mh_h);
+  jobject mh_j = useWeakRef ? JNIHandles::make_weak_global(mh_h) : JNIHandles::make_global(mh_h);
 
   oop lform = java_lang_invoke_MethodHandle::form(mh_h());
   oop vmentry = java_lang_invoke_LambdaForm::vmentry(lform);
@@ -214,8 +214,8 @@ JVM_END
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &f)
 
 static JNINativeMethod PUH_methods[] = {
-  {CC "allocateUpcallStub", CC "(" "Ljava/lang/invoke/MethodHandle;" "L" FOREIGN_ABI "ABIDescriptor;" "L" FOREIGN_ABI "BufferLayout;" ")J", FN_PTR(PUH_AllocateUpcallStub)},
-  {CC "allocateOptimizedUpcallStub", CC "(" "Ljava/lang/invoke/MethodHandle;" "L" FOREIGN_ABI "ABIDescriptor;" "L" FOREIGN_ABI "ProgrammableUpcallHandler$CallRegs;" ")J", FN_PTR(PUH_AllocateOptimizedUpcallStub)},
+  {CC "allocateUpcallStub", CC "(" "Ljava/lang/invoke/MethodHandle;" "L" FOREIGN_ABI "ABIDescriptor;" "L" FOREIGN_ABI "BufferLayout;Z" ")J", FN_PTR(PUH_AllocateUpcallStub)},
+  {CC "allocateOptimizedUpcallStub", CC "(" "Ljava/lang/invoke/MethodHandle;" "L" FOREIGN_ABI "ABIDescriptor;" "L" FOREIGN_ABI "ProgrammableUpcallHandler$CallRegs;Z" ")J", FN_PTR(PUH_AllocateOptimizedUpcallStub)},
   {CC "supportsOptimizedUpcalls", CC "()Z", FN_PTR(PUH_SupportsOptimizedUpcalls)},
 };
 

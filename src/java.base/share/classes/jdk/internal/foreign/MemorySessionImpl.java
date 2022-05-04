@@ -33,6 +33,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.lang.ref.Reference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.ref.CleanerFactory;
@@ -56,6 +58,8 @@ public abstract non-sealed class MemorySessionImpl implements Scoped, MemorySess
     final ResourceList resourceList;
     final Cleaner.Cleanable cleanable;
     final Thread owner;
+
+    Object strongRef;
 
     static final int OPEN = 0;
     static final int CLOSING = -1;
@@ -248,7 +252,19 @@ public abstract non-sealed class MemorySessionImpl implements Scoped, MemorySess
         }
     }
 
+    public synchronized void addStrongRef(Object o) {
+        Object prev = strongRef;
+        strongRef = new Object() {
+           Object _old = prev;
+           Object _new = o;
+        };
+    }
+
     abstract void justClose();
+
+    public boolean hasCleaner() {
+        return cleanable != null;
+    }
 
     /**
      * The global, non-closeable, shared session. Similar to a shared session, but its {@link #close()} method throws unconditionally.

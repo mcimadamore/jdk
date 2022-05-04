@@ -27,7 +27,7 @@
 #include "code/codeCache.hpp"
 #include "runtime/vmOperations.hpp"
 
-JVM_ENTRY(static jboolean, UH_FreeUpcallStub0(JNIEnv *env, jobject _unused, jlong addr))
+JVM_ENTRY(static jboolean, UH_FreeUpcallStub0(JNIEnv *env, jobject _unused, jlong addr, jboolean useWeakRef))
   //acquire code cache lock
   MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
   //find code blob
@@ -43,7 +43,11 @@ JVM_ENTRY(static jboolean, UH_FreeUpcallStub0(JNIEnv *env, jobject _unused, jlon
     jobject* handle_ptr = (jobject*)(void*)cb->content_begin();
     handle = *handle_ptr;
   }
-  JNIHandles::destroy_global(handle);
+  if (useWeakRef) {
+    JNIHandles::destroy_weak_global(handle);
+  } else {
+    JNIHandles::destroy_global(handle);
+  }
   //free code blob
   CodeCache::free(cb);
   return true;
@@ -55,7 +59,7 @@ JVM_END
 
 // These are the native methods on jdk.internal.foreign.NativeInvoker.
 static JNINativeMethod UH_methods[] = {
-  {CC "freeUpcallStub0",     CC "(J)Z",                FN_PTR(UH_FreeUpcallStub0)}
+  {CC "freeUpcallStub0",     CC "(JZ)Z",                FN_PTR(UH_FreeUpcallStub0)}
 };
 
 /**

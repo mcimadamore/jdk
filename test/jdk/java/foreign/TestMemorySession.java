@@ -28,6 +28,12 @@
  * @run testng/othervm TestMemorySession
  */
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.ref.Cleaner;
 
 import java.lang.foreign.MemorySession;
@@ -326,6 +332,36 @@ public class TestMemorySession {
         // Now let's close 'root'. This is trickier than it seems: releases of the confined session happen in different
         // threads, so that the confined session lock count is updated racily. If that happens, the following close will blow up.
         root.close();
+    }
+
+    @Test(dataProvider = "cleaners")
+    public void testUpcallStub(Supplier<Cleaner> cleanerSupplier, UnaryOperator<MemorySession> sessionFunc) throws Throwable {
+        AtomicInteger acc = new AtomicInteger();
+        Cleaner cleaner = cleanerSupplier.get();
+        MemorySession session = cleaner != null ?
+                MemorySession.openConfined(cleaner) :
+                MemorySession.openConfined();
+        session = sessionFunc.apply(session);
+        session.addCloseAction(() -> acc.incrementAndGet());
+        MethodHandle handle = MethodHandles.lookup().findStatic(TestMemorySession.class, "upcall_impl", MethodType.methodType(void.class, MemorySession.class));
+        handle = MethodHandles.insertArguments(handle, 0, session);
+        Linker linker = Linker.nativeLinker();
+        linker.upcallStub(handle, FunctionDescriptor.ofVoid(), session);
+        // check
+        if (cleaner == null) {
+            session.close();
+            assertEquals(acc.get(), 1);
+        } else {
+            handle = null;
+            session = null;
+            while (acc.get() != 1) {
+                kickGC();
+            }
+        }
+    }
+
+    static void upcall_impl(MemorySession session) {
+        // do nothing
     }
 
     private void waitSomeTime() {
