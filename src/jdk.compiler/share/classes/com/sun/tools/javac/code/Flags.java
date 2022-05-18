@@ -311,7 +311,7 @@ public class Flags {
     /**
      * Flag to mark a lazy static field
      */
-    public static final long LAZY= 1L<<52; // VarSymbols only
+    public static final long LAZY= 1L<<49; // VarSymbols only (shared with LAMBDA_METHOD)
 
     /**
      * Flag to indicate the given ModuleSymbol is a system module.
@@ -415,7 +415,7 @@ public class Flags {
         RecordMethodFlags                 = AccessFlags | ABSTRACT | STATIC |
                                             SYNCHRONIZED | FINAL | STRICTFP;
     public static final long
-        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED,
+        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED | LAZY,
         ExtendedMemberClassFlags          = (long)MemberClassFlags | SEALED | NON_SEALED,
         ExtendedMemberStaticClassFlags    = (long) MemberStaticClassFlags | SEALED | NON_SEALED,
         ExtendedClassFlags                = (long)ClassFlags | SEALED | NON_SEALED,
@@ -512,7 +512,12 @@ public class Flags {
         BAD_OVERRIDE(Flags.BAD_OVERRIDE),
         SIGNATURE_POLYMORPHIC(Flags.SIGNATURE_POLYMORPHIC),
         THROWS(Flags.THROWS),
-        LAMBDA_METHOD(Flags.LAMBDA_METHOD),
+        LAZY(Flags.LAZY) {
+            @Override
+            public String toString() {
+                return "lazy-static";
+            }
+        },
         TYPE_TRANSLATED(Flags.TYPE_TRANSLATED),
         MODULE(Flags.MODULE),
         AUTOMATIC_MODULE(Flags.AUTOMATIC_MODULE),

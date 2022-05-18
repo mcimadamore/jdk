@@ -3266,7 +3266,15 @@ public class JavacParser implements Parser {
             }
             default: break loop;
             }
-            if ((flags & flag) != 0) log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+            if ((flags & flag) != 0) {
+                if ((flag == Flags.STATIC && (flags & Flags.LAZY) != 0) ||
+                        ((flag & Flags.LAZY) != 0 && (flags & (Flags.STATIC | Flags.LAZY)) == Flags.STATIC)) {
+                    log.error(DiagnosticFlag.SYNTAX, token.pos,
+                            Errors.IllegalCombinationOfModifiers(Set.of(Flags.Flag.LAZY), Set.of(Flags.Flag.STATIC)));
+                } else {
+                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+                }
+            }
             lastPos = token.pos;
             nextToken();
             if (flag == Flags.ANNOTATION) {

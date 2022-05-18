@@ -1189,10 +1189,12 @@ public class Check {
                 mask = ReceiverParamFlags;
             else if (sym.owner.kind != TYP)
                 mask = LocalVarFlags;
-            else if ((sym.owner.flags_field & INTERFACE) != 0)
-                mask = implicit = InterfaceVarFlags;
+            else if ((sym.owner.flags_field & INTERFACE) != 0) {
+                implicit = InterfaceVarFlags;
+                mask = InterfaceVarFlags | LAZY;
+            }
             else
-                mask = VarFlags;
+                mask = VarFlags | LAZY;
             break;
         case MTH:
             if (sym.name == names.init) {
@@ -1282,6 +1284,9 @@ public class Check {
                 mask |= INTERFACE;
             }
             else {
+                if ((illegal & LAZY) != 0) {
+                    illegal &= ~STATIC;
+                }
                 log.error(pos,
                         Errors.ModNotAllowedHere(asFlagSet(illegal)));
             }
