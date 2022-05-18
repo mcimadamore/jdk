@@ -309,6 +309,11 @@ public class Flags {
     public static final long NAME_FILLED = 1L<<52; //ParamSymbols only
 
     /**
+     * Flag to mark a lazy static field
+     */
+    public static final long LAZY= 1L<<52; // VarSymbols only
+
+    /**
      * Flag to indicate the given ModuleSymbol is a system module.
      */
     public static final long SYSTEM_MODULE = 1L<<53; //ModuleSymbols only

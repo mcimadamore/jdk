@@ -80,6 +80,7 @@ public class Gen extends JCTree.Visitor {
 
     /** Format of stackmap tables to be generated. */
     private final Code.StackMapFormat stackMap;
+    private final boolean desugarLazyStatics;
 
     /** A type that serves as the expected type for all method expressions.
      */
@@ -131,6 +132,7 @@ public class Gen extends JCTree.Visitor {
         this.stackMap = StackMapFormat.JSR202;
         annotate = Annotate.instance(context);
         qualifiedSymbolCache = new HashMap<>();
+        desugarLazyStatics = options.isSet("desugarLazyStatics");
     }
 
     /** Switches
@@ -2257,6 +2259,9 @@ public class Gen extends JCTree.Visitor {
 
     public void visitIdent(JCIdent tree) {
         Symbol sym = tree.sym;
+        if (desugarLazyStatics && isLazyStatic(sym)) {
+            sym = ((VarSymbol)sym).lazyConstValue();
+        }
         if (tree.name == names._this || tree.name == names._super) {
             Item res = tree.name == names._this
                 ? items.makeThisItem()
@@ -2294,6 +2299,9 @@ public class Gen extends JCTree.Visitor {
 
     public void visitSelect(JCFieldAccess tree) {
         Symbol sym = tree.sym;
+        if (desugarLazyStatics && isLazyStatic(sym)) {
+            sym = ((VarSymbol)sym).lazyConstValue();
+        }
 
         if (tree.name == names._class) {
             code.emitLdc((LoadableConstant)checkDimension(tree.pos(), tree.selected.type));
@@ -2329,7 +2337,10 @@ public class Gen extends JCTree.Visitor {
             result = items.
                 makeImmediateItem(sym.type, ((VarSymbol) sym).getConstValue());
         } else {
-            if (isInvokeDynamic(sym)) {
+            if (isInvokeDynamic(sym) || isConstantDynamic(sym)) {
+                if (isConstantDynamic(sym)) {
+                    setTypeAnnotationPositions(tree.pos);
+                }
                 result = items.makeDynamicItem(sym);
                 return;
             } else {
@@ -2357,6 +2368,10 @@ public class Gen extends JCTree.Visitor {
 
     public boolean isInvokeDynamic(Symbol sym) {
         return sym.kind == MTH && ((MethodSymbol)sym).isDynamic();
+    }
+
+    public boolean isLazyStatic(Symbol sym) {
+        return (sym.flags() & LAZY) != 0;
     }
 
     public void visitLiteral(JCLiteral tree) {

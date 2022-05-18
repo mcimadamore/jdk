@@ -3255,6 +3255,14 @@ public class JavacParser implements Parser {
                     flag = Flags.SEALED;
                     break;
                 }
+                if (isLazyStaticIdentifier()) {
+                    // @@@: make sure this is a field
+                    checkSourceLevel(Feature.LAZY_STATICS);
+                    flag = Flags.LAZY | Flags.STATIC | Flags.FINAL;
+                    nextToken();
+                    nextToken();
+                    break;
+                }
                 break loop;
             }
             default: break loop;
@@ -4333,13 +4341,14 @@ public class JavacParser implements Parser {
                             isInterface, isVoid, false, dc));
                     } else if (!isVoid && typarams.isEmpty()) {
                         if (!isRecord || (isRecord && (mods.flags & Flags.STATIC) != 0)) {
-                        List<JCTree> defs =
-                            variableDeclaratorsRest(pos, mods, type, name, isInterface, dc,
-                                                    new ListBuffer<JCTree>(), false).toList();
-                        accept(SEMI);
-                        storeEnd(defs.last(), S.prevToken().endPos);
-                        return defs;
-                    } else {
+                            boolean isLazy = (mods.flags & Flags.LAZY) != 0;
+                            List<JCTree> defs =
+                                variableDeclaratorsRest(pos, mods, type, name, isInterface || isLazy, dc,
+                                                        new ListBuffer<JCTree>(), false).toList();
+                            accept(SEMI);
+                            storeEnd(defs.last(), S.prevToken().endPos);
+                            return defs;
+                        } else {
                             int errPos = pos;
                             variableDeclaratorsRest(pos, mods, type, name, isInterface, dc,
                                     new ListBuffer<JCTree>(), false).toList();
@@ -4408,6 +4417,10 @@ public class JavacParser implements Parser {
             }
         }
         return false;
+    }
+
+    protected boolean isLazyStaticIdentifier() {
+        return (token.name() == names.lazy && peekToken(0, TokenKind.SUB, STATIC));
     }
 
     private boolean allowedAfterSealedOrNonSealed(Token next, boolean local, boolean currentIsNonSealed) {

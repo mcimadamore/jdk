@@ -231,6 +231,7 @@ public class Symtab {
     public final Type ioExceptionType;
     public final Type objectStreamExceptionType;
     public final Type externalizableType;
+    public final Type constantBootstraps;
 
     /** The symbol representing the length field of an array.
      */
@@ -605,6 +606,7 @@ public class Symtab {
         ioExceptionType = enterClass("java.io.IOException");
         objectStreamExceptionType = enterClass("java.io.ObjectStreamException");
         externalizableType = enterClass("java.io.Externalizable");
+        constantBootstraps = enterClass("java.lang.invoke.ConstantBootstraps");
 
         synthesizeEmptyInterfaceIfMissing(autoCloseableType);
         synthesizeEmptyInterfaceIfMissing(cloneableType);
