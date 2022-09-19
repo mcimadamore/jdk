@@ -28,6 +28,7 @@
 #include "memory/resourceArea.hpp"
 #include "prims/foreignGlobals.inline.hpp"
 #include "prims/downcallLinker.hpp"
+#include "runtime/globals.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubCodeGenerator.hpp"
 #include "utilities/formatBuffer.hpp"
@@ -261,10 +262,12 @@ void DowncallStubGenerator::generate() {
 
     __ movl(Address(r15_thread, JavaThread::thread_state_offset()), _thread_in_native_trans);
 
-    // Force this write out before the read below
+  // Force this write out before the read below
+  if (!UseSystemMemoryBarrier) {
     __ membar(Assembler::Membar_mask_bits(
-              Assembler::LoadLoad | Assembler::LoadStore |
-              Assembler::StoreLoad | Assembler::StoreStore));
+            Assembler::LoadLoad | Assembler::LoadStore |
+            Assembler::StoreLoad | Assembler::StoreStore));
+  }
 
     __ safepoint_poll(L_safepoint_poll_slow_path, r15_thread, true /* at_return */, false /* in_nmethod */);
     __ cmpl(Address(r15_thread, JavaThread::suspend_flags_offset()), 0);
