@@ -35,10 +35,15 @@ import java.lang.foreign.MemorySession;
 import jdk.internal.foreign.MemorySessionImpl;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
 import static org.testng.Assert.*;
 
+import java.lang.management.MemoryPoolMXBean;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -202,6 +207,14 @@ public class TestMemorySession {
     }
 
     @Test
+    public void testCloseConfinedLockInSameThread() {
+        Arena arena = Arena.openConfined();
+        Arena handle = Arena.openConfined();
+        keepAlive(handle.session(), arena.session());
+        handle.close();
+    }
+
+    @Test
     public void testCloseConfinedLock() {
         Arena arena = Arena.openConfined();
         Arena handle = Arena.openConfined();
@@ -300,6 +313,40 @@ public class TestMemorySession {
         // Now let's close 'root'. This is trickier than it seems: releases of the confined session happen in different
         // threads, so that the confined session lock count is updated racily. If that happens, the following close will blow up.
         root.close();
+    }
+
+
+    // This tests that close operations are visible to other threads even though the original
+    // session is confined as per the .isAlive() contract.
+    @Test
+    public void testConfinedSessionIsAliveObservableFromAnotherThread() throws InterruptedException {
+        var begin = Instant.now();
+        for (int i = 0; i < 1_000; i++) {
+            var latch = new CountDownLatch(2);
+            Thread otherThread;
+            try (var arena = Arena.openConfined()) {
+                otherThread = new Thread(() -> {
+                    MemorySession session = arena.session();
+                    assertTrue(session.isAlive());
+                    latch.countDown();
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                    boolean alive = session.isAlive();
+                    assertFalse(alive);
+                });
+                otherThread.start();
+                while (latch.getCount() == 2) {
+                    Thread.onSpinWait();
+                }
+            } // <- arena.close() invoked here
+            latch.countDown();
+            otherThread.join();
+        }
+        var end = Instant.now();
+        System.out.println("Completed in " + Duration.between(begin, end));
     }
 
     private void waitSomeTime() {
