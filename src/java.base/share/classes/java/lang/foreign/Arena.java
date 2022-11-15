@@ -26,6 +26,7 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.SessionFactory;
 import jdk.internal.javac.PreviewFeature;
 
 import java.util.Objects;
@@ -136,7 +137,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * @return a new confined arena.
      */
     static Arena openConfined() {
-        return makeArena(MemorySessionImpl.createConfined(Thread.currentThread()));
+        return makeArena(SessionFactory.createConfined(Thread.currentThread()));
     }
 
     /**
@@ -144,7 +145,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * @return a new shared arena.
      */
     static Arena openShared() {
-        return makeArena(MemorySessionImpl.createShared());
+        return makeArena(SessionFactory.createShared());
     }
 
     private static Arena makeArena(MemorySessionImpl sessionImpl) {
