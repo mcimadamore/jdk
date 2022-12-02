@@ -108,7 +108,7 @@ public class TestArrays {
 
     @Test(dataProvider = "arrays")
     public void testArrays(Consumer<MemorySegment> init, Consumer<MemorySegment> checker, MemoryLayout layout) {
-        MemorySegment segment = MemorySegment.allocateNative(layout, SegmentScope.auto());
+        MemorySegment segment = SegmentScope.auto().allocate(layout);
         init.accept(segment);
         assertFalse(segment.isReadOnly());
         checker.accept(segment);
@@ -128,7 +128,7 @@ public class TestArrays {
     public void testBadSize(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
         if (layout.byteSize() == 1) throw new IllegalStateException(); //make it fail
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(layout.byteSize() + 1, layout.byteSize(), arena);
+            MemorySegment segment = arena.allocate(layout.byteSize() + 1, layout.byteSize());
             arrayFactory.apply(segment);
         }
     }
@@ -137,7 +137,7 @@ public class TestArrays {
             expectedExceptions = IllegalStateException.class)
     public void testArrayFromClosedSegment(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
         Arena arena = Arena.openConfined();
-        MemorySegment segment = MemorySegment.allocateNative(layout, arena);
+        MemorySegment segment = arena.allocate(layout);
         arena.close();
         arrayFactory.apply(segment);
     }

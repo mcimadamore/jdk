@@ -226,7 +226,7 @@ public interface Binding {
          */
         public static Context ofBoundedAllocator(long size) {
             Arena arena = Arena.openConfined();
-            return new Context(SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, arena)), arena) {
+            return new Context(SegmentAllocator.slicingAllocator(arena.allocate(size)), arena) {
                 @Override
                 public void close() {
                     arena.close();

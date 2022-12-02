@@ -129,7 +129,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment ms = MemorySegment.allocateNative(LAYOUT, SegmentScope.auto());
+        MemorySegment ms = SegmentScope.auto().allocate(LAYOUT);
         VH_stack.set(ms, MemorySegment.NULL);
         VH_gr_top.set(ms, MemorySegment.NULL);
         VH_vr_top.set(ms, MemorySegment.NULL);
@@ -394,7 +394,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
 
     @Override
     public VaList copy() {
-        MemorySegment copy = MemorySegment.allocateNative(LAYOUT, segment.scope());
+        MemorySegment copy = segment.scope().allocate(LAYOUT);
         copy.copyFrom(segment);
         return new LinuxAArch64VaList(copy, stack, gpRegsArea, gpLimit, fpRegsArea, fpLimit);
     }
@@ -442,8 +442,8 @@ public non-sealed class LinuxAArch64VaList implements VaList {
 
         Builder(SegmentScope session) {
             this.session = session;
-            this.gpRegs = MemorySegment.allocateNative(LAYOUT_GP_REGS, session);
-            this.fpRegs = MemorySegment.allocateNative(LAYOUT_FP_REGS, session);
+            this.gpRegs = session.allocate(LAYOUT_GP_REGS);
+            this.fpRegs = session.allocate(LAYOUT_FP_REGS);
         }
 
         @Override
@@ -536,12 +536,12 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment vaListSegment = MemorySegment.allocateNative(LAYOUT, session);
+            MemorySegment vaListSegment = session.allocate(LAYOUT);
             MemorySegment stackArgsSegment;
             if (!stackArgs.isEmpty()) {
                 long stackArgsSize = stackArgs.stream()
                     .reduce(0L, (acc, e) -> acc + Utils.alignUp(e.layout.byteSize(), STACK_SLOT_SIZE), Long::sum);
-                stackArgsSegment = MemorySegment.allocateNative(stackArgsSize, 16, session);
+                stackArgsSegment = session.allocate(stackArgsSize, 16);
                 MemorySegment writeCursor = stackArgsSegment;
                 for (SimpleVaArg arg : stackArgs) {
                     final long alignedSize = Utils.alignUp(arg.layout.byteSize(), STACK_SLOT_SIZE);

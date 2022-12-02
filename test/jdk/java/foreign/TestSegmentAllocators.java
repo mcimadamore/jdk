@@ -188,7 +188,7 @@ public class TestSegmentAllocators {
             @Override
 
             public MemorySegment allocate(long byteSize, long byteAlignment) {
-                return MemorySegment.allocateNative(byteSize, byteAlignment, SegmentScope.auto());
+                return SegmentScope.auto().allocate(byteSize, byteAlignment);
             }
 
             @Override
@@ -348,7 +348,7 @@ public class TestSegmentAllocators {
     }
 
     enum AllocationFactory {
-        SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, drop))),
+        SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(drop.allocate(size))),
         NATIVE_ALLOCATOR(false, (size, drop) -> SegmentAllocator.nativeAllocator(drop));
 
         private final boolean isBound;
@@ -482,7 +482,7 @@ public class TestSegmentAllocators {
     static Object[][] allocators() {
         return new Object[][] {
                 { SegmentAllocator.nativeAllocator(SegmentScope.global()) },
-                { SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(10, SegmentScope.global())) },
+                { SegmentAllocator.prefixAllocator(SegmentScope.global().allocate(10)) },
         };
     }
 }

@@ -81,12 +81,12 @@ public class CallOverheadHelper extends CLayouts {
             C_INT, C_INT
     );
 
-    static final MemorySegment sharedPoint = MemorySegment.allocateNative(POINT_LAYOUT, Arena.openShared());
-    static final MemorySegment confinedPoint = MemorySegment.allocateNative(POINT_LAYOUT, Arena.openConfined());
+    static final MemorySegment sharedPoint = Arena.openShared().allocate(POINT_LAYOUT);
+    static final MemorySegment confinedPoint = Arena.openConfined().allocate(POINT_LAYOUT);
 
-    static final MemorySegment point = MemorySegment.allocateNative(POINT_LAYOUT, SegmentScope.auto());
+    static final MemorySegment point = SegmentScope.auto().allocate(POINT_LAYOUT);
 
-    static final SegmentAllocator recycling_allocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(POINT_LAYOUT, SegmentScope.auto()));
+    static final SegmentAllocator recycling_allocator = SegmentAllocator.prefixAllocator(SegmentScope.auto().allocate(POINT_LAYOUT));
 
     static {
         System.loadLibrary("CallOverheadJNI");

@@ -81,7 +81,7 @@ public class StrLenTest extends CLayouts {
     @Setup
     public void setup() {
         str = makeString(size);
-        segmentAllocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(size + 1, arena));
+        segmentAllocator = SegmentAllocator.prefixAllocator(arena.allocate(size + 1));
     }
 
     @TearDown
@@ -149,7 +149,7 @@ public class StrLenTest extends CLayouts {
         long rem;
 
         public RingAllocator(SegmentScope session) {
-            this.segment = MemorySegment.allocateNative(1024, session);
+            this.segment = session.allocate(1024);
             reset();
         }
 

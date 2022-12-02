@@ -38,7 +38,7 @@ import jdk.internal.javac.PreviewFeature;
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
- *     MemorySegment segment = MemorySegment.allocateNative(100, arena.scope());
+ *     MemorySegment segment = arena.scope().allocate((MemoryLayout)100);
  *     ...
  * } // memory released here
  *}

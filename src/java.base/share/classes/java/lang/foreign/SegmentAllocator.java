@@ -401,9 +401,8 @@ public interface SegmentAllocator {
      * <p>
      * This is equivalent to the following code:
      * {@snippet lang = java:
-     * SegmentAllocator nativeAllocator = (byteSize, byteAlignment) ->
-     *     MemorySegment.allocateNative(byteSize, byteAlignment, scope);
-     * }
+     * SegmentAllocator nativeAllocator = (byteSize, byteAlignment) ->     *  scope.allocate(byteSize, byteAlignment);
+     *}
      * @param scope the scope associated with the segments returned by the native allocator.
      * @return a simple allocator used to allocate native segments.
      */

@@ -138,7 +138,7 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment base = MemorySegment.allocateNative(LAYOUT, SegmentScope.auto());
+        MemorySegment base = SegmentScope.auto().allocate(LAYOUT);
         VH_gp_offset.set(base, MAX_GP_OFFSET);
         VH_fp_offset.set(base, MAX_FP_OFFSET);
         VH_overflow_arg_area.set(base, MemorySegment.NULL);
@@ -332,7 +332,7 @@ public non-sealed class SysVVaList implements VaList {
 
     @Override
     public VaList copy() {
-        MemorySegment copy = MemorySegment.allocateNative(LAYOUT, segment.scope());
+        MemorySegment copy = segment.scope().allocate(LAYOUT);
         copy.copyFrom(segment);
         return new SysVVaList(copy, overflowArgArea, regSaveArea, gpLimit, fpLimit);
     }
@@ -367,7 +367,7 @@ public non-sealed class SysVVaList implements VaList {
 
         public Builder(SegmentScope session) {
             this.session = session;
-            this.reg_save_area = MemorySegment.allocateNative(LAYOUT_REG_SAVE_AREA, session);
+            this.reg_save_area = session.allocate(LAYOUT_REG_SAVE_AREA);
         }
 
         @Override
@@ -446,12 +446,12 @@ public non-sealed class SysVVaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment vaListSegment = MemorySegment.allocateNative(LAYOUT, session);
+            MemorySegment vaListSegment = session.allocate(LAYOUT);
             MemorySegment stackArgsSegment;
             if (!stackArgs.isEmpty()) {
                 long stackArgsSize = stackArgs.stream().reduce(0L,
                         (acc, e) -> acc + Utils.alignUp(e.layout.byteSize(), STACK_SLOT_SIZE), Long::sum);
-                stackArgsSegment = MemorySegment.allocateNative(stackArgsSize, 16, session);
+                stackArgsSegment = session.allocate(stackArgsSize, 16);
                 MemorySegment writeCursor = stackArgsSegment;
                 for (SimpleVaArg arg : stackArgs) {
                     if (arg.layout.byteSize() > 8) {

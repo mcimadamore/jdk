@@ -186,7 +186,7 @@ public class TestByteBuffer {
     @Test
     public void testOffheap() {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(tuples, arena);;
+            MemorySegment segment = arena.allocate(tuples);;
             initTuples(segment, tuples.elementCount());
 
             ByteBuffer bb = segment.asByteBuffer();
@@ -361,7 +361,7 @@ public class TestByteBuffer {
     public void testScopedBuffer(Function<ByteBuffer, Buffer> bufferFactory, @NoInjection Method method, Object[] args) {
         Buffer bb;
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(bytes, arena);;
+            MemorySegment segment = arena.allocate(bytes);;
             bb = bufferFactory.apply(segment.asByteBuffer());
         }
         //outside of session!!
@@ -387,7 +387,7 @@ public class TestByteBuffer {
     public void testScopedBufferAndVarHandle(VarHandle bufferHandle) {
         ByteBuffer bb;
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(bytes, arena);;
+            MemorySegment segment = arena.allocate(bytes);;
             bb = segment.asByteBuffer();
             for (Map.Entry<MethodHandle, Object[]> e : varHandleMembers(bb, bufferHandle).entrySet()) {
                 MethodHandle handle = e.getKey().bindTo(bufferHandle)
@@ -421,7 +421,7 @@ public class TestByteBuffer {
     @Test(dataProvider = "bufferOps")
     public void testDirectBuffer(Function<ByteBuffer, Buffer> bufferFactory, @NoInjection Method method, Object[] args) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(bytes, arena);;
+            MemorySegment segment = arena.allocate(bytes);;
             Buffer bb = bufferFactory.apply(segment.asByteBuffer());
             assertTrue(bb.isDirect());
             DirectBuffer directBuffer = ((DirectBuffer)bb);
@@ -434,7 +434,7 @@ public class TestByteBuffer {
     @Test(dataProvider="resizeOps")
     public void testResizeOffheap(Consumer<MemorySegment> checker, Consumer<MemorySegment> initializer, SequenceLayout seq) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(seq, arena);;
+            MemorySegment segment = arena.allocate(seq);;
             initializer.accept(segment);
             checker.accept(segment);
         }
@@ -472,7 +472,7 @@ public class TestByteBuffer {
     @Test(dataProvider="resizeOps")
     public void testResizeRoundtripNative(Consumer<MemorySegment> checker, Consumer<MemorySegment> initializer, SequenceLayout seq) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(seq, arena);;
+            MemorySegment segment = arena.allocate(seq);;
             initializer.accept(segment);
             MemorySegment second = MemorySegment.ofBuffer(segment.asByteBuffer());
             checker.accept(second);
@@ -483,7 +483,7 @@ public class TestByteBuffer {
     public void testBufferOnClosedSession() {
         MemorySegment leaked;
         try (Arena arena = Arena.openConfined()) {
-            leaked = MemorySegment.allocateNative(bytes, arena);;
+            leaked = arena.allocate(bytes);;
         }
         ByteBuffer byteBuffer = leaked.asByteBuffer(); // ok
         byteBuffer.get(); // should throw
@@ -585,7 +585,7 @@ public class TestByteBuffer {
         checkByteArrayAlignment(seq.elementLayout());
         int bytes = (int)seq.byteSize();
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment nativeArray = MemorySegment.allocateNative(bytes, 1, arena);;
+            MemorySegment nativeArray = arena.allocate(bytes, 1);;
             MemorySegment heapArray = MemorySegment.ofArray(new byte[bytes]);
             initializer.accept(heapArray);
             nativeArray.copyFrom(heapArray);
@@ -598,7 +598,7 @@ public class TestByteBuffer {
         checkByteArrayAlignment(seq.elementLayout());
         int bytes = (int)seq.byteSize();
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment nativeArray = MemorySegment.allocateNative(seq, arena);;
+            MemorySegment nativeArray = arena.allocate(seq);;
             MemorySegment heapArray = MemorySegment.ofArray(new byte[bytes]);
             initializer.accept(nativeArray);
             heapArray.copyFrom(nativeArray);
@@ -670,7 +670,7 @@ public class TestByteBuffer {
     @Test
     public void testRoundTripAccess() {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment ms = MemorySegment.allocateNative(4, 1, arena);;
+            MemorySegment ms = arena.allocate(4, 1);;
             MemorySegment msNoAccess = ms.asReadOnly();
             MemorySegment msRoundTrip = MemorySegment.ofBuffer(msNoAccess.asByteBuffer());
             assertEquals(msNoAccess.isReadOnly(), msRoundTrip.isReadOnly());
@@ -680,7 +680,7 @@ public class TestByteBuffer {
     @Test(expectedExceptions = IllegalStateException.class)
     public void testDeadAccessOnClosedBufferSegment() {
         Arena arena = Arena.openConfined();
-        MemorySegment s1 = MemorySegment.allocateNative(JAVA_INT, arena);
+        MemorySegment s1 = arena.allocate(JAVA_INT);
         MemorySegment s2 = MemorySegment.ofBuffer(s1.asByteBuffer());
 
         // memory freed
@@ -695,7 +695,7 @@ public class TestByteBuffer {
         tmp.deleteOnExit();
         try (FileChannel channel = FileChannel.open(tmp.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE) ;
             Arena arena = arenaSupplier.get()) {
-            MemorySegment segment = MemorySegment.allocateNative(10, 1, arena);;
+            MemorySegment segment = arena.allocate(10, 1);;
             for (int i = 0; i < 10; i++) {
                 segment.set(JAVA_BYTE, i, (byte) i);
             }
@@ -716,7 +716,7 @@ public class TestByteBuffer {
         tmp.deleteOnExit();
         Arena arena = arenaSupplier.get();
         try (FileChannel channel = FileChannel.open(tmp.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            MemorySegment segment = MemorySegment.allocateNative(10, arena);
+            MemorySegment segment = arena.allocate(10);
             for (int i = 0; i < 10; i++) {
                 segment.set(JAVA_BYTE, i, (byte) i);
             }
@@ -734,7 +734,7 @@ public class TestByteBuffer {
     @Test
     public void buffersAndArraysFromSlices() {
         try (Arena arena = Arena.openShared()) {
-            MemorySegment segment = MemorySegment.allocateNative(16, arena);;
+            MemorySegment segment = arena.allocate(16);;
             int newSize = 8;
             var slice = segment.asSlice(4, newSize);
 
@@ -752,7 +752,7 @@ public class TestByteBuffer {
     @Test
     public void viewsFromSharedSegment() {
         try (Arena arena = Arena.openShared()) {
-            MemorySegment segment = MemorySegment.allocateNative(16, arena);;
+            MemorySegment segment = arena.allocate(16);;
             var byteBuffer = segment.asByteBuffer();
             byteBuffer.asReadOnlyBuffer();
             byteBuffer.slice(0, 8);
@@ -762,8 +762,8 @@ public class TestByteBuffer {
     @DataProvider(name = "segments")
     public static Object[][] segments() throws Throwable {
         return new Object[][] {
-                { (Supplier<MemorySegment>) () -> MemorySegment.allocateNative(16, SegmentScope.auto()) },
-                { (Supplier<MemorySegment>) () -> MemorySegment.allocateNative(16, Arena.openConfined()) },
+                { (Supplier<MemorySegment>) () -> SegmentScope.auto().allocate(16)},
+                { (Supplier<MemorySegment>) () -> Arena.openConfined().allocate(16)},
                 { (Supplier<MemorySegment>) () -> MemorySegment.ofArray(new byte[16]) }
         };
     }

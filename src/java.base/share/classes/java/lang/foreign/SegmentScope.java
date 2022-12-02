@@ -41,7 +41,7 @@ import jdk.internal.ref.CleanerFactory;
  * regions of memory are never deallocated. Moreover, memory segments associated with the global scope
  * can be {@linkplain #isAccessibleBy(Thread) accessed} from any thread.
  * {@snippet lang = java:
- * MemorySegment segment = MemorySegment.allocateNative(100, SegmentScope.global());
+ * MemorySegment segment = SegmentScope.global().allocate(100);
  * ...
  * // segment is never deallocated!
  *}
@@ -52,7 +52,7 @@ import jdk.internal.ref.CleanerFactory;
  * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>, as shown below:
  *
  * {@snippet lang = java:
- * MemorySegment segment = MemorySegment.allocateNative(100, SegmentScope.auto());
+ * MemorySegment segment = SegmentScope.auto().allocate(100);
  * ...
  * segment = null; // the segment region becomes available for deallocation after this point
  *}
@@ -66,11 +66,11 @@ import jdk.internal.ref.CleanerFactory;
  * {@snippet lang = java:
  * MemorySegment segment = null;
  * try (Arena arena = Arena.openConfined()) {
- *     segment = MemorySegment.allocateNative(100, arena.scope());
+ *     segment = arena.scope().allocate((MemoryLayout)100);
  *     ...
  * } // segment region deallocated here
  * segment.get(ValueLayout.JAVA_BYTE, 0); // throws IllegalStateException
- * }
+ *}
  *
  * Which threads can {@link #isAccessibleBy(Thread) access} memory segments associated with an arena scope depends
  * on the arena kind. For instance, segments associated with the scope of a {@linkplain Arena#openConfined() confined arena}
@@ -119,7 +119,7 @@ sealed public interface SegmentScope extends SegmentAllocator permits Arena, Mem
      */
     @Override
     default MemorySegment allocate(long byteSize, long byteAlignment) {
-        return MemorySegment.allocateNative(byteSize, byteAlignment, this);
+        return allocate(byteSize, byteAlignment);
     }
 
     /**

@@ -118,13 +118,13 @@ public class MemorySessionClose {
 
     @Benchmark
     public MemorySegment implicit_close() {
-        return MemorySegment.allocateNative(ALLOC_SIZE, 4, SegmentScope.auto());
+        return SegmentScope.auto().allocate(ALLOC_SIZE, 4);
     }
 
     @Benchmark
     public MemorySegment implicit_close_systemgc() {
         if (gcCount++ == 0) System.gc(); // GC when we overflow
-        return MemorySegment.allocateNative(ALLOC_SIZE, 4, SegmentScope.auto());
+        return SegmentScope.auto().allocate(ALLOC_SIZE, 4);
     }
 
     // keep

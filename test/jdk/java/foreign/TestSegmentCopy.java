@@ -144,7 +144,7 @@ public class TestSegmentCopy {
     static class SegmentSlice {
 
         enum Kind {
-            NATIVE(i -> MemorySegment.allocateNative(i, SegmentScope.auto())),
+            NATIVE(i -> SegmentScope.auto().allocate(i)),
             ARRAY(i -> MemorySegment.ofArray(new byte[i]));
 
             final IntFunction<MemorySegment> segmentFactory;

@@ -102,8 +102,8 @@ public class TestSocketChannels extends AbstractChannelsTest {
              var ssc = ServerSocketChannel.open();
              var sc2 = connectChannels(ssc, sc1);
              var scp = drop = arenaSupplier.get()) {
-            MemorySegment segment1 = MemorySegment.allocateNative(10, 1, drop);
-            MemorySegment segment2 = MemorySegment.allocateNative(10, 1, drop);
+            MemorySegment segment1 = drop.allocate(10, 1);
+            MemorySegment segment2 = drop.allocate(10, 1);
             for (int i = 0; i < 10; i++) {
                 segment1.set(JAVA_BYTE, i, (byte) i);
             }
@@ -141,7 +141,7 @@ public class TestSocketChannels extends AbstractChannelsTest {
              var server = ServerSocketChannel.open();
              var connected = connectChannels(server, channel);
              var drop = arenaSupplier.get()) {
-            var segment = MemorySegment.allocateNative(10, 1, drop);
+            var segment = drop.allocate(10, 1);
             ByteBuffer bb = segment.asByteBuffer();
             List<ThrowingRunnable> ioOps = List.of(
                     () -> channel.write(bb),

@@ -63,8 +63,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * Heap segments can be obtained by calling one of the {@link MemorySegment#ofArray(int[])} factory methods.
  * These methods return a memory segment backed by the on-heap region that holds the specified Java array.
  * <p>
- * Native segments can be obtained by calling one of the {@link MemorySegment#allocateNative(long, long, SegmentScope)}
- * factory methods, which return a memory segment backed by a newly allocated off-heap region with the given size
+ * Native segments can be obtained by calling one of the {@link SegmentScope#allocate(long, long)}
+ * methods, which return a memory segment backed by a newly allocated off-heap region with the given size
  * and aligned to the given alignment constraint. Alternatively, native segments can be obtained by
  * {@link FileChannel#map(MapMode, long, long, SegmentScope) mapping} a file into a new off-heap region
  * (in some systems, this operation is sometimes referred to as {@code mmap}).
@@ -91,8 +91,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * Every memory segment has a {@linkplain #byteSize() size}. The size of a heap segment is derived from the Java array
  * from which it is obtained. This size is predictable across Java runtimes.
  * The size of a native segment is either passed explicitly
- * (as in {@link MemorySegment#allocateNative(long, SegmentScope)}) or derived from a {@link MemoryLayout}
- * (as in {@link MemorySegment#allocateNative(MemoryLayout, SegmentScope)}). The size of a memory segment is typically
+ * (as in {@link SegmentScope#allocate(long)}) or derived from a {@link MemoryLayout}
+ * (as in {@link SegmentScope#allocate(MemoryLayout)}). The size of a memory segment is typically
  * a positive number but may be <a href="#wrapping-addresses">zero</a>, but never negative.
  * <p>
  * The address and size of a memory segment jointly ensure that access operations on the segment cannot fall
@@ -241,8 +241,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * <p>
  * The alignment constraint used to access a segment is typically dictated by the shape of the data structure stored
  * in the segment. For example, if the programmer wishes to store a sequence of 8-byte values in a native segment, then
- * the segment should be allocated by specifying a 8-byte alignment constraint, either via {@link #allocateNative(long, long, SegmentScope)}
- * or {@link #allocateNative(MemoryLayout, SegmentScope)}. These factories ensure that the off-heap region of memory backing
+ * the segment should be allocated by specifying a 8-byte alignment constraint, either via {@link SegmentScope#allocate(long, long)}
+ * or {@link SegmentScope#allocate(MemoryLayout)}. These factories ensure that the off-heap region of memory backing
  * the returned segment has a starting address that is 8-byte aligned. Subsequently, the programmer can access the
  * segment at the offsets of interest -- 0, 8, 16, 24, etc -- in the knowledge that every such access is aligned.
  * <p>
@@ -506,7 +506,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns {@code true} if this segment is a native segment. A native segment is
-     * created e.g. using the {@link #allocateNative(long, SegmentScope)} (and related) factory, or by
+     * created e.g. using the {@link SegmentScope#allocate(long)} (and related) factory, or by
      * {@linkplain #ofBuffer(Buffer) wrapping} a {@linkplain ByteBuffer#allocateDirect(int) direct buffer}.
      * @return {@code true} if this segment is native segment.
      */
@@ -1150,108 +1150,6 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
         Objects.requireNonNull(scope);
         Utils.checkAllocationSizeAndAlign(byteSize, 1);
         return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, byteSize, scope, cleanupAction);
-    }
-
-    /**
-     * Creates a native segment with the given layout and scope.
-     * <p>
-     * The lifetime off-heap region of memory associated with the returned native segment is determined by the
-     * provided scope. The off-heap memory region is deallocated when the scope becomes not
-     * {@linkplain SegmentScope#isAlive() alive}. If the scope has been obtained using an {@link Arena},
-     * clients are responsible for ensuring that the arena is closed when the returned segment is no longer in use
-     * Failure to do so will result in off-heap memory leaks. As an alternative, an {@linkplain SegmentScope#auto() automatic scope}
-     * can be used, allowing the off-heap memory region associated with the returned native segment to be
-     * automatically released some unspecified time after the scope is no longer referenced.
-     * <p>
-     * The {@linkplain #address() address} of the returned memory segment is the starting address of
-     * the newly allocated off-heap region backing the segment. Moreover, the {@linkplain #address() address}
-     * of the returned segment will be aligned according to the alignment constraint of the provided layout.
-     * <p>
-     * This is equivalent to the following code:
-     * {@snippet lang=java :
-     * allocateNative(layout.bytesSize(), layout.bytesAlignment(), scope);
-     * }
-     * <p>
-     * The region of off-heap region backing the returned native segment is initialized to zero.
-     *
-     * @param layout the layout of the off-heap memory region backing the native segment.
-     * @param scope the scope associated with the returned native segment.
-     * @return a new native segment.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope.isAccessibleBy(T) == false}.
-     */
-    static MemorySegment allocateNative(MemoryLayout layout, SegmentScope scope) {
-        Objects.requireNonNull(layout);
-        Objects.requireNonNull(scope);
-        return allocateNative(layout.byteSize(), layout.byteAlignment(), scope);
-    }
-
-    /**
-     * Creates a native segment with the given size (in bytes) and scope.
-     * <p>
-     * The lifetime off-heap region of memory associated with the returned native segment is determined by the
-     * provided scope. The off-heap memory region is deallocated when the scope becomes not
-     * {@linkplain SegmentScope#isAlive() alive}. If the scope has been obtained using an {@link Arena},
-     * clients are responsible for ensuring that the arena is closed when the returned segment is no longer in use
-     * Failure to do so will result in off-heap memory leaks. As an alternative, an {@linkplain SegmentScope#auto() automatic scope}
-     * can be used, allowing the off-heap memory region associated with the returned native segment to be
-     * automatically released some unspecified time after the scope is no longer referenced.
-     * <p>
-     * The {@linkplain #address() address} of the returned memory segment is the starting address of
-     * the newly allocated off-heap region backing the segment. Moreover, the {@linkplain #address() address}
-     * of the returned segment is guaranteed to be at least 1-byte aligned.
-     * <p>
-     * This is equivalent to the following code:
-     * {@snippet lang=java :
-     * allocateNative(bytesSize, 1, scope);
-     * }
-     * <p>
-     * The region of off-heap region backing the returned native segment is initialized to zero.
-     *
-     * @param byteSize the size (in bytes) of the off-heap memory region of memory backing the native memory segment.
-     * @param scope the scope associated with the returned native segment.
-     * @return a new native memory segment.
-     * @throws IllegalArgumentException if {@code byteSize < 0}.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope.isAccessibleBy(T) == false}.
-     */
-    static MemorySegment allocateNative(long byteSize, SegmentScope scope) {
-        return allocateNative(byteSize, 1, scope);
-    }
-
-    /**
-     * Creates a native segment with the given size (in bytes), alignment (in bytes) and scope.
-     * <p>
-     * The lifetime off-heap region of memory associated with the returned native segment is determined by the
-     * provided scope. The off-heap memory region is deallocated when the scope becomes not
-     * {@linkplain SegmentScope#isAlive() alive}. If the scope has been obtained using an {@link Arena},
-     * clients are responsible for ensuring that the arena is closed when the returned segment is no longer in use
-     * Failure to do so will result in off-heap memory leaks. As an alternative, an {@linkplain SegmentScope#auto() automatic scope}
-     * can be used, allowing the off-heap memory region associated with the returned native segment to be
-     * automatically released some unspecified time after the scope is no longer referenced.
-     * <p>
-     * The {@linkplain #address() address} of the returned memory segment is the starting address of
-     * the newly allocated off-heap region backing the segment. Moreover, the {@linkplain #address() address}
-     * of the returned segment will be aligned according to the provided alignment constraint.
-     * <p>
-     * The region of off-heap region backing the returned native segment is initialized to zero.
-     *
-     * @param byteSize the size (in bytes) of the off-heap region of memory backing the native memory segment.
-     * @param byteAlignment the alignment constraint (in bytes) of the off-heap region of memory backing the native memory segment.
-     * @param scope the scope associated with the returned native segment.
-     * @return a new native memory segment.
-     * @throws IllegalArgumentException if {@code byteSize < 0}, {@code byteAlignment <= 0}, or if {@code byteAlignment}
-     *                                  is not a power of 2.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope.isAccessibleBy(T) == false}.
-     */
-    static MemorySegment allocateNative(long byteSize, long byteAlignment, SegmentScope scope) {
-        Objects.requireNonNull(scope);
-        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-        return NativeMemorySegmentImpl.makeNativeSegment(byteSize, byteAlignment, scope);
     }
 
     /**

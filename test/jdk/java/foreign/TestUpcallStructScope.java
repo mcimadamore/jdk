@@ -91,7 +91,7 @@ public class TestUpcallStructScope extends NativeTestHelper {
         FunctionDescriptor upcallDesc = FunctionDescriptor.ofVoid(S_PDI_LAYOUT);
         try (Arena arena = Arena.openConfined()) {
             MemorySegment upcallStub = LINKER.upcallStub(target, upcallDesc, arena);
-            MemorySegment argSegment = MemorySegment.allocateNative(S_PDI_LAYOUT, arena);;
+            MemorySegment argSegment = arena.allocate(S_PDI_LAYOUT);;
             MH_do_upcall.invoke(upcallStub, argSegment);
         }
 

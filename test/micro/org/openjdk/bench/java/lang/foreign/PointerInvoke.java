@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 public class PointerInvoke extends CLayouts {
 
     Arena arena = Arena.openConfined();
-    MemorySegment segment = MemorySegment.allocateNative(100, arena);
+    MemorySegment segment = arena.allocate(100);
 
     static {
         System.loadLibrary("Ptr");
