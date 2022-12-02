@@ -244,7 +244,7 @@ public class TestScopedOperations {
         }
 
         enum AllocatorFactory {
-            NATIVE_ALLOCATOR(SegmentAllocator::nativeAllocator);
+            NATIVE_ALLOCATOR(scope -> scope);
 
             final Function<SegmentScope, SegmentAllocator> allocatorFactory;
 

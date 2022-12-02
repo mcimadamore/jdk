@@ -62,7 +62,7 @@ public class TestDowncallStack extends TestDowncallBase {
         try (Arena arena = Arena.openShared()) {
             boolean needsScope = descriptor.returnLayout().map(GroupLayout.class::isInstance).orElse(false);
             SegmentAllocator allocator = needsScope ?
-                    SegmentAllocator.nativeAllocator(arena) :
+                    arena :
                     THROWING_ALLOCATOR;
             Object res = doCall(addr, allocator, descriptor, args);
             if (ret == CallGeneratorHelper.Ret.NON_VOID) {

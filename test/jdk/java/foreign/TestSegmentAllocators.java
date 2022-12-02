@@ -349,7 +349,7 @@ public class TestSegmentAllocators {
 
     enum AllocationFactory {
         SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(drop.allocate(size))),
-        NATIVE_ALLOCATOR(false, (size, drop) -> SegmentAllocator.nativeAllocator(drop));
+        NATIVE_ALLOCATOR(false, (size, drop) -> (SegmentScope) drop);
 
         private final boolean isBound;
         private final BiFunction<Long, Arena, SegmentAllocator> factory;
@@ -481,7 +481,7 @@ public class TestSegmentAllocators {
     @DataProvider(name = "allocators")
     static Object[][] allocators() {
         return new Object[][] {
-                { SegmentAllocator.nativeAllocator(SegmentScope.global()) },
+                {SegmentScope.global()},
                 { SegmentAllocator.prefixAllocator(SegmentScope.global().allocate(10)) },
         };
     }
