@@ -72,13 +72,13 @@ public class TestUpcallAsync extends TestUpcallBase {
             FunctionDescriptor callbackDesc = descriptor.returnLayout()
                     .map(FunctionDescriptor::of)
                     .orElse(FunctionDescriptor.ofVoid());
-            MemorySegment callback = ABI.upcallStub(mh, callbackDesc, arena.scope());
+            MemorySegment callback = ABI.upcallStub(mh, callbackDesc, arena);
 
             MethodHandle invoker = asyncInvoker(ret, ret == Ret.VOID ? null : paramTypes.get(0), fields);
 
             Object res = (descriptor.returnLayout().isPresent() &&
                          descriptor.returnLayout().get() instanceof GroupLayout)
-                    ? invoker.invoke(arena.scope(), callback)
+                    ? invoker.invoke(arena, callback)
                     : invoker.invoke(callback);
             argChecks.forEach(c -> c.accept(args));
             if (ret == Ret.NON_VOID) {

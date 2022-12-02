@@ -60,7 +60,7 @@ public class TestSpliterator {
 
         //setup
         try (Arena arena = Arena.openShared()) {
-            MemorySegment segment = MemorySegment.allocateNative(layout, arena.scope());;
+            MemorySegment segment = MemorySegment.allocateNative(layout, arena);;
             for (int i = 0; i < layout.elementCount(); i++) {
                 INT_HANDLE.set(segment, (long) i, i);
             }

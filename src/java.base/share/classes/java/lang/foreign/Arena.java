@@ -31,9 +31,9 @@ import jdk.internal.javac.PreviewFeature;
 /**
  * An arena controls the lifecycle of memory segments, providing both flexible allocation and timely deallocation.
  * <p>
- * An arena has a {@linkplain #scope() scope}, called the arena scope. When the arena is {@linkplain #close() closed},
- * the arena scope is no longer {@linkplain SegmentScope#isAlive() alive}. As a result, all the
- * segments associated with the arena scope are invalidated, safely and atomically, their backing memory regions are
+ * An arena is a segment scope. When the arena is {@linkplain #close() closed},
+ * the arena is no longer {@linkplain SegmentScope#isAlive() alive}. As a result, all the
+ * segments associated with the arena are invalidated, safely and atomically, their backing memory regions are
  * deallocated (where applicable) and can no longer be accessed after the arena is closed:
  *
  * {@snippet lang = java:
@@ -44,13 +44,13 @@ import jdk.internal.javac.PreviewFeature;
  *}
  *
  * Furthermore, an arena is a {@link SegmentAllocator}. All the segments {@linkplain #allocate(long, long) allocated} by the
- * arena are associated with the arena scope. This makes arenas extremely useful when interacting with foreign code, as shown below:
+ * arena are associated with the arena. This makes arenas extremely useful when interacting with foreign code, as shown below:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
  *     MemorySegment nativeArray = arena.allocateArray(ValueLayout.JAVA_INT, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
  *     MemorySegment nativeString = arena.allocateUtf8String("Hello!");
- *     MemorySegment upcallStub = linker.upcallStub(handle, desc, arena.scope());
+ *     MemorySegment upcallStub = linker.upcallStub(handle, desc, arena);
  *     ...
  * } // memory released here
  *}
@@ -83,50 +83,10 @@ import jdk.internal.javac.PreviewFeature;
  * @since 20
  */
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-public interface Arena extends SegmentAllocator, AutoCloseable {
+public sealed interface Arena extends SegmentScope, AutoCloseable permits MemorySessionImpl {
 
     /**
-     * Returns a native memory segment with the given size (in bytes) and alignment constraint (in bytes).
-     * The returned segment is associated with the arena scope.
-     * The segment's {@link MemorySegment#address() address} is the starting address of the
-     * allocated off-heap memory region backing the segment, and the address is
-     * aligned according the provided alignment constraint.
-     *
-     * @implSpec
-     * The default implementation of this method is equivalent to the following code:
-     * {@snippet lang = java:
-     * MemorySegment.allocateNative(bytesSize, byteAlignment, scope());
-     *}
-     * More generally implementations of this method must return a native segment featuring the requested size,
-     * and that is compatible with the provided alignment constraint. Furthermore, for any two segments
-     * {@code S1, S2} returned by this method, the following invariant must hold:
-     *
-     * {@snippet lang = java:
-     * S1.overlappingSlice(S2).isEmpty() == true
-     *}
-     *
-     * @param byteSize the size (in bytes) of the off-heap memory block backing the native memory segment.
-     * @param byteAlignment the alignment constraint (in bytes) of the off-heap region of memory backing the native memory segment.
-     * @return a new native memory segment.
-     * @throws IllegalArgumentException if {@code bytesSize < 0}, {@code alignmentBytes <= 0}, or if {@code alignmentBytes}
-     * is not a power of 2.
-     * @throws IllegalStateException if the arena has already been {@linkplain #close() closed}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope().isAccessibleBy(T) == false}.
-     * @see MemorySegment#allocateNative(long, long, SegmentScope)
-     */
-    @Override
-    default MemorySegment allocate(long byteSize, long byteAlignment) {
-        return MemorySegment.allocateNative(byteSize, byteAlignment, scope());
-    }
-
-    /**
-     * {@return the arena scope}
-     */
-    SegmentScope scope();
-
-    /**
-     * Closes this arena. If this method completes normally, the arena scope is no longer {@linkplain SegmentScope#isAlive() alive},
+     * Closes this arena. If this method completes normally, the arena is no longer {@linkplain SegmentScope#isAlive() alive},
      * and all the memory segments associated with it can no longer be accessed. Furthermore, any off-heap region of memory backing the
      * segments associated with that scope are also released.
      *
@@ -137,7 +97,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * @see SegmentScope#isAlive()
      *
      * @throws IllegalStateException if the arena has already been closed.
-     * @throws IllegalStateException if the arena scope is {@linkplain SegmentScope#whileAlive(Runnable) kept alive}.
+     * @throws IllegalStateException if the arena is {@linkplain SegmentScope#whileAlive(Runnable) kept alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code isCloseableBy(T) == false}.
      */
@@ -154,13 +114,13 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * {@return a new confined arena, owned by the current thread}
      */
     static Arena openConfined() {
-        return MemorySessionImpl.createConfined(Thread.currentThread()).asArena();
+        return MemorySessionImpl.createConfined(Thread.currentThread());
     }
 
     /**
      * {@return a new shared arena}
      */
     static Arena openShared() {
-        return MemorySessionImpl.createShared().asArena();
+        return MemorySessionImpl.createShared();
     }
 }

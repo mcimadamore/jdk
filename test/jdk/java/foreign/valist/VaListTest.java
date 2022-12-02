@@ -227,7 +227,7 @@ public class VaListTest extends NativeTestHelper {
                                         Function<VaList, Integer> getFromPointer,
                                         ValueLayout.OfAddress pointerLayout) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment msInt = MemorySegment.allocateNative(JAVA_INT, arena.scope());;
+            MemorySegment msInt = MemorySegment.allocateNative(JAVA_INT, arena);;
             msInt.set(JAVA_INT, 0, 10);
             VaList vaList = vaListFactory.apply(b -> b.addVarg(pointerLayout, msInt));
             int x = getFromPointer.apply(vaList);
@@ -282,7 +282,7 @@ public class VaListTest extends NativeTestHelper {
                            Function<VaList, Integer> sumStruct,
                            GroupLayout Point_LAYOUT, VarHandle VH_Point_x, VarHandle VH_Point_y) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment struct = MemorySegment.allocateNative(Point_LAYOUT, arena.scope());;
+            MemorySegment struct = MemorySegment.allocateNative(Point_LAYOUT, arena);;
             VH_Point_x.set(struct, 5);
             VH_Point_y.set(struct, 10);
 
@@ -335,7 +335,7 @@ public class VaListTest extends NativeTestHelper {
                               Function<VaList, Long> sumBigStruct,
                               GroupLayout BigPoint_LAYOUT, VarHandle VH_BigPoint_x, VarHandle VH_BigPoint_y) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment struct = MemorySegment.allocateNative(BigPoint_LAYOUT, arena.scope());;
+            MemorySegment struct = MemorySegment.allocateNative(BigPoint_LAYOUT, arena);;
             VH_BigPoint_x.set(struct, 5);
             VH_BigPoint_y.set(struct, 10);
 
@@ -389,7 +389,7 @@ public class VaListTest extends NativeTestHelper {
                                 GroupLayout FloatPoint_LAYOUT,
                                 VarHandle VH_FloatPoint_x, VarHandle VH_FloatPoint_y) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment struct = MemorySegment.allocateNative(FloatPoint_LAYOUT, arena.scope());;
+            MemorySegment struct = MemorySegment.allocateNative(FloatPoint_LAYOUT, arena);;
             VH_FloatPoint_x.set(struct, 1.234f);
             VH_FloatPoint_y.set(struct, 3.142f);
 
@@ -453,7 +453,7 @@ public class VaListTest extends NativeTestHelper {
         // On AArch64 a struct needs to be larger than 16 bytes to be
         // passed by reference.
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment struct = MemorySegment.allocateNative(HugePoint_LAYOUT, arena.scope());;
+            MemorySegment struct = MemorySegment.allocateNative(HugePoint_LAYOUT, arena);;
             VH_HugePoint_x.set(struct, 1);
             VH_HugePoint_y.set(struct, 2);
             VH_HugePoint_z.set(struct, 3);
@@ -505,8 +505,8 @@ public class VaListTest extends NativeTestHelper {
                           ValueLayout.OfLong longLayout,
                           ValueLayout.OfDouble doubleLayout) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment longSum = MemorySegment.allocateNative(longLayout, arena.scope());;
-            MemorySegment doubleSum = MemorySegment.allocateNative(doubleLayout, arena.scope());;
+            MemorySegment longSum = MemorySegment.allocateNative(longLayout, arena);;
+            MemorySegment doubleSum = MemorySegment.allocateNative(doubleLayout, arena);;
             longSum.set(JAVA_LONG, 0, 0L);
             doubleSum.set(JAVA_DOUBLE, 0, 0D);
 
@@ -533,7 +533,7 @@ public class VaListTest extends NativeTestHelper {
     public void testUpcall(MethodHandle target, MethodHandle callback) throws Throwable {
         FunctionDescriptor desc = FunctionDescriptor.ofVoid(C_POINTER);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment stub = abi.upcallStub(callback, desc, arena.scope());
+            MemorySegment stub = abi.upcallStub(callback, desc, arena);
             target.invokeExact(stub);
         }
     }
@@ -575,7 +575,7 @@ public class VaListTest extends NativeTestHelper {
         VaList listLeaked;
         try (Arena arena = Arena.openConfined()) {
             VaList list = vaListFactory.apply(b -> b.addVarg(intLayout, 4)
-                    .addVarg(intLayout, 8), arena.scope());
+                    .addVarg(intLayout, 8), arena);
             int x = sumInts.apply(2, list);
             assertEquals(x, 12);
             listLeaked = list;
@@ -590,11 +590,11 @@ public class VaListTest extends NativeTestHelper {
         MemorySegment pointOut;
         try (Arena arena = Arena.openConfined()) {
             try (Arena innerArena = Arena.openConfined()) {
-                MemorySegment pointIn = MemorySegment.allocateNative(Point_LAYOUT, innerArena.scope());;
+                MemorySegment pointIn = MemorySegment.allocateNative(Point_LAYOUT, innerArena);;
                 VH_Point_x.set(pointIn, 3);
                 VH_Point_y.set(pointIn, 6);
                 VaList list = vaListFactory.apply(b -> b.addVarg(Point_LAYOUT, pointIn));
-                pointOut = MemorySegment.allocateNative(Point_LAYOUT, arena.scope());;
+                pointOut = MemorySegment.allocateNative(Point_LAYOUT, arena);;
                 list.nextVarg(Point_LAYOUT, SegmentAllocator.prefixAllocator(pointOut));
                 assertEquals((int) VH_Point_x.get(pointOut), 3);
                 assertEquals((int) VH_Point_y.get(pointOut), 6);
@@ -619,7 +619,7 @@ public class VaListTest extends NativeTestHelper {
     public void testCopy(BiFunction<Consumer<VaList.Builder>, SegmentScope, VaList> vaListFactory, ValueLayout.OfInt intLayout) {
         try (var arena = Arena.openConfined()) {
             VaList list = vaListFactory.apply(b -> b.addVarg(intLayout, 4)
-                    .addVarg(intLayout, 8), arena.scope());
+                    .addVarg(intLayout, 8), arena);
             VaList copy = list.copy();
             assertEquals(copy.nextVarg(intLayout), 4);
             assertEquals(copy.nextVarg(intLayout), 8);
@@ -643,7 +643,7 @@ public class VaListTest extends NativeTestHelper {
         VaList copy;
         try (var arena = Arena.openConfined()) {
             VaList list = vaListFactory.apply(b -> b.addVarg(intLayout, 4)
-                    .addVarg(intLayout, 8), arena.scope());
+                    .addVarg(intLayout, 8), arena);
             copy = list.copy();
         }
 

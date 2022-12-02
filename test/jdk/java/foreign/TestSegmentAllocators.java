@@ -348,8 +348,8 @@ public class TestSegmentAllocators {
     }
 
     enum AllocationFactory {
-        SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, drop.scope()))),
-        NATIVE_ALLOCATOR(false, (size, drop) -> SegmentAllocator.nativeAllocator(drop.scope()));
+        SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, drop))),
+        NATIVE_ALLOCATOR(false, (size, drop) -> SegmentAllocator.nativeAllocator(drop));
 
         private final boolean isBound;
         private final BiFunction<Long, Arena, SegmentAllocator> factory;

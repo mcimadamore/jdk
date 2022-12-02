@@ -57,7 +57,7 @@ public class TestUpcallStack extends TestUpcallBase {
         MemorySegment addr = findNativeOrThrow("s" + fName);
         try (Arena arena = Arena.openConfined()) {
             MethodHandle mh = downcallHandle(ABI, addr, arena, functionStack(ret, paramTypes, fields));
-            Object[] args = makeArgsStack(arena.scope(), ret, paramTypes, fields, returnChecks, argChecks);
+            Object[] args = makeArgsStack(arena, ret, paramTypes, fields, returnChecks, argChecks);
             Object[] callArgs = args;
             Object res = mh.invokeWithArguments(callArgs);
             argChecks.forEach(c -> c.accept(args));

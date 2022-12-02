@@ -56,7 +56,7 @@ public class TestSegments {
     @Test
     public void testZeroLengthNativeSegment() {
         try (Arena arena = Arena.openConfined()) {
-            SegmentScope session = arena.scope();
+            SegmentScope session = arena;
             var segment = MemorySegment.allocateNative(0, session);
             assertEquals(segment.byteSize(), 0);
             MemoryLayout seq = MemoryLayout.sequenceLayout(0, JAVA_INT);
@@ -87,7 +87,7 @@ public class TestSegments {
     public void testNativeSegmentIsZeroed() {
         VarHandle byteHandle = ValueLayout.JAVA_BYTE.arrayElementVarHandle();
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(1000, 1, arena.scope());
+            MemorySegment segment = MemorySegment.allocateNative(1000, 1, arena);
             for (long i = 0 ; i < segment.byteSize() ; i++) {
                 assertEquals(0, (byte)byteHandle.get(segment, i));
             }
@@ -98,7 +98,7 @@ public class TestSegments {
     public void testSlices() {
         VarHandle byteHandle = ValueLayout.JAVA_BYTE.arrayElementVarHandle();
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(10, 1, arena.scope());
+            MemorySegment segment = MemorySegment.allocateNative(10, 1, arena);
             //init
             for (byte i = 0 ; i < segment.byteSize() ; i++) {
                 byteHandle.set(segment, (long)i, i);
@@ -118,13 +118,13 @@ public class TestSegments {
     @Test
     public void testEqualsOffHeap() {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(100, arena.scope());
+            MemorySegment segment = MemorySegment.allocateNative(100, arena);
             assertEquals(segment, segment.asReadOnly());
             assertEquals(segment, segment.asSlice(0, 100));
             assertNotEquals(segment, segment.asSlice(10, 90));
             assertEquals(segment, segment.asSlice(0, 90));
             assertEquals(segment, MemorySegment.ofAddress(segment.address(), 100, SegmentScope.global()));
-            MemorySegment segment2 = MemorySegment.allocateNative(100, arena.scope());
+            MemorySegment segment2 = MemorySegment.allocateNative(100, arena);
             assertNotEquals(segment, segment2);
         }
     }
@@ -143,7 +143,7 @@ public class TestSegments {
     @Test
     public void testHashCodeOffHeap() {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(100, arena.scope());
+            MemorySegment segment = MemorySegment.allocateNative(100, arena);
             assertEquals(segment.hashCode(), segment.asReadOnly().hashCode());
             assertEquals(segment.hashCode(), segment.asSlice(0, 100).hashCode());
             assertEquals(segment.hashCode(), segment.asSlice(0, 90).hashCode());

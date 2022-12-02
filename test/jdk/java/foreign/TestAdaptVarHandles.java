@@ -192,7 +192,7 @@ public class TestAdaptVarHandles {
         VarHandle intHandle = ValueLayout.JAVA_INT.varHandle();
         VarHandle vh = MethodHandles.filterValue(intHandle, S2I, I2S_EX);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment seg = MemorySegment.allocateNative(ValueLayout.JAVA_INT, arena.scope());
+            MemorySegment seg = MemorySegment.allocateNative(ValueLayout.JAVA_INT, arena);
             vh.set(seg, "42");
             String x = (String) vh.get(seg); // should throw
         }
@@ -203,7 +203,7 @@ public class TestAdaptVarHandles {
         VarHandle intHandle = ValueLayout.JAVA_INT.varHandle();
         VarHandle vh = MethodHandles.filterValue(intHandle, S2I_EX, I2S);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment seg = MemorySegment.allocateNative(ValueLayout.JAVA_INT, arena.scope());
+            MemorySegment seg = MemorySegment.allocateNative(ValueLayout.JAVA_INT, arena);
             vh.set(seg, "42"); // should throw
         }
     }

@@ -92,7 +92,7 @@ public class TestMemoryAccess {
     private void testAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, MemoryLayout layout, VarHandle handle, Checker checker) {
         MemorySegment outer_segment;
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(layout, arena.scope()));
+            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(layout, arena));
             boolean isRO = segment.isReadOnly();
             try {
                 checker.check(handle, segment);
@@ -124,7 +124,7 @@ public class TestMemoryAccess {
     private void testArrayAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, ArrayChecker checker) {
         MemorySegment outer_segment;
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(seq, arena.scope()));
+            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(seq, arena));
             boolean isRO = segment.isReadOnly();
             try {
                 for (int i = 0; i < seq.elementCount(); i++) {
@@ -193,7 +193,7 @@ public class TestMemoryAccess {
     private void testMatrixAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, MatrixChecker checker) {
         MemorySegment outer_segment;
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(seq, arena.scope()));
+            MemorySegment segment = viewFactory.apply(MemorySegment.allocateNative(seq, arena));
             boolean isRO = segment.isReadOnly();
             try {
                 for (int i = 0; i < seq.elementCount(); i++) {

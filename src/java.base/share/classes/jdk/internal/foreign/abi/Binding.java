@@ -226,7 +226,7 @@ public interface Binding {
          */
         public static Context ofBoundedAllocator(long size) {
             Arena arena = Arena.openConfined();
-            return new Context(SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, arena.scope())), arena.scope()) {
+            return new Context(SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, arena)), arena) {
                 @Override
                 public void close() {
                     arena.close();
@@ -253,7 +253,7 @@ public interface Binding {
          */
         public static Context ofSession() {
             Arena arena = Arena.openConfined();
-            return new Context(null, arena.scope()) {
+            return new Context(null, arena) {
                 @Override
                 public SegmentAllocator allocator() { throw new UnsupportedOperationException(); }
 

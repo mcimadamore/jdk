@@ -68,7 +68,7 @@ public class TestHandshake {
     public void testHandshake(String testName, AccessorFactory accessorFactory) throws InterruptedException {
         for (int it = 0 ; it < ITERATIONS ; it++) {
             Arena arena = Arena.openShared();
-            MemorySegment segment = MemorySegment.allocateNative(SEGMENT_SIZE, 1, arena.scope());
+            MemorySegment segment = MemorySegment.allocateNative(SEGMENT_SIZE, 1, arena);
             System.out.println("ITERATION " + it);
             ExecutorService accessExecutor = Executors.newCachedThreadPool();
             start.set(System.currentTimeMillis());

@@ -54,7 +54,7 @@ public class TestMemorySession {
         Arena arena = Arena.openConfined();
         for (int i = 0 ; i < N_THREADS ; i++) {
             int delta = i;
-            addCloseAction(arena.scope(), () -> acc.addAndGet(delta));
+            addCloseAction(arena, () -> acc.addAndGet(delta));
         }
         assertEquals(acc.get(), 0);
 
@@ -146,7 +146,7 @@ public class TestMemorySession {
         List<Arena> handles = new ArrayList<>();
         for (int i = 0 ; i < N_THREADS ; i++) {
             Arena handle = Arena.openConfined();
-            keepAlive(handle.scope(), arena.scope());
+            keepAlive(handle, arena);
             handles.add(handle);
         }
 
@@ -170,7 +170,7 @@ public class TestMemorySession {
         for (int i = 0 ; i < N_THREADS ; i++) {
             new Thread(() -> {
                 try (Arena handle = Arena.openConfined()) {
-                    keepAlive(handle.scope(), arena.scope());
+                    keepAlive(handle, arena);
                     lockCount.incrementAndGet();
                     waitSomeTime();
                     lockCount.decrementAndGet();
@@ -205,7 +205,7 @@ public class TestMemorySession {
     public void testCloseConfinedLock() {
         Arena arena = Arena.openConfined();
         Arena handle = Arena.openConfined();
-        keepAlive(handle.scope(), arena.scope());
+        keepAlive(handle, arena);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Thread t = new Thread(() -> {
             try {
@@ -234,7 +234,7 @@ public class TestMemorySession {
 
     private void acquireRecursive(SegmentScope session, int acquireCount) {
         try (Arena arena = Arena.openConfined()) {
-            keepAlive(arena.scope(), session);
+            keepAlive(arena, session);
             if (acquireCount > 0) {
                 // recursive acquire
                 acquireRecursive(session, acquireCount - 1);
@@ -250,7 +250,7 @@ public class TestMemorySession {
         Arena root = Arena.openConfined();
         // Create many implicit sessions which depend on 'root', and let them become unreachable.
         for (int i = 0; i < N_THREADS; i++) {
-            keepAlive(SegmentScope.auto(), root.scope());
+            keepAlive(SegmentScope.auto(), root);
         }
         // Now let's keep trying to close 'root' until we succeed. This is trickier than it seems: cleanup action
         // might be called from another thread (the Cleaner thread), so that the confined session lock count is updated racily.
@@ -263,7 +263,7 @@ public class TestMemorySession {
                 kickGC();
                 for (int i = 0 ; i < N_THREADS ; i++) {  // add more races from current thread
                     try (Arena arena = Arena.openConfined()) {
-                        keepAlive(arena.scope(), root.scope());
+                        keepAlive(arena, root);
                         // dummy
                     }
                 }
@@ -279,14 +279,14 @@ public class TestMemorySession {
         // Create many implicit sessions which depend on 'root', and let them become unreachable.
         for (int i = 0; i < N_THREADS; i++) {
             Arena arena = Arena.openShared(); // create session inside same thread!
-            keepAlive(arena.scope(), root.scope());
+            keepAlive(arena, root);
             Thread t = new Thread(arena::close); // close from another thread!
             threads.add(t);
             t.start();
         }
         for (int i = 0 ; i < N_THREADS ; i++) { // add more races from current thread
             try (Arena arena = Arena.openConfined()) {
-                keepAlive(arena.scope(), root.scope());
+                keepAlive(arena, root);
                 // dummy
             }
         }
@@ -352,7 +352,7 @@ public class TestMemorySession {
         }
 
         static SessionSupplier ofArena(Supplier<Arena> arenaSupplier) {
-            return () -> arenaSupplier.get().scope();
+            return () -> arenaSupplier.get();
         }
     }
 

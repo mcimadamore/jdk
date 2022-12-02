@@ -75,7 +75,7 @@ public class TestScopedOperations {
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpAfterClose(String name, ScopedOperation<Z> scopedOperation) {
         Arena arena = Arena.openConfined();
-        Z obj = scopedOperation.apply(arena.scope());
+        Z obj = scopedOperation.apply(arena);
         arena.close();
         try {
             scopedOperation.accept(obj);
@@ -88,7 +88,7 @@ public class TestScopedOperations {
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpOutsideConfinement(String name, ScopedOperation<Z> scopedOperation) {
         try (Arena arena = Arena.openConfined()) {
-            Z obj = scopedOperation.apply(arena.scope());
+            Z obj = scopedOperation.apply(arena);
             AtomicReference<Throwable> failed = new AtomicReference<>();
             Thread t = new Thread(() -> {
                 try {

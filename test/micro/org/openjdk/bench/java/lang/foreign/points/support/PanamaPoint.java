@@ -67,7 +67,7 @@ public class PanamaPoint extends CLayouts implements AutoCloseable {
 
     public PanamaPoint(int x, int y) {
         this.arena = Arena.openConfined();
-        this.segment = MemorySegment.allocateNative(LAYOUT, arena.scope());
+        this.segment = MemorySegment.allocateNative(LAYOUT, arena);
         setX(x);
         setY(y);
     }

@@ -53,7 +53,7 @@ public class TestLayouts {
     public void testIndexedSequencePath() {
         MemoryLayout seq = MemoryLayout.sequenceLayout(10, ValueLayout.JAVA_INT);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(seq, arena.scope());;
+            MemorySegment segment = MemorySegment.allocateNative(seq, arena);;
             VarHandle indexHandle = seq.varHandle(MemoryLayout.PathElement.sequenceElement());
             // init segment
             for (int i = 0 ; i < 10 ; i++) {

@@ -52,11 +52,11 @@ public class LibraryLookupTest {
     @Test
     void testLoadLibraryConfined() {
         try (Arena arena0 = Arena.openConfined()) {
-            callFunc(loadLibrary(arena0.scope()));
+            callFunc(loadLibrary(arena0));
             try (Arena arena1 = Arena.openConfined()) {
-                callFunc(loadLibrary(arena1.scope()));
+                callFunc(loadLibrary(arena1));
                 try (Arena arena2 = Arena.openConfined()) {
-                    callFunc(loadLibrary(arena2.scope()));
+                    callFunc(loadLibrary(arena2));
                 }
             }
         }
@@ -66,7 +66,7 @@ public class LibraryLookupTest {
     void testLoadLibraryConfinedClosed() {
         MemorySegment addr;
         try (Arena arena = Arena.openConfined()) {
-            addr = loadLibrary(arena.scope());
+            addr = loadLibrary(arena);
         }
         callFunc(addr);
     }
@@ -117,7 +117,7 @@ public class LibraryLookupTest {
         public void run() {
             for (int i = 0 ; i < ITERATIONS ; i++) {
                 try (Arena arena = Arena.openConfined()) {
-                    callFunc(loadLibrary(arena.scope()));
+                    callFunc(loadLibrary(arena));
                 }
             }
         }
@@ -126,7 +126,7 @@ public class LibraryLookupTest {
     @Test
     void testLoadLibrarySharedClosed() throws Throwable {
         Arena arena = Arena.openShared();
-        MemorySegment addr = loadLibrary(arena.scope());
+        MemorySegment addr = loadLibrary(arena);
         ExecutorService accessExecutor = Executors.newCachedThreadPool();
         for (int i = 0; i < NUM_ACCESSORS ; i++) {
             accessExecutor.execute(new LibraryAccess(addr));

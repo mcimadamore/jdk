@@ -86,7 +86,41 @@ import jdk.internal.ref.CleanerFactory;
  * @since 20
  */
 @PreviewFeature(feature =PreviewFeature.Feature.FOREIGN)
-sealed public interface SegmentScope permits MemorySessionImpl {
+sealed public interface SegmentScope extends SegmentAllocator permits Arena, MemorySessionImpl {
+
+    /**
+     * Returns a native memory segment with the given size (in bytes) and alignment constraint (in bytes).
+     * The returned segment is associated with the arena scope.
+     * The segment's {@link MemorySegment#address() address} is the starting address of the
+     * allocated off-heap memory region backing the segment, and the address is
+     * aligned according the provided alignment constraint.
+     *
+     * @implSpec
+     * The default implementation of this method is equivalent to the following code:
+     * {@snippet lang = java:
+     * MemorySegment.allocateNative(bytesSize, byteAlignment, this);
+     *}
+     * More generally implementations of this method must return a native segment featuring the requested size,
+     * and that is compatible with the provided alignment constraint. Furthermore, for any two segments
+     * {@code S1, S2} returned by this method, the following invariant must hold:
+     *
+     * {@snippet lang = java:
+     * S1.overlappingSlice(S2).isEmpty() == true
+     *}
+     *
+     * @param byteSize the size (in bytes) of the off-heap memory block backing the native memory segment.
+     * @param byteAlignment the alignment constraint (in bytes) of the off-heap region of memory backing the native memory segment.
+     * @return a new native memory segment.
+     * @throws IllegalArgumentException if {@code bytesSize < 0}, {@code alignmentBytes <= 0}, or if {@code alignmentBytes}
+     * is not a power of 2.
+     * @throws IllegalStateException if this scope is not {@linkplain SegmentScope#isAlive() alive}.
+     * @throws WrongThreadException if this method is called from a thread {@code T},
+     * such that {@code isAccessibleBy(T) == false}.
+     */
+    @Override
+    default MemorySegment allocate(long byteSize, long byteAlignment) {
+        return MemorySegment.allocateNative(byteSize, byteAlignment, this);
+    }
 
     /**
      * Creates a new scope that is managed, automatically, by the garbage collector.

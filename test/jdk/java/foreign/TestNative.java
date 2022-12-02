@@ -146,7 +146,7 @@ public class TestNative extends NativeTestHelper {
     @Test(dataProvider="nativeAccessOps")
     public void testNativeAccess(Consumer<MemorySegment> checker, Consumer<MemorySegment> initializer, SequenceLayout seq) {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(seq, arena.scope());;
+            MemorySegment segment = MemorySegment.allocateNative(seq, arena);;
             initializer.accept(segment);
             checker.accept(segment);
         }
@@ -156,7 +156,7 @@ public class TestNative extends NativeTestHelper {
     public void testNativeCapacity(Function<ByteBuffer, Buffer> bufferFunction, int elemSize) {
         int capacity = (int)doubles.byteSize();
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(doubles, arena.scope());;
+            MemorySegment segment = MemorySegment.allocateNative(doubles, arena);;
             ByteBuffer bb = segment.asByteBuffer();
             Buffer buf = bufferFunction.apply(bb);
             int expected = capacity / elemSize;
@@ -170,7 +170,7 @@ public class TestNative extends NativeTestHelper {
         MemorySegment addr = allocateMemory(12);
         try (Arena arena = Arena.openConfined()) {
             MemorySegment mallocSegment = MemorySegment.ofAddress(addr.address(), 12,
-                    arena.scope(), () -> freeMemory(addr));
+                    arena, () -> freeMemory(addr));
             assertFalse(mallocSegment.isReadOnly());
         }
     }
@@ -181,7 +181,7 @@ public class TestNative extends NativeTestHelper {
         MemorySegment mallocSegment = null;
         try (Arena arena = Arena.openConfined()) {
             mallocSegment = MemorySegment.ofAddress(addr.address(), 12,
-                    arena.scope(), () -> freeMemory(addr));
+                    arena, () -> freeMemory(addr));
             assertEquals(mallocSegment.byteSize(), 12);
             //free here
         }
@@ -199,7 +199,7 @@ public class TestNative extends NativeTestHelper {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadResize() {
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment segment = MemorySegment.allocateNative(4, 1, arena.scope());;
+            MemorySegment segment = MemorySegment.allocateNative(4, 1, arena);;
             MemorySegment.ofAddress(segment.address(), -1, SegmentScope.global());
         }
     }

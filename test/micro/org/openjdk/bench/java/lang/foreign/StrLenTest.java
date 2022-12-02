@@ -60,7 +60,7 @@ public class StrLenTest extends CLayouts {
     Arena arena = Arena.openConfined();
 
     SegmentAllocator segmentAllocator;
-    SegmentAllocator arenaAllocator = new RingAllocator(arena.scope());
+    SegmentAllocator arenaAllocator = new RingAllocator(arena);
 
     @Param({"5", "20", "100"})
     public int size;
@@ -81,7 +81,7 @@ public class StrLenTest extends CLayouts {
     @Setup
     public void setup() {
         str = makeString(size);
-        segmentAllocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(size + 1, arena.scope()));
+        segmentAllocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(size + 1, arena));
     }
 
     @TearDown

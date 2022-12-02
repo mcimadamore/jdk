@@ -51,7 +51,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements SegmentScope, SegmentAllocator
+        implements SegmentScope, Arena, SegmentAllocator
         permits ConfinedSession, GlobalSession, SharedSession {
     static final int OPEN = 0;
     static final int CLOSING = -1;
@@ -77,30 +77,16 @@ public abstract sealed class MemorySessionImpl
         }
     }
 
-    public Arena asArena() {
-        return new Arena() {
-            @Override
-            public SegmentScope scope() {
-                return MemorySessionImpl.this;
-            }
-
-            @Override
-            public void close() {
-                MemorySessionImpl.this.close();
-            }
-
-            @Override
-            public boolean isCloseableBy(Thread thread) {
-                Objects.requireNonNull(thread);
-                return ownerThread() == null || // shared
-                        ownerThread() == thread;
-            }
-        };
-    }
-
     public void addCloseAction(Runnable runnable) {
         Objects.requireNonNull(runnable);
         addInternal(ResourceList.ResourceCleanup.ofRunnable(runnable));
+    }
+
+    @Override
+    public boolean isCloseableBy(Thread thread) {
+        Objects.requireNonNull(thread);
+        return ownerThread() == null || // shared
+                ownerThread() == thread;
     }
 
     /**
