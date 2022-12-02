@@ -25,7 +25,7 @@ package org.openjdk.bench.java.lang.foreign;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -61,7 +61,7 @@ public class LoopOverNew extends JavaLayouts {
     static final int ALLOC_SIZE = ELEM_SIZE * CARRIER_SIZE;
     static final MemoryLayout ALLOC_LAYOUT = MemoryLayout.sequenceLayout(ELEM_SIZE, JAVA_INT);
     final Arena arena = Arena.openConfined();
-    final SegmentAllocator recyclingAlloc = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(ALLOC_LAYOUT, arena.scope()));
+    final SegmentAllocator recyclingAlloc = SegmentAllocator.prefixAllocator(arena.allocate(ALLOC_LAYOUT));
 
     @TearDown
     public void tearDown() throws Throwable {
@@ -135,7 +135,7 @@ public class LoopOverNew extends JavaLayouts {
     @Benchmark
     public void segment_loop_implicit() {
         if (gcCount++ == 0) System.gc(); // GC when we overflow
-        MemorySegment segment = MemorySegment.allocateNative(ALLOC_SIZE, 4, SegmentScope.auto());
+        MemorySegment segment = NativeAllocator.auto().allocate(ALLOC_SIZE, 4);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);
         }

@@ -43,7 +43,6 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.concurrent.TimeUnit;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 
@@ -64,7 +63,7 @@ public class BulkOps {
     final Arena arena = Arena.openShared();
 
     final long unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
-    final MemorySegment segment = MemorySegment.allocateNative(ALLOC_SIZE, arena.scope());
+    final MemorySegment segment = arena.allocate(ALLOC_SIZE);
     final IntBuffer buffer = IntBuffer.allocate(ELEM_SIZE);
 
     final int[] ints = new int[ELEM_SIZE];
@@ -73,14 +72,17 @@ public class BulkOps {
 
     // large(ish) segments/buffers with same content, 0, for mismatch, non-multiple-of-8 sized
     static final int SIZE_WITH_TAIL = (1024 * 1024) + 7;
-    final MemorySegment mismatchSegmentLarge1 = MemorySegment.allocateNative(SIZE_WITH_TAIL, arena.scope());
-    final MemorySegment mismatchSegmentLarge2 = MemorySegment.allocateNative(SIZE_WITH_TAIL, arena.scope());;
+    final MemorySegment mismatchSegmentLarge1 = arena.allocate(SIZE_WITH_TAIL);
+    final MemorySegment mismatchSegmentLarge2 = arena.allocate(SIZE_WITH_TAIL);
+    ;
     final ByteBuffer mismatchBufferLarge1 = ByteBuffer.allocateDirect(SIZE_WITH_TAIL);
     final ByteBuffer mismatchBufferLarge2 = ByteBuffer.allocateDirect(SIZE_WITH_TAIL);
 
     // mismatch at first byte
-    final MemorySegment mismatchSegmentSmall1 = MemorySegment.allocateNative(7, arena.scope());;
-    final MemorySegment mismatchSegmentSmall2 = MemorySegment.allocateNative(7, arena.scope());;
+    final MemorySegment mismatchSegmentSmall1 = arena.allocate(7);
+    ;
+    final MemorySegment mismatchSegmentSmall2 = arena.allocate(7);
+    ;
     final ByteBuffer mismatchBufferSmall1 = ByteBuffer.allocateDirect(7);
     final ByteBuffer mismatchBufferSmall2 = ByteBuffer.allocateDirect(7);
 

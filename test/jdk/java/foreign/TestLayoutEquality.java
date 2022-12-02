@@ -26,12 +26,14 @@
  * @test
  * @enablePreview
  * @modules java.base/jdk.internal.foreign
+ * @modules java.base/jdk.internal.foreign.layout
  * @run testng TestLayoutEquality
  */
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import jdk.internal.foreign.PlatformLayouts;
+import jdk.internal.foreign.layout.ValueLayouts.OfAddressImpl;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -47,8 +49,8 @@ public class TestLayoutEquality {
     public void testReconstructedEquality(ValueLayout layout) {
         ValueLayout newLayout = MemoryLayout.valueLayout(layout.carrier(), layout.order());
         newLayout = newLayout.withBitAlignment(layout.bitAlignment());
-        if (layout instanceof ValueLayout.OfAddress addressLayout && addressLayout.isUnbounded()) {
-            newLayout = ((ValueLayout.OfAddress)newLayout).asUnbounded();
+        if (layout instanceof ValueLayout.OfAddress addressLayout && OfAddressImpl.isUnbounded(addressLayout)) {
+            newLayout = OfAddressImpl.asUnbounded((ValueLayout.OfAddress)newLayout);
         }
 
         // properties should be equal

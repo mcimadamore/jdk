@@ -28,7 +28,6 @@ package jdk.internal.foreign;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
-import java.lang.foreign.SegmentScope;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Array;
 import java.nio.Buffer;
@@ -52,6 +51,8 @@ import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
@@ -77,16 +78,16 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     final long length;
     final boolean readOnly;
-    final SegmentScope scope;
+    final MemorySessionImpl scope;
 
     @ForceInline
-    AbstractMemorySegmentImpl(long length, boolean readOnly, SegmentScope scope) {
+    AbstractMemorySegmentImpl(long length, boolean readOnly, MemorySessionImpl scope) {
         this.length = length;
         this.readOnly = readOnly;
         this.scope = scope;
     }
 
-    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, SegmentScope scope);
+    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl scope);
 
     abstract ByteBuffer makeByteBuffer();
 
@@ -114,6 +115,35 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     private AbstractMemorySegmentImpl asSliceNoCheck(long offset, long newSize) {
         return dup(offset, newSize, readOnly, scope);
+    }
+
+    @Override
+    @CallerSensitive
+    public MemorySegment asUnboundedSlice() {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "asUnboundedSlice");
+        return dup(0, Long.MAX_VALUE, readOnly, scope);
+    }
+
+    @Override
+    @CallerSensitive
+    public MemorySegment asUnboundedSlice(long offset, long size) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "asUnboundedSlice");
+        return dup(offset, size, readOnly, scope);
+    }
+
+    @Override
+    public boolean isAlive() {
+        return scope.isAlive();
+    }
+
+    @Override
+    public boolean isAccessibleBy(Thread thread) {
+        return scope.isAccessibleBy(thread);
+    }
+
+    @Override
+    public void whileAlive(Runnable action) {
+        scope.whileAlive(action);
     }
 
     @Override
@@ -357,14 +387,9 @@ public abstract sealed class AbstractMemorySegmentImpl
         return outOfBoundException(offset, length);
     }
 
-    @Override
-    public SegmentScope scope() {
-        return scope;
-    }
-
     @ForceInline
     public final MemorySessionImpl sessionImpl() {
-        return (MemorySessionImpl)scope;
+        return scope;
     }
 
     private IndexOutOfBoundsException outOfBoundException(long offset, long length) {
@@ -481,7 +506,7 @@ public abstract sealed class AbstractMemorySegmentImpl
         int size = limit - pos;
 
         AbstractMemorySegmentImpl bufferSegment = (AbstractMemorySegmentImpl) NIO_ACCESS.bufferSegment(bb);
-        final SegmentScope bufferScope;
+        final MemorySessionImpl bufferScope;
         if (bufferSegment != null) {
             bufferScope = bufferSegment.scope;
         } else {

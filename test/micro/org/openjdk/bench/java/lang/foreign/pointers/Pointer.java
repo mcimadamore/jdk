@@ -53,7 +53,7 @@ public class Pointer<X> {
 
     @SuppressWarnings("unchecked")
     public <Z extends NativeType.OfPointer<X>> X get(Z type, long index) {
-        MemorySegment address = segment.getAtIndex(type.layout(), index);
+        MemorySegment address = segment.getAtIndex(type.layout(), index).asUnboundedSlice();
         return (X)new Pointer<>(address);
     }
 

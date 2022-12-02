@@ -411,30 +411,6 @@ public sealed interface ValueLayout extends MemoryLayout {
          */
         @Override
         OfAddress withOrder(ByteOrder order);
-
-        /**
-         * Returns an <em>unbounded</em> address layout with the same carrier, alignment constraint, name and order as this address layout,
-         * but with the specified pointee layout. An unbounded address layout allow raw addresses to be accessed
-         * as {@linkplain MemorySegment memory segments} whose size is set to {@link Long#MAX_VALUE}. As such,
-         * these segments can be used in subsequent access operations.
-         * <p>
-         * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-         * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-         * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-         * restricted methods, and use safe and supported functionalities, where possible.
-         *
-         * @return an unbounded address layout with same characteristics as this layout.
-         * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
-         * @see #isUnbounded()
-         */
-        @CallerSensitive
-        OfAddress asUnbounded();
-
-        /**
-         * {@return {@code true}, if this address layout is an {@linkplain #asUnbounded() unbounded address layout}}.
-         */
-        boolean isUnbounded();
-
     }
 
     /**

@@ -29,7 +29,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -60,7 +60,7 @@ public class StrLenTest extends CLayouts {
     Arena arena = Arena.openConfined();
 
     SegmentAllocator segmentAllocator;
-    SegmentAllocator arenaAllocator = new RingAllocator(arena.scope());
+    SegmentAllocator arenaAllocator = new RingAllocator(arena);
 
     @Param({"5", "20", "100"})
     public int size;
@@ -81,7 +81,7 @@ public class StrLenTest extends CLayouts {
     @Setup
     public void setup() {
         str = makeString(size);
-        segmentAllocator = SegmentAllocator.prefixAllocator(MemorySegment.allocateNative(size + 1, arena.scope()));
+        segmentAllocator = SegmentAllocator.prefixAllocator(arena.allocate(size + 1));
     }
 
     @TearDown
@@ -148,8 +148,8 @@ public class StrLenTest extends CLayouts {
         SegmentAllocator current;
         long rem;
 
-        public RingAllocator(SegmentScope session) {
-            this.segment = MemorySegment.allocateNative(1024, session);
+        public RingAllocator(NativeAllocator session) {
+            this.segment = session.allocate(1024);
             reset();
         }
 

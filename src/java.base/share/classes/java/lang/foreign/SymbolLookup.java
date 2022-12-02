@@ -54,19 +54,19 @@ import java.util.function.BiFunction;
  *     <li>It can be passed to an existing {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handle}, as an argument to the underlying foreign function.</li>
  *     <li>It can be {@linkplain MemorySegment#set(ValueLayout.OfAddress, long, MemorySegment) stored} inside another memory segment.</li>
  *     <li>It can be used to access the region of memory backing a global variable (this might require
- *     {@link MemorySegment#ofAddress(long, long, SegmentScope) resizing} the segment first).</li>
+ *     {@link MemorySegment#asUnboundedSlice() resizing} the segment first).</li>
  * </ul>
  *
  * <h2 id="obtaining">Obtaining a symbol lookup</h2>
  *
- * The factory methods {@link #libraryLookup(String, SegmentScope)} and {@link #libraryLookup(Path, SegmentScope)}
+ * The factory methods {@link #libraryLookup(String, NativeAllocator)} and {@link #libraryLookup(Path, NativeAllocator)}
  * create a symbol lookup for a library known to the operating system. The library is specified by either its name or a path.
- * The library is loaded if not already loaded. The symbol lookup, which is known as a <em>library lookup</em>, is associated
- * with a {@linkplain  SegmentScope scope}; when the scope becomes not {@link SegmentScope#isAlive()}, the library is unloaded:
+ * The library is loaded if not already loaded. The lifecycle of the symbol lookup, which is known as a <em>library lookup</em>,
+ * can be controlled using an {@link Arena}. If the arena is closed, the library is unloaded:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
- *     SymbolLookup libGL = SymbolLookup.libraryLookup("libGL.so", arena.scope()); // libGL.so loaded here
+ *     SymbolLookup libGL = SymbolLookup.libraryLookup("libGL.so", arena); // libGL.so loaded here
  *     MemorySegment glGetString = libGL.find("glGetString").orElseThrow();
  *     ...
  * } //  libGL.so unloaded here
@@ -92,7 +92,7 @@ import java.util.function.BiFunction;
  * that were loaded in the course of creating a library lookup:
  *
  * {@snippet lang = java:
- * libraryLookup("libGL.so", scope).find("glGetString").isPresent(); // true
+ * libraryLookup("libGL.so", NativeAllocator.auto()).find("glGetString").isPresent(); // true
  * loaderLookup().find("glGetString").isPresent(); // false
  *}
  *
@@ -101,7 +101,7 @@ import java.util.function.BiFunction;
  *
  * {@snippet lang = java:
  * System.loadLibrary("GL"); // libGL.so loaded here
- * libraryLookup("libGL.so", scope).find("glGetString").isPresent(); // true
+ * libraryLookup("libGL.so", NativeAllocator.auto()).find("glGetString").isPresent(); // true
  *}
  *
  * <p>
@@ -138,8 +138,8 @@ public interface SymbolLookup {
      * this method returned.
      * <p>
      * Libraries associated with a class loader are unloaded when the class loader becomes
-     * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>. The symbol lookup
-     * returned by this method is backed by a scope that is always alive and which keeps the caller's
+     * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>. All the symbols
+     * obtained with the returned lookup are always alive and keep the caller's
      * class loader reachable. Therefore, libraries associated with the caller's class
      * loader are kept loaded (and their symbols available) as long as a loader lookup for that class loader is reachable.
      * <p>
@@ -158,8 +158,8 @@ public interface SymbolLookup {
         ClassLoader loader = caller != null ?
                 caller.getClassLoader() :
                 ClassLoader.getSystemClassLoader();
-        SegmentScope loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
-                SegmentScope.global() : // builtin loaders never go away
+        NativeAllocator loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
+                NativeAllocator.global() : // builtin loaders never go away
                 MemorySessionImpl.heapSession(loader);
         return name -> {
             Objects.requireNonNull(name);
@@ -168,14 +168,15 @@ public interface SymbolLookup {
             long addr = javaLangAccess.findNative(loader, name);
             return addr == 0L ?
                     Optional.empty() :
-                    Optional.of(MemorySegment.ofAddress(addr, 0L, loaderScope));
+                    Optional.of(loaderScope.wrap(addr, null));
         };
     }
 
     /**
      * Loads a library with the given name (if not already loaded) and creates a symbol lookup for symbols in that library.
-     * The library will be unloaded when the provided scope becomes
-     * not {@linkplain SegmentScope#isAlive() alive}, if no other library lookup is still using it.
+     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
+     * the allocator is an {@link Arena}, the library associated with the returned lookup will be unloaded when the provided
+     * arena is {@linkplain Arena#close() closed}, if no other library lookup is still using it.
      * @implNote The process of resolving a library name is OS-specific. For instance, in a POSIX-compliant OS,
      * the library name is resolved according to the specification of the {@code dlopen} function for that OS.
      * In Windows, the library name is resolved according to the specification of the {@code LoadLibrary} function.
@@ -186,21 +187,23 @@ public interface SymbolLookup {
      * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param name the name of the library in which symbols should be looked up.
-     * @param scope the scope associated with symbols obtained from the returned lookup.
+     * @param allocator the allocator used to allocate the symbols obtained from the returned lookup.
      * @return a new symbol lookup suitable to find symbols in a library with the given name.
      * @throws IllegalArgumentException if {@code name} does not identify a valid library.
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(String name, SegmentScope scope) {
+    static SymbolLookup libraryLookup(String name, NativeAllocator allocator) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
-        return libraryLookup(name, RawNativeLibraries::load, scope);
+        return libraryLookup(name, RawNativeLibraries::load, allocator);
     }
 
     /**
      * Loads a library from the given path (if not already loaded) and creates a symbol lookup for symbols
-     * in that library. The library will be unloaded when the provided scope becomes
-     * not {@linkplain SegmentScope#isAlive() alive}, if no other library lookup is still using it.
+     * in that library.
+     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
+     * the allocator is an {@link Arena}, the library associated with the returned lookup will be unloaded when the provided
+     * arena is {@linkplain Arena#close() closed}, if no other library lookup is still using it.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -210,18 +213,18 @@ public interface SymbolLookup {
      * @implNote On Linux, the functionalities provided by this factory method and the returned symbol lookup are
      * implemented using the {@code dlopen}, {@code dlsym} and {@code dlclose} functions.
      * @param path the path of the library in which symbols should be looked up.
-     * @param scope the scope associated with symbols obtained from the returned lookup.
+     * @param allocator the allocator used to allocate the symbols obtained from the returned lookup.
      * @return a new symbol lookup suitable to find symbols in a library with the given path.
      * @throws IllegalArgumentException if {@code path} does not point to a valid library.
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(Path path, SegmentScope scope) {
+    static SymbolLookup libraryLookup(Path path, NativeAllocator allocator) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
-        return libraryLookup(path, RawNativeLibraries::load, scope);
+        return libraryLookup(path, RawNativeLibraries::load, allocator);
     }
 
-    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentScope libScope) {
+    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, NativeAllocator libScope) {
         Objects.requireNonNull(libDesc);
         Objects.requireNonNull(libScope);
         // attempt to load native library from path or name
@@ -242,7 +245,7 @@ public interface SymbolLookup {
             long addr = library.find(name);
             return addr == 0L ?
                     Optional.empty() :
-                    Optional.of(MemorySegment.ofAddress(addr, 0, libScope));
+                    Optional.of(libScope.wrap(addr, null));
         };
     }
 }

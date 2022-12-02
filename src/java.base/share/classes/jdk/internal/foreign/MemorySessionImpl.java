@@ -28,12 +28,14 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
+
+import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -51,7 +53,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements SegmentScope, SegmentAllocator
+        implements NativeAllocator, Arena, SegmentAllocator
         permits ConfinedSession, GlobalSession, SharedSession {
     static final int OPEN = 0;
     static final int CLOSING = -1;
@@ -77,30 +79,16 @@ public abstract sealed class MemorySessionImpl
         }
     }
 
-    public Arena asArena() {
-        return new Arena() {
-            @Override
-            public SegmentScope scope() {
-                return MemorySessionImpl.this;
-            }
-
-            @Override
-            public void close() {
-                MemorySessionImpl.this.close();
-            }
-
-            @Override
-            public boolean isCloseableBy(Thread thread) {
-                Objects.requireNonNull(thread);
-                return ownerThread() == null || // shared
-                        ownerThread() == thread;
-            }
-        };
-    }
-
     public void addCloseAction(Runnable runnable) {
         Objects.requireNonNull(runnable);
         addInternal(ResourceList.ResourceCleanup.ofRunnable(runnable));
+    }
+
+    @Override
+    public boolean isCloseableBy(Thread thread) {
+        Objects.requireNonNull(thread);
+        return ownerThread() == null || // shared
+                ownerThread() == thread;
     }
 
     /**
@@ -156,11 +144,20 @@ public abstract sealed class MemorySessionImpl
         return NativeMemorySegmentImpl.makeNativeSegment(byteSize, byteAlignment, this);
     }
 
+    @Override
+    public MemorySegment wrap(long address, Runnable cleanupAction) {
+        if (cleanupAction != null) {
+            addOrCleanupIfFail(ResourceCleanup.ofRunnable(cleanupAction));
+        } else {
+            checkValidState();
+        }
+        return new NativeMemorySegmentImpl(address, 0L, false, this);
+    }
+
     public abstract void release0();
 
     public abstract void acquire0();
 
-    @Override
     public void whileAlive(Runnable action) {
         Objects.requireNonNull(action);
         acquire0();
@@ -175,12 +172,11 @@ public abstract sealed class MemorySessionImpl
         return owner;
     }
 
-    public static boolean sameOwnerThread(SegmentScope scope1, SegmentScope scope2) {
-        return ((MemorySessionImpl) scope1).ownerThread() ==
-                ((MemorySessionImpl) scope2).ownerThread();
+    public static boolean sameOwnerThread(MemorySegment scope1, MemorySegment scope2) {
+        return ((AbstractMemorySegmentImpl)scope1).sessionImpl().ownerThread() ==
+                ((AbstractMemorySegmentImpl)scope2).sessionImpl().ownerThread();
     }
 
-    @Override
     public final boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
         return owner == thread;

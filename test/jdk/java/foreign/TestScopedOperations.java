@@ -31,7 +31,7 @@
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -75,7 +75,7 @@ public class TestScopedOperations {
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpAfterClose(String name, ScopedOperation<Z> scopedOperation) {
         Arena arena = Arena.openConfined();
-        Z obj = scopedOperation.apply(arena.scope());
+        Z obj = scopedOperation.apply(arena);
         arena.close();
         try {
             scopedOperation.accept(obj);
@@ -88,7 +88,7 @@ public class TestScopedOperations {
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpOutsideConfinement(String name, ScopedOperation<Z> scopedOperation) {
         try (Arena arena = Arena.openConfined()) {
-            Z obj = scopedOperation.apply(arena.scope());
+            Z obj = scopedOperation.apply(arena);
             AtomicReference<Throwable> failed = new AtomicReference<>();
             Thread t = new Thread(() -> {
                 try {
@@ -111,7 +111,7 @@ public class TestScopedOperations {
 
     static {
         // session operations
-        ScopedOperation.ofScope(session -> MemorySegment.allocateNative(100, session), "MemorySession::allocate");;
+        ScopedOperation.ofScope(session -> session.allocate(100), "MemorySession::allocate");;
         ScopedOperation.ofScope(session -> {
             try (FileChannel fileChannel = FileChannel.open(tempPath, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
                 fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 10L, session);
@@ -161,13 +161,13 @@ public class TestScopedOperations {
         return scopedOperations.stream().map(op -> new Object[] { op.name, op }).toArray(Object[][]::new);
     }
 
-    static class ScopedOperation<X> implements Consumer<X>, Function<SegmentScope, X> {
+    static class ScopedOperation<X> implements Consumer<X>, Function<NativeAllocator, X> {
 
-        final Function<SegmentScope, X> factory;
+        final Function<NativeAllocator, X> factory;
         final Consumer<X> operation;
         final String name;
 
-        private ScopedOperation(Function<SegmentScope, X> factory, Consumer<X> operation, String name) {
+        private ScopedOperation(Function<NativeAllocator, X> factory, Consumer<X> operation, String name) {
             this.factory = factory;
             this.operation = operation;
             this.name = name;
@@ -179,15 +179,15 @@ public class TestScopedOperations {
         }
 
         @Override
-        public X apply(SegmentScope session) {
+        public X apply(NativeAllocator session) {
             return factory.apply(session);
         }
 
-        static <Z> void of(Function<SegmentScope, Z> factory, Consumer<Z> consumer, String name) {
+        static <Z> void of(Function<NativeAllocator, Z> factory, Consumer<Z> consumer, String name) {
             scopedOperations.add(new ScopedOperation<>(factory, consumer, name));
         }
 
-        static void ofScope(Consumer<SegmentScope> scopeConsumer, String name) {
+        static void ofScope(Consumer<NativeAllocator> scopeConsumer, String name) {
             scopedOperations.add(new ScopedOperation<>(Function.identity(), scopeConsumer, name));
         }
 
@@ -216,7 +216,7 @@ public class TestScopedOperations {
 
         enum SegmentFactory {
 
-            NATIVE(session -> MemorySegment.allocateNative(10, session)),
+            NATIVE(session -> session.allocate(10)),
             MAPPED(session -> {
                 try (FileChannel fileChannel = FileChannel.open(Path.of("foo.txt"), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
                     return fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 10L, session);
@@ -224,7 +224,8 @@ public class TestScopedOperations {
                     throw new AssertionError(ex);
                 }
             }),
-            UNSAFE(session -> MemorySegment.ofAddress(0, 10, session));
+            UNSAFE(session -> session.wrap(0, null)
+                    .asUnboundedSlice(0, 10));
 
             static {
                 try {
@@ -236,19 +237,19 @@ public class TestScopedOperations {
                 }
             }
 
-            final Function<SegmentScope, MemorySegment> segmentFactory;
+            final Function<NativeAllocator, MemorySegment> segmentFactory;
 
-            SegmentFactory(Function<SegmentScope, MemorySegment> segmentFactory) {
+            SegmentFactory(Function<NativeAllocator, MemorySegment> segmentFactory) {
                 this.segmentFactory = segmentFactory;
             }
         }
 
         enum AllocatorFactory {
-            NATIVE_ALLOCATOR(SegmentAllocator::nativeAllocator);
+            NATIVE_ALLOCATOR(scope -> scope);
 
-            final Function<SegmentScope, SegmentAllocator> allocatorFactory;
+            final Function<NativeAllocator, SegmentAllocator> allocatorFactory;
 
-            AllocatorFactory(Function<SegmentScope, SegmentAllocator> allocatorFactory) {
+            AllocatorFactory(Function<NativeAllocator, SegmentAllocator> allocatorFactory) {
                 this.allocatorFactory = allocatorFactory;
             }
         }

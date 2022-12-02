@@ -199,7 +199,8 @@ public class StdLibTest extends NativeTestHelper {
                 MemorySegment buf = arena.allocate(s1.length() + s2.length() + 1);
                 buf.setUtf8String(0, s1);
                 MemorySegment other = arena.allocateUtf8String(s2);
-                return ((MemorySegment)strcat.invokeExact(buf, other)).getUtf8String(0);
+                return ((MemorySegment)strcat.invokeExact(buf, other))
+                        .asUnboundedSlice().getUtf8String(0);
             }
         }
 
@@ -241,7 +242,7 @@ public class StdLibTest extends NativeTestHelper {
             static final long SIZE = 56;
 
             Tm(MemorySegment addr) {
-                this.base = addr.asSlice(0, SIZE);
+                this.base = addr.asUnboundedSlice(0, SIZE);
             }
 
             int sec() {
@@ -279,7 +280,7 @@ public class StdLibTest extends NativeTestHelper {
                 MemorySegment nativeArr = arena.allocateArray(C_INT, arr);
 
                 //call qsort
-                MemorySegment qsortUpcallStub = abi.upcallStub(qsortCompar, qsortComparFunction, arena.scope());
+                MemorySegment qsortUpcallStub = abi.upcallStub(qsortCompar, qsortComparFunction, arena);
 
                 qsort.invokeExact(nativeArr, (long)arr.length, C_INT.byteSize(), qsortUpcallStub);
 
@@ -289,8 +290,8 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         static int qsortCompare(MemorySegment addr1, MemorySegment addr2) {
-            return addr1.get(C_INT, 0) -
-                   addr2.get(C_INT, 0);
+            return addr1.asUnboundedSlice().get(C_INT, 0) -
+                   addr2.asUnboundedSlice().get(C_INT, 0);
         }
 
         int rand() throws Throwable {
@@ -308,7 +309,7 @@ public class StdLibTest extends NativeTestHelper {
         int vprintf(String format, List<PrintfArg> args) throws Throwable {
             try (var arena = Arena.openConfined()) {
                 MemorySegment formatStr = arena.allocateUtf8String(format);
-                VaList vaList = VaList.make(b -> args.forEach(a -> a.accept(b, arena)), arena.scope());
+                VaList vaList = VaList.make(b -> args.forEach(a -> a.accept(b, arena)), arena);
                 return (int)vprintf.invokeExact(formatStr, vaList.segment());
             }
         }

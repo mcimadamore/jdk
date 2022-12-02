@@ -90,13 +90,13 @@ public class TestUpcallStructScope extends NativeTestHelper {
         MethodHandle target = methodHandle(capturedSegment::set);
         FunctionDescriptor upcallDesc = FunctionDescriptor.ofVoid(S_PDI_LAYOUT);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment upcallStub = LINKER.upcallStub(target, upcallDesc, arena.scope());
-            MemorySegment argSegment = MemorySegment.allocateNative(S_PDI_LAYOUT, arena.scope());;
+            MemorySegment upcallStub = LINKER.upcallStub(target, upcallDesc, arena);
+            MemorySegment argSegment = arena.allocate(S_PDI_LAYOUT);;
             MH_do_upcall.invoke(upcallStub, argSegment);
         }
 
         MemorySegment captured = capturedSegment.get();
-        assertFalse(captured.scope().isAlive());
+        assertFalse(captured.isAlive());
     }
 
 }

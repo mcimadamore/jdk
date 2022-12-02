@@ -57,7 +57,7 @@ public class PointerBench {
     MemorySegment intPointerSegment = intPointerPointer.segment();
     MemorySegment pointSegment = pointPointer.segment();
 
-    public static final ValueLayout.OfAddress UNSAFE_ADDRESS = ValueLayout.ADDRESS.asUnbounded();
+    public static final ValueLayout.OfAddress UNSAFE_ADDRESS = ValueLayout.ADDRESS;
 
     @Setup
     public void setup() {
@@ -128,7 +128,7 @@ public class PointerBench {
     public int testLoopPointerPointerInt_segment() {
         int sum = 0;
         for (long i = 0 ; i < ELEM_SIZE ; i++) {
-            var segment = intPointerSegment.getAtIndex(UNSAFE_ADDRESS, i);
+            var segment = intPointerSegment.getAtIndex(UNSAFE_ADDRESS, i).asUnboundedSlice();
             sum += segment.get(ValueLayout.JAVA_INT, 0);
         }
         return sum;

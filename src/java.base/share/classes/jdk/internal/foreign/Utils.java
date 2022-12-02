@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.foreign.layout.ValueLayouts.OfAddressImpl;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.vm.annotation.ForceInline;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
@@ -124,7 +125,7 @@ public final class Utils {
         } else if (layout instanceof ValueLayout.OfAddress addressLayout) {
             handle = MethodHandles.filterValue(handle,
                     MethodHandles.explicitCastArguments(ADDRESS_TO_LONG, MethodType.methodType(baseCarrier, MemorySegment.class)),
-                    MethodHandles.explicitCastArguments(addressLayout.isUnbounded() ?
+                    MethodHandles.explicitCastArguments(OfAddressImpl.isUnbounded(addressLayout) ?
                             LONG_TO_ADDRESS_UNSAFE : LONG_TO_ADDRESS_SAFE, MethodType.methodType(MemorySegment.class, baseCarrier)));
         }
         return VarHandleCache.put(layout, handle);
@@ -174,7 +175,8 @@ public final class Utils {
 
     public static long pointeeSize(MemoryLayout layout) {
         if (layout instanceof ValueLayout.OfAddress addressLayout) {
-            return addressLayout.isUnbounded() ? Long.MAX_VALUE : 0L;
+            return OfAddressImpl.isUnbounded(addressLayout) ?
+                    Long.MAX_VALUE : 0L;
         } else {
             throw new UnsupportedOperationException();
         }

@@ -24,7 +24,6 @@
 package org.openjdk.foreigntest;
 
 import java.lang.foreign.*;
-import java.lang.foreign.SegmentScope;
 import java.lang.reflect.Method;
 
 public class PanamaMainReflection {
@@ -42,8 +41,8 @@ public class PanamaMainReflection {
 
     public static void testReflectionMemorySegment() throws Throwable {
         System.out.println("Trying to get MemorySegment");
-        Method method = MemorySegment.class.getDeclaredMethod("ofAddress", long.class, long.class, SegmentScope.class);
-        method.invoke(null, 0L, 4000L, SegmentScope.global());
+        Method method = MemorySegment.class.getDeclaredMethod("asUnboundedSlice");
+        method.invoke(MemorySegment.NULL);
         System.out.println("Got MemorySegment");
     }
 }

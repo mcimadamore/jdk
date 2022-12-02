@@ -43,7 +43,7 @@ import java.lang.foreign.MemorySegment;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -87,7 +87,7 @@ public class TestUpcallHighArity extends CallGeneratorHelper {
         for (int i = 0; i < o.length; i++) {
             if (layouts.get(i) instanceof GroupLayout) {
                 MemorySegment ms = (MemorySegment) o[i];
-                MemorySegment copy = MemorySegment.allocateNative(ms.byteSize(), SegmentScope.auto());
+                MemorySegment copy = NativeAllocator.auto().allocate(ms.byteSize());
                 copy.copyFrom(ms);
                 o[i] = copy;
             }
@@ -103,7 +103,7 @@ public class TestUpcallHighArity extends CallGeneratorHelper {
                                          .asCollector(Object[].class, upcallType.parameterCount())
                                          .asType(upcallType);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment upcallStub = LINKER.upcallStub(target, upcallDescriptor, arena.scope());
+            MemorySegment upcallStub = LINKER.upcallStub(target, upcallDescriptor, arena);
             Object[] args = new Object[upcallType.parameterCount() + 1];
             args[0] = upcallStub;
             List<MemoryLayout> argLayouts = upcallDescriptor.argumentLayouts();

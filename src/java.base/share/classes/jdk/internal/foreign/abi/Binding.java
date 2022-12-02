@@ -30,7 +30,7 @@ import jdk.internal.foreign.Utils;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -197,14 +197,14 @@ public interface Binding {
     /**
      * A binding context is used as an helper to carry out evaluation of certain bindings; for instance,
      * it helps {@link Allocate} bindings, by providing the {@link SegmentAllocator} that should be used for
-     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link SegmentScope} that
+     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link NativeAllocator} that
      * should be used to create an unsafe struct from a memory address.
      */
     class Context implements AutoCloseable {
         private final SegmentAllocator allocator;
-        private final SegmentScope scope;
+        private final NativeAllocator scope;
 
-        private Context(SegmentAllocator allocator, SegmentScope scope) {
+        private Context(SegmentAllocator allocator, NativeAllocator scope) {
             this.allocator = allocator;
             this.scope = scope;
         }
@@ -213,7 +213,7 @@ public interface Binding {
             return allocator;
         }
 
-        public SegmentScope scope() {
+        public NativeAllocator scope() {
             return scope;
         }
 
@@ -227,7 +227,7 @@ public interface Binding {
          */
         public static Context ofBoundedAllocator(long size) {
             Arena arena = Arena.openConfined();
-            return new Context(SegmentAllocator.slicingAllocator(MemorySegment.allocateNative(size, arena.scope())), arena.scope()) {
+            return new Context(SegmentAllocator.slicingAllocator(arena.allocate(size)), arena) {
                 @Override
                 public void close() {
                     arena.close();
@@ -242,7 +242,7 @@ public interface Binding {
         public static Context ofAllocator(SegmentAllocator allocator) {
             return new Context(allocator, null) {
                 @Override
-                public SegmentScope scope() {
+                public NativeAllocator scope() {
                     throw new UnsupportedOperationException();
                 }
             };
@@ -254,7 +254,7 @@ public interface Binding {
          */
         public static Context ofScope() {
             Arena arena = Arena.openConfined();
-            return new Context(null, arena.scope()) {
+            return new Context(null, arena) {
                 @Override
                 public SegmentAllocator allocator() { throw new UnsupportedOperationException(); }
 
@@ -276,7 +276,7 @@ public interface Binding {
             }
 
             @Override
-            public SegmentScope scope() {
+            public NativeAllocator scope() {
                 throw new UnsupportedOperationException();
             }
 
@@ -698,8 +698,8 @@ public interface Binding {
         @Override
         public void interpret(Deque<Object> stack, BindingInterpreter.StoreFunc storeFunc,
                               BindingInterpreter.LoadFunc loadFunc, Context context) {
-            SegmentScope scope = needsScope ?
-                    context.scope() : SegmentScope.global();
+            NativeAllocator scope = needsScope ?
+                    context.scope() : NativeAllocator.global();
             stack.push(NativeMemorySegmentImpl.makeNativeSegmentUnchecked((long) stack.pop(), size, scope));
         }
     }

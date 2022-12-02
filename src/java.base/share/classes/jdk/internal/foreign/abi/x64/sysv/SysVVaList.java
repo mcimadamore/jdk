@@ -25,14 +25,16 @@
  */
 package jdk.internal.foreign.abi.x64.sysv;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.abi.SharedUtils;
@@ -130,15 +132,17 @@ public non-sealed class SysVVaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static SysVVaList readFromAddress(long address, SegmentScope scope) {
-        MemorySegment segment = MemorySegment.ofAddress(address, LAYOUT.byteSize(), scope);
-        MemorySegment regSaveArea = getRegSaveArea(segment);
-        MemorySegment overflowArgArea = getArgOverflowArea(segment);
+    private static SysVVaList readFromAddress(long address, NativeAllocator allocator) {
+        MemorySegment segment = allocator.wrap(address, null)
+                .asUnboundedSlice()
+                .asSlice(0, LAYOUT.byteSize());
+        MemorySegment regSaveArea = getRegSaveArea(segment, allocator);
+        MemorySegment overflowArgArea = getArgOverflowArea(segment, allocator);
         return new SysVVaList(segment, overflowArgArea, regSaveArea, MAX_GP_OFFSET, MAX_FP_OFFSET);
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment base = MemorySegment.allocateNative(LAYOUT, SegmentScope.global());
+        MemorySegment base = NativeAllocator.global().allocate(LAYOUT);
         VH_gp_offset.set(base, MAX_GP_OFFSET);
         VH_fp_offset.set(base, MAX_FP_OFFSET);
         VH_overflow_arg_area.set(base, MemorySegment.NULL);
@@ -166,13 +170,16 @@ public non-sealed class SysVVaList implements VaList {
         VH_fp_offset.set(segment, i);
     }
 
-    private static MemorySegment getRegSaveArea(MemorySegment segment) {
-        return ((MemorySegment)VH_reg_save_area.get(segment))
-                .asSlice(0, LAYOUT_REG_SAVE_AREA.byteSize());
+    private static MemorySegment getRegSaveArea(MemorySegment segment, NativeAllocator allocator) {
+        var reg_save_area = ((MemorySegment)VH_reg_save_area.get(segment));
+        return allocator.wrap(reg_save_area.address(), null)
+                .asUnboundedSlice(0, LAYOUT_REG_SAVE_AREA.byteSize());
     }
 
-    private static MemorySegment getArgOverflowArea(MemorySegment segment) {
-        return (MemorySegment)VH_overflow_arg_area.get(segment); // size unknown
+    private static MemorySegment getArgOverflowArea(MemorySegment segment, NativeAllocator allocator) {
+        var overflow_arg_area = ((MemorySegment)VH_overflow_arg_area.get(segment));
+        return allocator.wrap(overflow_arg_area.address(), null)
+                .asUnboundedSlice();
     }
 
     private long preAlignOffset(MemoryLayout layout) {
@@ -306,7 +313,7 @@ public non-sealed class SysVVaList implements VaList {
     @Override
     public void skip(MemoryLayout... layouts) {
         Objects.requireNonNull(layouts);
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         for (MemoryLayout layout : layouts) {
             Objects.requireNonNull(layout);
             TypeClass typeClass = TypeClass.classifyLayout(layout);
@@ -322,17 +329,17 @@ public non-sealed class SysVVaList implements VaList {
         }
     }
 
-    static SysVVaList.Builder builder(SegmentScope scope) {
-        return new SysVVaList.Builder(scope);
+    static SysVVaList.Builder builder(NativeAllocator allocator) {
+        return new SysVVaList.Builder(allocator);
     }
 
-    public static VaList ofAddress(long address, SegmentScope scope) {
-        return readFromAddress(address, scope);
+    public static VaList ofAddress(long address, NativeAllocator allocator) {
+        return readFromAddress(address, allocator);
     }
 
     @Override
     public VaList copy() {
-        MemorySegment copy = MemorySegment.allocateNative(LAYOUT, segment.scope());
+        MemorySegment copy = ((AbstractMemorySegmentImpl)segment).sessionImpl().allocate(LAYOUT);
         copy.copyFrom(segment);
         return new SysVVaList(copy, overflowArgArea, regSaveArea, gpLimit, fpLimit);
     }
@@ -359,15 +366,16 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     public static non-sealed class Builder implements VaList.Builder {
-        private final SegmentScope scope;
+
+        private final NativeAllocator allocator;
         private final MemorySegment reg_save_area;
         private long currentGPOffset = 0;
         private long currentFPOffset = FP_OFFSET;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        public Builder(SegmentScope scope) {
-            this.scope = scope;
-            this.reg_save_area = MemorySegment.allocateNative(LAYOUT_REG_SAVE_AREA, scope);
+        public Builder(NativeAllocator allocator) {
+            this.allocator = allocator;
+            this.reg_save_area = allocator.allocate(LAYOUT_REG_SAVE_AREA);
         }
 
         @Override
@@ -446,12 +454,12 @@ public non-sealed class SysVVaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment vaListSegment = MemorySegment.allocateNative(LAYOUT, scope);
+            MemorySegment vaListSegment = allocator.allocate(LAYOUT);
             MemorySegment stackArgsSegment;
             if (!stackArgs.isEmpty()) {
                 long stackArgsSize = stackArgs.stream().reduce(0L,
                         (acc, e) -> acc + Utils.alignUp(e.layout.byteSize(), STACK_SLOT_SIZE), Long::sum);
-                stackArgsSegment = MemorySegment.allocateNative(stackArgsSize, 16, scope);
+                stackArgsSegment = allocator.allocate(stackArgsSize, 16);
                 MemorySegment writeCursor = stackArgsSegment;
                 for (SimpleVaArg arg : stackArgs) {
                     if (arg.layout.byteSize() > 8) {
@@ -472,7 +480,7 @@ public non-sealed class SysVVaList implements VaList {
             VH_fp_offset.set(vaListSegment, (int) FP_OFFSET);
             VH_overflow_arg_area.set(vaListSegment, stackArgsSegment);
             VH_reg_save_area.set(vaListSegment, reg_save_area);
-            assert MemorySessionImpl.sameOwnerThread(reg_save_area.scope(), vaListSegment.scope());
+            assert MemorySessionImpl.sameOwnerThread(reg_save_area, vaListSegment);
             return new SysVVaList(vaListSegment, stackArgsSegment, reg_save_area, currentGPOffset, currentFPOffset);
         }
     }

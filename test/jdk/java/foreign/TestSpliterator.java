@@ -30,7 +30,7 @@
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SequenceLayout;
 
 import java.lang.invoke.VarHandle;
@@ -60,7 +60,7 @@ public class TestSpliterator {
 
         //setup
         try (Arena arena = Arena.openShared()) {
-            MemorySegment segment = MemorySegment.allocateNative(layout, arena.scope());;
+            MemorySegment segment = arena.allocate(layout);;
             for (int i = 0; i < layout.elementCount(); i++) {
                 INT_HANDLE.set(segment, (long) i, i);
             }
@@ -86,7 +86,7 @@ public class TestSpliterator {
         SequenceLayout layout = MemoryLayout.sequenceLayout(1024, ValueLayout.JAVA_INT);
 
         //setup
-        MemorySegment segment = MemorySegment.allocateNative(layout, SegmentScope.auto());
+        MemorySegment segment = NativeAllocator.auto().allocate(layout);
         for (int i = 0; i < layout.elementCount(); i++) {
             INT_HANDLE.set(segment, (long) i, i);
         }
@@ -101,55 +101,55 @@ public class TestSpliterator {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadSpliteratorElementSizeTooBig() {
-        MemorySegment.allocateNative(2, SegmentScope.auto())
+        NativeAllocator.auto().allocate(2)
                 .spliterator(ValueLayout.JAVA_INT);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadStreamElementSizeTooBig() {
-        MemorySegment.allocateNative(2, SegmentScope.auto())
+        NativeAllocator.auto().allocate(2)
                 .elements(ValueLayout.JAVA_INT);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadSpliteratorElementSizeNotMultiple() {
-        MemorySegment.allocateNative(7, SegmentScope.auto())
+        NativeAllocator.auto().allocate(7)
                 .spliterator(ValueLayout.JAVA_INT);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadStreamElementSizeNotMultiple() {
-        MemorySegment.allocateNative(7, SegmentScope.auto())
+        NativeAllocator.auto().allocate(7)
                 .elements(ValueLayout.JAVA_INT);
     }
 
     @Test
     public void testSpliteratorElementSizeMultipleButNotPowerOfTwo() {
-        MemorySegment.allocateNative(12, SegmentScope.auto())
+        NativeAllocator.auto().allocate(12)
                 .spliterator(ValueLayout.JAVA_INT);
     }
 
     @Test
     public void testStreamElementSizeMultipleButNotPowerOfTwo() {
-        MemorySegment.allocateNative(12, SegmentScope.auto())
+        NativeAllocator.auto().allocate(12)
                 .elements(ValueLayout.JAVA_INT);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadSpliteratorElementSizeZero() {
-        MemorySegment.allocateNative(7, SegmentScope.auto())
+        NativeAllocator.auto().allocate(7)
                 .spliterator(MemoryLayout.sequenceLayout(0, ValueLayout.JAVA_INT));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadStreamElementSizeZero() {
-        MemorySegment.allocateNative(7, SegmentScope.auto())
+        NativeAllocator.auto().allocate(7)
                 .elements(MemoryLayout.sequenceLayout(0, ValueLayout.JAVA_INT));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHyperAligned() {
-        MemorySegment segment = MemorySegment.allocateNative(8, SegmentScope.auto());
+        MemorySegment segment = NativeAllocator.auto().allocate(8);
         // compute an alignment constraint (in bytes) which exceed that of the native segment
         long bigByteAlign = Long.lowestOneBit(segment.address()) << 1;
         segment.elements(MemoryLayout.sequenceLayout(2, ValueLayout.JAVA_INT.withBitAlignment(bigByteAlign * 8)));

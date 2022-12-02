@@ -29,7 +29,7 @@
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -81,7 +81,7 @@ public class TestMemoryAccessInstance {
 
         void test() {
             try (Arena arena = Arena.openConfined()) {
-                MemorySegment segment = MemorySegment.allocateNative(128, arena.scope());;
+                MemorySegment segment = arena.allocate(128);;
                 ByteBuffer buffer = segment.asByteBuffer();
                 T t = transform.apply(segment);
                 segmentSetter.set(t, layout, 8, value);
@@ -94,7 +94,7 @@ public class TestMemoryAccessInstance {
         @SuppressWarnings("unchecked")
         void testHyperAligned() {
             try (Arena arena = Arena.openConfined()) {
-                MemorySegment segment = MemorySegment.allocateNative(64, arena.scope());;
+                MemorySegment segment = arena.allocate(64);;
                 T t = transform.apply(segment);
                 L alignedLayout = (L)layout.withBitAlignment(layout.byteSize() * 8 * 2);
                 try {
@@ -136,7 +136,7 @@ public class TestMemoryAccessInstance {
     @Test(expectedExceptions = IllegalArgumentException.class,
             expectedExceptionsMessageRegExp = ".*Heap segment not allowed.*")
     public void badHeapSegmentSet() {
-        MemorySegment targetSegment = MemorySegment.allocateNative(ValueLayout.ADDRESS.byteSize(), SegmentScope.auto());
+        MemorySegment targetSegment = NativeAllocator.auto().allocate(ValueLayout.ADDRESS.byteSize());
         MemorySegment segment = MemorySegment.ofArray(new byte[]{ 0, 1, 2 });
         targetSegment.set(ValueLayout.ADDRESS, 0, segment); // should throw
     }
@@ -144,7 +144,7 @@ public class TestMemoryAccessInstance {
     @Test(expectedExceptions = IllegalArgumentException.class,
             expectedExceptionsMessageRegExp = ".*Heap segment not allowed.*")
     public void badHeapSegmentSetAtIndex() {
-        MemorySegment targetSegment = MemorySegment.allocateNative(ValueLayout.ADDRESS.byteSize(), SegmentScope.auto());
+        MemorySegment targetSegment = NativeAllocator.auto().allocate(ValueLayout.ADDRESS.byteSize());
         MemorySegment segment = MemorySegment.ofArray(new byte[]{ 0, 1, 2 });
         targetSegment.setAtIndex(ValueLayout.ADDRESS, 0, segment); // should throw
     }
@@ -183,13 +183,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> bb.order(NE).getDouble(pos), (bb, pos, v) -> bb.order(NE).putDouble(pos, v))
                 },
-                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, MemorySegment.ofAddress(42),
+                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, NativeAllocator.global().wrap(42, null),
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos) : nb.getInt(pos);
-                            return MemorySegment.ofAddress(addr);
+                            return NativeAllocator.global().wrap(addr, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);
@@ -221,13 +221,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> bb.order(NE).getDouble(pos * 8), (bb, pos, v) -> bb.order(NE).putDouble(pos * 8, v))
                 },
-                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, MemorySegment.ofAddress(42),
+                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, NativeAllocator.global().wrap(42, null),
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos * 8) : nb.getInt(pos * 4);
-                            return MemorySegment.ofAddress(addr);
+                            return NativeAllocator.global().wrap(addr, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);

@@ -437,16 +437,12 @@ public final class ValueLayouts {
             return Objects.hash(super.hashCode(), isUnbounded);
         }
 
-        @Override
-        @CallerSensitive
-        public OfAddress asUnbounded() {
-            Reflection.ensureNativeAccess(Reflection.getCallerClass(), OfAddress.class, "asUnbounded");
-            return new OfAddressImpl(order(), bitSize(), bitAlignment(), true, name());
+        public static OfAddress asUnbounded(OfAddress address) {
+            return new OfAddressImpl(address.order(), address.bitSize(), address.bitAlignment(), true, address.name());
         }
 
-        @Override
-        public boolean isUnbounded() {
-            return isUnbounded;
+        public static boolean isUnbounded(OfAddress address) {
+            return ((OfAddressImpl)address).isUnbounded;
         }
 
         public static OfAddress of(ByteOrder order) {

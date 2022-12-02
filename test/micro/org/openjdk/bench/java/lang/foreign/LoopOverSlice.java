@@ -64,7 +64,7 @@ public class LoopOverSlice {
     @Setup
     public void setup() {
         arena = Arena.openConfined();
-        nativeSegment = MemorySegment.allocateNative(ALLOC_SIZE, arena.scope());
+        nativeSegment = arena.allocate(ALLOC_SIZE);
         heapSegment = MemorySegment.ofArray(new int[ELEM_SIZE]);
         nativeBuffer = ByteBuffer.allocateDirect(ALLOC_SIZE).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
         heapBuffer = IntBuffer.wrap(new int[ELEM_SIZE]);

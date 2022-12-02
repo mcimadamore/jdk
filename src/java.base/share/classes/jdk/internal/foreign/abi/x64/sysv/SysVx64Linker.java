@@ -28,7 +28,8 @@ package jdk.internal.foreign.abi.x64.sysv;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.Arena;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.VaList;
@@ -58,18 +59,18 @@ public final class SysVx64Linker extends AbstractLinker {
     }
 
     @Override
-    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, SegmentScope scope) {
+    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, NativeAllocator scope) {
         return CallArranger.arrangeUpcall(target, targetType, function, scope);
     }
 
-    public static VaList newVaList(Consumer<VaList.Builder> actions, SegmentScope scope) {
-        SysVVaList.Builder builder = SysVVaList.builder(scope);
+    public static VaList newVaList(Consumer<VaList.Builder> actions, NativeAllocator allocator) {
+        SysVVaList.Builder builder = SysVVaList.builder(allocator);
         actions.accept(builder);
         return builder.build();
     }
 
-    public static VaList newVaListOfAddress(long address, SegmentScope scope) {
-        return SysVVaList.ofAddress(address, scope);
+    public static VaList newVaListOfAddress(long address, NativeAllocator allocator) {
+        return SysVVaList.ofAddress(address, allocator);
     }
 
     public static VaList emptyVaList() {

@@ -25,15 +25,17 @@
  */
 package jdk.internal.foreign.abi.aarch64.macos;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
+
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.abi.aarch64.TypeClass;
-import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.SharedUtils.SimpleVaArg;
 
@@ -105,11 +107,15 @@ public non-sealed class MacOsAArch64VaList implements VaList {
                 case STRUCT_REFERENCE -> {
                     checkElement(layout, VA_SLOT_SIZE_BYTES);
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    MemorySegment struct = MemorySegment.ofAddress(structAddr.address(), layout.byteSize(), segment.scope());
-                    MemorySegment seg = allocator.allocate(layout);
-                    seg.copyFrom(struct);
-                    segment = segment.asSlice(VA_SLOT_SIZE_BYTES);
-                    yield seg;
+                    try (Arena arena = Arena.openConfined()) {
+                        MemorySegment struct = arena.wrap(structAddr.address(), null)
+                                .asUnboundedSlice()
+                                .asSlice(0, layout.byteSize());
+                        MemorySegment seg = allocator.allocate(layout);
+                        seg.copyFrom(struct);
+                        segment = segment.asSlice(VA_SLOT_SIZE_BYTES);
+                        yield seg;
+                    }
                 }
                 case STRUCT_REGISTER, STRUCT_HFA -> {
                     long size = alignUp(layout.byteSize(), VA_SLOT_SIZE_BYTES);
@@ -140,7 +146,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
     @Override
     public void skip(MemoryLayout... layouts) {
         Objects.requireNonNull(layouts);
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
 
         for (MemoryLayout layout : layouts) {
             Objects.requireNonNull(layout);
@@ -156,18 +162,18 @@ public non-sealed class MacOsAArch64VaList implements VaList {
         }
     }
 
-    static MacOsAArch64VaList ofAddress(long address, SegmentScope session) {
-        MemorySegment segment = MemorySegment.ofAddress(address, Long.MAX_VALUE, session);
+    static MacOsAArch64VaList ofAddress(long address, NativeAllocator allocator) {
+        MemorySegment segment = allocator.wrap(address, null).asUnboundedSlice();
         return new MacOsAArch64VaList(segment);
     }
 
-    static Builder builder(SegmentScope session) {
-        return new Builder(session);
+    static Builder builder(NativeAllocator allocator) {
+        return new Builder(allocator);
     }
 
     @Override
     public VaList copy() {
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         return new MacOsAArch64VaList(segment);
     }
 
@@ -179,12 +185,11 @@ public non-sealed class MacOsAArch64VaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final SegmentScope session;
+        private final NativeAllocator allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(SegmentScope session) {
-            ((MemorySessionImpl) session).checkValidState();
-            this.session = session;
+        public Builder(NativeAllocator allocator) {
+            this.allocator = allocator;
         }
 
         private Builder arg(MemoryLayout layout, Object value) {
@@ -225,7 +230,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
             }
 
             long allocationSize = args.stream().reduce(0L, (acc, e) -> acc + sizeOf(e.layout), Long::sum);
-            MemorySegment segment = MemorySegment.allocateNative(allocationSize, session);
+            MemorySegment segment = allocator.allocate(allocationSize);
             MemorySegment cursor = segment;
 
             for (SimpleVaArg arg : args) {
@@ -234,7 +239,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
                     TypeClass typeClass = TypeClass.classifyLayout(arg.layout);
                     switch (typeClass) {
                         case STRUCT_REFERENCE -> {
-                            MemorySegment copy = MemorySegment.allocateNative(arg.layout, session);
+                            MemorySegment copy = allocator.allocate(arg.layout);
                             copy.copyFrom(msArg); // by-value
                             VH_address.set(cursor, copy);
                             cursor = cursor.asSlice(VA_SLOT_SIZE_BYTES);

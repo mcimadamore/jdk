@@ -41,7 +41,7 @@ import java.lang.foreign.MemorySegment;
 
 import org.testng.annotations.Test;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -65,20 +65,20 @@ public class TestUpcallAsync extends TestUpcallBase {
         try (Arena arena = Arena.openShared()) {
             FunctionDescriptor descriptor = function(ret, paramTypes, fields);
             MethodHandle mh = downcallHandle(ABI, addr, arena, descriptor);
-            Object[] args = makeArgs(SegmentScope.auto(), ret, paramTypes, fields, returnChecks, argChecks);
+            Object[] args = makeArgs(NativeAllocator.auto(), ret, paramTypes, fields, returnChecks, argChecks);
 
             mh = mh.asSpreader(Object[].class, args.length);
             mh = MethodHandles.insertArguments(mh, 0, (Object) args);
             FunctionDescriptor callbackDesc = descriptor.returnLayout()
                     .map(FunctionDescriptor::of)
                     .orElse(FunctionDescriptor.ofVoid());
-            MemorySegment callback = ABI.upcallStub(mh, callbackDesc, arena.scope());
+            MemorySegment callback = ABI.upcallStub(mh, callbackDesc, arena);
 
             MethodHandle invoker = asyncInvoker(ret, ret == Ret.VOID ? null : paramTypes.get(0), fields);
 
             Object res = (descriptor.returnLayout().isPresent() &&
                          descriptor.returnLayout().get() instanceof GroupLayout)
-                    ? invoker.invoke(arena.scope(), callback)
+                    ? invoker.invoke(arena, callback)
                     : invoker.invoke(callback);
             argChecks.forEach(c -> c.accept(args));
             if (ret == Ret.NON_VOID) {

@@ -29,9 +29,10 @@ import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.aarch64.CallArranger;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.VaList;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -61,18 +62,18 @@ public final class MacOsAArch64Linker extends AbstractLinker {
     }
 
     @Override
-    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, SegmentScope scope) {
+    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, NativeAllocator scope) {
         return CallArranger.MACOS.arrangeUpcall(target, targetType, function, scope);
     }
 
-    public static VaList newVaList(Consumer<VaList.Builder> actions, SegmentScope scope) {
-        MacOsAArch64VaList.Builder builder = MacOsAArch64VaList.builder(scope);
+    public static VaList newVaList(Consumer<VaList.Builder> actions, NativeAllocator allocator) {
+        MacOsAArch64VaList.Builder builder = MacOsAArch64VaList.builder(allocator);
         actions.accept(builder);
         return builder.build();
     }
 
-    public static VaList newVaListOfAddress(long address, SegmentScope scope) {
-        return MacOsAArch64VaList.ofAddress(address, scope);
+    public static VaList newVaListOfAddress(long address, NativeAllocator allocator) {
+        return MacOsAArch64VaList.ofAddress(address, allocator);
     }
 
     public static VaList emptyVaList() {

@@ -27,10 +27,12 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
+import jdk.internal.access.foreign.UnmapperProxy;
+import jdk.internal.foreign.MappedMemorySegmentImpl.EmptyMappedMemorySegmentImpl;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.ForceInline;
@@ -52,7 +54,7 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     final long min;
 
     @ForceInline
-    NativeMemorySegmentImpl(long min, long length, boolean readOnly, SegmentScope scope) {
+    NativeMemorySegmentImpl(long min, long length, boolean readOnly, MemorySessionImpl scope) {
         super(length, readOnly, scope);
         this.min = min;
     }
@@ -69,7 +71,7 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
 
     @ForceInline
     @Override
-    NativeMemorySegmentImpl dup(long offset, long size, boolean readOnly, SegmentScope scope) {
+    NativeMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl scope) {
         return new NativeMemorySegmentImpl(min + offset, size, readOnly, scope);
     }
 
@@ -99,11 +101,17 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
         return 0;
     }
 
+    public MemorySegment asMapped(UnmapperProxy unmapper) {
+        if (unmapper == null) {
+            return new EmptyMappedMemorySegmentImpl(readOnly, scope);
+        } else {
+            return new MappedMemorySegmentImpl(unsafeGetOffset(), unmapper, length, readOnly, scope);
+        }
+    }
+
     // factories
 
-    public static MemorySegment makeNativeSegment(long byteSize, long byteAlignment, SegmentScope scope) {
-        MemorySessionImpl sessionImpl = (MemorySessionImpl) scope;
-        sessionImpl.checkValidState();
+    public static MemorySegment makeNativeSegment(long byteSize, long byteAlignment, NativeAllocator allocator) {
         if (VM.isDirectMemoryPageAligned()) {
             byteAlignment = Math.max(byteAlignment, NIO_ACCESS.pageSize());
         }
@@ -118,15 +126,12 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
             UNSAFE.setMemory(buf, alignedSize, (byte)0);
         }
         long alignedBuf = Utils.alignUp(buf, byteAlignment);
-        AbstractMemorySegmentImpl segment = new NativeMemorySegmentImpl(buf, alignedSize,
-                false, scope);
-        sessionImpl.addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
-            @Override
-            public void cleanup() {
-                UNSAFE.freeMemory(buf);
-                NIO_ACCESS.unreserveMemory(alignedSize, byteSize);
-            }
-        });
+        MemorySegment segment = allocator.wrap(buf,
+                () -> {
+                    UNSAFE.freeMemory(buf);
+                    NIO_ACCESS.unreserveMemory(alignedSize, byteSize);
+                }).asUnboundedSlice()
+                  .asSlice(0, alignedSize);
         if (alignedSize != byteSize) {
             long delta = alignedBuf - buf;
             segment = segment.asSlice(delta, byteSize);
@@ -138,25 +143,20 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     // associated with MemorySegment::ofAddress.
 
     @ForceInline
-    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, SegmentScope scope, Runnable action) {
-        MemorySessionImpl sessionImpl = (MemorySessionImpl) scope;
-        if (action == null) {
-            sessionImpl.checkValidState();
-        } else {
-            sessionImpl.addCloseAction(action);
-        }
-        return new NativeMemorySegmentImpl(min, byteSize, false, scope);
+    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, NativeAllocator allocator, Runnable action) {
+        return allocator.wrap(min, action)
+                .asUnboundedSlice(0, byteSize);
     }
 
     @ForceInline
-    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, SegmentScope scope) {
-        MemorySessionImpl sessionImpl = (MemorySessionImpl) scope;
-        sessionImpl.checkValidState();
-        return new NativeMemorySegmentImpl(min, byteSize, false, scope);
+    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, NativeAllocator allocator) {
+        return allocator.wrap(min, null)
+                .asUnboundedSlice(0, byteSize);
     }
 
     @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize) {
-        return new NativeMemorySegmentImpl(min, byteSize, false, SegmentScope.global());
+        return NativeAllocator.global().wrap(min, null)
+                .asUnboundedSlice(0, byteSize);
     }
 }

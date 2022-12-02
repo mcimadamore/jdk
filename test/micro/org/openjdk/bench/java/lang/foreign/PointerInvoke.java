@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 public class PointerInvoke extends CLayouts {
 
     Arena arena = Arena.openConfined();
-    MemorySegment segment = MemorySegment.allocateNative(100, arena.scope());
+    MemorySegment segment = arena.allocate(100);
 
     static {
         System.loadLibrary("Ptr");
@@ -87,7 +87,8 @@ public class PointerInvoke extends CLayouts {
 
     @Benchmark
     public int panama_call_as_new_segment() throws Throwable {
-        MemorySegment newSegment = MemorySegment.ofAddress(segment.address(), 100, arena.scope());
+        MemorySegment newSegment = arena.wrap(segment.address(), null)
+                .asUnboundedSlice(0, 100);
         return (int)F_PTR.invokeExact(newSegment);
     }
 }

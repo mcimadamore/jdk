@@ -66,7 +66,7 @@ public class CLayouts {
     /**
      * The {@code T*} native type.
      */
-    public static final ValueLayout.OfAddress C_POINTER = ValueLayout.ADDRESS.asUnbounded();
+    public static final ValueLayout.OfAddress C_POINTER = ValueLayout.ADDRESS;
 
     private static Linker LINKER = Linker.nativeLinker();
 
@@ -74,7 +74,7 @@ public class CLayouts {
             LINKER.defaultLookup().find("free").get(), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
     private static final MethodHandle MALLOC = LINKER.downcallHandle(
-            LINKER.defaultLookup().find("malloc").get(), FunctionDescriptor.of(ValueLayout.ADDRESS.asUnbounded(), ValueLayout.JAVA_LONG));
+            LINKER.defaultLookup().find("malloc").get(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
     public static void freeMemory(MemorySegment address) {
         try {

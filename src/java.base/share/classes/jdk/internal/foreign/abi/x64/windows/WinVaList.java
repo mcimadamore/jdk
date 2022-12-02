@@ -25,15 +25,16 @@
  */
 package jdk.internal.foreign.abi.x64.windows;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
-import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.SharedUtils.SimpleVaArg;
 
@@ -115,7 +116,9 @@ public non-sealed class WinVaList implements VaList {
             res = switch (typeClass) {
                 case STRUCT_REFERENCE -> {
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    MemorySegment struct = MemorySegment.ofAddress(structAddr.address(), layout.byteSize(), segment.scope());
+                    MemorySegment struct = ((AbstractMemorySegmentImpl)segment).sessionImpl().wrap(structAddr.address(), null)
+                            .asUnboundedSlice()
+                            .asSlice(0, layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(struct);
                     yield seg;
@@ -141,7 +144,7 @@ public non-sealed class WinVaList implements VaList {
     @Override
     public void skip(MemoryLayout... layouts) {
         Objects.requireNonNull(layouts);
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         for (MemoryLayout layout : layouts) {
             Objects.requireNonNull(layout);
             checkElement(layout);
@@ -149,17 +152,17 @@ public non-sealed class WinVaList implements VaList {
         }
     }
 
-    static WinVaList ofAddress(long address, SegmentScope scope) {
-        return new WinVaList(MemorySegment.ofAddress(address, Long.MAX_VALUE, scope));
+    static WinVaList ofAddress(long address, NativeAllocator allocator) {
+        return new WinVaList(allocator.wrap(address, null).asUnboundedSlice());
     }
 
-    static Builder builder(SegmentScope scope) {
-        return new Builder(scope);
+    static Builder builder(NativeAllocator allocator) {
+        return new Builder(allocator);
     }
 
     @Override
     public VaList copy() {
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         return new WinVaList(segment);
     }
 
@@ -171,12 +174,11 @@ public non-sealed class WinVaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final SegmentScope scope;
+        private final NativeAllocator allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(SegmentScope scope) {
-            ((MemorySessionImpl) scope).checkValidState();
-            this.scope = scope;
+        public Builder(NativeAllocator allocator) {
+            this.allocator = allocator;
         }
 
         private Builder arg(MemoryLayout layout, Object value) {
@@ -216,7 +218,7 @@ public non-sealed class WinVaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment segment = MemorySegment.allocateNative(VA_SLOT_SIZE_BYTES * args.size(), scope);
+            MemorySegment segment = allocator.allocate(VA_SLOT_SIZE_BYTES * args.size());
             MemorySegment cursor = segment;
 
             for (SimpleVaArg arg : args) {
@@ -225,7 +227,7 @@ public non-sealed class WinVaList implements VaList {
                     TypeClass typeClass = TypeClass.typeClassFor(arg.layout, false);
                     switch (typeClass) {
                         case STRUCT_REFERENCE -> {
-                            MemorySegment copy = MemorySegment.allocateNative(arg.layout, scope);
+                            MemorySegment copy = allocator.allocate(arg.layout);
                             copy.copyFrom(msArg); // by-value
                             VH_address.set(cursor, copy);
                         }

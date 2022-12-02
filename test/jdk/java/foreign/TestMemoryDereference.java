@@ -29,10 +29,10 @@
 
 import java.lang.foreign.MemorySegment;
 
+import java.lang.foreign.NativeAllocator;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import java.lang.foreign.ValueLayout;
 import org.testng.annotations.*;
 
 import static java.lang.foreign.ValueLayout.*;
@@ -188,13 +188,13 @@ public class TestMemoryDereference {
                         (s, x) -> s.set(JAVA_DOUBLE_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN), 8, x),
                         (bb) -> bb.order(BE).getDouble(8), (bb, v) -> bb.order(BE).putDouble(8, v))
                 },
-                { "address/offset", new Accessor<>(MemorySegment.ofAddress(42),
+                { "address/offset", new Accessor<>(NativeAllocator.global().wrap(42, null),
                         s -> s.get(ADDRESS_UNALIGNED, 8), (s, x) -> s.set(ADDRESS_UNALIGNED, 8, x),
                         (bb) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ADDRESS_UNALIGNED.byteSize() == 8 ?
                                     nb.getLong(8) : nb.getInt(8);
-                            return MemorySegment.ofAddress(addr);
+                            return NativeAllocator.global().wrap(addr, null);
                         },
                         (bb, v) -> {
                             ByteBuffer nb = bb.order(NE);

@@ -34,6 +34,7 @@
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
@@ -68,13 +69,13 @@ public class TestHandshake {
     public void testHandshake(String testName, AccessorFactory accessorFactory) throws InterruptedException {
         for (int it = 0 ; it < ITERATIONS ; it++) {
             Arena arena = Arena.openShared();
-            MemorySegment segment = MemorySegment.allocateNative(SEGMENT_SIZE, 1, arena.scope());
+            MemorySegment segment = arena.allocate(SEGMENT_SIZE, 1);
             System.out.println("ITERATION " + it);
             ExecutorService accessExecutor = Executors.newCachedThreadPool();
             start.set(System.currentTimeMillis());
             started.set(false);
             for (int i = 0; i < NUM_ACCESSORS ; i++) {
-                accessExecutor.execute(accessorFactory.make(i, segment));
+                accessExecutor.execute(accessorFactory.make(i, segment, arena));
             }
             int delay = ThreadLocalRandom.current().nextInt(MAX_DELAY_MILLIS);
             System.out.println("Starting handshaker with delay set to " + delay + " millis");
@@ -82,7 +83,7 @@ public class TestHandshake {
             accessExecutor.execute(new Handshaker(arena));
             accessExecutor.shutdown();
             assertTrue(accessExecutor.awaitTermination(MAX_EXECUTOR_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertTrue(!segment.scope().isAlive());
+            assertTrue(!segment.isAlive());
         }
     }
 
@@ -99,7 +100,7 @@ public class TestHandshake {
         @Override
         public final void run() {
             start("\"Accessor #\" + id");
-            outer: while (segment.scope().isAlive()) {
+            outer: while (segment.isAlive()) {
                 try {
                     doAccess();
                 } catch (IllegalStateException ex) {
@@ -144,7 +145,7 @@ public class TestHandshake {
 
     static class SegmentAccessor extends AbstractSegmentAccessor {
 
-        SegmentAccessor(int id, MemorySegment segment) {
+        SegmentAccessor(int id, MemorySegment segment, Arena _unused) {
             super(id, segment);
         }
 
@@ -162,7 +163,7 @@ public class TestHandshake {
         MemorySegment first, second;
 
 
-        SegmentCopyAccessor(int id, MemorySegment segment) {
+        SegmentCopyAccessor(int id, MemorySegment segment, Arena _unused) {
             super(id, segment);
             long split = segment.byteSize() / 2;
             first = segment.asSlice(0, split);
@@ -177,7 +178,7 @@ public class TestHandshake {
 
     static class SegmentFillAccessor extends AbstractSegmentAccessor {
 
-        SegmentFillAccessor(int id, MemorySegment segment) {
+        SegmentFillAccessor(int id, MemorySegment segment, Arena _unused) {
             super(id, segment);
         }
 
@@ -191,9 +192,9 @@ public class TestHandshake {
 
         final MemorySegment copy;
 
-        SegmentMismatchAccessor(int id, MemorySegment segment) {
+        SegmentMismatchAccessor(int id, MemorySegment segment, Arena arena) {
             super(id, segment);
-            this.copy = MemorySegment.allocateNative(SEGMENT_SIZE, 1, segment.scope());
+            this.copy = arena.allocate(SEGMENT_SIZE, 1);
             copy.copyFrom(segment);
             copy.set(JAVA_BYTE, ThreadLocalRandom.current().nextInt(SEGMENT_SIZE), (byte)42);
         }
@@ -206,7 +207,7 @@ public class TestHandshake {
 
     static class BufferAccessor extends AbstractBufferAccessor {
 
-        BufferAccessor(int id, MemorySegment segment) {
+        BufferAccessor(int id, MemorySegment segment, Arena _unused) {
             super(id, segment);
         }
 
@@ -223,7 +224,7 @@ public class TestHandshake {
 
         static VarHandle handle = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.nativeOrder());
 
-        public BufferHandleAccessor(int id, MemorySegment segment) {
+        public BufferHandleAccessor(int id, MemorySegment segment, Arena _unused) {
             super(id, segment);
         }
 
@@ -261,7 +262,7 @@ public class TestHandshake {
     }
 
     interface AccessorFactory {
-        AbstractSegmentAccessor make(int id, MemorySegment segment);
+        AbstractSegmentAccessor make(int id, MemorySegment segment, Arena arena);
     }
 
     @DataProvider
