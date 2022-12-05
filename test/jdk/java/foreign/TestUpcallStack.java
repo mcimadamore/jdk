@@ -35,7 +35,7 @@
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 
 import org.testng.annotations.Test;
 
@@ -71,7 +71,7 @@ public class TestUpcallStack extends TestUpcallBase {
         return function(ret, params, fields, STACK_PREFIX_LAYOUTS);
     }
 
-    static Object[] makeArgsStack(SegmentScope session, Ret ret, List<ParamType> params, List<StructFieldType> fields, List<Consumer<Object>> checks, List<Consumer<Object[]>> argChecks) throws ReflectiveOperationException {
+    static Object[] makeArgsStack(NativeAllocator session, Ret ret, List<ParamType> params, List<StructFieldType> fields, List<Consumer<Object>> checks, List<Consumer<Object[]>> argChecks) throws ReflectiveOperationException {
         return makeArgs(session, ret, params, fields, checks, argChecks, STACK_PREFIX_LAYOUTS);
     }
 

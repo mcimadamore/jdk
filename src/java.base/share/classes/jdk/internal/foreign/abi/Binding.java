@@ -29,7 +29,7 @@ import jdk.internal.foreign.NativeMemorySegmentImpl;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -196,14 +196,14 @@ public interface Binding {
     /**
      * A binding context is used as an helper to carry out evaluation of certain bindings; for instance,
      * it helps {@link Allocate} bindings, by providing the {@link SegmentAllocator} that should be used for
-     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link SegmentScope} that
+     * the allocation operation, or {@link BoxAddress} bindings, by providing the {@link NativeAllocator} that
      * should be used to create an unsafe struct from a memory address.
      */
     class Context implements AutoCloseable {
         private final SegmentAllocator allocator;
-        private final SegmentScope session;
+        private final NativeAllocator session;
 
-        private Context(SegmentAllocator allocator, SegmentScope session) {
+        private Context(SegmentAllocator allocator, NativeAllocator session) {
             this.allocator = allocator;
             this.session = session;
         }
@@ -212,7 +212,7 @@ public interface Binding {
             return allocator;
         }
 
-        public SegmentScope session() {
+        public NativeAllocator session() {
             return session;
         }
 
@@ -241,7 +241,7 @@ public interface Binding {
         public static Context ofAllocator(SegmentAllocator allocator) {
             return new Context(allocator, null) {
                 @Override
-                public SegmentScope session() {
+                public NativeAllocator session() {
                     throw new UnsupportedOperationException();
                 }
             };
@@ -275,7 +275,7 @@ public interface Binding {
             }
 
             @Override
-            public SegmentScope session() {
+            public NativeAllocator session() {
                 throw new UnsupportedOperationException();
             }
 
@@ -676,8 +676,8 @@ public interface Binding {
         @Override
         public void interpret(Deque<Object> stack, BindingInterpreter.StoreFunc storeFunc,
                               BindingInterpreter.LoadFunc loadFunc, Context context) {
-            SegmentScope session = needsSession ?
-                    context.session() : SegmentScope.global();
+            NativeAllocator session = needsSession ?
+                    context.session() : NativeAllocator.global();
             stack.push(NativeMemorySegmentImpl.makeNativeSegmentUnchecked((long) stack.pop(), size, session));
         }
     }

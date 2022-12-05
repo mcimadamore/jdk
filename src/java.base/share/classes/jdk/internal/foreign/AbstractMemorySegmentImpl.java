@@ -27,8 +27,8 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
-import java.lang.foreign.SegmentScope;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Array;
 import java.nio.Buffer;
@@ -77,16 +77,16 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     final long length;
     final boolean readOnly;
-    final SegmentScope session;
+    final NativeAllocator session;
 
     @ForceInline
-    AbstractMemorySegmentImpl(long length, boolean readOnly, SegmentScope session) {
+    AbstractMemorySegmentImpl(long length, boolean readOnly, NativeAllocator session) {
         this.length = length;
         this.readOnly = readOnly;
         this.session = session;
     }
 
-    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, SegmentScope session);
+    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, NativeAllocator session);
 
     abstract ByteBuffer makeByteBuffer();
 
@@ -358,7 +358,7 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
-    public SegmentScope scope() {
+    public NativeAllocator scope() {
         return session;
     }
 
@@ -481,7 +481,7 @@ public abstract sealed class AbstractMemorySegmentImpl
         int size = limit - pos;
 
         AbstractMemorySegmentImpl bufferSegment = (AbstractMemorySegmentImpl) NIO_ACCESS.bufferSegment(bb);
-        final SegmentScope bufferSession;
+        final NativeAllocator bufferSession;
         if (bufferSegment != null) {
             bufferSession = bufferSegment.session;
         } else {

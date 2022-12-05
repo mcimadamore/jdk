@@ -28,7 +28,7 @@ package jdk.internal.foreign.abi.aarch64.linux;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.VaList;
 import java.lang.foreign.SegmentAllocator;
@@ -120,7 +120,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static LinuxAArch64VaList readFromAddress(long address, SegmentScope session) {
+    private static LinuxAArch64VaList readFromAddress(long address, NativeAllocator session) {
         MemorySegment segment = MemorySegment.ofAddress(address, LAYOUT.byteSize(), session);
         MemorySegment stack = stackPtr(segment); // size unknown
         MemorySegment gpRegsArea = MemorySegment.ofAddress(grTop(segment).address() - MAX_GP_OFFSET, MAX_GP_OFFSET, session);
@@ -129,7 +129,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment ms = SegmentScope.auto().allocate(LAYOUT);
+        MemorySegment ms = NativeAllocator.auto().allocate(LAYOUT);
         VH_stack.set(ms, MemorySegment.NULL);
         VH_gr_top.set(ms, MemorySegment.NULL);
         VH_vr_top.set(ms, MemorySegment.NULL);
@@ -384,11 +384,11 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         }
     }
 
-    static LinuxAArch64VaList.Builder builder(SegmentScope session) {
+    static LinuxAArch64VaList.Builder builder(NativeAllocator session) {
         return new LinuxAArch64VaList.Builder(session);
     }
 
-    public static VaList ofAddress(long address, SegmentScope session) {
+    public static VaList ofAddress(long address, NativeAllocator session) {
         return readFromAddress(address, session);
     }
 
@@ -432,7 +432,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     public static non-sealed class Builder implements VaList.Builder {
-        private final SegmentScope session;
+        private final NativeAllocator session;
         private final MemorySegment gpRegs;
         private final MemorySegment fpRegs;
 
@@ -440,7 +440,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         private long currentFPOffset = 0;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        Builder(SegmentScope session) {
+        Builder(NativeAllocator session) {
             this.session = session;
             this.gpRegs = session.allocate(LAYOUT_GP_REGS);
             this.fpRegs = session.allocate(LAYOUT_FP_REGS);

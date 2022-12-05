@@ -41,7 +41,7 @@ import jdk.internal.reflect.Reflection;
 /**
  * Helper class to create and manipulate variable argument lists, similar in functionality to a C {@code va_list}.
  * <p>
- * A variable argument list can be created using the {@link #make(Consumer, SegmentScope)} factory, as follows:
+ * A variable argument list can be created using the {@link #make(Consumer, NativeAllocator)} factory, as follows:
  * {@snippet lang = java:
  * VaList vaList = VaList.make(builder ->
  *                                    builder.addVarg(C_INT, 42)
@@ -87,8 +87,8 @@ import jdk.internal.reflect.Reflection;
  * <p>
  * Whether this detection succeeds depends on the factory method used to create the variable argument list:
  * <ul>
- *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, SegmentScope)} are capable of detecting out-of-bounds reads;</li>
- *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, SegmentScope)} are not capable of detecting out-of-bounds reads</li>
+ *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, NativeAllocator)} are capable of detecting out-of-bounds reads;</li>
+ *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, NativeAllocator)} are not capable of detecting out-of-bounds reads</li>
  * </ul>
  * <p>
  * This class is not thread safe, and all accesses should occur within a single thread
@@ -106,7 +106,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param layout the layout of the value to be read.
      * @return the {@code int} value read from this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -120,7 +120,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param layout the layout of the value to be read.
      * @return the {@code long} value read from this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -134,7 +134,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param layout the layout of the value
      * @return the {@code double} value read from this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -145,7 +145,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * Reads the next address value, wraps it into a native segment, and advances this variable argument list's position.
      * The behavior of this method is equivalent to the C {@code va_arg} function. The returned segment's base
      * {@linkplain MemorySegment#address()} is set to the value read from the variable argument list, and the segment
-     * is associated with the {@linkplain SegmentScope#global() global scope}. Under normal conditions, the size of the returned
+     * is associated with the {@linkplain NativeAllocator#global() global scope}. Under normal conditions, the size of the returned
      * segment is {@code 0}. However, if the provided layout is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded}
      * address layout, then the size of the returned segment is {@code Long.MAX_VALUE}.
      *
@@ -153,7 +153,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @return a native segment whose {@linkplain MemorySegment#address() address} is the value read from
      * this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -176,7 +176,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      *                  will be copied.
      * @return the {@code MemorySegment} value read from this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -188,7 +188,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      *
      * @param layouts the layouts of the values to be skipped.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      * @throws NoSuchElementException if an <a href=VaList.html#safety>out-of-bounds</a> read is detected.
@@ -206,7 +206,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      *
      * @return a copy of this variable argument list.
      * @throws IllegalStateException if the scope associated with this variable argument list is not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code segment().scope().isAccessibleBy(T) == false}.
      */
@@ -226,7 +226,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * by calling {@link MemorySegment#address()} on a foreign memory segment instance. The provided scope determines
      * the lifecycle of the returned variable argument list: the returned variable argument list will no longer be accessible,
      * and its associated off-heap memory region will be deallocated when the scope becomes not
-     * {@linkplain SegmentScope#isAlive() alive}.
+     * {@linkplain NativeAllocator#isAlive() alive}.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -236,7 +236,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param address the address of the variable argument list.
      * @param scope the scope associated with the returned variable argument list.
      * @return a new variable argument list backed by an off-heap region of memory starting at the given address value.
-     * @throws IllegalStateException         if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
+     * @throws IllegalStateException         if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException          if this method is called from a thread {@code T},
      *                                       such that {@code scope.isAccessibleBy(T) == false}.
      * @throws UnsupportedOperationException if the underlying native platform is not supported.
@@ -245,7 +245,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static VaList ofAddress(long address, SegmentScope scope) {
+    static VaList ofAddress(long address, NativeAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), VaList.class, "ofAddress");
         Objects.requireNonNull(scope);
         return SharedUtils.newVaListOfAddress(address, scope);
@@ -255,7 +255,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * Creates a variable argument list using a builder (see {@link Builder}), with the given
      * scope. The provided scope determines the lifecycle of the returned variable argument list: the
      * returned variable argument list will no longer be accessible, and its associated off-heap memory region will be
-     * deallocated when the scope becomes not {@linkplain SegmentScope#isAlive() alive}.
+     * deallocated when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
      * <p>
      * Note that when there are no elements added to the created va list,
      * this method will return the same as {@link #empty()}.
@@ -267,18 +267,18 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param scope the scope to be associated with the new variable arity list.
      * @return a new variable argument list.
      * @throws UnsupportedOperationException if the underlying native platform is not supported.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
+     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      */
-    static VaList make(Consumer<Builder> actions, SegmentScope scope) {
+    static VaList make(Consumer<Builder> actions, NativeAllocator scope) {
         Objects.requireNonNull(actions);
         Objects.requireNonNull(scope);
         return SharedUtils.newVaList(actions, scope);
     }
 
     /**
-     * Returns an empty variable argument list, associated with the {@linkplain SegmentScope#global() global scope}.
+     * Returns an empty variable argument list, associated with the {@linkplain NativeAllocator#global() global scope}.
      * The resulting variable argument list does not contain any argument, and throws {@link UnsupportedOperationException}
      * on all operations, except for {@link VaList#segment()}, {@link VaList#copy()}.
      * @return an empty variable argument list.

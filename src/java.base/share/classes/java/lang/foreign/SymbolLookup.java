@@ -54,15 +54,15 @@ import java.util.function.BiFunction;
  *     <li>It can be passed to an existing {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handle}, as an argument to the underlying foreign function.</li>
  *     <li>It can be {@linkplain MemorySegment#set(ValueLayout.OfAddress, long, MemorySegment) stored} inside another memory segment.</li>
  *     <li>It can be used to access the region of memory backing a global variable (this might require
- *     {@link MemorySegment#ofAddress(long, long, SegmentScope) resizing} the segment first).</li>
+ *     {@link MemorySegment#ofAddress(long, long, NativeAllocator) resizing} the segment first).</li>
  * </ul>
  *
  * <h2 id="obtaining">Obtaining a symbol lookup</h2>
  *
- * The factory methods {@link #libraryLookup(String, SegmentScope)} and {@link #libraryLookup(Path, SegmentScope)}
+ * The factory methods {@link #libraryLookup(String, NativeAllocator)} and {@link #libraryLookup(Path, NativeAllocator)}
  * create a symbol lookup for a library known to the operating system. The library is specified by either its name or a path.
  * The library is loaded if not already loaded. The symbol lookup, which is known as a <em>library lookup</em>, is associated
- * with a {@linkplain  SegmentScope scope}; when the scope becomes not {@link SegmentScope#isAlive()}, the library is unloaded:
+ * with a {@linkplain  NativeAllocator scope}; when the scope becomes not {@link NativeAllocator#isAlive()}, the library is unloaded:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
@@ -158,8 +158,8 @@ public interface SymbolLookup {
         ClassLoader loader = caller != null ?
                 caller.getClassLoader() :
                 ClassLoader.getSystemClassLoader();
-        SegmentScope loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
-                SegmentScope.global() : // builtin loaders never go away
+        NativeAllocator loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
+                NativeAllocator.global() : // builtin loaders never go away
                 MemorySessionImpl.heapSession(loader);
         return name -> {
             Objects.requireNonNull(name);
@@ -175,7 +175,7 @@ public interface SymbolLookup {
     /**
      * Loads a library with the given name (if not already loaded) and creates a symbol lookup for symbols in that library.
      * The library will be unloaded when the provided scope becomes
-     * not {@linkplain SegmentScope#isAlive() alive}, if no other library lookup is still using it.
+     * not {@linkplain NativeAllocator#isAlive() alive}, if no other library lookup is still using it.
      * @implNote The process of resolving a library name is OS-specific. For instance, in a POSIX-compliant OS,
      * the library name is resolved according to the specification of the {@code dlopen} function for that OS.
      * In Windows, the library name is resolved according to the specification of the {@code LoadLibrary} function.
@@ -194,7 +194,7 @@ public interface SymbolLookup {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(String name, SegmentScope scope) {
+    static SymbolLookup libraryLookup(String name, NativeAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
         return libraryLookup(name, RawNativeLibraries::load, scope);
     }
@@ -202,7 +202,7 @@ public interface SymbolLookup {
     /**
      * Loads a library from the given path (if not already loaded) and creates a symbol lookup for symbols
      * in that library. The library will be unloaded when the provided scope becomes
-     * not {@linkplain SegmentScope#isAlive() alive}, if no other library lookup is still using it.
+     * not {@linkplain NativeAllocator#isAlive() alive}, if no other library lookup is still using it.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -220,12 +220,12 @@ public interface SymbolLookup {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(Path path, SegmentScope scope) {
+    static SymbolLookup libraryLookup(Path path, NativeAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
         return libraryLookup(path, RawNativeLibraries::load, scope);
     }
 
-    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentScope libScope) {
+    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, NativeAllocator libScope) {
         Objects.requireNonNull(libDesc);
         Objects.requireNonNull(libScope);
         // attempt to load native library from path or name

@@ -32,7 +32,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout.PathElement;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SequenceLayout;
 
 import java.io.File;
@@ -491,7 +491,7 @@ public class TestByteBuffer {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testTooBigForByteBuffer() {
-        MemorySegment segment = MemorySegment.ofAddress(0, Integer.MAX_VALUE + 10L, SegmentScope.auto());
+        MemorySegment segment = MemorySegment.ofAddress(0, Integer.MAX_VALUE + 10L, NativeAllocator.auto());
         segment.asByteBuffer();
     }
 
@@ -501,7 +501,7 @@ public class TestByteBuffer {
         f.createNewFile();
         f.deleteOnExit();
         try (FileChannel fileChannel = FileChannel.open(f.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, -1L, SegmentScope.auto());
+            fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, -1L, NativeAllocator.auto());
         }
     }
 
@@ -511,7 +511,7 @@ public class TestByteBuffer {
         f.createNewFile();
         f.deleteOnExit();
         try (FileChannel fileChannel = FileChannel.open(f.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            fileChannel.map(FileChannel.MapMode.READ_WRITE, -1L, 1L, SegmentScope.auto());
+            fileChannel.map(FileChannel.MapMode.READ_WRITE, -1L, 1L, NativeAllocator.auto());
         }
     }
 
@@ -576,7 +576,7 @@ public class TestByteBuffer {
     public void testMapCustomPath() throws IOException {
         Path path = Path.of(URI.create("jrt:/"));
         try (FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 0L, SegmentScope.auto());
+            fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 0L, NativeAllocator.auto());
         }
     }
 
@@ -762,7 +762,7 @@ public class TestByteBuffer {
     @DataProvider(name = "segments")
     public static Object[][] segments() throws Throwable {
         return new Object[][] {
-                { (Supplier<MemorySegment>) () -> SegmentScope.auto().allocate(16)},
+                { (Supplier<MemorySegment>) () -> NativeAllocator.auto().allocate(16)},
                 { (Supplier<MemorySegment>) () -> Arena.openConfined().allocate(16)},
                 { (Supplier<MemorySegment>) () -> MemorySegment.ofArray(new byte[16]) }
         };

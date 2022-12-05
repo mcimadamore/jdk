@@ -29,7 +29,7 @@ import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.aarch64.CallArranger;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.VaList;
@@ -61,17 +61,17 @@ public final class LinuxAArch64Linker extends AbstractLinker {
     }
 
     @Override
-    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, SegmentScope scope) {
+    protected MemorySegment arrangeUpcall(MethodHandle target, MethodType targetType, FunctionDescriptor function, NativeAllocator scope) {
         return CallArranger.LINUX.arrangeUpcall(target, targetType, function, scope);
     }
 
-    public static VaList newVaList(Consumer<VaList.Builder> actions, SegmentScope session) {
+    public static VaList newVaList(Consumer<VaList.Builder> actions, NativeAllocator session) {
         LinuxAArch64VaList.Builder builder = LinuxAArch64VaList.builder(session);
         actions.accept(builder);
         return builder.build();
     }
 
-    public static VaList newVaListOfAddress(long address, SegmentScope session) {
+    public static VaList newVaListOfAddress(long address, NativeAllocator session) {
         return LinuxAArch64VaList.ofAddress(address, session);
     }
 

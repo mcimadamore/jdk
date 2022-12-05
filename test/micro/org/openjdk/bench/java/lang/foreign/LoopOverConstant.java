@@ -36,7 +36,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import sun.misc.Unsafe;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
@@ -69,7 +69,7 @@ public class LoopOverConstant extends JavaLayouts {
 
     //setup native memory segment
 
-    static final MemorySegment segment = SegmentScope.auto().allocate(ALLOC_SIZE);
+    static final MemorySegment segment = NativeAllocator.auto().allocate(ALLOC_SIZE);
 
     static {
         for (int i = 0; i < ELEM_SIZE; i++) {

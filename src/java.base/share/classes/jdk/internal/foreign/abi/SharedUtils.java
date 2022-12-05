@@ -39,7 +39,7 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -287,7 +287,7 @@ public final class SharedUtils {
             throw new IllegalArgumentException("Symbol is NULL: " + symbol);
     }
 
-    public static VaList newVaList(Consumer<VaList.Builder> actions, SegmentScope session) {
+    public static VaList newVaList(Consumer<VaList.Builder> actions, NativeAllocator session) {
         return switch (CABI.current()) {
             case WIN_64 -> Windowsx64Linker.newVaList(actions, session);
             case SYS_V -> SysVx64Linker.newVaList(actions, session);
@@ -296,7 +296,7 @@ public final class SharedUtils {
         };
     }
 
-    public static VaList newVaListOfAddress(long address, SegmentScope session) {
+    public static VaList newVaListOfAddress(long address, NativeAllocator session) {
         return switch (CABI.current()) {
             case WIN_64 -> Windowsx64Linker.newVaListOfAddress(address, session);
             case SYS_V -> SysVx64Linker.newVaListOfAddress(address, session);

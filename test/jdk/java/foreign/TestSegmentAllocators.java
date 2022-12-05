@@ -32,7 +32,7 @@ import java.lang.foreign.*;
 
 import org.testng.annotations.*;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -188,7 +188,7 @@ public class TestSegmentAllocators {
             @Override
 
             public MemorySegment allocate(long byteSize, long byteAlignment) {
-                return SegmentScope.auto().allocate(byteSize, byteAlignment);
+                return NativeAllocator.auto().allocate(byteSize, byteAlignment);
             }
 
             @Override
@@ -349,7 +349,7 @@ public class TestSegmentAllocators {
 
     enum AllocationFactory {
         SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(drop.allocate(size))),
-        NATIVE_ALLOCATOR(false, (size, drop) -> (SegmentScope) drop);
+        NATIVE_ALLOCATOR(false, (size, drop) -> (NativeAllocator) drop);
 
         private final boolean isBound;
         private final BiFunction<Long, Arena, SegmentAllocator> factory;
@@ -481,8 +481,8 @@ public class TestSegmentAllocators {
     @DataProvider(name = "allocators")
     static Object[][] allocators() {
         return new Object[][] {
-                {SegmentScope.global()},
-                { SegmentAllocator.prefixAllocator(SegmentScope.global().allocate(10)) },
+                {NativeAllocator.global()},
+                { SegmentAllocator.prefixAllocator(NativeAllocator.global().allocate(10)) },
         };
     }
 }

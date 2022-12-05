@@ -29,7 +29,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -148,7 +148,7 @@ public class StrLenTest extends CLayouts {
         SegmentAllocator current;
         long rem;
 
-        public RingAllocator(SegmentScope session) {
+        public RingAllocator(NativeAllocator session) {
             this.segment = session.allocate(1024);
             reset();
         }

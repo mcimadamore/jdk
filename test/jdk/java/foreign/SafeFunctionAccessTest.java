@@ -34,7 +34,7 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -185,7 +185,7 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
             MethodHandle handle = MethodHandles.lookup().findStatic(SafeFunctionAccessTest.class, "checkSession",
                     MethodType.methodType(void.class, Arena.class));
             handle = handle.bindTo(arena);
-            return Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.ofVoid(), SegmentScope.auto());
+            return Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.ofVoid(), NativeAllocator.auto());
         } catch (Throwable ex) {
             throw new AssertionError(ex);
         }

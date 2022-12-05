@@ -28,7 +28,7 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -51,7 +51,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements SegmentScope, Arena, SegmentAllocator
+        implements NativeAllocator, Arena, SegmentAllocator
         permits ConfinedSession, GlobalSession, SharedSession {
     static final int OPEN = 0;
     static final int CLOSING = -1;
@@ -161,7 +161,7 @@ public abstract sealed class MemorySessionImpl
         return owner;
     }
 
-    public static boolean sameOwnerThread(SegmentScope session1, SegmentScope session2) {
+    public static boolean sameOwnerThread(NativeAllocator session1, NativeAllocator session2) {
         return ((MemorySessionImpl) session1).ownerThread() ==
                 ((MemorySessionImpl) session2).ownerThread();
     }

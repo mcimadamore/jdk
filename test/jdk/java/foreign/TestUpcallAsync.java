@@ -41,7 +41,7 @@ import java.lang.foreign.MemorySegment;
 
 import org.testng.annotations.Test;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ public class TestUpcallAsync extends TestUpcallBase {
         try (Arena arena = Arena.openShared()) {
             FunctionDescriptor descriptor = function(ret, paramTypes, fields);
             MethodHandle mh = downcallHandle(ABI, addr, arena, descriptor);
-            Object[] args = makeArgs(SegmentScope.auto(), ret, paramTypes, fields, returnChecks, argChecks);
+            Object[] args = makeArgs(NativeAllocator.auto(), ret, paramTypes, fields, returnChecks, argChecks);
 
             mh = mh.asSpreader(Object[].class, args.length);
             mh = MethodHandles.insertArguments(mh, 0, (Object) args);

@@ -29,7 +29,7 @@
  */
 
 import java.lang.foreign.Linker;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
@@ -49,11 +49,11 @@ public class TestUnsupportedLinker {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testNonEmptyVaList() {
-        VaList.make(builder -> builder.addVarg(ValueLayout.JAVA_INT, 42), SegmentScope.auto());
+        VaList.make(builder -> builder.addVarg(ValueLayout.JAVA_INT, 42), NativeAllocator.auto());
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testUnsafeVaList() {
-        VaList.ofAddress(0L, SegmentScope.auto());
+        VaList.ofAddress(0L, NativeAllocator.auto());
     }
 }

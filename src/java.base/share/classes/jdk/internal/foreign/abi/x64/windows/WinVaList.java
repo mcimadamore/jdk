@@ -28,7 +28,7 @@ package jdk.internal.foreign.abi.x64.windows;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -149,11 +149,11 @@ public non-sealed class WinVaList implements VaList {
         }
     }
 
-    static WinVaList ofAddress(long address, SegmentScope session) {
+    static WinVaList ofAddress(long address, NativeAllocator session) {
         return new WinVaList(MemorySegment.ofAddress(address, Long.MAX_VALUE, session));
     }
 
-    static Builder builder(SegmentScope session) {
+    static Builder builder(NativeAllocator session) {
         return new Builder(session);
     }
 
@@ -171,10 +171,10 @@ public non-sealed class WinVaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final SegmentScope session;
+        private final NativeAllocator session;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(SegmentScope session) {
+        public Builder(NativeAllocator session) {
             ((MemorySessionImpl) session).checkValidState();
             this.session = session;
         }

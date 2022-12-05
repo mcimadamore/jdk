@@ -25,7 +25,7 @@
 package jdk.internal.foreign.abi;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
@@ -50,7 +50,7 @@ public final class UpcallStubs {
         registerNatives();
     }
 
-    static MemorySegment makeUpcall(long entry, SegmentScope session) {
+    static MemorySegment makeUpcall(long entry, NativeAllocator session) {
         ((MemorySessionImpl) session).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
             @Override
             public void cleanup() {

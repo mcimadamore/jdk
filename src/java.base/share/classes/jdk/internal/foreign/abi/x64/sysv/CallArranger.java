@@ -35,7 +35,7 @@ import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.UpcallLinker;
 import jdk.internal.foreign.abi.VMStorage;
 
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
@@ -124,7 +124,7 @@ public class CallArranger {
         return handle;
     }
 
-    public static MemorySegment arrangeUpcall(MethodHandle target, MethodType mt, FunctionDescriptor cDesc, SegmentScope session) {
+    public static MemorySegment arrangeUpcall(MethodHandle target, MethodType mt, FunctionDescriptor cDesc, NativeAllocator session) {
         Bindings bindings = getBindings(mt, cDesc, true);
 
         if (bindings.isInMemoryReturn) {

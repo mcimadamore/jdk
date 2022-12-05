@@ -39,7 +39,7 @@ import org.testng.annotations.NoInjection;
 import org.testng.annotations.Test;
 
 import java.lang.constant.Constable;
-import java.lang.foreign.SegmentScope;
+import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -102,7 +102,7 @@ public class TestNulls {
             VaList.Builder.class,
             FunctionDescriptor.class,
             SegmentAllocator.class,
-            SegmentScope.class,
+            NativeAllocator.class,
             SymbolLookup.class
     };
 
@@ -184,7 +184,7 @@ public class TestNulls {
         addDefaultMapping(VaList.class, VaListHelper.vaList);
         addDefaultMapping(VaList.Builder.class, VaListHelper.vaListBuilder);
         addDefaultMapping(Arena.class, Arena.openConfined());
-        addDefaultMapping(SegmentScope.class, SegmentScope.auto());
+        addDefaultMapping(NativeAllocator.class, NativeAllocator.auto());
         addDefaultMapping(SegmentAllocator.class, SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[10])));
         addDefaultMapping(Supplier.class, () -> null);
         addDefaultMapping(ClassLoader.class, TestNulls.class.getClassLoader());
@@ -199,7 +199,7 @@ public class TestNulls {
             vaList = VaList.make(b -> {
                 builderRef.set(b);
                 b.addVarg(JAVA_LONG, 42L);
-            }, SegmentScope.auto());
+            }, NativeAllocator.auto());
             vaListBuilder = builderRef.get();
         }
     }

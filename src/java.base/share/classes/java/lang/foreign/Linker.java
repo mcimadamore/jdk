@@ -49,7 +49,7 @@ import java.lang.invoke.MethodHandle;
  * <li>A linker allows Java code to link against foreign functions, via
  * {@linkplain #downcallHandle(MemorySegment, FunctionDescriptor, Option...) downcall method handles}; and</li>
  * <li>A linker allows foreign functions to call Java method handles,
- * via the generation of {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentScope) upcall stubs}.</li>
+ * via the generation of {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) upcall stubs}.</li>
  * </ul>
  * In addition, a linker provides a way to look up foreign functions in libraries that conform to the ABI. Each linker
  * chooses a set of libraries that are commonly used on the OS and processor combination associated with the ABI.
@@ -80,7 +80,7 @@ import java.lang.invoke.MethodHandle;
  *
  * <h2 id="upcall-stubs">Upcall stubs</h2>
  *
- * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentScope) Creating an upcall stub} requires a method
+ * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) Creating an upcall stub} requires a method
  * handle and a function descriptor; in this case, the set of memory layouts in the function descriptor
  * specify the signature of the function pointer associated with the upcall stub.
  * <p>
@@ -88,7 +88,7 @@ import java.lang.invoke.MethodHandle;
  * which is {@linkplain FunctionDescriptor#toMethodType() derived} from the provided function descriptor.
  * <p>
  * Upcall stubs are modelled by instances of type {@link MemorySegment}; upcall stubs can be passed by reference to other
- * downcall method handles and, they are released via their associated {@linkplain SegmentScope scope}.
+ * downcall method handles and, they are released via their associated {@linkplain NativeAllocator scope}.
  *
  * <h2 id="safety">Safety considerations</h2>
  *
@@ -100,15 +100,15 @@ import java.lang.invoke.MethodHandle;
  * the linker runtime guarantees the following for any argument {@code A} of type {@link MemorySegment} whose corresponding
  * layout is {@link ValueLayout#ADDRESS}:
  * <ul>
- *     <li>The scope of {@code A} is {@linkplain SegmentScope#isAlive() alive}. Otherwise, the invocation throws
+ *     <li>The scope of {@code A} is {@linkplain NativeAllocator#isAlive() alive}. Otherwise, the invocation throws
  *     {@link IllegalStateException};</li>
  *     <li>The invocation occurs in a thread {@code T} such that {@code A.scope().isAccessibleBy(T) == true}.
  *     Otherwise, the invocation throws {@link WrongThreadException}; and</li>
- *     <li>The scope of {@code A} is {@linkplain SegmentScope#whileAlive(Runnable) kept alive} during the invocation.</li>
+ *     <li>The scope of {@code A} is {@linkplain NativeAllocator#whileAlive(Runnable) kept alive} during the invocation.</li>
  *</ul>
  * A downcall method handle created from a function descriptor whose return layout is an
  * {@linkplain ValueLayout.OfAddress address layout} returns a native segment associated with
- * the {@linkplain SegmentScope#global() global scope}. Under normal conditions, the size of the returned segment is {@code 0}.
+ * the {@linkplain NativeAllocator#global() global scope}. Under normal conditions, the size of the returned segment is {@code 0}.
  * However, if the return layout is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded} address layout,
  * then the size of the returned segment is {@code Long.MAX_VALUE}.
  * <p>
@@ -121,7 +121,7 @@ import java.lang.invoke.MethodHandle;
  * and even JVM crashes, since an upcall is typically executed in the context of a downcall method handle invocation.
  * <p>
  * An upcall stub argument whose corresponding layout is an {@linkplain ValueLayout.OfAddress address layout}
- * is a native segment associated with the {@linkplain SegmentScope#global() global scope}.
+ * is a native segment associated with the {@linkplain NativeAllocator#global() global scope}.
  * Under normal conditions, the size of this segment argument is {@code 0}. However, if the layout associated with
  * the upcall stub argument is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded} address layout,
  * then the size of the segment argument is {@code Long.MAX_VALUE}.
@@ -154,7 +154,7 @@ public sealed interface Linker permits AbstractLinker {
      * Any layout not listed above is <em>unsupported</em>; function descriptors containing unsupported layouts
      * will cause an {@link IllegalArgumentException} to be thrown, when used to create a
      * {@link #downcallHandle(MemorySegment, FunctionDescriptor, Option...) downcall method handle} or an
-     * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentScope) upcall stub}.
+     * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) upcall stub}.
      * <p>
      * Variadic functions (e.g. a C function declared with a trailing ellipses {@code ...} at the end of the formal parameter
      * list or with an empty formal parameter list) are not supported directly. However, it is possible to link a
@@ -239,7 +239,7 @@ public sealed interface Linker permits AbstractLinker {
      * <p>
      * The returned memory segment's address points to the newly allocated upcall stub, and is associated with
      * the provided scope. As such, the corresponding upcall stub will be deallocated
-     * when the scope becomes not {@linkplain SegmentScope#isAlive() alive}.
+     * when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
      * <p>
      * The target method handle should not throw any exceptions. If the target method handle does throw an exception,
      * the VM will exit with a non-zero exit code. To avoid the VM aborting due to an uncaught exception, clients
@@ -254,11 +254,11 @@ public sealed interface Linker permits AbstractLinker {
      * @throws IllegalArgumentException if the provided function descriptor is not supported by this linker.
      * @throws IllegalArgumentException if it is determined that the target method handle can throw an exception, or if the target method handle
      * has a type that does not match the upcall stub <a href="Linker.html#upcall-stubs"><em>inferred type</em></a>.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain SegmentScope#isAlive() alive}.
+     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      */
-    MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function, SegmentScope scope);
+    MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function, NativeAllocator scope);
 
     /**
      * Returns a symbol lookup for symbols in a set of commonly used libraries.
