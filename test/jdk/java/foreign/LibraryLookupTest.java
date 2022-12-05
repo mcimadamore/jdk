@@ -74,7 +74,6 @@ public class LibraryLookupTest {
     private static MemorySegment loadLibrary(NativeAllocator session) {
         SymbolLookup lib = SymbolLookup.libraryLookup(LIB_PATH, session);
         MemorySegment addr = lib.find("inc").get();
-        assertEquals(addr.scope(), session);
         return addr;
     }
 

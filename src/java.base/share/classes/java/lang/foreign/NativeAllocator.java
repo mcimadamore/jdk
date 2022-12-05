@@ -32,25 +32,25 @@ import jdk.internal.javac.PreviewFeature;
 import jdk.internal.ref.CleanerFactory;
 
 /**
- * A segment scope controls access to memory segments.
+ * A native allocator is used to allocate native segments.
  * <p>
- * A memory segment can only be accessed while its scope is {@linkplain #isAlive() alive}. Moreover,
- * depending on how the segment scope has been obtained, access might additionally be
+ * A native allocator determines the lifetime of the native segments allocated by it. Moreover,
+ * a native allocator also determines whether access to memory segments allocated by it should be
  * <a href="Arena.html#thread-confinement">restricted to specific threads</a>.
  * <p>
- * The simplest segment scope is the {@linkplain NativeAllocator#global() global scope}. The global scope
- * is always alive. As a result, segments associated with the global scope are always accessible and their backing
- * regions of memory are never deallocated. Moreover, memory segments associated with the global scope
- * can be {@linkplain #isAccessibleBy(Thread) accessed} from any thread.
+ * The simplest native allocator is the {@linkplain NativeAllocator#global() global allocator}. Native segments
+ * allocated with the global allocator are always accessible and their backing regions of memory are never deallocated.
+ * Moreover, memory segments allocated with the global scope can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
+ * from any thread.
  * {@snippet lang = java:
  * MemorySegment segment = NativeAllocator.global().allocate(100);
  * ...
  * // segment is never deallocated!
  *}
  * <p>
- * Alternatively, clients can obtain an {@linkplain NativeAllocator#auto() automatic scope}, that is a segment
- * scope that is managed, automatically, by the garbage collector. The regions of memory backing memory segments associated
- * with an automatic scope are deallocated at some unspecified time <em>after</em> they become
+ * Alternatively, clients can obtain an {@linkplain NativeAllocator#auto() automatic allocator}, that is an allocator
+ * whose allocated segments are managed, automatically, by the garbage collector. The regions of memory backing memory
+ * segments allocated with the automatic allocator are deallocated at some unspecified time <em>after</em> they become
  * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>, as shown below:
  *
  * {@snippet lang = java:
@@ -58,12 +58,12 @@ import jdk.internal.ref.CleanerFactory;
  * ...
  * segment = null; // the segment region becomes available for deallocation after this point
  *}
- * Memory segments associated with an automatic scope can also be {@linkplain #isAccessibleBy(Thread) accessed} from any thread.
+ * Memory segments allocated with the automatic allocator can also be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
  * <p>
- * Finally, clients can obtain a segment scope from an existing {@linkplain Arena arena}, the arena scope. The regions of memory
- * backing memory segments associated with an arena scope are deallocated when the arena is {@linkplain Arena#close() closed}.
- * When this happens, the arena scope becomes not {@linkplain #isAlive() alive} and subsequent access operations on segments
- * associated with the arena scope will fail {@link IllegalStateException}.
+ * Finally, clients can use an {@linkplain Arena arena}. The regions of memory
+ * backing memory segments allocated with an arena are deallocated when the arena is {@linkplain Arena#close() closed}.
+ * When this happens, all the segments allocated with the arena become not {@linkplain MemorySegment#isAlive() alive},
+ * and subsequent access operations on these segments will fail {@link IllegalStateException}.
  *
  * {@snippet lang = java:
  * MemorySegment segment = null;
@@ -74,9 +74,9 @@ import jdk.internal.ref.CleanerFactory;
  * segment.get(ValueLayout.JAVA_BYTE, 0); // throws IllegalStateException
  *}
  *
- * Which threads can {@link #isAccessibleBy(Thread) access} memory segments associated with an arena scope depends
- * on the arena kind. For instance, segments associated with the scope of a {@linkplain Arena#openConfined() confined arena}
- * can only be accessed by the thread that created the arena. Conversely, segments associated with the scope of
+ * Which threads can {@link MemorySegment#isAccessibleBy(Thread) access} memory segments allocated with an arena scope depends
+ * on the arena kind. For instance, segments allocated with a {@linkplain Arena#openConfined() confined arena}
+ * can only be accessed by the thread that created the arena. Conversely, segments allocated with a
  * {@linkplain Arena#openConfined() shared arena} can be accessed by any thread.
  *
  * @implSpec
@@ -88,7 +88,7 @@ import jdk.internal.ref.CleanerFactory;
  * @since 20
  */
 @PreviewFeature(feature =PreviewFeature.Feature.FOREIGN)
-sealed public interface NativeAllocator extends SegmentAllocator permits Arena, MemorySessionImpl {
+public interface NativeAllocator extends SegmentAllocator {
 
     /**
      * Returns a native memory segment with the given size (in bytes) and alignment constraint (in bytes).
@@ -115,7 +115,6 @@ sealed public interface NativeAllocator extends SegmentAllocator permits Arena, 
      * @return a new native memory segment.
      * @throws IllegalArgumentException if {@code bytesSize < 0}, {@code alignmentBytes <= 0}, or if {@code alignmentBytes}
      * is not a power of 2.
-     * @throws IllegalStateException if this scope is not {@linkplain NativeAllocator#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code isAccessibleBy(T) == false}.
      */
@@ -133,7 +132,7 @@ sealed public interface NativeAllocator extends SegmentAllocator permits Arena, 
      * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}), and is associated with the
      * provided scope.
      * <p>
-     * The provided cleanup action (if any) will be invoked when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
+     * The provided cleanup action (if any) will be invoked when the returned segment becomes not {@linkplain MemorySegment#isAlive() alive}.
      * <p>
      * Clients should ensure that the address and bounds refer to a valid region of memory that is accessible for reading and,
      * if appropriate, writing; an attempt to access an invalid address from Java code will either return an arbitrary value,
@@ -149,7 +148,7 @@ sealed public interface NativeAllocator extends SegmentAllocator permits Arena, 
      * @param cleanupAction the custom cleanup action to be associated to the returned segment (can be null).
      * @return a native segment with the given address, size and scope.
      * @throws IllegalArgumentException if {@code byteSize < 0}.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
+     * @throws IllegalStateException if {@code scope} is an already closed {@link Arena}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
@@ -161,44 +160,36 @@ sealed public interface NativeAllocator extends SegmentAllocator permits Arena, 
     }
 
     /**
-     * Creates a new scope that is managed, automatically, by the garbage collector.
-     * Segments associated with the returned scope can be
-     * {@linkplain NativeAllocator#isAccessibleBy(Thread) accessed} by any thread.
+     * Obtains the automatic allocator. Segments allocated with the automatic allocator are managed, implicitly,
+     * by the garbage collector, and can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
      *
-     * @return a new scope that is managed, automatically, by the garbage collector.
+     * @return the automatic allocator.
      */
     static NativeAllocator auto() {
+//        class Holder {
+//            static NativeAllocator AUTO_ALLOCATOR = new NativeAllocator() {
+//                @Override
+//                public MemorySegment allocate(long byteSize, long byteAlignment) {
+//                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).allocate(byteSize, byteAlignment);
+//                }
+//
+//                @Override
+//                public MemorySegment wrap(long address, Runnable cleanupAction) {
+//                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).wrap(address, cleanupAction);
+//                }
+//            };
+//        }
+//        return Holder.AUTO_ALLOCATOR;
         return MemorySessionImpl.createImplicit(CleanerFactory.cleaner());
     }
 
     /**
-     * Obtains the global scope. Segments associated with the global scope can be
-     * {@linkplain NativeAllocator#isAccessibleBy(Thread) accessed} by any thread.
+     * Obtains the global allocator. Segments allocated are always {@link MemorySegment#isAlive()} and can be
+     * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
      *
      * @return the global scope.
      */
     static NativeAllocator global() {
         return MemorySessionImpl.GLOBAL;
     }
-
-    /**
-     * {@return {@code true}, if this scope is alive}
-     */
-    boolean isAlive();
-
-    /**
-     * {@return {@code true} if the provided thread can access and/or associate segments with this scope}
-     * @param thread the thread to be tested.
-     */
-    boolean isAccessibleBy(Thread thread);
-
-    /**
-     * Runs a critical action while this scope is kept alive.
-     * @param action the action to be run.
-     * @throws IllegalStateException if this scope is not {@linkplain NativeAllocator#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code isAccessibleBy(T) == false}.
-     */
-    void whileAlive(Runnable action);
-
 }

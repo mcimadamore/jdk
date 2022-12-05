@@ -33,6 +33,7 @@ import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.abi.SharedUtils;
@@ -306,7 +307,7 @@ public non-sealed class SysVVaList implements VaList {
     @Override
     public void skip(MemoryLayout... layouts) {
         Objects.requireNonNull(layouts);
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         for (MemoryLayout layout : layouts) {
             Objects.requireNonNull(layout);
             TypeClass typeClass = TypeClass.classifyLayout(layout);
@@ -332,7 +333,7 @@ public non-sealed class SysVVaList implements VaList {
 
     @Override
     public VaList copy() {
-        MemorySegment copy = segment.scope().allocate(LAYOUT);
+        MemorySegment copy = SegmentAllocator.coallocator(segment).allocate(LAYOUT);
         copy.copyFrom(segment);
         return new SysVVaList(copy, overflowArgArea, regSaveArea, gpLimit, fpLimit);
     }
@@ -472,7 +473,7 @@ public non-sealed class SysVVaList implements VaList {
             VH_fp_offset.set(vaListSegment, (int) FP_OFFSET);
             VH_overflow_arg_area.set(vaListSegment, stackArgsSegment);
             VH_reg_save_area.set(vaListSegment, reg_save_area);
-            assert MemorySessionImpl.sameOwnerThread(reg_save_area.scope(), vaListSegment.scope());
+            assert MemorySessionImpl.sameOwnerThread(reg_save_area, vaListSegment);
             return new SysVVaList(vaListSegment, stackArgsSegment, reg_save_area, currentGPOffset, currentFPOffset);
         }
     }

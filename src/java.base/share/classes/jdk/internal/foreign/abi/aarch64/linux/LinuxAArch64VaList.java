@@ -32,6 +32,8 @@ import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.VaList;
 import java.lang.foreign.SegmentAllocator;
+
+import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.abi.aarch64.TypeClass;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
@@ -317,7 +319,8 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                         gpRegsArea.asSlice(currentGPOffset()));
                     consumeGPSlots(1);
 
-                    MemorySegment slice = segment.scope().wrap(ptr.address(), null).expand(layout.byteSize());
+                    MemorySegment slice = ((NativeAllocator)SegmentAllocator.coallocator(segment))
+                            .wrap(ptr.address(), null).expand(layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(slice);
                     yield seg;
@@ -361,7 +364,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     @Override
     public void skip(MemoryLayout... layouts) {
         Objects.requireNonNull(layouts);
-        ((MemorySessionImpl) segment.scope()).checkValidState();
+        ((AbstractMemorySegmentImpl)segment).sessionImpl().checkValidState();
         for (MemoryLayout layout : layouts) {
             Objects.requireNonNull(layout);
             TypeClass typeClass = TypeClass.classifyLayout(layout);
@@ -394,7 +397,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
 
     @Override
     public VaList copy() {
-        MemorySegment copy = segment.scope().allocate(LAYOUT);
+        MemorySegment copy = SegmentAllocator.coallocator(segment).allocate(LAYOUT);
         copy.copyFrom(segment);
         return new LinuxAArch64VaList(copy, stack, gpRegsArea, gpLimit, fpRegsArea, fpLimit);
     }
@@ -560,8 +563,8 @@ public non-sealed class LinuxAArch64VaList implements VaList {
             VH_gr_offs.set(vaListSegment, -MAX_GP_OFFSET);
             VH_vr_offs.set(vaListSegment, -MAX_FP_OFFSET);
 
-            assert MemorySessionImpl.sameOwnerThread(gpRegs.scope(), vaListSegment.scope());
-            assert MemorySessionImpl.sameOwnerThread(fpRegs.scope(), vaListSegment.scope());
+            assert MemorySessionImpl.sameOwnerThread(gpRegs, vaListSegment);
+            assert MemorySessionImpl.sameOwnerThread(fpRegs, vaListSegment);
             return new LinuxAArch64VaList(vaListSegment, stackArgsSegment, gpRegs, currentGPOffset, fpRegs, currentFPOffset);
         }
     }

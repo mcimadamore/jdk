@@ -51,7 +51,7 @@ public class TestDontRelease extends NativeTestHelper  {
         MethodHandle handle = downcallHandle("test_ptr", FunctionDescriptor.ofVoid(ADDRESS));
         try (Arena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(JAVA_INT);
-            arena.whileAlive(() -> {
+            segment.whileAlive(() -> {
                 Thread t = new Thread(() -> {
                     try {
                         // acquire of the segment should fail here,

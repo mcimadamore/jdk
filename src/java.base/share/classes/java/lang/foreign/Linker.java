@@ -100,11 +100,11 @@ import java.lang.invoke.MethodHandle;
  * the linker runtime guarantees the following for any argument {@code A} of type {@link MemorySegment} whose corresponding
  * layout is {@link ValueLayout#ADDRESS}:
  * <ul>
- *     <li>The scope of {@code A} is {@linkplain NativeAllocator#isAlive() alive}. Otherwise, the invocation throws
+ *     <li>{@code A} is {@linkplain MemorySegment#isAlive() alive}. Otherwise, the invocation throws
  *     {@link IllegalStateException};</li>
- *     <li>The invocation occurs in a thread {@code T} such that {@code A.scope().isAccessibleBy(T) == true}.
+ *     <li>The invocation occurs in a thread {@code T} such that {@code A.isAccessibleBy(T) == true}.
  *     Otherwise, the invocation throws {@link WrongThreadException}; and</li>
- *     <li>The scope of {@code A} is {@linkplain NativeAllocator#whileAlive(Runnable) kept alive} during the invocation.</li>
+ *     <li>{@code A} is {@linkplain MemorySegment#whileAlive(Runnable) kept alive} during the invocation.</li>
  *</ul>
  * A downcall method handle created from a function descriptor whose return layout is an
  * {@linkplain ValueLayout.OfAddress address layout} returns a native segment associated with
@@ -239,7 +239,7 @@ public sealed interface Linker permits AbstractLinker {
      * <p>
      * The returned memory segment's address points to the newly allocated upcall stub, and is associated with
      * the provided scope. As such, the corresponding upcall stub will be deallocated
-     * when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
+     * when the returned segment becomes not {@linkplain MemorySegment#isAlive() alive}.
      * <p>
      * The target method handle should not throw any exceptions. If the target method handle does throw an exception,
      * the VM will exit with a non-zero exit code. To avoid the VM aborting due to an uncaught exception, clients
@@ -254,7 +254,7 @@ public sealed interface Linker permits AbstractLinker {
      * @throws IllegalArgumentException if the provided function descriptor is not supported by this linker.
      * @throws IllegalArgumentException if it is determined that the target method handle can throw an exception, or if the target method handle
      * has a type that does not match the upcall stub <a href="Linker.html#upcall-stubs"><em>inferred type</em></a>.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
+     * @throws IllegalStateException if {@code scope} is an already closed {@link Arena}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      */

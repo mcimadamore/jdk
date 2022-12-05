@@ -61,7 +61,7 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
         try (Arena arena = Arena.openConfined()) {
             segment = arena.allocate(POINT);
         }
-        assertFalse(segment.scope().isAlive());
+        assertFalse(segment.isAlive());
         MethodHandle handle = Linker.nativeLinker().downcallHandle(
                 findNativeOrThrow("struct_func"),
                 FunctionDescriptor.ofVoid(POINT));
@@ -93,9 +93,9 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
             allocations[i].drop().close();
             for (int j = 0 ; j < 6 ; j++) {
                 if (i == j) {
-                    assertFalse(allocations[j].drop().isAlive());
+                    assertFalse(allocations[j].segment().isAlive());
                 } else {
-                    assertTrue(allocations[j].drop().isAlive());
+                    assertTrue(allocations[j].segment().isAlive());
                 }
             }
             try {
@@ -118,7 +118,7 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
         try (Arena arena = Arena.openConfined()) {
             list = VaList.make(b -> b.addVarg(C_INT, 42), arena);
         }
-        assertFalse(list.segment().scope().isAlive());
+        assertFalse(list.segment().isAlive());
         MethodHandle handle = Linker.nativeLinker().downcallHandle(
                 findNativeOrThrow("addr_func"),
                 FunctionDescriptor.ofVoid(C_POINTER));
@@ -133,7 +133,7 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
             MethodHandle dummy = MethodHandles.lookup().findStatic(SafeFunctionAccessTest.class, "dummy", MethodType.methodType(void.class));
             upcall = Linker.nativeLinker().upcallStub(dummy, FunctionDescriptor.ofVoid(), arena);
         }
-        assertFalse(upcall.scope().isAlive());
+        assertFalse(upcall.isAlive());
         MethodHandle handle = Linker.nativeLinker().downcallHandle(
                 findNativeOrThrow("addr_func"),
                 FunctionDescriptor.ofVoid(C_POINTER));

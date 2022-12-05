@@ -31,14 +31,13 @@ import jdk.internal.javac.PreviewFeature;
 /**
  * An arena controls the lifecycle of memory segments, providing both flexible allocation and timely deallocation.
  * <p>
- * An arena is a segment scope. When the arena is {@linkplain #close() closed},
- * the arena is no longer {@linkplain NativeAllocator#isAlive() alive}. As a result, all the
- * segments associated with the arena are invalidated, safely and atomically, their backing memory regions are
- * deallocated (where applicable) and can no longer be accessed after the arena is closed:
+ * An arena is a native allocator. When the arena is {@linkplain #close() closed},
+ * all the segments associated with the arena are invalidated, safely and atomically, their backing memory regions are
+ * deallocated (where applicable) and can no longer be accessed:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
- *     MemorySegment segment = arena.scope().allocate((MemoryLayout)100);
+ *     MemorySegment segment = arena.allocate((MemoryLayout)100);
  *     ...
  * } // memory released here
  *}
@@ -71,12 +70,12 @@ import jdk.internal.javac.PreviewFeature;
  * <p>
  * Confined arenas, support strong thread-confinement guarantees. Upon creation, they are assigned an
  * {@linkplain #isCloseableBy(Thread) owner thread}, typically the thread which initiated the creation operation.
- * The segments created by a confined arena can only be {@linkplain NativeAllocator#isAccessibleBy(Thread) accessed}
+ * The segments created by a confined arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
  * by the owner thread. Moreover, any attempt to close the confined arena from a thread other than the owner thread will
  * fail with {@link WrongThreadException}.
  * <p>
  * Shared arenas, on the other hand, have no owner thread. The segments created by a shared arena
- * can be {@linkplain NativeAllocator#isAccessibleBy(Thread) accessed} by any thread. This might be useful when
+ * can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread. This might be useful when
  * multiple threads need to access the same memory segment concurrently (e.g. in the case of parallel processing).
  * Moreover, a shared arena {@linkplain #isCloseableBy(Thread) can be closed} by any thread.
  *
@@ -86,18 +85,19 @@ import jdk.internal.javac.PreviewFeature;
 public sealed interface Arena extends NativeAllocator, AutoCloseable permits MemorySessionImpl {
 
     /**
-     * Closes this arena. If this method completes normally, the arena is no longer {@linkplain NativeAllocator#isAlive() alive},
-     * and all the memory segments associated with it can no longer be accessed. Furthermore, any off-heap region of memory backing the
-     * segments associated with that scope are also released.
+     * Closes this arena. If this method completes normally, the segments associated with this arena
+     * are no longer {@linkplain MemorySegment#isAlive() alive}, and can no longer be accessed.
+     * Furthermore, any off-heap region of memory backing the segments associated with that scope are also released.
      *
      * @apiNote This operation is not idempotent; that is, closing an already closed arena <em>always</em> results in an
      * exception being thrown. This reflects a deliberate design choice: failure to close an arena might reveal a bug
      * in the underlying application logic.
      *
-     * @see NativeAllocator#isAlive()
+     * @see MemorySegment#isAlive()
      *
      * @throws IllegalStateException if the arena has already been closed.
-     * @throws IllegalStateException if the arena is {@linkplain NativeAllocator#whileAlive(Runnable) kept alive}.
+     * @throws IllegalStateException if one or more segments associated with this arena is being
+     * {@linkplain MemorySegment#whileAlive(Runnable) kept alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code isCloseableBy(T) == false}.
      */

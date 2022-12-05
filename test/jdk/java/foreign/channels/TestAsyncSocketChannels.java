@@ -221,14 +221,14 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
                 var handler = new TestHandler<Long>();
                 ioOp.accept(handler);
                 assertFalse(handler.isDone());
-                assertTrue(drop.isAlive());
+                assertTrue(segment.isAlive());
                 assertMessage(expectThrows(ISE, () -> drop.close()), "Session is acquired by");
 
                 // write to allow the blocking read complete, which will
                 // in turn unlock the session and allow it to be closed.
                 asc2.write(ByteBuffer.wrap(new byte[] { 0x01 })).get();
                 handler.await().assertCompleteWith(1L);
-                assertTrue(drop.isAlive());
+                assertTrue(segment.isAlive());
             }
         }
     }
@@ -272,7 +272,6 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
             awaitNoFurtherWrites(bytesWritten);
 
             assertMessage(expectThrows(ISE, () -> drop.close()), "Session is acquired by");
-            assertTrue(drop.isAlive());
 
             // signal handler to stop further writing
             continueWriting.set(false);
@@ -280,7 +279,6 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
             // read to allow the outstanding write complete, which will
             // in turn unlock the session and allow it to be closed.
             readNBytes(asc2, bytesWritten.get());
-            assertTrue(drop.isAlive());
             awaitOutstandingWrites(outstandingWriteOps);
             handler.await();
         }

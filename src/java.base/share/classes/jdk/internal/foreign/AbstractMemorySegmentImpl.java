@@ -127,6 +127,21 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @Override
+    public boolean isAlive() {
+        return ((MemorySessionImpl)session).isAlive();
+    }
+
+    @Override
+    public boolean isAccessibleBy(Thread thread) {
+        return ((MemorySessionImpl)session).isAccessibleBy(thread);
+    }
+
+    @Override
+    public void whileAlive(Runnable action) {
+        ((MemorySessionImpl)session).whileAlive(action);
+    }
+
+    @Override
     public Spliterator<MemorySegment> spliterator(MemoryLayout elementLayout) {
         Objects.requireNonNull(elementLayout);
         if (elementLayout.byteSize() == 0) {
@@ -365,11 +380,6 @@ public abstract sealed class AbstractMemorySegmentImpl
         long offset = numbers.get(0).longValue();
         long length = byteSize() - numbers.get(1).longValue() + 1;
         return outOfBoundException(offset, length);
-    }
-
-    @Override
-    public NativeAllocator scope() {
-        return session;
     }
 
     @ForceInline

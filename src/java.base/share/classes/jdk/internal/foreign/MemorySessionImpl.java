@@ -146,7 +146,6 @@ public abstract sealed class MemorySessionImpl
 
     public abstract void acquire0();
 
-    @Override
     public void whileAlive(Runnable action) {
         Objects.requireNonNull(action);
         acquire0();
@@ -161,12 +160,11 @@ public abstract sealed class MemorySessionImpl
         return owner;
     }
 
-    public static boolean sameOwnerThread(NativeAllocator session1, NativeAllocator session2) {
-        return ((MemorySessionImpl) session1).ownerThread() ==
-                ((MemorySessionImpl) session2).ownerThread();
+    public static boolean sameOwnerThread(MemorySegment segment1, MemorySegment segment2) {
+        return ((AbstractMemorySegmentImpl)segment1).sessionImpl().ownerThread() ==
+                ((AbstractMemorySegmentImpl)segment2).sessionImpl().ownerThread();
     }
 
-    @Override
     public final boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
         return owner == thread;

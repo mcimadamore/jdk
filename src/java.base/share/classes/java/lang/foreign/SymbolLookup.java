@@ -61,8 +61,8 @@ import java.util.function.BiFunction;
  *
  * The factory methods {@link #libraryLookup(String, NativeAllocator)} and {@link #libraryLookup(Path, NativeAllocator)}
  * create a symbol lookup for a library known to the operating system. The library is specified by either its name or a path.
- * The library is loaded if not already loaded. The symbol lookup, which is known as a <em>library lookup</em>, is associated
- * with a {@linkplain  NativeAllocator scope}; when the scope becomes not {@link NativeAllocator#isAlive()}, the library is unloaded:
+ * The library is loaded if not already loaded. The lifecycle of the symbol lookup, which is known as a <em>library lookup</em>,
+ * can be controlled using an {@link Arena}. If the arena is closed, the library is unloaded:
  *
  * {@snippet lang = java:
  * try (Arena arena = Arena.openConfined()) {
@@ -174,8 +174,9 @@ public interface SymbolLookup {
 
     /**
      * Loads a library with the given name (if not already loaded) and creates a symbol lookup for symbols in that library.
-     * The library will be unloaded when the provided scope becomes
-     * not {@linkplain NativeAllocator#isAlive() alive}, if no other library lookup is still using it.
+     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
+     * the allocator is an {@link Arena}, the library associated with the returned lookup will be unloaded when the provided
+     * arena is {@linkplain Arena#close() closed}, if no other library lookup is still using it.
      * @implNote The process of resolving a library name is OS-specific. For instance, in a POSIX-compliant OS,
      * the library name is resolved according to the specification of the {@code dlopen} function for that OS.
      * In Windows, the library name is resolved according to the specification of the {@code LoadLibrary} function.
@@ -201,8 +202,10 @@ public interface SymbolLookup {
 
     /**
      * Loads a library from the given path (if not already loaded) and creates a symbol lookup for symbols
-     * in that library. The library will be unloaded when the provided scope becomes
-     * not {@linkplain NativeAllocator#isAlive() alive}, if no other library lookup is still using it.
+     * in that library.
+     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
+     * the allocator is an {@link Arena}, the library associated with the returned lookup will be unloaded when the provided
+     * arena is {@linkplain Arena#close() closed}, if no other library lookup is still using it.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash

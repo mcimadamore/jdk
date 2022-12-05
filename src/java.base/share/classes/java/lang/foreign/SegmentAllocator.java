@@ -381,4 +381,13 @@ public interface SegmentAllocator {
     static SegmentAllocator prefixAllocator(MemorySegment segment) {
         return (AbstractMemorySegmentImpl)Objects.requireNonNull(segment);
     }
+
+    /**
+     * Allocates in the same lifetime as given segment.
+     * @param segment segment.
+     * @return an allocator which allocates in the same lifetime as given segment.
+     */
+    static SegmentAllocator coallocator(MemorySegment segment) {
+        return ((AbstractMemorySegmentImpl)segment).sessionImpl();
+    }
 }

@@ -34,6 +34,7 @@
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
@@ -82,7 +83,7 @@ public class TestHandshake {
             accessExecutor.execute(new Handshaker(arena));
             accessExecutor.shutdown();
             assertTrue(accessExecutor.awaitTermination(MAX_EXECUTOR_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertTrue(!segment.scope().isAlive());
+            assertTrue(!segment.isAlive());
         }
     }
 
@@ -99,7 +100,7 @@ public class TestHandshake {
         @Override
         public final void run() {
             start("\"Accessor #\" + id");
-            outer: while (segment.scope().isAlive()) {
+            outer: while (segment.isAlive()) {
                 try {
                     doAccess();
                 } catch (IllegalStateException ex) {
@@ -193,7 +194,7 @@ public class TestHandshake {
 
         SegmentMismatchAccessor(int id, MemorySegment segment) {
             super(id, segment);
-            this.copy = segment.scope().allocate(SEGMENT_SIZE, 1);
+            this.copy = SegmentAllocator.coallocator(segment).allocate(SEGMENT_SIZE, 1);
             copy.copyFrom(segment);
             copy.set(JAVA_BYTE, ThreadLocalRandom.current().nextInt(SEGMENT_SIZE), (byte)42);
         }

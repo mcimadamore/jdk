@@ -96,7 +96,7 @@ public class TestUpcallStructScope extends NativeTestHelper {
         }
 
         MemorySegment captured = capturedSegment.get();
-        assertFalse(captured.scope().isAlive());
+        assertFalse(captured.isAlive());
     }
 
 }

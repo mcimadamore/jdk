@@ -26,6 +26,7 @@
 package java.nio.channels;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.NativeAllocator;
 import java.nio.ByteBuffer;
@@ -1055,12 +1056,10 @@ public abstract class FileChannel
      *          {@code offset + size} overflows the range of {@code long}.
      *
      * @throws  IllegalStateException
-     *          If the {@code session} is not
-     *          {@linkplain NativeAllocator#isAlive() alive}.
-     *
+     *          If {@code scope} is an already closed {@link Arena}.
      * @throws  WrongThreadException
      *          If this method is called from a thread other than the thread
-     *          {@linkplain NativeAllocator#isAccessibleBy(Thread) owning} the
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) owning} the
      *          {@code session}.
      *
      * @throws  NonReadableChannelException

@@ -580,7 +580,7 @@ public class VaListTest extends NativeTestHelper {
             assertEquals(x, 12);
             listLeaked = list;
         }
-        assertFalse(listLeaked.segment().scope().isAlive());
+        assertFalse(listLeaked.segment().isAlive());
     }
 
     @Test(dataProvider = "structs")
@@ -598,11 +598,11 @@ public class VaListTest extends NativeTestHelper {
                 list.nextVarg(Point_LAYOUT, SegmentAllocator.prefixAllocator(pointOut));
                 assertEquals((int) VH_Point_x.get(pointOut), 3);
                 assertEquals((int) VH_Point_y.get(pointOut), 6);
-                assertTrue(pointOut.scope().isAlive()); // after VaList freed
+                assertTrue(pointOut.isAlive()); // after VaList freed
             }
-            assertTrue(pointOut.scope().isAlive()); // after inner session freed
+            assertTrue(pointOut.isAlive()); // after inner session freed
         }
-        assertFalse(pointOut.scope().isAlive()); // after outer session freed
+        assertFalse(pointOut.isAlive()); // after outer session freed
     }
 
     @DataProvider

@@ -129,7 +129,7 @@ public class BulkMismatchAcquire {
     @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public long mismatch_large_segment_acquire() {
         long[] arr = new long[1];
-        mismatchSegmentLarge1.scope().whileAlive(() -> {
+        mismatchSegmentLarge1.whileAlive(() -> {
             arr[0] = mismatchSegmentLarge1.mismatch(mismatchSegmentSmall2);
         });
         return arr[0];
@@ -151,7 +151,7 @@ public class BulkMismatchAcquire {
     @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public long mismatch_small_segment_acquire() {
         long[] arr = new long[1];
-        mismatchSegmentLarge1.scope().whileAlive(() -> {
+        mismatchSegmentLarge1.whileAlive(() -> {
             arr[0] = mismatchSegmentSmall1.mismatch(mismatchSegmentSmall2);
         });
         return arr[0];
