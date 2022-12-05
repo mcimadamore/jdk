@@ -99,7 +99,7 @@ public class TestSharedAccess {
             setInt(s, 42);
             assertEquals(getInt(s), 42);
             List<Thread> threads = new ArrayList<>();
-            MemorySegment sharedSegment = MemorySegment.ofAddress(s.address(), s.byteSize(), arena);
+            MemorySegment sharedSegment = arena.wrap(s.address(), null).expand(s.byteSize());
             for (int i = 0 ; i < 1000 ; i++) {
                 threads.add(new Thread(() -> {
                     assertEquals(getInt(sharedSegment), 42);

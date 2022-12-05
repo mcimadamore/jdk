@@ -121,10 +121,10 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static LinuxAArch64VaList readFromAddress(long address, NativeAllocator session) {
-        MemorySegment segment = MemorySegment.ofAddress(address, LAYOUT.byteSize(), session);
+        MemorySegment segment = session.wrap(address, null).expand(LAYOUT.byteSize());
         MemorySegment stack = stackPtr(segment); // size unknown
-        MemorySegment gpRegsArea = MemorySegment.ofAddress(grTop(segment).address() - MAX_GP_OFFSET, MAX_GP_OFFSET, session);
-        MemorySegment fpRegsArea = MemorySegment.ofAddress(vrTop(segment).address() - MAX_FP_OFFSET, MAX_FP_OFFSET, session);
+        MemorySegment gpRegsArea = session.wrap(grTop(segment).address() - MAX_GP_OFFSET, null).expand(MAX_GP_OFFSET);
+        MemorySegment fpRegsArea = session.wrap(vrTop(segment).address() - MAX_FP_OFFSET, null).expand(MAX_FP_OFFSET);
         return new LinuxAArch64VaList(segment, stack, gpRegsArea, MAX_GP_OFFSET, fpRegsArea, MAX_FP_OFFSET);
     }
 
@@ -317,7 +317,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                         gpRegsArea.asSlice(currentGPOffset()));
                     consumeGPSlots(1);
 
-                    MemorySegment slice = MemorySegment.ofAddress(ptr.address(), layout.byteSize(), segment.scope());
+                    MemorySegment slice = segment.scope().wrap(ptr.address(), null).expand(layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(slice);
                     yield seg;

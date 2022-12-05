@@ -66,7 +66,7 @@ public class TestSegments {
             segment = session.allocate(0, 4);
             assertEquals(segment.byteSize(), 0);
             assertEquals(segment.address() % 4, 0);
-            MemorySegment rawAddress = MemorySegment.ofAddress(segment.address(), 0, session);
+            MemorySegment rawAddress = session.wrap(segment.address(), null).expand(0);
             assertEquals(rawAddress.byteSize(), 0);
             assertEquals(rawAddress.address() % 4, 0);
         }
@@ -123,7 +123,7 @@ public class TestSegments {
             assertEquals(segment, segment.asSlice(0, 100));
             assertNotEquals(segment, segment.asSlice(10, 90));
             assertEquals(segment, segment.asSlice(0, 90));
-            assertEquals(segment, MemorySegment.ofAddress(segment.address(), 100, NativeAllocator.global()));
+            assertEquals(segment, NativeAllocator.global().wrap(segment.address(), null).expand(100));
             MemorySegment segment2 = arena.allocate(100);
             assertNotEquals(segment, segment2);
         }
@@ -147,7 +147,7 @@ public class TestSegments {
             assertEquals(segment.hashCode(), segment.asReadOnly().hashCode());
             assertEquals(segment.hashCode(), segment.asSlice(0, 100).hashCode());
             assertEquals(segment.hashCode(), segment.asSlice(0, 90).hashCode());
-            assertEquals(segment.hashCode(), MemorySegment.ofAddress(segment.address(), 100, NativeAllocator.global()).hashCode());
+            assertEquals(segment.hashCode(), NativeAllocator.global().wrap(segment.address(), null).expand(100).hashCode());
         }
     }
 

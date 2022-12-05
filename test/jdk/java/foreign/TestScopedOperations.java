@@ -224,7 +224,7 @@ public class TestScopedOperations {
                     throw new AssertionError(ex);
                 }
             }),
-            UNSAFE(session -> MemorySegment.ofAddress(0, 10, session));
+            UNSAFE(session -> session.wrap(0, null).expand(10));
 
             static {
                 try {

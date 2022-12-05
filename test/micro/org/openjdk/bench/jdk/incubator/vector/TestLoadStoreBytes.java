@@ -164,8 +164,8 @@ public class TestLoadStoreBytes {
   @Benchmark
   public void segmentNativeConfined() {
     try (final var arena = Arena.openConfined()) {
-      final var srcSegmentConfined = MemorySegment.ofAddress(srcSegment.address(), size, arena);
-      final var dstSegmentConfined = MemorySegment.ofAddress(dstSegment.address(), size, arena);
+        final var srcSegmentConfined = arena.wrap(srcSegment.address(), null).expand(size);
+        final var dstSegmentConfined = arena.wrap(dstSegment.address(), null).expand(size);
 
       for (long i = 0; i < SPECIES.loopBound(srcArray.length); i += SPECIES.length()) {
         var v = ByteVector.fromMemorySegment(SPECIES, srcSegmentConfined, i, ByteOrder.nativeOrder());

@@ -169,8 +169,7 @@ public class TestNative extends NativeTestHelper {
     public void testDefaultAccessModes() {
         MemorySegment addr = allocateMemory(12);
         try (Arena arena = Arena.openConfined()) {
-            MemorySegment mallocSegment = MemorySegment.ofAddress(addr.address(), 12,
-                    arena, () -> freeMemory(addr));
+            MemorySegment mallocSegment = arena.wrap(addr.address(), () -> freeMemory(addr)).expand(12);
             assertFalse(mallocSegment.isReadOnly());
         }
     }
@@ -180,8 +179,7 @@ public class TestNative extends NativeTestHelper {
         MemorySegment addr = allocateMemory(12);
         MemorySegment mallocSegment = null;
         try (Arena arena = Arena.openConfined()) {
-            mallocSegment = MemorySegment.ofAddress(addr.address(), 12,
-                    arena, () -> freeMemory(addr));
+            mallocSegment = arena.wrap(addr.address(), () -> freeMemory(addr)).expand(12);
             assertEquals(mallocSegment.byteSize(), 12);
             //free here
         }
@@ -200,7 +198,7 @@ public class TestNative extends NativeTestHelper {
     public void testBadResize() {
         try (Arena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(4, 1);;
-            MemorySegment.ofAddress(segment.address(), -1, NativeAllocator.global());
+            NativeAllocator.global().wrap(segment.address(), null).expand(-1);
         }
     }
 

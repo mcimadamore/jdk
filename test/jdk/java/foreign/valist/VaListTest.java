@@ -870,7 +870,7 @@ public class VaListTest extends NativeTestHelper {
             } else if (layout instanceof ValueLayout.OfDouble ofDouble) {
                  builder.addVarg(ofDouble, 1D);
             } else if (layout instanceof ValueLayout.OfAddress ofAddress) {
-                 builder.addVarg(ofAddress, MemorySegment.ofAddress(1));
+                builder.addVarg(ofAddress, NativeAllocator.global().wrap(1, null));
             }
         }
     }
@@ -892,7 +892,7 @@ public class VaListTest extends NativeTestHelper {
         } else if (layout instanceof ValueLayout.OfDouble ofDouble) {
             assertEquals(vaList.nextVarg(ofDouble), 1D);
         } else if (layout instanceof ValueLayout.OfAddress ofAddress) {
-            assertEquals(vaList.nextVarg(ofAddress), MemorySegment.ofAddress(1));
+            assertEquals(vaList.nextVarg(ofAddress), NativeAllocator.global().wrap(1, null));
         }
     }
 

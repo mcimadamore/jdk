@@ -42,8 +42,8 @@ public class PanamaMainReflection {
 
     public static void testReflectionMemorySegment() throws Throwable {
         System.out.println("Trying to get MemorySegment");
-        Method method = MemorySegment.class.getDeclaredMethod("ofAddress", long.class, long.class, NativeAllocator.class);
-        method.invoke(null, 0L, 4000L, NativeAllocator.global());
+        Method method = MemorySegment.class.getDeclaredMethod("expand", long.class);
+        method.invoke(MemorySegment.NULL, 10L);
         System.out.println("Got MemorySegment");
     }
 }

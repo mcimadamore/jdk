@@ -49,7 +49,6 @@ import jdk.internal.foreign.layout.ValueLayouts;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.reflect.CallerSensitive;
-import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -361,13 +360,13 @@ import jdk.internal.vm.annotation.ForceInline;
  * ensures that the obtained segment can be passed, opaquely, to other pointer-accepting foreign functions.
  * <p>
  * To access native zero-length memory segments, clients have two options, both of which are <em>unsafe</em>. Clients
- * can {@linkplain java.lang.foreign.MemorySegment#ofAddress(long, long, NativeAllocator) obtain}
+ * can {@linkplain java.lang.foreign.NativeAllocator#wrap(long, Runnable) obtain}
  * a <em>new</em> native segment, with new spatial and temporal bounds, as follows:
  *
  * {@snippet lang = java:
  * NativeAllocator scope = ... // obtains a scope
  * MemorySegment foreign = someSegment.get(ValueLayout.ADDRESS, 0); // wrap address into segment (size = 0)
- * MemorySegment segment = MemorySegment.ofAddress(foreign.address(), 4, scope); // create new segment (size = 4)
+ * MemorySegment segment = scope.wrap(foreign.address(), null).expand(4); // create new segment (size = 4)
  * int x = segment.get(ValueLayout.JAVA_INT, 0); //ok
  *}
  *
@@ -381,7 +380,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * int x = foreign.get(ValueLayout.JAVA_INT, 0); //ok
  *}
  *
- * Both {@link #ofAddress(long, long, NativeAllocator)} and {@link ValueLayout.OfAddress#asUnbounded()} are
+ * Both {@link #expand(long)} and {@link ValueLayout.OfAddress#asUnbounded()} are
  * <a href="package-summary.html#restricted"><em>restricted</em></a> methods, and should be used with caution:
  * for instance, sizing a segment incorrectly could result in a VM crash when attempting to access the memory segment.
  * <p>
@@ -1035,122 +1034,22 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     MemorySegment NULL = NativeMemorySegmentImpl.makeNativeSegmentUnchecked(0L, 0);
 
     /**
-     * Creates a zero-length native segment from the given {@linkplain #address() address value}.
-     * The returned segment is associated with the {@linkplain NativeAllocator#global() global scope}.
-     * <p>
-     * This is equivalent to the following code:
-     * {@snippet lang = java:
-     * ofAddress(address, 0);
-     *}
-     * @param address the address of the returned native segment.
-     * @return a zero-length native segment with the given address.
-     */
-    static MemorySegment ofAddress(long address) {
-        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, 0);
-    }
-
-    /**
-     * Creates a native segment with the given size and {@linkplain #address() address value}.
-     * The returned segment is associated with the {@linkplain NativeAllocator#global() global scope}.
-     * <p>
-     * This is equivalent to the following code:
-     * {@snippet lang = java:
-     * ofAddress(address, byteSize, NativeAllocator.global());
-     *}
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
-     * @param address the address of the returned native segment.
-     * @param byteSize the size (in bytes) of the returned native segment.
-     * @return a zero-length native segment with the given address and size.
-     * @throws IllegalArgumentException if {@code byteSize < 0}.
-     * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
-     * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
-     * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
-     */
-    @CallerSensitive
-    static MemorySegment ofAddress(long address, long byteSize) {
-        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "ofAddress");
-        return MemorySegment.ofAddress(address, byteSize, NativeAllocator.global());
-    }
-
-    /**
-     * Creates a native segment with the given size, address, and scope.
-     * This method can be useful when interacting with custom memory sources (e.g. custom allocators),
-     * where an address to some underlying region of memory is typically obtained from foreign code
-     * (often as a plain {@code long} value).
-     * <p>
-     * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}), and is associated with the
-     * provided scope.
-     * <p>
-     * This is equivalent to the following code:
-     * {@snippet lang = java:
-     * ofAddress(address, byteSize, scope, null);
-     *}
-     *
-     * @param address the returned segment's address.
-     * @param byteSize the desired size.
-     * @param scope the scope associated with the returned native segment.
-     * @return a native segment with the given address, size and scope.
-     * @throws IllegalArgumentException if {@code byteSize < 0}.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope.isAccessibleBy(T) == false}.
-     * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
-     * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
-     * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
-     */
-    @CallerSensitive
-    @ForceInline
-    static MemorySegment ofAddress(long address, long byteSize, NativeAllocator scope) {
-        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "ofAddress");
-        Objects.requireNonNull(scope);
-        Utils.checkAllocationSizeAndAlign(byteSize, 1);
-        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, byteSize, scope, null);
-    }
-
-    /**
-     * Creates a native segment with the given size, address, and scope.
-     * This method can be useful when interacting with custom memory sources (e.g. custom allocators),
-     * where an address to some underlying region of memory is typically obtained from foreign code
-     * (often as a plain {@code long} value).
-     * <p>
-     * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}), and is associated with the
-     * provided scope.
-     * <p>
-     * The provided cleanup action (if any) will be invoked when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
-     * <p>
-     * Clients should ensure that the address and bounds refer to a valid region of memory that is accessible for reading and,
-     * if appropriate, writing; an attempt to access an invalid address from Java code will either return an arbitrary value,
-     * have no visible effect, or cause an unspecified exception to be thrown.
+     * Creates a new segment whose size is the size of this plus the provided size.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
      * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
      * restricted methods, and use safe and supported functionalities, where possible.
      *
+     * @param size size to be added to this segment size.
      *
-     * @param address the returned segment's address.
-     * @param byteSize the desired size.
-     * @param scope the scope associated with the returned native segment.
-     * @param cleanupAction the custom cleanup action to be associated to the returned segment (can be null).
-     * @return a native segment with the given address, size and scope.
-     * @throws IllegalArgumentException if {@code byteSize < 0}.
-     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
-     * @throws WrongThreadException if this method is called from a thread {@code T},
-     * such that {@code scope.isAccessibleBy(T) == false}.
+     * @return a new memory segment whose linker for the ABI associated with the OS and processor where the Java runtime is currently executing.
      * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
      * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static MemorySegment ofAddress(long address, long byteSize, NativeAllocator scope, Runnable cleanupAction) {
-        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "ofAddress");
-        Objects.requireNonNull(scope);
-        Utils.checkAllocationSizeAndAlign(byteSize, 1);
-        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, byteSize, scope, cleanupAction);
-    }
+    MemorySegment expand(long size);
 
     /**
      * Performs a bulk copy from source segment to destination segment. More specifically, the bytes at offset

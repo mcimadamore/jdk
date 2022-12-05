@@ -245,7 +245,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] { MemorySegment.ofAddress(42), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {NativeAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
 
@@ -268,7 +268,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.LITTLE_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] { MemorySegment.ofAddress(42), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {NativeAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
         }

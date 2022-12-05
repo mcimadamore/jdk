@@ -26,6 +26,8 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.NativeMemorySegmentImpl;
+import jdk.internal.foreign.Utils;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.ref.CleanerFactory;
 
@@ -120,6 +122,42 @@ sealed public interface NativeAllocator extends SegmentAllocator permits Arena, 
     @Override
     default MemorySegment allocate(long byteSize, long byteAlignment) {
         return allocate(byteSize, byteAlignment);
+    }
+
+    /**
+     * Creates a native segment with the given address, and cleanup action.
+     * This method can be useful when interacting with custom memory sources (e.g. custom allocators),
+     * where an address to some underlying region of memory is typically obtained from foreign code
+     * (often as a plain {@code long} value).
+     * <p>
+     * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}), and is associated with the
+     * provided scope.
+     * <p>
+     * The provided cleanup action (if any) will be invoked when the scope becomes not {@linkplain NativeAllocator#isAlive() alive}.
+     * <p>
+     * Clients should ensure that the address and bounds refer to a valid region of memory that is accessible for reading and,
+     * if appropriate, writing; an attempt to access an invalid address from Java code will either return an arbitrary value,
+     * have no visible effect, or cause an unspecified exception to be thrown.
+     * <p>
+     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
+     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
+     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
+     * restricted methods, and use safe and supported functionalities, where possible.
+     *
+     *
+     * @param address the returned segment's address.
+     * @param cleanupAction the custom cleanup action to be associated to the returned segment (can be null).
+     * @return a native segment with the given address, size and scope.
+     * @throws IllegalArgumentException if {@code byteSize < 0}.
+     * @throws IllegalStateException if {@code scope} is not {@linkplain NativeAllocator#isAlive() alive}.
+     * @throws WrongThreadException if this method is called from a thread {@code T},
+     * such that {@code scope.isAccessibleBy(T) == false}.
+     * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
+     * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
+     * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
+     */
+    default MemorySegment wrap(long address, Runnable cleanupAction) {
+        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, 0L,  this, cleanupAction);
     }
 
     /**

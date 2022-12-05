@@ -131,7 +131,7 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     private static SysVVaList readFromAddress(long address, NativeAllocator session) {
-        MemorySegment segment = MemorySegment.ofAddress(address, LAYOUT.byteSize(), session);
+        MemorySegment segment = session.wrap(address, null).expand(LAYOUT.byteSize());
         MemorySegment regSaveArea = getRegSaveArea(segment);
         MemorySegment overflowArgArea = getArgOverflowArea(segment);
         return new SysVVaList(segment, overflowArgArea, regSaveArea, MAX_GP_OFFSET, MAX_FP_OFFSET);

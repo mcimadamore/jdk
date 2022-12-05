@@ -50,9 +50,9 @@ public class MethodHandleLookup {
             return new Object[][]{
                     { MethodHandles.lookup().findStatic(Linker.class, "nativeLinker",
                             MethodType.methodType(Linker.class)), "Linker::nativeLinker" },
-                    { MethodHandles.lookup().findStatic(MemorySegment.class, "ofAddress",
-                            MethodType.methodType(MemorySegment.class, long.class, long.class, NativeAllocator.class)),
-                            "MemorySegment::ofAddressNative" },
+                    { MethodHandles.lookup().findVirtual(MemorySegment.class, "expand",
+                            MethodType.methodType(MemorySegment.class, long.class)),
+                            "MemorySegment::expand" },
                     { MethodHandles.lookup().findStatic(SymbolLookup.class, "libraryLookup",
                             MethodType.methodType(SymbolLookup.class, String.class, NativeAllocator.class)),
                             "SymbolLookup::libraryLookup(String)" },

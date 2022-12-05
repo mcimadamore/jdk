@@ -59,10 +59,7 @@ public class TestClassLoaderFindNative {
 
     @Test
     public void testVariableSymbolLookup() {
-        MemorySegment segment = MemorySegment.ofAddress(
-                SymbolLookup.loaderLookup().find("c").get().address(),
-                ValueLayout.JAVA_INT.byteSize(),
-                NativeAllocator.global());
+        MemorySegment segment = NativeAllocator.global().wrap(SymbolLookup.loaderLookup().find("c").get().address(), null).expand(ValueLayout.JAVA_INT.byteSize());
         assertEquals(segment.get(JAVA_BYTE, 0), 42);
     }
 }

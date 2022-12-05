@@ -40,7 +40,7 @@ public class PanamaMainDirect {
 
     public static void testDirectAccessMemorySegment() {
         System.out.println("Trying to get MemorySegment");
-        MemorySegment.ofAddress(0, 4000, NativeAllocator.global());
+        NativeAllocator.global().wrap(0, null).expand(4000);
         System.out.println("Got MemorySegment");
    }
 }

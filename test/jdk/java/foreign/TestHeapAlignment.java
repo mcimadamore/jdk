@@ -123,7 +123,7 @@ public class TestHeapAlignment {
             layouts.add(new Object[] { testCase.segment, testCase.align, 42f, new float[]{42}, JAVA_FLOAT_ALIGNED, (Function<float[], MemorySegment>)MemorySegment::ofArray });
             layouts.add(new Object[] { testCase.segment, testCase.align, 42L, new long[]{42}, JAVA_LONG_ALIGNED, (Function<long[], MemorySegment>)MemorySegment::ofArray });
             layouts.add(new Object[] { testCase.segment, testCase.align, 42d, new double[]{42}, JAVA_DOUBLE_ALIGNED, (Function<double[], MemorySegment>)MemorySegment::ofArray });
-            layouts.add(new Object[] { testCase.segment, testCase.align, MemorySegment.ofAddress(42), null, ADDRESS_ALIGNED, null });
+            layouts.add(new Object[] { testCase.segment, testCase.align, NativeAllocator.global().wrap(42, null), null, ADDRESS_ALIGNED, null });
         }
         return layouts.toArray(new Object[0][]);
     }

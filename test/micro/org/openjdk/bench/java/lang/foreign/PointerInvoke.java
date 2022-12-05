@@ -87,7 +87,7 @@ public class PointerInvoke extends CLayouts {
 
     @Benchmark
     public int panama_call_as_new_segment() throws Throwable {
-        MemorySegment newSegment = MemorySegment.ofAddress(segment.address(), 100, arena);
+        MemorySegment newSegment = arena.wrap(segment.address(), null).expand(100);
         return (int)F_PTR.invokeExact(newSegment);
     }
 }

@@ -85,11 +85,10 @@ public final class SystemLookup implements SymbolLookup {
                     libLookup(libs -> libs.load(jdkLibraryPath("syslookup")));
 
             int numSymbols = WindowsFallbackSymbols.values().length;
-            MemorySegment funcs = MemorySegment.ofAddress(fallbackLibLookup.find("funcs").orElseThrow().address(),
-                ADDRESS.byteSize() * numSymbols, NativeAllocator.global());
+            MemorySegment funcs = NativeAllocator.global().wrap(fallbackLibLookup.find("funcs").orElseThrow().address(), null).expand(ADDRESS.byteSize() * numSymbols);
 
             Function<String, Optional<MemorySegment>> fallbackLookup = name -> Optional.ofNullable(WindowsFallbackSymbols.valueOfOrNull(name))
-                .map(symbol -> MemorySegment.ofAddress(funcs.getAtIndex(ADDRESS, symbol.ordinal()).address(), 0L, NativeAllocator.global()));
+                .map(symbol -> NativeAllocator.global().wrap(funcs.getAtIndex(ADDRESS, symbol.ordinal()).address(), null).expand(0L));
 
             final SymbolLookup finalLookup = lookup;
             lookup = name -> finalLookup.find(name).or(() -> fallbackLookup.apply(name));
@@ -106,7 +105,7 @@ public final class SystemLookup implements SymbolLookup {
                 long addr = lib.lookup(name);
                 return addr == 0 ?
                         Optional.empty() :
-                        Optional.of(MemorySegment.ofAddress(addr, 0, NativeAllocator.global()));
+                        Optional.of(NativeAllocator.global().wrap(addr, null).expand(0));
             } catch (NoSuchMethodException e) {
                 return Optional.empty();
             }

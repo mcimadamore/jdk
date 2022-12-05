@@ -115,7 +115,7 @@ public non-sealed class WinVaList implements VaList {
             res = switch (typeClass) {
                 case STRUCT_REFERENCE -> {
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    MemorySegment struct = MemorySegment.ofAddress(structAddr.address(), layout.byteSize(), segment.scope());
+                    MemorySegment struct = segment.scope().wrap(structAddr.address(), null).expand(layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(struct);
                     yield seg;
@@ -150,7 +150,7 @@ public non-sealed class WinVaList implements VaList {
     }
 
     static WinVaList ofAddress(long address, NativeAllocator session) {
-        return new WinVaList(MemorySegment.ofAddress(address, Long.MAX_VALUE, session));
+        return new WinVaList(session.wrap(address, null).expand(Long.MAX_VALUE));
     }
 
     static Builder builder(NativeAllocator session) {

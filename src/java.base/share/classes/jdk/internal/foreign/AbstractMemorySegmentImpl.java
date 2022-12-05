@@ -52,6 +52,8 @@ import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
@@ -114,6 +116,14 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     private AbstractMemorySegmentImpl asSliceNoCheck(long offset, long newSize) {
         return dup(offset, newSize, readOnly, session);
+    }
+
+    @Override
+    @CallerSensitive
+    public MemorySegment expand(long size) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "expand");
+        Utils.checkAllocationSizeAndAlign(size + this.length, 1);
+        return dup(0, size + this.length, readOnly, session);
     }
 
     @Override

@@ -43,9 +43,9 @@ public class PanamaMainInvoke {
 
     public static void testInvokeMemorySegment() throws Throwable {
         System.out.println("Trying to get MemorySegment");
-        var mh = MethodHandles.lookup().findStatic(MemorySegment.class, "ofAddress",
-                MethodType.methodType(MemorySegment.class, long.class, long.class, NativeAllocator.class));
-        var seg = (MemorySegment)mh.invokeExact(0L, 4000L, NativeAllocator.global());
+        var mh = MethodHandles.lookup().findVirtual(MemorySegment.class, "expand",
+                MethodType.methodType(MemorySegment.class, long.class));
+        var seg = (MemorySegment)mh.invokeExact(MemorySegment.NULL, 10L);
         System.out.println("Got MemorySegment");
     }
 }
