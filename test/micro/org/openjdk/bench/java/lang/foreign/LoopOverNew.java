@@ -25,7 +25,6 @@ package org.openjdk.bench.java.lang.foreign;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -135,7 +134,7 @@ public class LoopOverNew extends JavaLayouts {
     @Benchmark
     public void segment_loop_implicit() {
         if (gcCount++ == 0) System.gc(); // GC when we overflow
-        MemorySegment segment = NativeAllocator.auto().allocate(ALLOC_SIZE, 4);
+        MemorySegment segment = SegmentAllocator.auto().allocate(ALLOC_SIZE, 4);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);
         }

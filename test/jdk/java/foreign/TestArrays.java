@@ -32,7 +32,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SequenceLayout;
 
 import java.lang.invoke.VarHandle;
@@ -108,7 +108,7 @@ public class TestArrays {
 
     @Test(dataProvider = "arrays")
     public void testArrays(Consumer<MemorySegment> init, Consumer<MemorySegment> checker, MemoryLayout layout) {
-        MemorySegment segment = NativeAllocator.auto().allocate(layout);
+        MemorySegment segment = SegmentAllocator.auto().allocate(layout);
         init.accept(segment);
         assertFalse(segment.isReadOnly());
         checker.accept(segment);
@@ -119,7 +119,7 @@ public class TestArrays {
     public void testTooBigForArray(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
         MemoryLayout seq = MemoryLayout.sequenceLayout((Integer.MAX_VALUE * layout.byteSize()) + 1, layout);
         //do not really allocate here, as it's way too much memory
-        MemorySegment segment = NativeAllocator.global().wrap(0, null).expand(seq.byteSize());
+        MemorySegment segment = SegmentAllocator.global().wrap(0, null).expand(seq.byteSize());
         arrayFactory.apply(segment);
     }
 

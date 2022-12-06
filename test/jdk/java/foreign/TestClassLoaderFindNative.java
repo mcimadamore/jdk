@@ -29,7 +29,7 @@
  */
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import org.testng.annotations.Test;
@@ -59,7 +59,7 @@ public class TestClassLoaderFindNative {
 
     @Test
     public void testVariableSymbolLookup() {
-        MemorySegment segment = NativeAllocator.global().wrap(SymbolLookup.loaderLookup().find("c").get().address(), null).expand(ValueLayout.JAVA_INT.byteSize());
+        MemorySegment segment = SegmentAllocator.global().wrap(SymbolLookup.loaderLookup().find("c").get().address(), null).expand(ValueLayout.JAVA_INT.byteSize());
         assertEquals(segment.get(JAVA_BYTE, 0), 42);
     }
 }

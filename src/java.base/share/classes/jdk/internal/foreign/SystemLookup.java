@@ -26,7 +26,7 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
@@ -85,10 +85,10 @@ public final class SystemLookup implements SymbolLookup {
                     libLookup(libs -> libs.load(jdkLibraryPath("syslookup")));
 
             int numSymbols = WindowsFallbackSymbols.values().length;
-            MemorySegment funcs = NativeAllocator.global().wrap(fallbackLibLookup.find("funcs").orElseThrow().address(), null).expand(ADDRESS.byteSize() * numSymbols);
+            MemorySegment funcs = SegmentAllocator.global().wrap(fallbackLibLookup.find("funcs").orElseThrow().address(), null).expand(ADDRESS.byteSize() * numSymbols);
 
             Function<String, Optional<MemorySegment>> fallbackLookup = name -> Optional.ofNullable(WindowsFallbackSymbols.valueOfOrNull(name))
-                .map(symbol -> NativeAllocator.global().wrap(funcs.getAtIndex(ADDRESS, symbol.ordinal()).address(), null).expand(0L));
+                .map(symbol -> SegmentAllocator.global().wrap(funcs.getAtIndex(ADDRESS, symbol.ordinal()).address(), null).expand(0L));
 
             final SymbolLookup finalLookup = lookup;
             lookup = name -> finalLookup.find(name).or(() -> fallbackLookup.apply(name));
@@ -105,7 +105,7 @@ public final class SystemLookup implements SymbolLookup {
                 long addr = lib.lookup(name);
                 return addr == 0 ?
                         Optional.empty() :
-                        Optional.of(NativeAllocator.global().wrap(addr, null).expand(0));
+                        Optional.of(SegmentAllocator.global().wrap(addr, null).expand(0));
             } catch (NoSuchMethodException e) {
                 return Optional.empty();
             }

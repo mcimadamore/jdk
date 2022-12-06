@@ -28,7 +28,6 @@ package jdk.internal.foreign.abi.x64.sysv;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -131,7 +130,7 @@ public non-sealed class SysVVaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static SysVVaList readFromAddress(long address, NativeAllocator session) {
+    private static SysVVaList readFromAddress(long address, SegmentAllocator session) {
         MemorySegment segment = session.wrap(address, null).expand(LAYOUT.byteSize());
         MemorySegment regSaveArea = getRegSaveArea(segment);
         MemorySegment overflowArgArea = getArgOverflowArea(segment);
@@ -139,7 +138,7 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment base = NativeAllocator.auto().allocate(LAYOUT);
+        MemorySegment base = SegmentAllocator.auto().allocate(LAYOUT);
         VH_gp_offset.set(base, MAX_GP_OFFSET);
         VH_fp_offset.set(base, MAX_FP_OFFSET);
         VH_overflow_arg_area.set(base, MemorySegment.NULL);
@@ -323,11 +322,11 @@ public non-sealed class SysVVaList implements VaList {
         }
     }
 
-    static SysVVaList.Builder builder(NativeAllocator session) {
+    static SysVVaList.Builder builder(SegmentAllocator session) {
         return new SysVVaList.Builder(session);
     }
 
-    public static VaList ofAddress(long address, NativeAllocator session) {
+    public static VaList ofAddress(long address, SegmentAllocator session) {
         return readFromAddress(address, session);
     }
 
@@ -365,7 +364,7 @@ public non-sealed class SysVVaList implements VaList {
         private long currentFPOffset = FP_OFFSET;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        public Builder(NativeAllocator allocator) {
+        public Builder(SegmentAllocator allocator) {
             this.reg_save_area = allocator.allocate(LAYOUT_REG_SAVE_AREA);
         }
 

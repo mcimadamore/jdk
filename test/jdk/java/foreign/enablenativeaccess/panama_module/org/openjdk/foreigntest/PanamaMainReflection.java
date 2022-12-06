@@ -24,7 +24,6 @@
 package org.openjdk.foreigntest;
 
 import java.lang.foreign.*;
-import java.lang.foreign.NativeAllocator;
 import java.lang.reflect.Method;
 
 public class PanamaMainReflection {

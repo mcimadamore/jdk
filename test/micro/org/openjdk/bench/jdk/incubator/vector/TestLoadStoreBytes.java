@@ -25,7 +25,7 @@ package org.openjdk.bench.jdk.incubator.vector;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
 import jdk.incubator.vector.ByteVector;
@@ -85,8 +85,8 @@ public class TestLoadStoreBytes {
     srcSegmentHeap = MemorySegment.ofArray(new byte[size]);
     dstSegmentHeap = MemorySegment.ofArray(new byte[size]);
 
-    srcSegment = NativeAllocator.auto().allocate(size, SPECIES.vectorByteSize());
-    dstSegment = NativeAllocator.auto().allocate(size, SPECIES.vectorByteSize());
+    srcSegment = SegmentAllocator.auto().allocate(size, SPECIES.vectorByteSize());
+    dstSegment = SegmentAllocator.auto().allocate(size, SPECIES.vectorByteSize());
 
     a = new byte[size];
     b = new byte[size];

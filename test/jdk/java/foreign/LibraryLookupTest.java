@@ -24,10 +24,10 @@
 import org.testng.annotations.Test;
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
@@ -71,7 +71,7 @@ public class LibraryLookupTest {
         callFunc(addr);
     }
 
-    private static MemorySegment loadLibrary(NativeAllocator session) {
+    private static MemorySegment loadLibrary(SegmentAllocator session) {
         SymbolLookup lib = SymbolLookup.libraryLookup(LIB_PATH, session);
         MemorySegment addr = lib.find("inc").get();
         return addr;
@@ -93,12 +93,12 @@ public class LibraryLookupTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     void testBadLibraryLookupName() {
-        SymbolLookup.libraryLookup("nonExistent", NativeAllocator.global());
+        SymbolLookup.libraryLookup("nonExistent", SegmentAllocator.global());
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     void testBadLibraryLookupPath() {
-        SymbolLookup.libraryLookup(Path.of("nonExistent"), NativeAllocator.global());
+        SymbolLookup.libraryLookup(Path.of("nonExistent"), SegmentAllocator.global());
     }
 
     @Test

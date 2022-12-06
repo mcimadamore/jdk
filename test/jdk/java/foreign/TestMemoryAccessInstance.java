@@ -29,7 +29,7 @@
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -167,13 +167,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> bb.order(NE).getDouble(pos), (bb, pos, v) -> bb.order(NE).putDouble(pos, v))
                 },
-                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, NativeAllocator.global().wrap(42, null),
+                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, SegmentAllocator.global().wrap(42, null),
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos) : nb.getInt(pos);
-                            return NativeAllocator.global().wrap(addr, null);
+                            return SegmentAllocator.global().wrap(addr, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);
@@ -205,13 +205,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> bb.order(NE).getDouble(pos * 8), (bb, pos, v) -> bb.order(NE).putDouble(pos * 8, v))
                 },
-                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, NativeAllocator.global().wrap(42, null),
+                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, SegmentAllocator.global().wrap(42, null),
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos * 8) : nb.getInt(pos * 4);
-                            return NativeAllocator.global().wrap(addr, null);
+                            return SegmentAllocator.global().wrap(addr, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);

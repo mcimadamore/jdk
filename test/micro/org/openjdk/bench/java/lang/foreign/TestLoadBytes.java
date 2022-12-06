@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
@@ -68,7 +68,7 @@ public class TestLoadBytes {
         }
 
         srcBufferNative = ByteBuffer.allocateDirect(size);
-        srcSegmentImplicit = NativeAllocator.auto().allocate(size);
+        srcSegmentImplicit = SegmentAllocator.auto().allocate(size);
     }
 
     @Benchmark

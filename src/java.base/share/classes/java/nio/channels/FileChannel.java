@@ -28,7 +28,7 @@ package java.nio.channels;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
@@ -1082,7 +1082,7 @@ public abstract class FileChannel
      * @since   19
      */
     @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-    public MemorySegment map(MapMode mode, long offset, long size, NativeAllocator session)
+    public MemorySegment map(MapMode mode, long offset, long size, SegmentAllocator session)
         throws IOException
     {
         throw new UnsupportedOperationException();

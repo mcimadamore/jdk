@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -118,13 +118,13 @@ public class MemorySessionClose {
 
     @Benchmark
     public MemorySegment implicit_close() {
-        return NativeAllocator.auto().allocate(ALLOC_SIZE, 4);
+        return SegmentAllocator.auto().allocate(ALLOC_SIZE, 4);
     }
 
     @Benchmark
     public MemorySegment implicit_close_systemgc() {
         if (gcCount++ == 0) System.gc(); // GC when we overflow
-        return NativeAllocator.auto().allocate(ALLOC_SIZE, 4);
+        return SegmentAllocator.auto().allocate(ALLOC_SIZE, 4);
     }
 
     // keep

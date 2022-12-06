@@ -24,7 +24,6 @@
 package org.openjdk.bench.java.lang.foreign;
 
 import java.lang.foreign.*;
-import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.VarHandle;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -67,8 +66,8 @@ public class UnrolledAccess extends JavaLayouts {
             this.outputArray = new double[SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = NativeAllocator.global().wrap(inputAddress, null).expand(8 * SIZE);
-            this.outputSegment = NativeAllocator.global().wrap(outputAddress, null).expand(8 * SIZE);
+            this.inputSegment = SegmentAllocator.global().wrap(inputAddress, null).expand(8 * SIZE);
+            this.outputSegment = SegmentAllocator.global().wrap(outputAddress, null).expand(8 * SIZE);
         }
     }
 

@@ -32,34 +32,130 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.function.Function;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
+import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.SlicingAllocator;
 import jdk.internal.foreign.Utils;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.ref.CleanerFactory;
 
 /**
  * An object that may be used to allocate {@linkplain MemorySegment memory segments}. Clients implementing this interface
  * must implement the {@link #allocate(long, long)} method. This interface defines several default methods
  * which can be useful to create segments from several kinds of Java values such as primitives and arrays.
- * This interface is a {@linkplain FunctionalInterface functional interface}: clients can easily obtain a new segment allocator
- * by using either a lambda expression or a method reference.
- * <p>
- * This interface also defines factories for commonly used allocators:
- * <ul>
- *     <li>{@link #slicingAllocator(MemorySegment)} obtains an efficient slicing allocator, where memory
- *     is allocated by repeatedly slicing the provided memory segment;</li>
- *     <li>{@link #prefixAllocator(MemorySegment)} obtains an allocator which wraps a segment (either on-heap or off-heap)
- *     and recycles its content upon each new allocation request.</li>
- * </ul>
  * <p>
  * Passing a segment allocator to an API can be especially useful in circumstances where a client wants to communicate <em>where</em>
  * the results of a certain operation (performed by the API) should be stored, as a memory segment. For instance,
  * {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handles} can accept an additional
  * {@link SegmentAllocator} parameter if the underlying foreign function is known to return a struct by-value. Effectively,
  * the allocator parameter tells the linker runtime where to store the return value of the foreign function.
+ *
+ * <h2>Native allocators</h2>
+ *
+ * A native allocator determines the lifetime of the native segments allocated by it. Moreover,
+ * a native allocator also determines whether access to memory segments allocated by it should be
+ * <a href="Arena.html#thread-confinement">restricted to specific threads</a>.
+ * <p>
+ * The simplest native allocator is the {@linkplain SegmentAllocator#global() global allocator}. Native segments
+ * allocated with the global allocator are always accessible and their backing regions of memory are never deallocated.
+ * Moreover, memory segments allocated with the global scope can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
+ * from any thread.
+ * {@snippet lang = java:
+ * MemorySegment segment = SegmentAllocator.global().allocate(100);
+ * ...
+ * // segment is never deallocated!
+ *}
+ * <p>
+ * Alternatively, clients can obtain an {@linkplain SegmentAllocator#auto() automatic allocator}, that is an allocator
+ * whose allocated segments are managed, automatically, by the garbage collector. The regions of memory backing memory
+ * segments allocated with the automatic allocator are deallocated at some unspecified time <em>after</em> they become
+ * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>, as shown below:
+ *
+ * {@snippet lang = java:
+ * MemorySegment segment = SegmentAllocator.auto().allocate(100);
+ * ...
+ * segment = null; // the segment region becomes available for deallocation after this point
+ *}
+ * Memory segments allocated with the automatic allocator can also be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
+ * <p>
+ * Finally, clients can use an {@linkplain Arena arena}. The regions of memory
+ * backing memory segments allocated with an arena are deallocated when the arena is {@linkplain Arena#close() closed}.
+ * When this happens, all the segments allocated with the arena become not {@linkplain MemorySegment#isAlive() alive},
+ * and subsequent access operations on these segments will fail {@link IllegalStateException}.
+ *
+ * {@snippet lang = java:
+ * MemorySegment segment = null;
+ * try (Arena arena = Arena.openConfined()) {
+ *     segment = arena.scope().allocate((MemoryLayout)100);
+ *     ...
+ * } // segment region deallocated here
+ * segment.get(ValueLayout.JAVA_BYTE, 0); // throws IllegalStateException
+ *}
+ *
+ * Which threads can {@link MemorySegment#isAccessibleBy(Thread) access} memory segments allocated with an arena scope depends
+ * on the arena kind. For instance, segments allocated with a {@linkplain Arena#openConfined() confined arena}
+ * can only be accessed by the thread that created the arena. Conversely, segments allocated with a
+ * {@linkplain Arena#openConfined() shared arena} can be accessed by any thread.
+ *
+ * <h2>Derived allocators</h2>
+ *
+ * This interface also defines factories for commonly used allocators:
+ * <ul>
+ *     <li>{@link #slicingAllocator(MemorySegment)} obtains an efficient slicing allocator, where memory
+ *     is allocated by repeatedly slicing the provided memory segment;</li>
+ *     <li>{@link #prefixAllocator(MemorySegment)} obtains an allocator which wraps a segment (either on-heap or off-heap)
+ *     and recycles its content upon each new allocation request.</li>
+ *     <li>{@link #coallocator(MemorySegment)} obtains an allocator which allocates new native segments which feature
+ *     the same lifetime as that of the provided segment.</li>
+ * </ul>
  */
-@FunctionalInterface
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
 public interface SegmentAllocator {
+
+    /**
+     * Obtains the automatic allocator. Segments allocated with the automatic allocator are managed, implicitly,
+     * by the garbage collector, and can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
+     *
+     * @return the automatic allocator.
+     */
+    static SegmentAllocator auto() {
+        class Holder {
+            static SegmentAllocator AUTO_ALLOCATOR = new SegmentAllocator() {
+                @Override
+                public MemorySegment allocate(long byteSize, long byteAlignment) {
+                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).allocate(byteSize, byteAlignment);
+                }
+
+                @Override
+                public MemorySegment wrap(long address, Runnable cleanupAction) {
+                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).wrap(address, cleanupAction);
+                }
+            };
+        }
+        return Holder.AUTO_ALLOCATOR;
+    }
+
+    /**
+     * Obtains the global allocator. Segments allocated are always {@link MemorySegment#isAlive()} and can be
+     * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
+     *
+     * @return the global scope.
+     */
+    static SegmentAllocator global() {
+        class Holder {
+            static SegmentAllocator GLOBAL_ALLOCATOR = new SegmentAllocator() {
+                @Override
+                public MemorySegment allocate(long byteSize, long byteAlignment) {
+                    return MemorySessionImpl.GLOBAL.allocate(byteSize, byteAlignment);
+                }
+
+                @Override
+                public MemorySegment wrap(long address, Runnable cleanupAction) {
+                    return MemorySessionImpl.GLOBAL.wrap(address, cleanupAction);
+                }
+            };
+        }
+        return Holder.GLOBAL_ALLOCATOR;
+    }
 
     /**
      * Converts a Java string into a UTF-8 encoded, null-terminated C string,
@@ -390,4 +486,38 @@ public interface SegmentAllocator {
     static SegmentAllocator coallocator(MemorySegment segment) {
         return ((AbstractMemorySegmentImpl)segment).sessionImpl();
     }
+
+    /**
+     * Creates a native segment with the given address, and cleanup action.
+     * This method can be useful when interacting with custom memory sources (e.g. custom allocators),
+     * where an address to some underlying region of memory is typically obtained from foreign code
+     * (often as a plain {@code long} value).
+     * <p>
+     * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}), and is associated with the
+     * provided scope.
+     * <p>
+     * The provided cleanup action (if any) will be invoked when the returned segment becomes not {@linkplain MemorySegment#isAlive() alive}.
+     * <p>
+     * Clients should ensure that the address and bounds refer to a valid region of memory that is accessible for reading and,
+     * if appropriate, writing; an attempt to access an invalid address from Java code will either return an arbitrary value,
+     * have no visible effect, or cause an unspecified exception to be thrown.
+     * <p>
+     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
+     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
+     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
+     * restricted methods, and use safe and supported functionalities, where possible.
+     *
+     *
+     * @param address the returned segment's address.
+     * @param cleanupAction the custom cleanup action to be associated to the returned segment (can be null).
+     * @return a native segment with the given address, size and scope.
+     * @throws IllegalArgumentException if {@code byteSize < 0}.
+     * @throws IllegalStateException if {@code scope} is an already closed {@link Arena}.
+     * @throws WrongThreadException if this method is called from a thread {@code T},
+     * such that {@code scope.isAccessibleBy(T) == false}.
+     * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
+     * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
+     * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
+     */
+    MemorySegment wrap(long address, Runnable cleanupAction);
 }

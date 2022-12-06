@@ -32,7 +32,6 @@ import java.lang.foreign.*;
 
 import org.testng.annotations.*;
 
-import java.lang.foreign.NativeAllocator;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -170,6 +169,11 @@ public class TestSegmentAllocators {
                 calls.incrementAndGet();
                 return null;
             };
+
+            @Override
+            public MemorySegment wrap(long address, Runnable cleanupAction) {
+                throw new UnsupportedOperationException();
+            }
         };
         allocator.allocateArray(ValueLayout.JAVA_BYTE);
         allocator.allocateArray(ValueLayout.JAVA_SHORT);
@@ -188,7 +192,7 @@ public class TestSegmentAllocators {
             @Override
 
             public MemorySegment allocate(long byteSize, long byteAlignment) {
-                return NativeAllocator.auto().allocate(byteSize, byteAlignment);
+                return SegmentAllocator.auto().allocate(byteSize, byteAlignment);
             }
 
             @Override
@@ -196,6 +200,11 @@ public class TestSegmentAllocators {
                 calls.incrementAndGet();
                 return allocate(size, 1);
             };
+
+            @Override
+            public MemorySegment wrap(long address, Runnable cleanupAction) {
+                throw new UnsupportedOperationException();
+            }
         };
         allocator.allocateUtf8String("Hello");
         assertEquals(calls.get(), 1);
@@ -245,7 +254,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] {NativeAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {SegmentAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
 
@@ -268,7 +277,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.LITTLE_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] {NativeAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {SegmentAllocator.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
         }
@@ -349,7 +358,7 @@ public class TestSegmentAllocators {
 
     enum AllocationFactory {
         SLICING(true, (size, drop) -> SegmentAllocator.slicingAllocator(drop.allocate(size))),
-        NATIVE_ALLOCATOR(false, (size, drop) -> (NativeAllocator) drop);
+        NATIVE_ALLOCATOR(false, (size, drop) -> drop);
 
         private final boolean isBound;
         private final BiFunction<Long, Arena, SegmentAllocator> factory;
@@ -481,8 +490,8 @@ public class TestSegmentAllocators {
     @DataProvider(name = "allocators")
     static Object[][] allocators() {
         return new Object[][] {
-                {NativeAllocator.global()},
-                { SegmentAllocator.prefixAllocator(NativeAllocator.global().allocate(10)) },
+                {SegmentAllocator.global()},
+                { SegmentAllocator.prefixAllocator(SegmentAllocator.global().allocate(10)) },
         };
     }
 }

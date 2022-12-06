@@ -35,7 +35,7 @@ import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 
@@ -465,8 +465,8 @@ public class TestMemoryAccess {
         };
 
         MatrixChecker ADDR = (handle, segment, r, c) -> {
-            handle.set(segment, r, c, NativeAllocator.global().wrap(r + c, null));
-            assertEquals(NativeAllocator.global().wrap(r + c, null), (MemorySegment) handle.get(segment, r, c));
+            handle.set(segment, r, c, SegmentAllocator.global().wrap(r + c, null));
+            assertEquals(SegmentAllocator.global().wrap(r + c, null), (MemorySegment) handle.get(segment, r, c));
         };
 
         MatrixChecker FLOAT = (handle, segment, r, c) -> {

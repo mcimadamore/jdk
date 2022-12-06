@@ -28,14 +28,12 @@ package jdk.internal.foreign.abi.aarch64.macos;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.abi.aarch64.TypeClass;
-import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.SharedUtils.SimpleVaArg;
 
@@ -107,7 +105,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
                 case STRUCT_REFERENCE -> {
                     checkElement(layout, VA_SLOT_SIZE_BYTES);
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    MemorySegment struct = ((NativeAllocator)SegmentAllocator.coallocator(segment))
+                    MemorySegment struct = SegmentAllocator.coallocator(segment)
                             .wrap(structAddr.address(), null).expand(layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(struct);
@@ -159,12 +157,12 @@ public non-sealed class MacOsAArch64VaList implements VaList {
         }
     }
 
-    static MacOsAArch64VaList ofAddress(long address, NativeAllocator session) {
+    static MacOsAArch64VaList ofAddress(long address, SegmentAllocator session) {
         MemorySegment segment = session.wrap(address, null).expand(Long.MAX_VALUE);
         return new MacOsAArch64VaList(segment);
     }
 
-    static Builder builder(NativeAllocator session) {
+    static Builder builder(SegmentAllocator session) {
         return new Builder(session);
     }
 
@@ -182,10 +180,10 @@ public non-sealed class MacOsAArch64VaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final NativeAllocator allocator;
+        private final SegmentAllocator allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(NativeAllocator allocator) {
+        public Builder(SegmentAllocator allocator) {
             this.allocator = allocator;
         }
 

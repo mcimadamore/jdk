@@ -54,4 +54,9 @@ public final class SlicingAllocator implements SegmentAllocator {
         // try to slice from current segment first...
         return trySlice(byteSize, byteAlignment);
     }
+
+    @Override
+    public MemorySegment wrap(long address, Runnable cleanupAction) {
+        return SegmentAllocator.coallocator(segment).wrap(address, cleanupAction);
+    }
 }

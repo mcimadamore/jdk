@@ -39,7 +39,6 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -88,8 +87,15 @@ public final class SharedUtils {
     }
 
     // this allocator should be used when no allocation is expected
-    public static final SegmentAllocator THROWING_ALLOCATOR = (size, align) -> {
-        throw new IllegalStateException("Cannot get here");
+    public static final SegmentAllocator THROWING_ALLOCATOR = new SegmentAllocator() {
+        @Override
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            throw new IllegalStateException("Cannot get here");
+        }
+        @Override
+        public MemorySegment wrap(long address, Runnable cleanupAction) {
+            throw new IllegalStateException("Cannot get here");
+        }
     };
 
     public static long alignUp(long addr, long alignment) {
@@ -287,7 +293,7 @@ public final class SharedUtils {
             throw new IllegalArgumentException("Symbol is NULL: " + symbol);
     }
 
-    public static VaList newVaList(Consumer<VaList.Builder> actions, NativeAllocator session) {
+    public static VaList newVaList(Consumer<VaList.Builder> actions, SegmentAllocator session) {
         return switch (CABI.current()) {
             case WIN_64 -> Windowsx64Linker.newVaList(actions, session);
             case SYS_V -> SysVx64Linker.newVaList(actions, session);
@@ -296,7 +302,7 @@ public final class SharedUtils {
         };
     }
 
-    public static VaList newVaListOfAddress(long address, NativeAllocator session) {
+    public static VaList newVaListOfAddress(long address, SegmentAllocator session) {
         return switch (CABI.current()) {
             case WIN_64 -> Windowsx64Linker.newVaListOfAddress(address, session);
             case SYS_V -> SysVx64Linker.newVaListOfAddress(address, session);

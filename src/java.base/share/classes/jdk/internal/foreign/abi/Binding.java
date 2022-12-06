@@ -29,7 +29,6 @@ import jdk.internal.foreign.NativeMemorySegmentImpl;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -201,9 +200,9 @@ public interface Binding {
      */
     class Context implements AutoCloseable {
         private final SegmentAllocator allocator;
-        private final NativeAllocator session;
+        private final SegmentAllocator session;
 
-        private Context(SegmentAllocator allocator, NativeAllocator session) {
+        private Context(SegmentAllocator allocator, SegmentAllocator session) {
             this.allocator = allocator;
             this.session = session;
         }
@@ -212,7 +211,7 @@ public interface Binding {
             return allocator;
         }
 
-        public NativeAllocator session() {
+        public SegmentAllocator session() {
             return session;
         }
 
@@ -241,7 +240,7 @@ public interface Binding {
         public static Context ofAllocator(SegmentAllocator allocator) {
             return new Context(allocator, null) {
                 @Override
-                public NativeAllocator session() {
+                public SegmentAllocator session() {
                     throw new UnsupportedOperationException();
                 }
             };
@@ -275,7 +274,7 @@ public interface Binding {
             }
 
             @Override
-            public NativeAllocator session() {
+            public SegmentAllocator session() {
                 throw new UnsupportedOperationException();
             }
 
@@ -676,8 +675,8 @@ public interface Binding {
         @Override
         public void interpret(Deque<Object> stack, BindingInterpreter.StoreFunc storeFunc,
                               BindingInterpreter.LoadFunc loadFunc, Context context) {
-            NativeAllocator session = needsSession ?
-                    context.session() : NativeAllocator.global();
+            SegmentAllocator session = needsSession ?
+                    context.session() : SegmentAllocator.global();
             stack.push(NativeMemorySegmentImpl.makeNativeSegmentUnchecked((long) stack.pop(), size, session));
         }
     }

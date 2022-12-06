@@ -29,7 +29,7 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Cleaner.Cleanable;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -48,9 +48,6 @@ import java.util.Objects;
 
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.foreign.AbstractMemorySegmentImpl;
-import jdk.internal.foreign.MappedMemorySegmentImpl;
-import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.misc.Blocker;
 import jdk.internal.misc.ExtendedMapMode;
@@ -1209,7 +1206,7 @@ public class FileChannelImpl
 
     @Override
     public MemorySegment map(MapMode mode, long offset, long size,
-                             NativeAllocator allocator)
+                             SegmentAllocator allocator)
             throws IOException {
         Objects.requireNonNull(mode, "Mode is null");
         Objects.requireNonNull(allocator, "Session is null");

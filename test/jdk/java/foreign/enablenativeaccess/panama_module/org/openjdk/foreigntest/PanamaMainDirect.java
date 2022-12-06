@@ -24,7 +24,6 @@
 package org.openjdk.foreigntest;
 
 import java.lang.foreign.*;
-import java.lang.foreign.NativeAllocator;
 
 public class PanamaMainDirect {
     public static void main(String[] args) {
@@ -40,7 +39,7 @@ public class PanamaMainDirect {
 
     public static void testDirectAccessMemorySegment() {
         System.out.println("Trying to get MemorySegment");
-        NativeAllocator.global().wrap(0, null).expand(4000);
+        SegmentAllocator.global().wrap(0, null).expand(4000);
         System.out.println("Got MemorySegment");
    }
 }

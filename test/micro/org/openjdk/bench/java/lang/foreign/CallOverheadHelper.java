@@ -27,7 +27,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 
 import java.lang.foreign.SymbolLookup;
@@ -84,9 +83,9 @@ public class CallOverheadHelper extends CLayouts {
     static final MemorySegment sharedPoint = Arena.openShared().allocate(POINT_LAYOUT);
     static final MemorySegment confinedPoint = Arena.openConfined().allocate(POINT_LAYOUT);
 
-    static final MemorySegment point = NativeAllocator.auto().allocate(POINT_LAYOUT);
+    static final MemorySegment point = SegmentAllocator.auto().allocate(POINT_LAYOUT);
 
-    static final SegmentAllocator recycling_allocator = SegmentAllocator.prefixAllocator(NativeAllocator.auto().allocate(POINT_LAYOUT));
+    static final SegmentAllocator recycling_allocator = SegmentAllocator.prefixAllocator(SegmentAllocator.auto().allocate(POINT_LAYOUT));
 
     static {
         System.loadLibrary("CallOverheadJNI");

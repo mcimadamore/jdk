@@ -49,7 +49,7 @@ import java.lang.invoke.MethodHandle;
  * <li>A linker allows Java code to link against foreign functions, via
  * {@linkplain #downcallHandle(MemorySegment, FunctionDescriptor, Option...) downcall method handles}; and</li>
  * <li>A linker allows foreign functions to call Java method handles,
- * via the generation of {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) upcall stubs}.</li>
+ * via the generation of {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentAllocator) upcall stubs}.</li>
  * </ul>
  * In addition, a linker provides a way to look up foreign functions in libraries that conform to the ABI. Each linker
  * chooses a set of libraries that are commonly used on the OS and processor combination associated with the ABI.
@@ -80,7 +80,7 @@ import java.lang.invoke.MethodHandle;
  *
  * <h2 id="upcall-stubs">Upcall stubs</h2>
  *
- * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) Creating an upcall stub} requires a method
+ * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentAllocator) Creating an upcall stub} requires a method
  * handle and a function descriptor; in this case, the set of memory layouts in the function descriptor
  * specify the signature of the function pointer associated with the upcall stub.
  * <p>
@@ -88,7 +88,7 @@ import java.lang.invoke.MethodHandle;
  * which is {@linkplain FunctionDescriptor#toMethodType() derived} from the provided function descriptor.
  * <p>
  * Upcall stubs are modelled by instances of type {@link MemorySegment}; upcall stubs can be passed by reference to other
- * downcall method handles and, they are released via their associated {@linkplain NativeAllocator scope}.
+ * downcall method handles and, they are released via their associated {@linkplain SegmentAllocator scope}.
  *
  * <h2 id="safety">Safety considerations</h2>
  *
@@ -108,7 +108,7 @@ import java.lang.invoke.MethodHandle;
  *</ul>
  * A downcall method handle created from a function descriptor whose return layout is an
  * {@linkplain ValueLayout.OfAddress address layout} returns a native segment associated with
- * the {@linkplain NativeAllocator#global() global scope}. Under normal conditions, the size of the returned segment is {@code 0}.
+ * the {@linkplain SegmentAllocator#global() global scope}. Under normal conditions, the size of the returned segment is {@code 0}.
  * However, if the return layout is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded} address layout,
  * then the size of the returned segment is {@code Long.MAX_VALUE}.
  * <p>
@@ -121,7 +121,7 @@ import java.lang.invoke.MethodHandle;
  * and even JVM crashes, since an upcall is typically executed in the context of a downcall method handle invocation.
  * <p>
  * An upcall stub argument whose corresponding layout is an {@linkplain ValueLayout.OfAddress address layout}
- * is a native segment associated with the {@linkplain NativeAllocator#global() global scope}.
+ * is a native segment associated with the {@linkplain SegmentAllocator#global() global scope}.
  * Under normal conditions, the size of this segment argument is {@code 0}. However, if the layout associated with
  * the upcall stub argument is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded} address layout,
  * then the size of the segment argument is {@code Long.MAX_VALUE}.
@@ -154,7 +154,7 @@ public sealed interface Linker permits AbstractLinker {
      * Any layout not listed above is <em>unsupported</em>; function descriptors containing unsupported layouts
      * will cause an {@link IllegalArgumentException} to be thrown, when used to create a
      * {@link #downcallHandle(MemorySegment, FunctionDescriptor, Option...) downcall method handle} or an
-     * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, NativeAllocator) upcall stub}.
+     * {@linkplain #upcallStub(MethodHandle, FunctionDescriptor, SegmentAllocator) upcall stub}.
      * <p>
      * Variadic functions (e.g. a C function declared with a trailing ellipses {@code ...} at the end of the formal parameter
      * list or with an empty formal parameter list) are not supported directly. However, it is possible to link a
@@ -258,7 +258,7 @@ public sealed interface Linker permits AbstractLinker {
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      */
-    MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function, NativeAllocator scope);
+    MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function, SegmentAllocator scope);
 
     /**
      * Returns a symbol lookup for symbols in a set of commonly used libraries.

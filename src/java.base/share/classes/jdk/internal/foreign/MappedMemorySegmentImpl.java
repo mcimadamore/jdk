@@ -26,7 +26,6 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.nio.ByteBuffer;
 import jdk.internal.access.foreign.UnmapperProxy;
 import jdk.internal.misc.ScopedMemoryAccess;

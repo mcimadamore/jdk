@@ -29,7 +29,7 @@
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,10 +62,10 @@ public class TestSegmentOverlap {
     @DataProvider(name = "segmentFactories")
     public Object[][] segmentFactories() {
         List<Supplier<MemorySegment>> l = List.of(
-                () -> NativeAllocator.auto().allocate(16),
+                () -> SegmentAllocator.auto().allocate(16),
                 () -> {
                     try (FileChannel fileChannel = FileChannel.open(tempPath, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-                        return fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 16L, NativeAllocator.auto());
+                        return fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, 16L, SegmentAllocator.auto());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -132,7 +132,7 @@ public class TestSegmentOverlap {
     }
 
     enum OtherSegmentFactory {
-        NATIVE(() -> NativeAllocator.auto().allocate(16)),
+        NATIVE(() -> SegmentAllocator.auto().allocate(16)),
         HEAP(() -> MemorySegment.ofArray(new byte[]{16}));
 
         final Supplier<MemorySegment> factory;

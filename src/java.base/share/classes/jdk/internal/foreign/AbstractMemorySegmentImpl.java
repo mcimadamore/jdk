@@ -27,7 +27,6 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Array;
@@ -174,6 +173,11 @@ public abstract sealed class AbstractMemorySegmentImpl
     public MemorySegment allocate(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         return asSlice(0, byteSize);
+    }
+
+    @Override
+    public MemorySegment wrap(long address, Runnable cleanupAction) {
+        return SegmentAllocator.coallocator(this).wrap(address, cleanupAction);
     }
 
     /**

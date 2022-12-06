@@ -59,7 +59,7 @@ import java.util.function.BiFunction;
  *
  * <h2 id="obtaining">Obtaining a symbol lookup</h2>
  *
- * The factory methods {@link #libraryLookup(String, NativeAllocator)} and {@link #libraryLookup(Path, NativeAllocator)}
+ * The factory methods {@link #libraryLookup(String, SegmentAllocator)} and {@link #libraryLookup(Path, SegmentAllocator)}
  * create a symbol lookup for a library known to the operating system. The library is specified by either its name or a path.
  * The library is loaded if not already loaded. The lifecycle of the symbol lookup, which is known as a <em>library lookup</em>,
  * can be controlled using an {@link Arena}. If the arena is closed, the library is unloaded:
@@ -158,8 +158,8 @@ public interface SymbolLookup {
         ClassLoader loader = caller != null ?
                 caller.getClassLoader() :
                 ClassLoader.getSystemClassLoader();
-        NativeAllocator loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
-                NativeAllocator.global() : // builtin loaders never go away
+        SegmentAllocator loaderScope = (loader == null || loader instanceof BuiltinClassLoader) ?
+                SegmentAllocator.global() : // builtin loaders never go away
                 MemorySessionImpl.heapSession(loader);
         return name -> {
             Objects.requireNonNull(name);
@@ -195,7 +195,7 @@ public interface SymbolLookup {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(String name, NativeAllocator scope) {
+    static SymbolLookup libraryLookup(String name, SegmentAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
         return libraryLookup(name, RawNativeLibraries::load, scope);
     }
@@ -223,12 +223,12 @@ public interface SymbolLookup {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static SymbolLookup libraryLookup(Path path, NativeAllocator scope) {
+    static SymbolLookup libraryLookup(Path path, SegmentAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), SymbolLookup.class, "libraryLookup");
         return libraryLookup(path, RawNativeLibraries::load, scope);
     }
 
-    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, NativeAllocator libScope) {
+    private static <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentAllocator libScope) {
         Objects.requireNonNull(libDesc);
         Objects.requireNonNull(libScope);
         // attempt to load native library from path or name

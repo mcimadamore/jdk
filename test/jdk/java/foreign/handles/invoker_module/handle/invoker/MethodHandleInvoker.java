@@ -23,7 +23,6 @@
 
 package handle.invoker;
 
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
@@ -72,8 +71,7 @@ public class MethodHandleInvoker {
         addDefaultMapping(MemorySegment.class, MemorySegment.NULL);
         addDefaultMapping(MemoryLayout.class, ValueLayout.JAVA_INT);
         addDefaultMapping(FunctionDescriptor.class, FunctionDescriptor.ofVoid());
-        addDefaultMapping(NativeAllocator.class, NativeAllocator.auto());
-        addDefaultMapping(SegmentAllocator.class, SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[10])));
+        addDefaultMapping(SegmentAllocator.class, SegmentAllocator.auto());
         addDefaultMapping(ValueLayout.OfByte.class, ValueLayout.JAVA_BYTE);
         addDefaultMapping(ValueLayout.OfBoolean.class, ValueLayout.JAVA_BOOLEAN);
         addDefaultMapping(ValueLayout.OfChar.class, ValueLayout.JAVA_CHAR);

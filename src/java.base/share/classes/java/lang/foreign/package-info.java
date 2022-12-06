@@ -42,7 +42,7 @@
  * and fill it with values ranging from {@code 0} to {@code 9}, we can use the following code:
  *
  * {@snippet lang = java:
- * MemorySegment segment = NativeAllocator.auto().allocate(10 * 4);
+ * MemorySegment segment = SegmentAllocator.auto().allocate(10 * 4);
  * for (int i = 0 ; i < 10 ; i++) {
  *     segment.setAtIndex(ValueLayout.JAVA_INT, i, i);
  * }
@@ -50,7 +50,7 @@
  *
  * This code creates a <em>native</em> memory segment, that is, a memory segment backed by
  * off-heap memory; the size of the segment is 40 bytes, enough to store 10 values of the primitive type {@code int}.
- * The segment is associated with an {@linkplain java.lang.foreign.NativeAllocator#auto() automatic scope}. This
+ * The segment is associated with an {@linkplain java.lang.foreign.SegmentAllocator#auto() automatic scope}. This
  * means that the off-heap region of memory backing the segment is managed, automatically, by the garbage collector.
  * As such, the off-heap memory backing the native segment will be released at some unspecified
  * point <em>after</em> the segment becomes <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>.
@@ -85,7 +85,7 @@
  *
  * This example is almost identical to the prior one; this time we first create an arena
  * which is used to allocate multiple native segments which share the same life-cycle. That is, all the segments
- * allocated by the arena will be associated with the same {@linkplain java.lang.foreign.NativeAllocator scope}.
+ * allocated by the arena will be associated with the same {@linkplain java.lang.foreign.SegmentAllocator scope}.
  * Note the use of the <em>try-with-resources</em> construct: this idiom ensures that the off-heap region of memory backing the
  * native segment will be released at the end of the block, according to the semantics described in Section {@jls 14.20.3}
  * of <cite>The Java Language Specification</cite>.
@@ -179,18 +179,18 @@
  * using the {@link java.lang.foreign.Linker} interface, as follows:
  *
  * {@snippet lang = java:
- * NativeAllocator scope = ...
+ * SegmentAllocator scope = ...
  * MemorySegment comparFunc = Linker.nativeLinker().upcallStub(
  *     intCompareHandle, intCompareDescriptor, scope);
  * );
  *}
  *
  * The {@link java.lang.foreign.FunctionDescriptor} instance created in the previous step is then used to
- * {@linkplain java.lang.foreign.Linker#upcallStub(java.lang.invoke.MethodHandle, FunctionDescriptor, NativeAllocator) create}
+ * {@linkplain java.lang.foreign.Linker#upcallStub(java.lang.invoke.MethodHandle, FunctionDescriptor, SegmentAllocator) create}
  * a new upcall stub; the layouts in the function descriptors allow the linker to determine the sequence of steps which
  * allow foreign code to call the stub for {@code intCompareHandle} according to the rules specified by the ABI of the
  * underlying platform.
- * The lifecycle of the upcall stub is tied to the {@linkplain java.lang.foreign.NativeAllocator scope}
+ * The lifecycle of the upcall stub is tied to the {@linkplain java.lang.foreign.SegmentAllocator scope}
  * provided when the upcall stub is created. This same scope is made available by the {@link java.lang.foreign.MemorySegment}
  * instance returned by that method.
  *

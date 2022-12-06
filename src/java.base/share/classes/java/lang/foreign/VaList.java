@@ -41,7 +41,7 @@ import jdk.internal.reflect.Reflection;
 /**
  * Helper class to create and manipulate variable argument lists, similar in functionality to a C {@code va_list}.
  * <p>
- * A variable argument list can be created using the {@link #make(Consumer, NativeAllocator)} factory, as follows:
+ * A variable argument list can be created using the {@link #make(Consumer, SegmentAllocator)} factory, as follows:
  * {@snippet lang = java:
  * VaList vaList = VaList.make(builder ->
  *                                    builder.addVarg(C_INT, 42)
@@ -87,8 +87,8 @@ import jdk.internal.reflect.Reflection;
  * <p>
  * Whether this detection succeeds depends on the factory method used to create the variable argument list:
  * <ul>
- *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, NativeAllocator)} are capable of detecting out-of-bounds reads;</li>
- *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, NativeAllocator)} are not capable of detecting out-of-bounds reads</li>
+ *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, SegmentAllocator)} are capable of detecting out-of-bounds reads;</li>
+ *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, SegmentAllocator)} are not capable of detecting out-of-bounds reads</li>
  * </ul>
  * <p>
  * This class is not thread safe, and all accesses should occur within a single thread
@@ -145,7 +145,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * Reads the next address value, wraps it into a native segment, and advances this variable argument list's position.
      * The behavior of this method is equivalent to the C {@code va_arg} function. The returned segment's base
      * {@linkplain MemorySegment#address()} is set to the value read from the variable argument list, and the segment
-     * is associated with the {@linkplain NativeAllocator#global() global scope}. Under normal conditions, the size of the returned
+     * is associated with the {@linkplain SegmentAllocator#global() global scope}. Under normal conditions, the size of the returned
      * segment is {@code 0}. However, if the provided layout is an {@linkplain ValueLayout.OfAddress#asUnbounded() unbounded}
      * address layout, then the size of the returned segment is {@code Long.MAX_VALUE}.
      *
@@ -244,7 +244,7 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    static VaList ofAddress(long address, NativeAllocator scope) {
+    static VaList ofAddress(long address, SegmentAllocator scope) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), VaList.class, "ofAddress");
         Objects.requireNonNull(scope);
         return SharedUtils.newVaListOfAddress(address, scope);
@@ -270,14 +270,14 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code scope.isAccessibleBy(T) == false}.
      */
-    static VaList make(Consumer<Builder> actions, NativeAllocator scope) {
+    static VaList make(Consumer<Builder> actions, SegmentAllocator scope) {
         Objects.requireNonNull(actions);
         Objects.requireNonNull(scope);
         return SharedUtils.newVaList(actions, scope);
     }
 
     /**
-     * Returns an empty variable argument list, associated with the {@linkplain NativeAllocator#global() global scope}.
+     * Returns an empty variable argument list, associated with the {@linkplain SegmentAllocator#global() global scope}.
      * The resulting variable argument list does not contain any argument, and throws {@link UnsupportedOperationException}
      * on all operations, except for {@link VaList#segment()}, {@link VaList#copy()}.
      * @return an empty variable argument list.

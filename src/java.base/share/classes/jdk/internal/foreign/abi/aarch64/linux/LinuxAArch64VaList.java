@@ -28,7 +28,6 @@ package jdk.internal.foreign.abi.aarch64.linux;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.VaList;
 import java.lang.foreign.SegmentAllocator;
@@ -122,7 +121,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static LinuxAArch64VaList readFromAddress(long address, NativeAllocator session) {
+    private static LinuxAArch64VaList readFromAddress(long address, SegmentAllocator session) {
         MemorySegment segment = session.wrap(address, null).expand(LAYOUT.byteSize());
         MemorySegment stack = stackPtr(segment); // size unknown
         MemorySegment gpRegsArea = session.wrap(grTop(segment).address() - MAX_GP_OFFSET, null).expand(MAX_GP_OFFSET);
@@ -131,7 +130,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment ms = NativeAllocator.auto().allocate(LAYOUT);
+        MemorySegment ms = SegmentAllocator.auto().allocate(LAYOUT);
         VH_stack.set(ms, MemorySegment.NULL);
         VH_gr_top.set(ms, MemorySegment.NULL);
         VH_vr_top.set(ms, MemorySegment.NULL);
@@ -319,7 +318,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                         gpRegsArea.asSlice(currentGPOffset()));
                     consumeGPSlots(1);
 
-                    MemorySegment slice = ((NativeAllocator)SegmentAllocator.coallocator(segment))
+                    MemorySegment slice = SegmentAllocator.coallocator(segment)
                             .wrap(ptr.address(), null).expand(layout.byteSize());
                     MemorySegment seg = allocator.allocate(layout);
                     seg.copyFrom(slice);
@@ -387,11 +386,11 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         }
     }
 
-    static LinuxAArch64VaList.Builder builder(NativeAllocator session) {
+    static LinuxAArch64VaList.Builder builder(SegmentAllocator session) {
         return new LinuxAArch64VaList.Builder(session);
     }
 
-    public static VaList ofAddress(long address, NativeAllocator session) {
+    public static VaList ofAddress(long address, SegmentAllocator session) {
         return readFromAddress(address, session);
     }
 
@@ -442,7 +441,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         private long currentFPOffset = 0;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        Builder(NativeAllocator session) {
+        Builder(SegmentAllocator session) {
             this.gpRegs = session.allocate(LAYOUT_GP_REGS);
             this.fpRegs = SegmentAllocator.coallocator(gpRegs).allocate(LAYOUT_FP_REGS);
         }

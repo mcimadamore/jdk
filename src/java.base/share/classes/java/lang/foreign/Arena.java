@@ -82,7 +82,7 @@ import jdk.internal.javac.PreviewFeature;
  * @since 20
  */
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-public sealed interface Arena extends NativeAllocator, AutoCloseable permits MemorySessionImpl {
+public sealed interface Arena extends SegmentAllocator, AutoCloseable permits MemorySessionImpl {
 
     /**
      * Closes this arena. If this method completes normally, the segments associated with this arena

@@ -28,7 +28,7 @@
  */
 
 import java.lang.foreign.Arena;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -281,7 +281,7 @@ public class TestMismatch {
     }
 
     enum SegmentKind {
-        NATIVE(i -> NativeAllocator.auto().allocate(i)),
+        NATIVE(i -> SegmentAllocator.auto().allocate(i)),
         ARRAY(i -> MemorySegment.ofArray(new byte[i]));
 
         final IntFunction<MemorySegment> segmentFactory;
