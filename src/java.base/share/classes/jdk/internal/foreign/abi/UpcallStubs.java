@@ -50,13 +50,8 @@ public final class UpcallStubs {
         registerNatives();
     }
 
-    static MemorySegment makeUpcall(long entry, NativeAllocator session) {
-        ((MemorySessionImpl) session).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
-            @Override
-            public void cleanup() {
-                freeUpcallStub(entry);
-            }
-        });
-        return session.wrap(entry, null).expand(0);
+    static MemorySegment makeUpcall(long entry, NativeAllocator allocator) {
+        return allocator.wrap(entry,
+                () -> freeUpcallStub(entry));
     }
 }

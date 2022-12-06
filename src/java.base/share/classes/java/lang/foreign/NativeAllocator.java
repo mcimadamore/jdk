@@ -155,9 +155,7 @@ public interface NativeAllocator extends SegmentAllocator {
      * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
-    default MemorySegment wrap(long address, Runnable cleanupAction) {
-        return NativeMemorySegmentImpl.makeNativeSegmentUnchecked(address, 0L,  this, cleanupAction);
-    }
+    MemorySegment wrap(long address, Runnable cleanupAction);
 
     /**
      * Obtains the automatic allocator. Segments allocated with the automatic allocator are managed, implicitly,
@@ -166,21 +164,20 @@ public interface NativeAllocator extends SegmentAllocator {
      * @return the automatic allocator.
      */
     static NativeAllocator auto() {
-//        class Holder {
-//            static NativeAllocator AUTO_ALLOCATOR = new NativeAllocator() {
-//                @Override
-//                public MemorySegment allocate(long byteSize, long byteAlignment) {
-//                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).allocate(byteSize, byteAlignment);
-//                }
-//
-//                @Override
-//                public MemorySegment wrap(long address, Runnable cleanupAction) {
-//                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).wrap(address, cleanupAction);
-//                }
-//            };
-//        }
-//        return Holder.AUTO_ALLOCATOR;
-        return MemorySessionImpl.createImplicit(CleanerFactory.cleaner());
+        class Holder {
+            static NativeAllocator AUTO_ALLOCATOR = new NativeAllocator() {
+                @Override
+                public MemorySegment allocate(long byteSize, long byteAlignment) {
+                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).allocate(byteSize, byteAlignment);
+                }
+
+                @Override
+                public MemorySegment wrap(long address, Runnable cleanupAction) {
+                    return MemorySessionImpl.createImplicit(CleanerFactory.cleaner()).wrap(address, cleanupAction);
+                }
+            };
+        }
+        return Holder.AUTO_ALLOCATOR;
     }
 
     /**
@@ -190,6 +187,19 @@ public interface NativeAllocator extends SegmentAllocator {
      * @return the global scope.
      */
     static NativeAllocator global() {
-        return MemorySessionImpl.GLOBAL;
+        class Holder {
+            static NativeAllocator GLOBAL_ALLOCATOR = new NativeAllocator() {
+                @Override
+                public MemorySegment allocate(long byteSize, long byteAlignment) {
+                    return MemorySessionImpl.GLOBAL.allocate(byteSize, byteAlignment);
+                }
+
+                @Override
+                public MemorySegment wrap(long address, Runnable cleanupAction) {
+                    return MemorySessionImpl.GLOBAL.wrap(address, cleanupAction);
+                }
+            };
+        }
+        return Holder.GLOBAL_ALLOCATOR;
     }
 }

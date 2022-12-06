@@ -79,16 +79,16 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     final long length;
     final boolean readOnly;
-    final NativeAllocator session;
+    final MemorySessionImpl session;
 
     @ForceInline
-    AbstractMemorySegmentImpl(long length, boolean readOnly, NativeAllocator session) {
+    AbstractMemorySegmentImpl(long length, boolean readOnly, MemorySessionImpl session) {
         this.length = length;
         this.readOnly = readOnly;
         this.session = session;
     }
 
-    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, NativeAllocator session);
+    abstract AbstractMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl session);
 
     abstract ByteBuffer makeByteBuffer();
 
@@ -128,17 +128,17 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public boolean isAlive() {
-        return ((MemorySessionImpl)session).isAlive();
+        return session.isAlive();
     }
 
     @Override
     public boolean isAccessibleBy(Thread thread) {
-        return ((MemorySessionImpl)session).isAccessibleBy(thread);
+        return session.isAccessibleBy(thread);
     }
 
     @Override
     public void whileAlive(Runnable action) {
-        ((MemorySessionImpl)session).whileAlive(action);
+        session.whileAlive(action);
     }
 
     @Override
@@ -384,7 +384,7 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @ForceInline
     public final MemorySessionImpl sessionImpl() {
-        return (MemorySessionImpl)session;
+        return session;
     }
 
     private IndexOutOfBoundsException outOfBoundException(long offset, long length) {
@@ -501,7 +501,7 @@ public abstract sealed class AbstractMemorySegmentImpl
         int size = limit - pos;
 
         AbstractMemorySegmentImpl bufferSegment = (AbstractMemorySegmentImpl) NIO_ACCESS.bufferSegment(bb);
-        final NativeAllocator bufferSession;
+        final MemorySessionImpl bufferSession;
         if (bufferSegment != null) {
             bufferSession = bufferSegment.session;
         } else {

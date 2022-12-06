@@ -34,7 +34,6 @@ import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
-import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.SharedUtils.SimpleVaArg;
 
@@ -172,12 +171,11 @@ public non-sealed class WinVaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final NativeAllocator session;
+        private final NativeAllocator allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(NativeAllocator session) {
-            ((MemorySessionImpl) session).checkValidState();
-            this.session = session;
+        public Builder(NativeAllocator allocator) {
+            this.allocator = allocator;
         }
 
         private Builder arg(MemoryLayout layout, Object value) {
@@ -217,7 +215,7 @@ public non-sealed class WinVaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment segment = session.allocate(VA_SLOT_SIZE_BYTES * args.size());
+            MemorySegment segment = allocator.allocate(VA_SLOT_SIZE_BYTES * args.size());
             MemorySegment cursor = segment;
 
             for (SimpleVaArg arg : args) {
@@ -226,7 +224,7 @@ public non-sealed class WinVaList implements VaList {
                     TypeClass typeClass = TypeClass.typeClassFor(arg.layout, false);
                     switch (typeClass) {
                         case STRUCT_REFERENCE -> {
-                            MemorySegment copy = session.allocate(arg.layout);
+                            MemorySegment copy = SegmentAllocator.coallocator(segment).allocate(arg.layout);
                             copy.copyFrom(msArg); // by-value
                             VH_address.set(cursor, copy);
                         }

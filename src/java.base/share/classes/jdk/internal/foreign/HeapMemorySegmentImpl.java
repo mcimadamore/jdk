@@ -68,7 +68,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
 
     @ForceInline
     HeapMemorySegmentImpl(long offset, Object base, long length, boolean readOnly) {
-        super(length, readOnly, NativeAllocator.global());
+        super(length, readOnly, MemorySessionImpl.GLOBAL);
         this.offset = offset;
         this.base = base;
     }
@@ -79,7 +79,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
     }
 
     @Override
-    abstract HeapMemorySegmentImpl dup(long offset, long size, boolean readOnly, NativeAllocator session);
+    abstract HeapMemorySegmentImpl dup(long offset, long size, boolean readOnly, MemorySessionImpl session);
 
     @Override
     ByteBuffer makeByteBuffer() {
@@ -99,7 +99,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfByte dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfByte dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfByte(this.offset + offset, base, size, readOnly);
         }
 
@@ -132,7 +132,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfChar dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfChar dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfChar(this.offset + offset, base, size, readOnly);
         }
 
@@ -165,7 +165,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfShort dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfShort dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfShort(this.offset + offset, base, size, readOnly);
         }
 
@@ -198,7 +198,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfInt dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfInt dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfInt(this.offset + offset, base, size, readOnly);
         }
 
@@ -231,7 +231,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfLong dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfLong dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfLong(this.offset + offset, base, size, readOnly);
         }
 
@@ -264,7 +264,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfFloat dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfFloat dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfFloat(this.offset + offset, base, size, readOnly);
         }
 
@@ -297,7 +297,7 @@ public abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegment
         }
 
         @Override
-        OfDouble dup(long offset, long size, boolean readOnly, NativeAllocator session) {
+        OfDouble dup(long offset, long size, boolean readOnly, MemorySessionImpl session) {
             return new OfDouble(this.offset + offset, base, size, readOnly);
         }
 

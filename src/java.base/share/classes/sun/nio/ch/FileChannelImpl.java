@@ -51,6 +51,7 @@ import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MappedMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.NativeMemorySegmentImpl;
 import jdk.internal.misc.Blocker;
 import jdk.internal.misc.ExtendedMapMode;
 import jdk.internal.misc.Unsafe;
@@ -1208,13 +1209,10 @@ public class FileChannelImpl
 
     @Override
     public MemorySegment map(MapMode mode, long offset, long size,
-                             NativeAllocator session)
-            throws IOException
-    {
-        Objects.requireNonNull(mode,"Mode is null");
-        Objects.requireNonNull(session, "Session is null");
-        MemorySessionImpl sessionImpl = (MemorySessionImpl) session;
-        sessionImpl.checkValidState();
+                             NativeAllocator allocator)
+            throws IOException {
+        Objects.requireNonNull(mode, "Mode is null");
+        Objects.requireNonNull(allocator, "Session is null");
         if (offset < 0)
             throw new IllegalArgumentException("Requested bytes offset must be >= 0.");
         if (size < 0)
@@ -1227,22 +1225,17 @@ public class FileChannelImpl
         if (mode == MapMode.READ_ONLY) {
             readOnly = true;
         }
-        if (unmapper != null) {
-            AbstractMemorySegmentImpl segment =
-                new MappedMemorySegmentImpl(unmapper.address(), unmapper, size,
-                                            readOnly, session);
-            MemorySessionImpl.ResourceList.ResourceCleanup resource =
-                new MemorySessionImpl.ResourceList.ResourceCleanup() {
-                    @Override
-                    public void cleanup() {
+        long address = unmapper != null ? unmapper.address() : 0L;
+        MemorySegment segment = allocator.wrap(address,
+                () -> {
+                    if (unmapper != null) {
                         unmapper.unmap();
                     }
-                };
-            sessionImpl.addOrCleanupIfFail(resource);
-            return segment;
-        } else {
-            return new MappedMemorySegmentImpl.EmptyMappedMemorySegmentImpl(readOnly, sessionImpl);
+                }).expand(size);
+        if (readOnly) {
+            segment = segment.asReadOnly();
         }
+        return ((NativeMemorySegmentImpl) segment).asMapped(unmapper);
     }
 
     private Unmapper mapInternal(MapMode mode, long position, long size, int prot, boolean isSync)

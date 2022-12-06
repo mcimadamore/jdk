@@ -360,15 +360,13 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     public static non-sealed class Builder implements VaList.Builder {
-        private final NativeAllocator session;
         private final MemorySegment reg_save_area;
         private long currentGPOffset = 0;
         private long currentFPOffset = FP_OFFSET;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        public Builder(NativeAllocator session) {
-            this.session = session;
-            this.reg_save_area = session.allocate(LAYOUT_REG_SAVE_AREA);
+        public Builder(NativeAllocator allocator) {
+            this.reg_save_area = allocator.allocate(LAYOUT_REG_SAVE_AREA);
         }
 
         @Override
@@ -447,12 +445,13 @@ public non-sealed class SysVVaList implements VaList {
                 return EMPTY;
             }
 
-            MemorySegment vaListSegment = session.allocate(LAYOUT);
+            SegmentAllocator allocator = SegmentAllocator.coallocator(reg_save_area);
+            MemorySegment vaListSegment = allocator.allocate(LAYOUT);
             MemorySegment stackArgsSegment;
             if (!stackArgs.isEmpty()) {
                 long stackArgsSize = stackArgs.stream().reduce(0L,
                         (acc, e) -> acc + Utils.alignUp(e.layout.byteSize(), STACK_SLOT_SIZE), Long::sum);
-                stackArgsSegment = session.allocate(stackArgsSize, 16);
+                stackArgsSegment = allocator.allocate(stackArgsSize, 16);
                 MemorySegment writeCursor = stackArgsSegment;
                 for (SimpleVaArg arg : stackArgs) {
                     if (arg.layout.byteSize() > 8) {

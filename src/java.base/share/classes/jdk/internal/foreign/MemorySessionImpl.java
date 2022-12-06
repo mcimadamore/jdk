@@ -34,6 +34,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
+
+import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -140,6 +142,16 @@ public abstract sealed class MemorySessionImpl
     public MemorySegment allocate(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         return NativeMemorySegmentImpl.makeNativeSegment(byteSize, byteAlignment, this);
+    }
+
+    @Override
+    public MemorySegment wrap(long address, Runnable cleanupAction) {
+        if (cleanupAction != null) {
+            addOrCleanupIfFail(ResourceCleanup.ofRunnable(cleanupAction));
+        } else {
+            checkValidState();
+        }
+        return new NativeMemorySegmentImpl(address, 0L, false, this);
     }
 
     public abstract void release0();
