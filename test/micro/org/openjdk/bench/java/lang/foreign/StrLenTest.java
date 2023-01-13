@@ -61,6 +61,7 @@ public class StrLenTest extends CLayouts {
 
     SegmentAllocator segmentAllocator;
     SegmentAllocator arenaAllocator = new RingAllocator(arena);
+    SlicingPool pool = new SlicingPool();
 
     @Param({"5", "20", "100"})
     public int size;
@@ -105,6 +106,14 @@ public class StrLenTest extends CLayouts {
     @Benchmark
     public int panama_strlen_ring() throws Throwable {
         return (int)STRLEN.invokeExact(arenaAllocator.allocateUtf8String(str));
+    }
+
+    @Benchmark
+    public int panama_strlen_pool() throws Throwable {
+        ScopedArena arena = pool.acquire();
+        int l = (int) STRLEN.invokeExact(arena.allocateUtf8String(str));
+        arena.close();
+        return l;
     }
 
     @Benchmark
@@ -167,6 +176,37 @@ public class StrLenTest extends CLayouts {
         void reset() {
             current = SegmentAllocator.slicingAllocator(segment);
             rem = segment.byteSize();
+        }
+    }
+
+    static class SlicingPool {
+        final MemorySegment pool = Arena.auto().allocate(1024);
+        boolean isAcquired = false;
+
+        public ScopedArena acquire() {
+            if (isAcquired) {
+                throw new IllegalStateException("An allocator is already in use");
+            }
+            isAcquired = true;
+            return new SlicingPoolAllocator();
+        }
+
+        class SlicingPoolAllocator extends ScopedArena {
+            final SegmentAllocator slicing = SegmentAllocator.slicingAllocator(pool);
+
+            SlicingPoolAllocator() {
+                super(Arena.openConfined());
+            }
+
+            public MemorySegment allocate(long byteSize, long byteAlignment) {
+                MemorySegment segment = slicing.allocate(byteSize, byteAlignment);
+                return wrap(segment.address(), byteSize, null);
+            }
+
+            public void close() {
+                isAcquired = false;
+                super.close();
+            }
         }
     }
 }

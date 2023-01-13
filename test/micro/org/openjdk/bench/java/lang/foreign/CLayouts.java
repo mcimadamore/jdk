@@ -86,7 +86,7 @@ public class CLayouts {
 
     public static MemorySegment allocateMemory(long size) {
         try {
-            return (MemorySegment)MALLOC.invokeExact(size);
+            return ((MemorySegment)MALLOC.invokeExact(size)).asUnbounded();
         } catch (Throwable ex) {
             throw new IllegalStateException(ex);
         }
