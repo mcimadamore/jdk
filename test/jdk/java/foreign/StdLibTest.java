@@ -195,17 +195,17 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         String strcat(String s1, String s2) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment buf = arena.allocate(s1.length() + s2.length() + 1);
                 buf.setUtf8String(0, s1);
                 MemorySegment other = arena.allocateUtf8String(s2);
                 return ((MemorySegment)strcat.invokeExact(buf, other))
-                        .asUnboundedSlice().getUtf8String(0);
+                        .asUnbounded().getUtf8String(0);
             }
         }
 
         int strcmp(String s1, String s2) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment ns1 = arena.allocateUtf8String(s1);
                 MemorySegment ns2 = arena.allocateUtf8String(s2);
                 return (int)strcmp.invokeExact(ns1, ns2);
@@ -213,21 +213,21 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int puts(String msg) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment s = arena.allocateUtf8String(msg);
                 return (int)puts.invokeExact(s);
             }
         }
 
         int strlen(String msg) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment s = arena.allocateUtf8String(msg);
                 return (int)strlen.invokeExact(s);
             }
         }
 
         Tm gmtime(long arg) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment time = arena.allocate(8);
                 time.set(C_LONG_LONG, 0, arg);
                 return new Tm((MemorySegment)gmtime.invokeExact(time));
@@ -242,7 +242,7 @@ public class StdLibTest extends NativeTestHelper {
             static final long SIZE = 56;
 
             Tm(MemorySegment addr) {
-                this.base = addr.asUnboundedSlice(0, SIZE);
+                this.base = addr.asUnbounded().asSlice(0, SIZE);
             }
 
             int sec() {
@@ -276,7 +276,7 @@ public class StdLibTest extends NativeTestHelper {
 
         int[] qsort(int[] arr) throws Throwable {
             //init native array
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment nativeArr = arena.allocateArray(C_INT, arr);
 
                 //call qsort
@@ -290,8 +290,8 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         static int qsortCompare(MemorySegment addr1, MemorySegment addr2) {
-            return addr1.asUnboundedSlice().get(C_INT, 0) -
-                   addr2.asUnboundedSlice().get(C_INT, 0);
+            return addr1.asUnbounded().get(C_INT, 0) -
+                   addr2.asUnbounded().get(C_INT, 0);
         }
 
         int rand() throws Throwable {
@@ -299,7 +299,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int printf(String format, List<PrintfArg> args) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment formatStr = arena.allocateUtf8String(format);
                 return (int)specializedPrintf(args).invokeExact(formatStr,
                         args.stream().map(a -> a.nativeValue(arena)).toArray());
@@ -307,7 +307,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int vprintf(String format, List<PrintfArg> args) throws Throwable {
-            try (var arena = ScopedArena.openConfined()) {
+            try (var arena = Arena.openConfined()) {
                 MemorySegment formatStr = arena.allocateUtf8String(format);
                 VaList vaList = VaList.make(b -> args.forEach(a -> a.accept(b, arena)), arena);
                 return (int)vprintf.invokeExact(formatStr, vaList.segment());

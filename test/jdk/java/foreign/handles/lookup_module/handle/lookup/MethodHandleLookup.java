@@ -25,6 +25,7 @@ package handle.lookup;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
+import java.lang.foreign.ScopedArena;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -48,13 +49,17 @@ public class MethodHandleLookup {
     static Object[][] restrictedMethods() {
         try {
             return new Object[][]{
+                    { MethodHandles.lookup().findVirtual(Arena.class, "wrap",
+                            MethodType.methodType(MemorySegment.class, long.class, long.class, Runnable.class)), "Arena::wrap" },
+                    { MethodHandles.lookup().findVirtual(ScopedArena.class, "wrap",
+                            MethodType.methodType(MemorySegment.class, long.class, long.class, Runnable.class)), "ScopedArena::wrap" },
                     { MethodHandles.lookup().findStatic(Linker.class, "nativeLinker",
                             MethodType.methodType(Linker.class)), "Linker::nativeLinker" },
-                    { MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnboundedSlice",
+                    { MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnbounded",
                             MethodType.methodType(MemorySegment.class)),
                             "MemorySegment::asUnboundedSlice/0" },
-                    { MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnboundedSlice",
-                            MethodType.methodType(MemorySegment.class, long.class, long.class)),
+                    { MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnbounded",
+                            MethodType.methodType(MemorySegment.class)),
                             "MemorySegment::asUnboundedSlice/2" },
                     { MethodHandles.lookup().findStatic(SymbolLookup.class, "libraryLookup",
                             MethodType.methodType(SymbolLookup.class, String.class, Arena.class)),

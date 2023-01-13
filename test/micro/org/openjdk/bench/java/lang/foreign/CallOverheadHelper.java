@@ -22,7 +22,6 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -81,8 +80,8 @@ public class CallOverheadHelper extends CLayouts {
             C_INT, C_INT
     );
 
-    static final MemorySegment sharedPoint = ScopedArena.openShared().allocate(POINT_LAYOUT);
-    static final MemorySegment confinedPoint = ScopedArena.openConfined().allocate(POINT_LAYOUT);
+    static final MemorySegment sharedPoint = Arena.openShared().allocate(POINT_LAYOUT);
+    static final MemorySegment confinedPoint = Arena.openConfined().allocate(POINT_LAYOUT);
 
     static final MemorySegment point = Arena.auto().allocate(POINT_LAYOUT);
 

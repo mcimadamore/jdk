@@ -57,7 +57,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 @Fork(value = 3, jvmArgsAppend = { "--enable-native-access=ALL-UNNAMED", "--enable-preview" })
 public class StrLenTest extends CLayouts {
 
-    ScopedArena arena = ScopedArena.openConfined();
+    ScopedArena arena = Arena.openConfined();
 
     SegmentAllocator segmentAllocator;
     SegmentAllocator arenaAllocator = new RingAllocator(arena);
@@ -96,7 +96,7 @@ public class StrLenTest extends CLayouts {
 
     @Benchmark
     public int panama_strlen() throws Throwable {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocateUtf8String(str);
             return (int)STRLEN.invokeExact(segment);
         }

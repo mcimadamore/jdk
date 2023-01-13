@@ -78,6 +78,7 @@
  *   TestAsyncStackWalk
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -115,7 +116,7 @@ public class TestAsyncStackWalk extends NativeTestHelper {
     static boolean didStackWalk;
 
     public static void main(String[] args) throws Throwable {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment stub = linker.upcallStub(MH_m, FunctionDescriptor.ofVoid(), arena);
             invocations = 0;
             didStackWalk = false;

@@ -44,7 +44,7 @@ import static org.testng.Assert.fail;
 
 public class TestIllegalLink extends NativeTestHelper {
 
-    private static final MemorySegment DUMMY_TARGET = Arena.global().wrap(1, null);
+    private static final MemorySegment DUMMY_TARGET = Arena.global().wrap(1, 0, null);
     private static final Linker ABI = Linker.nativeLinker();
 
     @Test(dataProvider = "types")

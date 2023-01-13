@@ -21,6 +21,7 @@
  * questions.
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -72,7 +73,7 @@ public class ThrowingUpcall extends NativeTestHelper {
         MethodHandle invoker = MethodHandles.exactInvoker(MethodType.methodType(void.class));
         handle = MethodHandles.insertArguments(invoker, 0, handle);
 
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment stub = Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.ofVoid(), arena);
 
             downcallVoid.invoke(stub); // should call Shutdown.exit(1);
@@ -85,7 +86,7 @@ public class ThrowingUpcall extends NativeTestHelper {
         MethodHandle invoker = MethodHandles.exactInvoker(MethodType.methodType(int.class, int.class));
         handle = MethodHandles.insertArguments(invoker, 0, handle);
 
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment stub = Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.of(C_INT, C_INT), arena);
 
             downcallNonVoid.invoke(42, stub); // should call Shutdown.exit(1);

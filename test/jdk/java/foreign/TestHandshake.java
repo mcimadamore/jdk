@@ -32,6 +32,7 @@
  * @run testng/othervm -XX:-TieredCompilation TestHandshake
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
@@ -67,7 +68,7 @@ public class TestHandshake {
     @Test(dataProvider = "accessors")
     public void testHandshake(String testName, AccessorFactory accessorFactory) throws InterruptedException {
         for (int it = 0 ; it < ITERATIONS ; it++) {
-            ScopedArena arena = ScopedArena.openShared();
+            ScopedArena arena = Arena.openShared();
             MemorySegment segment = arena.allocate(SEGMENT_SIZE, 1);
             System.out.println("ITERATION " + it);
             ExecutorService accessExecutor = Executors.newCachedThreadPool();

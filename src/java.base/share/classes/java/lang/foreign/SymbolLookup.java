@@ -54,7 +54,7 @@ import java.util.function.BiFunction;
  *     <li>It can be passed to an existing {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handle}, as an argument to the underlying foreign function.</li>
  *     <li>It can be {@linkplain MemorySegment#set(ValueLayout.OfAddress, long, MemorySegment) stored} inside another memory segment.</li>
  *     <li>It can be used to access the region of memory backing a global variable (this might require
- *     {@link MemorySegment#asUnboundedSlice() resizing} the segment first).</li>
+ *     {@link MemorySegment#asUnbounded() resizing} the segment first).</li>
  * </ul>
  *
  * <h2 id="obtaining">Obtaining a symbol lookup</h2>
@@ -65,7 +65,7 @@ import java.util.function.BiFunction;
  * can be controlled using an {@link ScopedArena}. If the arena is closed, the library is unloaded:
  *
  * {@snippet lang = java:
- * try (ScopedArena arena = ScopedArena.openConfined()) {
+ * try (ScopedArena arena = Arena.openConfined()) {
  *     SymbolLookup libGL = SymbolLookup.libraryLookup("libGL.so", arena); // libGL.so loaded here
  *     MemorySegment glGetString = libGL.find("glGetString").orElseThrow();
  *     ...
@@ -168,15 +168,15 @@ public interface SymbolLookup {
             long addr = javaLangAccess.findNative(loader, name);
             return addr == 0L ?
                     Optional.empty() :
-                    Optional.of(loaderScope.wrap(addr, null));
+                    Optional.of(loaderScope.wrap(addr, 0L, null));
         };
     }
 
     /**
      * Loads a library with the given name (if not already loaded) and creates a symbol lookup for symbols in that library.
-     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
-     * the allocator is an {@link ScopedArena}, the library associated with the returned lookup will be unloaded when the provided
-     * arena is {@linkplain ScopedArena#close() closed}, if no other library lookup is still using it.
+     * The lifecycle of the returned symbol lookup is determined by the provided arena. For instance, if
+     * the arena is an {@linkplain ScopedArena scoped arena}, the library associated with the returned lookup will be unloaded when the provided
+     * scoped arena is {@linkplain ScopedArena#close() closed}, if no other library lookup is still using it.
      * @implNote The process of resolving a library name is OS-specific. For instance, in a POSIX-compliant OS,
      * the library name is resolved according to the specification of the {@code dlopen} function for that OS.
      * In Windows, the library name is resolved according to the specification of the {@code LoadLibrary} function.
@@ -201,9 +201,9 @@ public interface SymbolLookup {
     /**
      * Loads a library from the given path (if not already loaded) and creates a symbol lookup for symbols
      * in that library.
-     * The lifecycle of the returned symbol lookup is determined by the provided native allocator. For instance, if
-     * the allocator is an {@link ScopedArena}, the library associated with the returned lookup will be unloaded when the provided
-     * arena is {@linkplain ScopedArena#close() closed}, if no other library lookup is still using it.
+     * The lifecycle of the returned symbol lookup is determined by the provided arena. For instance, if
+     * the allocator is an {@linkplain ScopedArena scoped arena}, the library associated with the returned lookup will
+     * be unloaded when the provided scoped arena is {@linkplain ScopedArena#close() closed}, if no other library lookup is still using it.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -245,7 +245,7 @@ public interface SymbolLookup {
             long addr = library.find(name);
             return addr == 0L ?
                     Optional.empty() :
-                    Optional.of(libScope.wrap(addr, null));
+                    Optional.of(libScope.wrap(addr, 0L, null));
         };
     }
 }

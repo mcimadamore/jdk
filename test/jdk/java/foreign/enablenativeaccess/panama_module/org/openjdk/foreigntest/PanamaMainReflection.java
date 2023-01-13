@@ -41,7 +41,7 @@ public class PanamaMainReflection {
 
     public static void testReflectionMemorySegment() throws Throwable {
         System.out.println("Trying to get MemorySegment");
-        Method method = MemorySegment.class.getDeclaredMethod("asUnboundedSlice");
+        Method method = MemorySegment.class.getDeclaredMethod("asUnbounded");
         method.invoke(MemorySegment.NULL);
         System.out.println("Got MemorySegment");
     }

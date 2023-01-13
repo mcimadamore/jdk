@@ -226,7 +226,7 @@ public interface Binding {
          * Create a binding context from given native scope.
          */
         public static Context ofBoundedAllocator(long size) {
-            ScopedArena arena = ScopedArena.openConfined();
+            ScopedArena arena = Arena.openConfined();
             return new Context(SegmentAllocator.slicingAllocator(arena.allocate(size)), arena) {
                 @Override
                 public void close() {
@@ -253,7 +253,7 @@ public interface Binding {
          * the context's allocator is accessed.
          */
         public static Context ofScope() {
-            ScopedArena arena = ScopedArena.openConfined();
+            ScopedArena arena = Arena.openConfined();
             return new Context(null, arena) {
                 @Override
                 public SegmentAllocator allocator() { throw new UnsupportedOperationException(); }

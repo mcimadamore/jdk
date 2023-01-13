@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -68,7 +69,7 @@ public class LoopOverNonConstantShared extends JavaLayouts {
         for (int i = 0; i < ELEM_SIZE; i++) {
             unsafe.putInt(unsafe_addr + (i * CARRIER_SIZE) , i);
         }
-        arena = ScopedArena.openConfined();
+        arena = Arena.openConfined();
         segment = arena.allocate(ALLOC_SIZE, CARRIER_SIZE);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);

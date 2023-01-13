@@ -38,6 +38,8 @@ import java.util.Objects;
 import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -155,13 +157,18 @@ public abstract sealed class MemorySessionImpl
         return NativeMemorySegmentImpl.makeNativeSegment(byteSize, byteAlignment, this);
     }
 
-    public MemorySegment wrap(long address, Runnable cleanupAction) {
+    @CallerSensitive
+    public MemorySegment wrap(long address, long size, Runnable cleanupAction) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), ScopedArena.class, "wrap");
+        if (size < 0) {
+            throw new IllegalArgumentException("Size is < 0");
+        }
         if (cleanupAction != null) {
             addOrCleanupIfFail(ResourceCleanup.ofRunnable(cleanupAction));
         } else {
             checkValidState();
         }
-        return new NativeMemorySegmentImpl(address, 0L, false, this);
+        return new NativeMemorySegmentImpl(address, size, false, this);
     }
 
     public abstract void release0();

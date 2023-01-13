@@ -22,6 +22,7 @@
  *
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -39,7 +40,7 @@ public class TestStringEncoding {
 
     @Test(dataProvider = "strings")
     public void testStrings(String testString, int expectedByteLength) {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment text = arena.allocateUtf8String(testString);
 
             assertEquals(text.byteSize(), expectedByteLength);

@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -68,8 +69,8 @@ public class LoopOverPollutedSegments extends JavaLayouts {
             unsafe.putInt(addr + (i * 4), i);
         }
         arr = new byte[ALLOC_SIZE];
-        confinedArena = ScopedArena.openConfined();
-        sharedArena = ScopedArena.openShared();
+        confinedArena = Arena.openConfined();
+        sharedArena = Arena.openShared();
         nativeSegment = confinedArena.allocate(ALLOC_SIZE, 4);
         nativeSharedSegment = sharedArena.allocate(ALLOC_SIZE, 4);
         heapSegmentBytes = MemorySegment.ofArray(new byte[ALLOC_SIZE]);

@@ -52,7 +52,7 @@ public class TestLayouts {
     @Test
     public void testIndexedSequencePath() {
         MemoryLayout seq = MemoryLayout.sequenceLayout(10, ValueLayout.JAVA_INT);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(seq);;
             VarHandle indexHandle = seq.varHandle(MemoryLayout.PathElement.sequenceElement());
             // init segment

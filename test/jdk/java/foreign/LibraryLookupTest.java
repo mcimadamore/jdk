@@ -51,11 +51,11 @@ public class LibraryLookupTest {
 
     @Test
     void testLoadLibraryConfined() {
-        try (ScopedArena arena0 = ScopedArena.openConfined()) {
+        try (ScopedArena arena0 = Arena.openConfined()) {
             callFunc(loadLibrary(arena0));
-            try (ScopedArena arena1 = ScopedArena.openConfined()) {
+            try (ScopedArena arena1 = Arena.openConfined()) {
                 callFunc(loadLibrary(arena1));
-                try (ScopedArena arena2 = ScopedArena.openConfined()) {
+                try (ScopedArena arena2 = Arena.openConfined()) {
                     callFunc(loadLibrary(arena2));
                 }
             }
@@ -65,7 +65,7 @@ public class LibraryLookupTest {
     @Test(expectedExceptions = IllegalStateException.class)
     void testLoadLibraryConfinedClosed() {
         MemorySegment addr;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             addr = loadLibrary(arena);
         }
         callFunc(addr);
@@ -115,7 +115,7 @@ public class LibraryLookupTest {
         @Override
         public void run() {
             for (int i = 0 ; i < ITERATIONS ; i++) {
-                try (ScopedArena arena = ScopedArena.openConfined()) {
+                try (ScopedArena arena = Arena.openConfined()) {
                     callFunc(loadLibrary(arena));
                 }
             }
@@ -124,7 +124,7 @@ public class LibraryLookupTest {
 
     @Test
     void testLoadLibrarySharedClosed() throws Throwable {
-        ScopedArena arena = ScopedArena.openShared();
+        ScopedArena arena = Arena.openShared();
         MemorySegment addr = loadLibrary(arena);
         ExecutorService accessExecutor = Executors.newCachedThreadPool();
         for (int i = 0; i < NUM_ACCESSORS ; i++) {

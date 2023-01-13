@@ -29,6 +29,7 @@
  * @run testng/othervm --enable-native-access=ALL-UNNAMED TestNative
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout;
@@ -144,7 +145,7 @@ public class TestNative extends NativeTestHelper {
 
     @Test(dataProvider="nativeAccessOps")
     public void testNativeAccess(Consumer<MemorySegment> checker, Consumer<MemorySegment> initializer, SequenceLayout seq) {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(seq);;
             initializer.accept(segment);
             checker.accept(segment);
@@ -154,7 +155,7 @@ public class TestNative extends NativeTestHelper {
     @Test(dataProvider="buffers")
     public void testNativeCapacity(Function<ByteBuffer, Buffer> bufferFunction, int elemSize) {
         int capacity = (int)doubles.byteSize();
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(doubles);;
             ByteBuffer bb = segment.asByteBuffer();
             Buffer buf = bufferFunction.apply(bb);
@@ -167,9 +168,8 @@ public class TestNative extends NativeTestHelper {
     @Test
     public void testDefaultAccessModes() {
         MemorySegment addr = allocateMemory(12);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
-            MemorySegment mallocSegment = arena.wrap(addr.address(), () -> freeMemory(addr))
-                    .asUnboundedSlice(0,12);
+        try (ScopedArena arena = Arena.openConfined()) {
+            MemorySegment mallocSegment = arena.wrap(addr.address(), 12, () -> freeMemory(addr));
             assertFalse(mallocSegment.isReadOnly());
         }
     }
@@ -178,9 +178,8 @@ public class TestNative extends NativeTestHelper {
     public void testMallocSegment() {
         MemorySegment addr = allocateMemory(12);
         MemorySegment mallocSegment = null;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
-            mallocSegment = arena.wrap(addr.address(), () -> freeMemory(addr))
-                    .asUnboundedSlice(0, 12);
+        try (ScopedArena arena = Arena.openConfined()) {
+            mallocSegment = arena.wrap(addr.address(), 12, () -> freeMemory(addr));
             assertEquals(mallocSegment.byteSize(), 12);
             //free here
         }
@@ -190,8 +189,8 @@ public class TestNative extends NativeTestHelper {
     @Test
     public void testAddressAccess() {
         MemorySegment addr = allocateMemory(4);
-        addr.asUnboundedSlice().set(JAVA_INT, 0, 42);
-        assertEquals(addr.asUnboundedSlice().get(JAVA_INT, 0), 42);
+        addr.asUnbounded().set(JAVA_INT, 0, 42);
+        assertEquals(addr.asUnbounded().get(JAVA_INT, 0), 42);
         freeMemory(addr);
     }
 

@@ -49,7 +49,7 @@ public final class UpcallStubs {
     }
 
     static MemorySegment makeUpcall(long entry, Arena allocator) {
-        return allocator.wrap(entry,
+        return allocator.wrap(entry, 0,
                 () -> freeUpcallStub(entry));
     }
 }

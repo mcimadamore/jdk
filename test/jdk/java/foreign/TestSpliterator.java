@@ -59,7 +59,7 @@ public class TestSpliterator {
         SequenceLayout layout = MemoryLayout.sequenceLayout(size, ValueLayout.JAVA_INT);
 
         //setup
-        try (ScopedArena arena = ScopedArena.openShared()) {
+        try (ScopedArena arena = Arena.openShared()) {
             MemorySegment segment = arena.allocate(layout);;
             for (int i = 0; i < layout.elementCount(); i++) {
                 INT_HANDLE.set(segment, (long) i, i);

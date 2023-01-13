@@ -80,7 +80,7 @@ public class TestMemoryAccessInstance {
         }
 
         void test() {
-            try (ScopedArena arena = ScopedArena.openConfined()) {
+            try (ScopedArena arena = Arena.openConfined()) {
                 MemorySegment segment = arena.allocate(128);;
                 ByteBuffer buffer = segment.asByteBuffer();
                 T t = transform.apply(segment);
@@ -93,7 +93,7 @@ public class TestMemoryAccessInstance {
 
         @SuppressWarnings("unchecked")
         void testHyperAligned() {
-            try (ScopedArena arena = ScopedArena.openConfined()) {
+            try (ScopedArena arena = Arena.openConfined()) {
                 MemorySegment segment = arena.allocate(64);;
                 T t = transform.apply(segment);
                 L alignedLayout = (L)layout.withBitAlignment(layout.byteSize() * 8 * 2);
@@ -183,13 +183,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> bb.order(NE).getDouble(pos), (bb, pos, v) -> bb.order(NE).putDouble(pos, v))
                 },
-                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, Arena.global().wrap(42, null),
+                { "address", Accessor.ofSegment(ValueLayout.ADDRESS, Arena.global().wrap(42, 0, null),
                         MemorySegment::get, MemorySegment::set,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos) : nb.getInt(pos);
-                            return Arena.global().wrap(addr, null);
+                            return Arena.global().wrap(addr, 0, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);
@@ -221,13 +221,13 @@ public class TestMemoryAccessInstance {
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> bb.order(NE).getDouble(pos * 8), (bb, pos, v) -> bb.order(NE).putDouble(pos * 8, v))
                 },
-                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, Arena.global().wrap(42, null),
+                { "address/index", Accessor.ofSegment(ValueLayout.ADDRESS, Arena.global().wrap(42, 0, null),
                         MemorySegment::getAtIndex, MemorySegment::setAtIndex,
                         (bb, pos) -> {
                             ByteBuffer nb = bb.order(NE);
                             long addr = ValueLayout.ADDRESS.byteSize() == 8 ?
                                     nb.getLong(pos * 8) : nb.getInt(pos * 4);
-                            return Arena.global().wrap(addr, null);
+                            return Arena.global().wrap(addr, 0, null);
                         },
                         (bb, pos, v) -> {
                             ByteBuffer nb = bb.order(NE);

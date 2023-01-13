@@ -28,6 +28,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
@@ -73,6 +74,7 @@ public class MethodHandleInvoker {
         addDefaultMapping(MemoryLayout.class, ValueLayout.JAVA_INT);
         addDefaultMapping(FunctionDescriptor.class, FunctionDescriptor.ofVoid());
         addDefaultMapping(Arena.class, Arena.auto());
+        addDefaultMapping(ScopedArena.class, Arena.openShared());
         addDefaultMapping(SegmentAllocator.class, SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[10])));
         addDefaultMapping(ValueLayout.OfByte.class, ValueLayout.JAVA_BYTE);
         addDefaultMapping(ValueLayout.OfBoolean.class, ValueLayout.JAVA_BOOLEAN);

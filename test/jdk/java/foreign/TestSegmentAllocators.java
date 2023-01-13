@@ -69,8 +69,8 @@ public class TestSegmentAllocators {
             List<MemorySegment> addressList = new ArrayList<>();
             int elems = ELEMS / ((int)alignedLayout.byteAlignment() / (int)layout.byteAlignment());
             ScopedArena[] arenas = {
-                    ScopedArena.openConfined(),
-                    ScopedArena.openShared()
+                    Arena.openConfined(),
+                    Arena.openShared()
             };
             for (ScopedArena arena : arenas) {
                 try (arena) {
@@ -103,7 +103,7 @@ public class TestSegmentAllocators {
 
     @Test
     public void testBigAllocationInUnboundedSession() {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             for (int i = 8 ; i < SIZE_256M ; i *= 8) {
                 SegmentAllocator allocator = SegmentAllocator.slicingAllocator(arena.allocate(i * 2 + 1));
                 MemorySegment address = allocator.allocate(i, i);
@@ -117,7 +117,7 @@ public class TestSegmentAllocators {
 
     @Test
     public void testTooBigForBoundedArena() {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             SegmentAllocator allocator = SegmentAllocator.slicingAllocator(arena.allocate(10));
             assertThrows(IndexOutOfBoundsException.class, () -> allocator.allocate(12));
             allocator.allocate(5);
@@ -151,7 +151,7 @@ public class TestSegmentAllocators {
 
     @Test(expectedExceptions = OutOfMemoryError.class)
     public void testBadArenaNullReturn() {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             arena.allocate(Long.MAX_VALUE, 2);
         }
     }
@@ -206,8 +206,8 @@ public class TestSegmentAllocators {
     public <Z> void testArray(AllocationFactory allocationFactory, ValueLayout layout, AllocationFunction<Object, ValueLayout> allocationFunction, ToArrayHelper<Z> arrayHelper) {
         Z arr = arrayHelper.array();
         ScopedArena[] arenas = {
-                ScopedArena.openConfined(),
-                ScopedArena.openShared()
+                Arena.openConfined(),
+                Arena.openShared()
         };
         for (ScopedArena arena : arenas) {
             try (arena) {
@@ -245,7 +245,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] {Arena.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {Arena.global().wrap(42, 0,  null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
 
@@ -268,7 +268,7 @@ public class TestSegmentAllocators {
             scalarAllocations.add(new Object[] { 42d, factory, ValueLayout.JAVA_DOUBLE.withOrder(ByteOrder.LITTLE_ENDIAN),
                     (AllocationFunction.OfDouble) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
-            scalarAllocations.add(new Object[] {Arena.global().wrap(42, null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
+            scalarAllocations.add(new Object[] {Arena.global().wrap(42, 0,  null), factory, ValueLayout.ADDRESS.withOrder(ByteOrder.BIG_ENDIAN),
                     (AllocationFunction.OfAddress) SegmentAllocator::allocate,
                     (Function<MemoryLayout, VarHandle>)l -> l.varHandle() });
         }

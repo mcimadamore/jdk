@@ -28,7 +28,7 @@
  * @run testng/othervm -Dos.arch=unknown -Dos.name=unknown --enable-native-access=ALL-UNNAMED TestUnsupportedLinker
  */
 
-import java.lang.foreign.ScopedArena;
+import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -49,11 +49,11 @@ public class TestUnsupportedLinker {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testNonEmptyVaList() {
-        VaList.make(builder -> builder.addVarg(ValueLayout.JAVA_INT, 42), ScopedArena.openConfined());
+        VaList.make(builder -> builder.addVarg(ValueLayout.JAVA_INT, 42), Arena.openConfined());
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testUnsafeVaList() {
-        VaList.ofAddress(0L, ScopedArena.openConfined());
+        VaList.ofAddress(0L, Arena.openConfined());
     }
 }

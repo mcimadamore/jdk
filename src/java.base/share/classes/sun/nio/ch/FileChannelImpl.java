@@ -1223,12 +1223,12 @@ public class FileChannelImpl
             readOnly = true;
         }
         long address = unmapper != null ? unmapper.address() : 0L;
-        MemorySegment segment = allocator.wrap(address,
+        MemorySegment segment = allocator.wrap(address, size,
                 () -> {
                     if (unmapper != null) {
                         unmapper.unmap();
                     }
-                }).asUnboundedSlice(0, size);
+                });
         if (readOnly) {
             segment = segment.asReadOnly();
         }

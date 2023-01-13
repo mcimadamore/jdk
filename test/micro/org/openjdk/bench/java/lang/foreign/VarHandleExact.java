@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -63,7 +64,7 @@ public class VarHandleExact {
 
     @Setup
     public void setup() {
-        arena = ScopedArena.openConfined();
+        arena = Arena.openConfined();
         data = arena.allocate(JAVA_INT);
     }
 

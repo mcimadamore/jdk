@@ -55,7 +55,7 @@ public class TestUpcallStack extends TestUpcallBase {
         List<Consumer<Object>> returnChecks = new ArrayList<>();
         List<Consumer<Object[]>> argChecks = new ArrayList<>();
         MemorySegment addr = findNativeOrThrow("s" + fName);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MethodHandle mh = downcallHandle(ABI, addr, arena, functionStack(ret, paramTypes, fields));
             Object[] args = makeArgsStack(arena, ret, paramTypes, fields, returnChecks, argChecks);
             Object[] callArgs = args;

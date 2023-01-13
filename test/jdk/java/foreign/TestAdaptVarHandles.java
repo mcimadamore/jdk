@@ -191,7 +191,7 @@ public class TestAdaptVarHandles {
     public void testBadFilterBoxHandleException() {
         VarHandle intHandle = ValueLayout.JAVA_INT.varHandle();
         VarHandle vh = MethodHandles.filterValue(intHandle, S2I, I2S_EX);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment seg = arena.allocate(ValueLayout.JAVA_INT);
             vh.set(seg, "42");
             String x = (String) vh.get(seg); // should throw
@@ -202,7 +202,7 @@ public class TestAdaptVarHandles {
     public void testBadFilterUnboxHandleException() {
         VarHandle intHandle = ValueLayout.JAVA_INT.varHandle();
         VarHandle vh = MethodHandles.filterValue(intHandle, S2I_EX, I2S);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment seg = arena.allocate(ValueLayout.JAVA_INT);
             vh.set(seg, "42"); // should throw
         }

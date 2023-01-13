@@ -153,9 +153,9 @@ public class AbstractChannelsTest {
     static class ArenaSupplier implements Supplier<ScopedArena> {
 
         static final Supplier<ScopedArena> NEW_CONFINED =
-                new ArenaSupplier(ScopedArena::openConfined, "confined arena");
+                new ArenaSupplier(Arena::openConfined, "confined arena");
         static final Supplier<ScopedArena> NEW_SHARED =
-                new ArenaSupplier(ScopedArena::openShared, "shared arena");
+                new ArenaSupplier(Arena::openShared, "shared arena");
 
         private final Supplier<ScopedArena> supplier;
         private final String str;

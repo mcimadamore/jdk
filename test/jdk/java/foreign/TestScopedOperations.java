@@ -74,7 +74,7 @@ public class TestScopedOperations {
 
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpAfterClose(String name, ScopedOperation<Z> scopedOperation) {
-        ScopedArena arena = ScopedArena.openConfined();
+        ScopedArena arena = Arena.openConfined();
         Z obj = scopedOperation.apply(arena);
         arena.close();
         try {
@@ -87,7 +87,7 @@ public class TestScopedOperations {
 
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpOutsideConfinement(String name, ScopedOperation<Z> scopedOperation) {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             Z obj = scopedOperation.apply(arena);
             AtomicReference<Throwable> failed = new AtomicReference<>();
             Thread t = new Thread(() -> {
@@ -224,8 +224,7 @@ public class TestScopedOperations {
                     throw new AssertionError(ex);
                 }
             }),
-            UNSAFE(session -> session.wrap(0, null)
-                    .asUnboundedSlice(0, 10));
+            UNSAFE(session -> session.wrap(0, 10, null));
 
             static {
                 try {

@@ -104,14 +104,14 @@ public class MemorySessionClose {
 
     @Benchmark
     public MemorySegment confined_close() {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
 
     @Benchmark
     public MemorySegment shared_close() {
-        try (ScopedArena arena = ScopedArena.openShared()) {
+        try (ScopedArena arena = Arena.openShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }

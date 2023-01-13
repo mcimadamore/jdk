@@ -124,14 +124,10 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static LinuxAArch64VaList readFromAddress(long address, Arena allocator) {
-        MemorySegment segment = allocator.wrap(address, null)
-                .asUnboundedSlice()
-                .asSlice(0, LAYOUT.byteSize());
+        MemorySegment segment = allocator.wrap(address, LAYOUT.byteSize(), null);
         MemorySegment stack = stackPtr(segment); // size unknown
-        MemorySegment gpRegsArea = allocator.wrap(grTop(segment).address() - MAX_GP_OFFSET, null)
-                .asUnboundedSlice(0, MAX_GP_OFFSET);
-        MemorySegment fpRegsArea = allocator.wrap(vrTop(segment).address() - MAX_FP_OFFSET, null)
-                .asUnboundedSlice(0, MAX_FP_OFFSET);
+        MemorySegment gpRegsArea = allocator.wrap(grTop(segment).address() - MAX_GP_OFFSET, MAX_GP_OFFSET, null);
+        MemorySegment fpRegsArea = allocator.wrap(vrTop(segment).address() - MAX_FP_OFFSET, MAX_FP_OFFSET, null);
         return new LinuxAArch64VaList(segment, stack, gpRegsArea, MAX_GP_OFFSET, fpRegsArea, MAX_FP_OFFSET);
     }
 
@@ -324,10 +320,8 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                         gpRegsArea.asSlice(currentGPOffset()));
                     consumeGPSlots(1);
 
-                    try (ScopedArena arena = ScopedArena.openConfined()) {
-                        MemorySegment slice = arena.wrap(ptr.address(), null)
-                                .asUnboundedSlice()
-                                .asSlice(0, layout.byteSize());
+                    try (ScopedArena arena = Arena.openConfined()) {
+                        MemorySegment slice = arena.wrap(ptr.address(), layout.byteSize(), null);
                         MemorySegment seg = allocator.allocate(layout);
                         seg.copyFrom(slice);
                         yield seg;

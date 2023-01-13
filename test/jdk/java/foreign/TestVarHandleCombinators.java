@@ -102,7 +102,7 @@ public class TestVarHandleCombinators {
 
         VarHandle vh = MethodHandles.memorySegmentViewVarHandle(ValueLayout.JAVA_INT.withBitAlignment(32));
         int count = 0;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(inner_size * outer_size * 8, 4);;
             for (long i = 0; i < outer_size; i++) {
                 for (long j = 0; j < inner_size; j++) {

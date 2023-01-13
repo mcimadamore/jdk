@@ -29,6 +29,7 @@
  * @run testng/othervm --enable-native-access=ALL-UNNAMED -Dgenerator.sample.factor=17 TestVarArgs
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -70,7 +71,7 @@ public class TestVarArgs extends CallGeneratorHelper {
                             List<ParamType> paramTypes, List<StructFieldType> fields) throws Throwable {
         List<Arg> args = makeArgs(paramTypes, fields);
 
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MethodHandle checker = MethodHandles.insertArguments(MH_CHECK, 2, args);
             MemorySegment writeBack = LINKER.upcallStub(checker, FunctionDescriptor.ofVoid(C_INT, C_POINTER), arena);
             MemorySegment callInfo = arena.allocate(CallInfo.LAYOUT);;
@@ -125,9 +126,8 @@ public class TestVarArgs extends CallGeneratorHelper {
         MemoryLayout layout = varArg.layout;
         MethodHandle getter = varArg.getter;
         List<Consumer<Object>> checks = varArg.checks;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
-            MemorySegment seg = arena.wrap(ptr.address(), null)
-                    .asUnboundedSlice(0, layout.byteSize());
+        try (ScopedArena arena = Arena.openConfined()) {
+            MemorySegment seg = arena.wrap(ptr.address(), layout.byteSize(), null);
             Object obj = getter.invoke(seg);
             checks.forEach(check -> check.accept(obj));
         } catch (Throwable e) {

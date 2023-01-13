@@ -107,10 +107,8 @@ public non-sealed class MacOsAArch64VaList implements VaList {
                 case STRUCT_REFERENCE -> {
                     checkElement(layout, VA_SLOT_SIZE_BYTES);
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    try (ScopedArena arena = ScopedArena.openConfined()) {
-                        MemorySegment struct = arena.wrap(structAddr.address(), null)
-                                .asUnboundedSlice()
-                                .asSlice(0, layout.byteSize());
+                    try (ScopedArena arena = Arena.openConfined()) {
+                        MemorySegment struct = arena.wrap(structAddr.address(), layout.byteSize(), null);
                         MemorySegment seg = allocator.allocate(layout);
                         seg.copyFrom(struct);
                         segment = segment.asSlice(VA_SLOT_SIZE_BYTES);
@@ -163,7 +161,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
     }
 
     static MacOsAArch64VaList ofAddress(long address, Arena allocator) {
-        MemorySegment segment = allocator.wrap(address, null).asUnboundedSlice();
+        MemorySegment segment = allocator.wrap(address, Long.MAX_VALUE, null);
         return new MacOsAArch64VaList(segment);
     }
 

@@ -107,8 +107,8 @@ public class TestNulls {
     };
 
     static final Set<String> EXCLUDE_LIST = Set.of(
-            "java.lang.foreign.Arena/wrap(long,java.lang.Runnable)/1/0",
-            "java.lang.foreign.ScopedArena/wrap(long,java.lang.Runnable)/1/0",
+            "java.lang.foreign.Arena/wrap(long,long,java.lang.Runnable)/2/0",
+            "java.lang.foreign.ScopedArena/wrap(long,long,java.lang.Runnable)/2/0",
             "java.lang.foreign.MemorySegment.MemorySession/openConfined(java.lang.ref.Cleaner)/0/0",
             "java.lang.foreign.MemorySegment.MemorySession/openShared(java.lang.ref.Cleaner)/0/0",
             "java.lang.foreign.MemoryLayout/withAttribute(java.lang.String,java.lang.constant.Constable)/1/0",
@@ -184,7 +184,7 @@ public class TestNulls {
         addDefaultMapping(Linker.class, Linker.nativeLinker());
         addDefaultMapping(VaList.class, VaListHelper.vaList);
         addDefaultMapping(VaList.Builder.class, VaListHelper.vaListBuilder);
-        addDefaultMapping(ScopedArena.class, ScopedArena.openConfined());
+        addDefaultMapping(ScopedArena.class, Arena.openConfined());
         addDefaultMapping(Arena.class, Arena.auto());
         addDefaultMapping(SegmentAllocator.class, SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[10])));
         addDefaultMapping(Supplier.class, () -> null);

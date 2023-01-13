@@ -37,6 +37,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
@@ -52,8 +53,8 @@ import java.util.function.Supplier;
 public class BulkMismatchAcquire {
 
     public enum SessionKind {
-        CONFINED(ScopedArena::openConfined),
-        SHARED(ScopedArena::openShared);
+        CONFINED(Arena::openConfined),
+        SHARED(Arena::openShared);
 
         final Supplier<ScopedArena> arenaFactory;
 

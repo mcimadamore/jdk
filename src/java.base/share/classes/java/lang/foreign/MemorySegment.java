@@ -62,8 +62,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * Heap segments can be obtained by calling one of the {@link MemorySegment#ofArray(int[])} factory methods.
  * These methods return a memory segment backed by the on-heap region that holds the specified Java array.
  * <p>
- * Native segments can be obtained by calling one of the {@link Arena#allocate(long, long)}
- * methods, which return a memory segment backed by a newly allocated off-heap region with the given size
+ * Native segments can be obtained by using an {@link Arena}. Arenas provide several methods (e.g. {@link Arena#allocate(long, long)})
+ * which return a memory segment backed by a newly allocated off-heap region with the given size
  * and aligned to the given alignment constraint. Alternatively, native segments can be obtained by
  * {@link FileChannel#map(MapMode, long, long, Arena) mapping} a file into a new off-heap region
  * (in some systems, this operation is sometimes referred to as {@code mmap}).
@@ -102,17 +102,17 @@ import jdk.internal.vm.annotation.ForceInline;
  * on a memory segment cannot occur when the region of memory which backs the memory segment is no longer available
  * (e.g., after the accessed memory segment is no longer {@linkplain #isAlive() alive}).
  * That is, a memory segment has <em>temporal bounds</em>. Heap segments feature trivial temporal bounds. That is,
- * an heap segment is considered to be always alive. Conversely, the temporal bounds of a native segment is determined
- * by the native allocator used to obtain it. For instance, native segments allocated by the
- * {@linkplain Arena#global() global allocator} are always alive. Native segments allocated using an
- * {@linkplain ScopedArena arena allocator} are alive (and accessible) until the arena is {@linkplain ScopedArena#close() closed}.
+ * a heap segment is considered <em>always alive</em>. Conversely, the temporal bounds of a native segment are determined
+ * by the {@linkplain Arena arena} used to obtain it. For instance, native segments allocated by the
+ * {@linkplain Arena#global() global arena} are always alive. Native segments allocated using a
+ * {@linkplain ScopedArena scoped arena} are alive (and accessible) until the scoped arena is {@linkplain ScopedArena#close() closed}.
  * <p>
  * Finally, access operations on memory segments can be {@linkplain #isAccessibleBy(Thread) restricted} to specific threads.
  * Heap segments can always be accessed by any thread. Conversely, access to native segments is subject to the
- * {@linkplain Arena#isAccessibleBy(Thread) thread-confinement checks} enforced by the native allocator used to obtain them.
+ * {@linkplain Arena#isAccessibleBy(Thread) thread-confinement checks} enforced by the arena used to obtain them.
  * That is, if a native segment has been obtained from the {@linkplain Arena#global() global} or
- * the {@linkplain Arena#auto() automatic} allocator, it can be accessed by any threads. If a native segment has
- * been obtained from an {@link ScopedArena}, then it can only be accessed compatibly with the
+ * an {@linkplain Arena#auto() automatic} arena, it can be accessed by any threads. If a native segment has
+ * been obtained from an {@linkplain ScopedArena scoped arena}, then it can only be accessed compatibly with the
  * <a href="Arena.html#thread-confinement">arena confinement characteristics</a>.
  *
  * <h2 id="segment-deref">Accessing memory segments</h2>
@@ -188,7 +188,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * from multiple threads). The following code can be used to sum all int values in a memory segment in parallel:
  *
  * {@snippet lang = java:
- * try (ScopedArena arena = ScopedArena.openShared()) {
+ * try (ScopedArena arena = Arena.openShared()) {
  *     SequenceLayout SEQUENCE_LAYOUT = MemoryLayout.sequenceLayout(1024, ValueLayout.JAVA_INT);
  *     MemorySegment segment = arena.allocate(SEQUENCE_LAYOUT);
  *     int sum = segment.elements(ValueLayout.JAVA_INT).parallel()
@@ -366,18 +366,16 @@ import jdk.internal.vm.annotation.ForceInline;
  * into the lifetime intended for said region of memory by the foreign function that allocated it.
  * <p>
  * To access native zero-length memory segments, clients can
- * {@linkplain Arena#wrap(long, Runnable) obtain} a <em>new</em> native segment,
+ * {@linkplain Arena#wrap(long, long, Runnable) obtain} a <em>new</em> native segment,
  * with new temporal and spatial bounds, as follows:
  *
  * {@snippet lang = java:
- * Arena allocator = ... // obtains an allocator
- * MemorySegment foreign = someSegment.get(ValueLayout.ADDRESS, 0);
- * MemorySegment segment = allocator.wrap(foreign.address(), null) // wrap address into segment (size = 0)
- *                              .asUnboundedSlice(0, 4); // unsafe resize (size = 4)
+ * MemorySegment foreign = someSegment.get(ValueLayout.ADDRESS, 0); // zero-length memory segment (size = 0)
+ * foreign = foreign.asUnbounded(); // unsafe resize (size = Long.MAX_VALUE)
  * int x = segment.get(ValueLayout.JAVA_INT, 0); //ok
  *}
  *
- * {@link MemorySegment#asUnboundedSlice(long, long)} is a <a href="package-summary.html#restricted"><em>restricted</em></a> method,
+ * {@link MemorySegment#asUnbounded()} is a <a href="package-summary.html#restricted"><em>restricted</em></a> method,
  * and should be used with caution: for instance, sizing a segment incorrectly could result in a VM crash when attempting
  * to access the memory segment.
  * <p>
@@ -386,7 +384,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * the client might prefer to resize the segment to match the size of the struct (so that out-of-bounds access will be detected by the API).
  * In other instances, however, there will be no, or little information as to what spatial and/or temporal bounds should
  * be associated with a given native pointer. In these cases obtaining a memory segment with
- * {@linkplain #asUnboundedSlice() maximal size} might be preferable.
+ * {@linkplain #asUnbounded() maximal size} might be preferable.
  *
  * @implSpec
  * Implementations of this interface are immutable, thread-safe and <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
@@ -447,7 +445,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns {@code true}, if this segment is alive. Heap segments are always alive. Whether a native segment is
-     * alive depends on the native allocator used to obtain that segment.
+     * alive depends on the arena used to obtain that native segment.
      * @return {@code true}, if this segment is alive.
      * @see Arena#isAlive()
      */
@@ -455,7 +453,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns {@code true}, if the provided segment can access this segment. Heap segments can be accessed by any thread.
-     * Whether a native segment is accessible by a given thread depends on the native allocator used to obtain that segment.
+     * Whether a native segment is accessible by a given thread depends on the arena used to obtain that segment.
      *
      * @param thread the thread to be tested.
      * @return {@code true}, if the provided segment can access this segment.
@@ -1029,7 +1027,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
     MemorySegment NULL = NativeMemorySegmentImpl.makeNativeSegmentUnchecked(0L, 0);
 
     /**
-     * Returns a slice of this memory segment, at the same offset as this segment, with <em>unbounded</em> size.
+     * Returns a new memory segment that has the same address and lifecycle as this segment, but with <em>unbounded</em> size.
      * That is, the byte size of the returned segment is set to {@linkplain Long#MAX_VALUE}. This method
      * can be used to resize zero-length memory segments.
      * <p>
@@ -1044,33 +1042,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
      */
     @CallerSensitive
-    MemorySegment asUnboundedSlice();
-
-    /**
-     * Returns a slice of this memory segment, at the given offset. The returned segment's address is the address
-     * of this segment plus the given offset; its size is specified by the given argument. Unlike
-     * {@linkplain #asSlice(long, long)}, this method does <em>not</em> perform bound checks and can be used
-     * to resize zero-length memory segments.
-     * <p>
-     * Equivalent to the following code:
-     * {@snippet lang=java :
-     * asUnboundedSlice().asSlice(offset, size);
-     * }
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
-     *
-     * @param offset The new segment base offset (relative to the address of this segment), specified in bytes.
-     * @param newSize The new segment size, specified in bytes.
-     * @return a new memory segment with unbounded size.
-     * @throws IllegalCallerException if access to this method occurs from a module {@code M} and the command line option
-     * {@code --enable-native-access} is specified, but does not mention the module name {@code M}, or
-     * {@code ALL-UNNAMED} in case {@code M} is an unnamed module.
-     */
-    @CallerSensitive
-    MemorySegment asUnboundedSlice(long offset, long newSize);
+    MemorySegment asUnbounded();
 
     /**
      * Performs a bulk copy from source segment to destination segment. More specifically, the bytes at offset

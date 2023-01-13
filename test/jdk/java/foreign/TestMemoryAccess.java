@@ -92,7 +92,7 @@ public class TestMemoryAccess {
 
     private void testAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, MemoryLayout layout, VarHandle handle, Checker checker) {
         MemorySegment outer_segment;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(layout));
             boolean isRO = segment.isReadOnly();
             try {
@@ -124,7 +124,7 @@ public class TestMemoryAccess {
 
     private void testArrayAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, ArrayChecker checker) {
         MemorySegment outer_segment;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(seq));
             boolean isRO = segment.isReadOnly();
             try {
@@ -193,7 +193,7 @@ public class TestMemoryAccess {
 
     private void testMatrixAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, MatrixChecker checker) {
         MemorySegment outer_segment;
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(seq));
             boolean isRO = segment.isReadOnly();
             try {
@@ -465,8 +465,8 @@ public class TestMemoryAccess {
         };
 
         MatrixChecker ADDR = (handle, segment, r, c) -> {
-            handle.set(segment, r, c, Arena.global().wrap(r + c, null));
-            assertEquals(Arena.global().wrap(r + c, null), (MemorySegment) handle.get(segment, r, c));
+            handle.set(segment, r, c, Arena.global().wrap(r + c, 0, null));
+            assertEquals(Arena.global().wrap(r + c, 0,  null), (MemorySegment) handle.get(segment, r, c));
         };
 
         MatrixChecker FLOAT = (handle, segment, r, c) -> {

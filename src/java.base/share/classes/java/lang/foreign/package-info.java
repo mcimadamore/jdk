@@ -50,7 +50,7 @@
  *
  * This code creates a <em>native</em> memory segment, that is, a memory segment backed by
  * off-heap memory; the size of the segment is 40 bytes, enough to store 10 values of the primitive type {@code int}.
- * The segment is allocated with an {@linkplain java.lang.foreign.Arena#auto() automatic} native allocator. This
+ * The segment is allocated with an {@linkplain java.lang.foreign.Arena#auto() automatic} arena. This
  * means that the off-heap region of memory backing the segment is managed, automatically, by the garbage collector.
  * As such, the off-heap memory backing the native segment will be released at some unspecified
  * point <em>after</em> the segment becomes <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>.
@@ -75,7 +75,7 @@
  * This can be done, using the {@link java.lang.foreign.ScopedArena} abstraction, as shown below:
  *
  * {@snippet lang = java:
- * try (ScopedArena arena = ScopedArena.openConfined()) {
+ * try (ScopedArena arena = Arena.openConfined()) {
  *     MemorySegment segment = arena.allocate(10 * 4);
  *     for (int i = 0 ; i < 10 ; i++) {
  *         segment.setAtIndex(ValueLayout.JAVA_INT, i, i);
@@ -121,7 +121,7 @@
  *     FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
  * );
  *
- * try (ScopedArena arena = ScopedArena.openConfined()) {
+ * try (ScopedArena arena = Arena.openConfined()) {
  *     MemorySegment cString = arena.allocateUtf8String("Hello");
  *     long len = (long)strlen.invoke(cString); // 5
  * }
@@ -146,15 +146,15 @@
  * to a Java method) into a memory segment, so that Java code can effectively be passed to other foreign functions.
  * For instance, we can write a method that compares two integer values, as follows:
  *
- * {@snippet lang=java :
+ * {@snippet lang = java:
  * class IntComparator {
  *     static int intCompare(MemorySegment addr1, MemorySegment addr2) {
- *         return addr1.asUnboundedSlice().get(ValueLayout.JAVA_INT, 0) -
- *                addr2.asUnboundedSlice().get(ValueLayout.JAVA_INT, 0);
+ *         return addr1.asUnbounded().get(ValueLayout.JAVA_INT, 0) -
+ *                addr2.asUnbounded().get(ValueLayout.JAVA_INT, 0);
  *
  *     }
  * }
- * }
+ *}
  *
  * The above method accesses two foreign memory segments containing an integer value, and performs a simple comparison
  * by returning the difference between such values. We can then obtain a method handle which targets the above static
@@ -195,12 +195,12 @@
  * <h2 id="restricted">Restricted methods</h2>
  * Some methods in this package are considered <em>restricted</em>. Restricted methods are typically used to bind native
  * foreign data and/or functions to first-class Java API elements which can then be used directly by clients. For instance
- * the restricted method {@link java.lang.foreign.MemorySegment#asUnboundedSlice()}
+ * the restricted method {@link java.lang.foreign.MemorySegment#asUnbounded()}
  * can be used to create a fresh segment with the given spatial bounds out of a native address.
  * <p>
  * Binding foreign data and/or functions is generally unsafe and, if done incorrectly, can result in VM crashes,
  * or memory corruption when the bound Java API element is accessed. For instance, in the case of
- * {@link java.lang.foreign.MemorySegment#asUnboundedSlice()}, if the provided spatial bounds are
+ * {@link java.lang.foreign.MemorySegment#asUnbounded()}, if the provided spatial bounds are
  * incorrect, a client of the segment returned by that method might crash the VM, or corrupt
  * memory when attempting to access said segment. For these reasons, it is crucial for code that calls a restricted method
  * to never pass arguments that might cause incorrect binding of foreign data and/or functions to a Java API.

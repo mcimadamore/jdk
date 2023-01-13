@@ -126,12 +126,11 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
             UNSAFE.setMemory(buf, alignedSize, (byte)0);
         }
         long alignedBuf = Utils.alignUp(buf, byteAlignment);
-        MemorySegment segment = allocator.wrap(buf,
+        MemorySegment segment = allocator.wrap(buf, alignedSize,
                 () -> {
                     UNSAFE.freeMemory(buf);
                     NIO_ACCESS.unreserveMemory(alignedSize, byteSize);
-                }).asUnboundedSlice()
-                  .asSlice(0, alignedSize);
+                });
         if (alignedSize != byteSize) {
             long delta = alignedBuf - buf;
             segment = segment.asSlice(delta, byteSize);
@@ -144,19 +143,16 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
 
     @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, Arena allocator, Runnable action) {
-        return allocator.wrap(min, action)
-                .asUnboundedSlice(0, byteSize);
+        return allocator.wrap(min, byteSize, action);
     }
 
     @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, Arena allocator) {
-        return allocator.wrap(min, null)
-                .asUnboundedSlice(0, byteSize);
+        return allocator.wrap(min, byteSize, null);
     }
 
     @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize) {
-        return Arena.global().wrap(min, null)
-                .asUnboundedSlice(0, byteSize);
+        return Arena.global().wrap(min, byteSize, null);
     }
 }

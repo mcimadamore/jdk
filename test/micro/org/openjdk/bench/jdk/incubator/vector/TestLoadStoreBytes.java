@@ -23,7 +23,6 @@
  */
 package org.openjdk.bench.jdk.incubator.vector;
 
-import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Arena;
 import java.nio.ByteOrder;
@@ -163,11 +162,9 @@ public class TestLoadStoreBytes {
 
   @Benchmark
   public void segmentNativeConfined() {
-    try (final var arena = ScopedArena.openConfined()) {
-        final var srcSegmentConfined = arena.wrap(srcSegment.address(), null)
-                .asUnboundedSlice(0, size);
-        final var dstSegmentConfined = arena.wrap(dstSegment.address(), null)
-                .asUnboundedSlice(0, size);
+    try (final var arena = Arena.openConfined()) {
+        final var srcSegmentConfined = arena.wrap(srcSegment.address(), size, null);
+        final var dstSegmentConfined = arena.wrap(dstSegment.address(), size, null);
 
       for (long i = 0; i < SPECIES.loopBound(srcArray.length); i += SPECIES.length()) {
         var v = ByteVector.fromMemorySegment(SPECIES, srcSegmentConfined, i, ByteOrder.nativeOrder());

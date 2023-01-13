@@ -28,27 +28,30 @@ package java.lang.foreign;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.ref.CleanerFactory;
+import jdk.internal.reflect.CallerSensitive;
 
 /**
- * A native allocator is used to allocate native segments.
+ * An arena is used to allocate native segments.
  * <p>
- * A native allocator has a <em>lifetime</em> (see {@link #isAlive()}) which determines the temporal
- * bounds of the memory segments allocated by it. Moreover, a native allocator also determines whether access to
+ * An arena has a <em>lifetime</em> (see {@link #isAlive()}) which determines the temporal
+ * bounds of the memory segments allocated by it. Moreover, an arena also determines whether access to
  * memory segments allocated by it should be {@linkplain #isAccessibleBy(Thread) restricted} to specific threads.
+ * An arena is a {@link SegmentAllocator} and features several allocation methods that can be used by clients
+ * to create native segments.
  * <p>
- * The simplest native allocator is the {@linkplain Arena#global() global allocator}. The global allocator
- * features an <em>unbounded lifetime</em>. As such, native segments allocated with the global allocator are always
+ * The simplest arena is the {@linkplain Arena#global() global arena}. The global arena
+ * features an <em>unbounded lifetime</em>. As such, native segments allocated with the global arena are always
  * accessible and their backing regions of memory are never deallocated. Moreover, memory segments allocated with the
- * global allocator can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
+ * global arena can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
  * {@snippet lang = java:
  * MemorySegment segment = Arena.global().allocate(100);
  * ...
  * // segment is never deallocated!
  *}
  * <p>
- * Alternatively, clients can obtain an {@linkplain Arena#auto() automatic allocator}, that is an allocator
+ * Alternatively, clients can obtain an {@linkplain Arena#auto() automatic arena}, that is an arena
  * which features a <em>bounded lifetime</em> that is managed, automatically, by the garbage collector. As such, the regions
- * of memory backing memory segments allocated with the automatic allocator are deallocated at some unspecified time
+ * of memory backing memory segments allocated with the automatic arena are deallocated at some unspecified time
  * <em>after</em> the automatic allocator (and all the segments allocated by it) become
  * <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>, as shown below:
  *
@@ -57,27 +60,27 @@ import jdk.internal.ref.CleanerFactory;
  * ...
  * segment = null; // the segment region becomes available for deallocation after this point
  *}
- * Memory segments allocated with the automatic allocator can also be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
+ * Memory segments allocated with an automatic arena can also be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} from any thread.
  * <p>
- * Finally, clients can use an {@linkplain ScopedArena arena}. An arena features a <em>bounded lifetime</em> which
- * starts with the arena, and ends when the arena is {@linkplain ScopedArena#close() closed}. As a result,
- * the regions of memory backing memory segments allocated with an arena are deallocated when the arena is closed.
- * When this happens, all the segments allocated with the arena become not {@linkplain MemorySegment#isAlive() alive},
+ * Finally, clients can use an {@linkplain ScopedArena scoped arena}. A scoped arena features a <em>bounded lifetime</em> which
+ * starts when the scoped arena is created, and ends when the scoped arena is {@linkplain ScopedArena#close() closed}. As a result,
+ * the regions of memory backing memory segments allocated with a scoped arena are deallocated when the scoped arena is closed.
+ * When this happens, all the segments allocated with the scoped arena become not {@linkplain MemorySegment#isAlive() alive},
  * and subsequent access operations on these segments will fail {@link IllegalStateException}.
  *
  * {@snippet lang = java:
  * MemorySegment segment = null;
- * try (ScopedArena arena = ScopedArena.openConfined()) {
+ * try (ScopedArena arena = Arena.openConfined()) {
  *     segment = arena.allocate(100);
  *     ...
  * } // segment region deallocated here
  * segment.get(ValueLayout.JAVA_BYTE, 0); // throws IllegalStateException
  *}
  *
- * Which threads can {@link MemorySegment#isAccessibleBy(Thread) access} memory segments allocated with an arena depends
- * on the arena kind. For instance, segments allocated with a {@linkplain ScopedArena#openConfined() confined arena}
+ * Which threads can {@link MemorySegment#isAccessibleBy(Thread) access} memory segments allocated with a scoped arena depends
+ * on the scoped arena kind. For instance, segments allocated with a {@linkplain Arena#openConfined() confined scoped arena}
  * can only be accessed by the thread that created the arena. Conversely, segments allocated with a
- * {@linkplain ScopedArena#openConfined() shared arena} can be accessed by any thread.
+ * {@linkplain Arena#openConfined() shared scoped arena} can be accessed by any thread.
  *
  * @implSpec
  * Implementations of this interface are thread-safe.
@@ -142,15 +145,14 @@ public sealed interface Arena extends SegmentAllocator permits ScopedArena, Memo
     MemorySegment allocate(long byteSize, long byteAlignment);
 
     /**
-     * Creates a native segment with the given address, and cleanup action.
+     * Creates a native segment with the given address, size and cleanup action.
      * <p>
      * The temporal bounds of the returned segments are determined by this allocator's lifetime. That is,
      * the returned segment can only be accessed as long as this allocator is {@linkplain #isAlive() alive}.
      * <p>
      * The returned segment's {@link MemorySegment#address() address} is the provided address, which presumably
      * denotes the starting address of some externally allocated off-heap memory region. The size of the returned
-     * segment is 0. That is, the returned segment is a <a href="MemorySegment.html#wrapping-addresses">zero-length memory segment</a>.
-     * The returned segment can be {@link MemorySegment#asUnboundedSlice() resized unsafely}.
+     * segment is the provided size.
      * <p>
      * The returned segment is not read-only (see {@link MemorySegment#isReadOnly()}).
      * <p>
@@ -158,16 +160,24 @@ public sealed interface Arena extends SegmentAllocator permits ScopedArena, Memo
      * where an address to some underlying region of memory is typically obtained from foreign code
      * (often as a plain {@code long} value).
      * <p>
-     * The provided cleanup action (if any) will be invoked when the returned segment becomes not {@linkplain MemorySegment#isAlive() alive}.
+     * The provided cleanup action (if any) will be invoked when the lifetime associated with this arena ends.
+     * <p>
+     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
+     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
+     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
+     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param address the returned segment's address.
+     * @param size the returned segment's size.
      * @param cleanupAction the custom cleanup action to be associated to the returned segment (can be null).
      * @return a native segment with the given address and cleanup action (if any).
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code isAccessibleBy(T) == false}.
      * @throws IllegalStateException if this allocator is no longer {@linkplain #isAlive() alive}.
+     * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
-    MemorySegment wrap(long address, Runnable cleanupAction);
+    @CallerSensitive
+    MemorySegment wrap(long address, long size, Runnable cleanupAction);
 
     /**
      * Obtains an automatic allocator. The lifetime of an automatic allocator is managed, implicitly,
@@ -189,5 +199,19 @@ public sealed interface Arena extends SegmentAllocator permits ScopedArena, Memo
      */
     static Arena global() {
         return MemorySessionImpl.GLOBAL;
+    }
+
+    /**
+     * {@return a new scoped confined arena, owned by the current thread}
+     */
+    static ScopedArena openConfined() {
+        return new ScopedArena(MemorySessionImpl.createConfined(Thread.currentThread()));
+    }
+
+    /**
+     * {@return a new scoped shared arena}
+     */
+    static ScopedArena openShared() {
+        return new ScopedArena(MemorySessionImpl.createShared());
     }
 }

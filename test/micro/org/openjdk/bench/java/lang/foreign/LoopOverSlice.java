@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -63,7 +64,7 @@ public class LoopOverSlice {
 
     @Setup
     public void setup() {
-        arena = ScopedArena.openConfined();
+        arena = Arena.openConfined();
         nativeSegment = arena.allocate(ALLOC_SIZE);
         heapSegment = MemorySegment.ofArray(new int[ELEM_SIZE]);
         nativeBuffer = ByteBuffer.allocateDirect(ALLOC_SIZE).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();

@@ -119,8 +119,7 @@ public class TestArrays {
     public void testTooBigForArray(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
         MemoryLayout seq = MemoryLayout.sequenceLayout((Integer.MAX_VALUE * layout.byteSize()) + 1, layout);
         //do not really allocate here, as it's way too much memory
-        MemorySegment segment = Arena.global().wrap(0, null)
-                .asUnboundedSlice(0, seq.byteSize());
+        MemorySegment segment = Arena.global().wrap(0, seq.byteSize(), null);
         arrayFactory.apply(segment);
     }
 
@@ -128,7 +127,7 @@ public class TestArrays {
             expectedExceptions = IllegalStateException.class)
     public void testBadSize(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
         if (layout.byteSize() == 1) throw new IllegalStateException(); //make it fail
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(layout.byteSize() + 1, layout.byteSize());
             arrayFactory.apply(segment);
         }
@@ -137,7 +136,7 @@ public class TestArrays {
     @Test(dataProvider = "elemLayouts",
             expectedExceptions = IllegalStateException.class)
     public void testArrayFromClosedSegment(MemoryLayout layout, Function<MemorySegment, Object> arrayFactory) {
-        ScopedArena arena = ScopedArena.openConfined();
+        ScopedArena arena = Arena.openConfined();
         MemorySegment segment = arena.allocate(layout);
         arena.close();
         arrayFactory.apply(segment);

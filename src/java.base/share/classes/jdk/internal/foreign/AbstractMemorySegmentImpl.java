@@ -119,16 +119,9 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     @CallerSensitive
-    public MemorySegment asUnboundedSlice() {
-        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "asUnboundedSlice");
+    public MemorySegment asUnbounded() {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "asUnbounded");
         return dup(0, Long.MAX_VALUE, readOnly, scope);
-    }
-
-    @Override
-    @CallerSensitive
-    public MemorySegment asUnboundedSlice(long offset, long size) {
-        Reflection.ensureNativeAccess(Reflection.getCallerClass(), MemorySegment.class, "asUnboundedSlice");
-        return dup(offset, size, readOnly, scope);
     }
 
     @Override

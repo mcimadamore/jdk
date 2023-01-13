@@ -37,6 +37,7 @@
  *   TestUpcallStructScope
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -89,7 +90,7 @@ public class TestUpcallStructScope extends NativeTestHelper {
         AtomicReference<MemorySegment> capturedSegment = new AtomicReference<>();
         MethodHandle target = methodHandle(capturedSegment::set);
         FunctionDescriptor upcallDesc = FunctionDescriptor.ofVoid(S_PDI_LAYOUT);
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment upcallStub = LINKER.upcallStub(target, upcallDesc, arena);
             MemorySegment argSegment = arena.allocate(S_PDI_LAYOUT);;
             MH_do_upcall.invoke(upcallStub, argSegment);

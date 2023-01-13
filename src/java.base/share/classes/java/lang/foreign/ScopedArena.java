@@ -27,57 +27,47 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 
 /**
- * An arena controls the lifecycle of memory segments, providing both flexible allocation and timely deallocation.
+ * A scoped arena controls the lifecycle of memory segments, providing both flexible allocation and timely deallocation.
  * <p>
- * An arena is a native allocator. When the arena is {@linkplain #close() closed},
- * all the segments associated with the arena are invalidated, safely and atomically, their backing memory regions are
+ * A scoped arena is used to allocate native segments. When the arena is {@linkplain #close() closed},
+ * all the segments allocated by the scoped arena are invalidated, safely and atomically, their backing memory regions are
  * deallocated (where applicable) and can no longer be accessed:
  *
  * {@snippet lang = java:
- * try (ScopedArena arena = ScopedArena.openConfined()) {
- *     MemorySegment segment = arena.allocate((MemoryLayout)100);
- *     ...
- * } // memory released here
- *}
- *
- * Furthermore, an arena is a {@link SegmentAllocator}. All the segments {@linkplain #allocate(long, long) allocated} by the
- * arena are associated with the arena. This makes arenas extremely useful when interacting with foreign code, as shown below:
- *
- * {@snippet lang = java:
- * try (ScopedArena arena = ScopedArena.openConfined()) {
- *     MemorySegment nativeArray = arena.allocateArray(ValueLayout.JAVA_INT, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
- *     MemorySegment nativeString = arena.allocateUtf8String("Hello!");
- *     MemorySegment upcallStub = linker.upcallStub(handle, desc, arena);
+ * try (ScopedArena arena = Arena.openConfined()) {
+ *     MemorySegment segment = arena.allocate(100);
  *     ...
  * } // memory released here
  *}
  *
  * <h2 id = "thread-confinement">Safety and thread-confinement</h2>
  *
- * Arenas provide strong temporal safety guarantees: a memory segment allocated by an arena cannot be accessed
- * <em>after</em> the arena has been closed. The cost of providing this guarantee varies based on the
- * number of threads that have access to the memory segments allocated by the arena. For instance, if an arena
- * is always created and closed by one thread, and the memory segments associated with the arena are always
+ * Scoped arenas provide strong temporal safety guarantees: a memory segment allocated by a scoped arena cannot be accessed
+ * <em>after</em> the scoped arena has been closed. The cost of providing this guarantee varies based on the
+ * number of threads that have access to the memory segments allocated by the scoped arena. For instance, if a scoped arena
+ * is always created and closed by one thread, and the memory segments associated with the scoped arena are always
  * accessed by that same thread, then ensuring correctness is trivial.
  * <p>
- * Conversely, if an arena allocates segments that can be accessed by multiple threads, or if the arena can be closed
+ * Conversely, if a scoped arena allocates segments that can be accessed by multiple threads, or if the scoped arena can be closed
  * by a thread other than the accessing thread, then ensuring correctness is much more complex. For example, a segment
- * allocated with the arena might be accessed <em>while</em> another thread attempts, concurrently, to close the arena.
+ * allocated with the scoped arena might be accessed <em>while</em> another thread attempts, concurrently, to close the scoped arena.
  * To provide the strong temporal safety guarantee without forcing every client, even simple ones, to incur a performance
- * impact, arenas are divided into <em>thread-confined</em> arenas, and <em>shared</em> arenas.
+ * impact, scoped arenas are divided into <em>thread-confined</em> scoped arenas, and <em>shared</em> scoped arenas.
  * <p>
- * Confined arenas, support strong thread-confinement guarantees. Upon creation, they are assigned an
+ * Confined scoped arenas, support strong thread-confinement guarantees. Upon creation, they are assigned an
  * {@linkplain #isCloseableBy(Thread) owner thread}, typically the thread which initiated the creation operation.
- * The segments created by a confined arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
- * by the owner thread. Moreover, any attempt to close the confined arena from a thread other than the owner thread will
+ * The segments created by a scoped confined arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed}
+ * by the owner thread. Moreover, any attempt to close the scoped confined arena from a thread other than the owner thread will
  * fail with {@link WrongThreadException}.
  * <p>
- * Shared arenas, on the other hand, have no owner thread. The segments created by a shared arena
+ * Shared scoped arenas, on the other hand, have no owner thread. The segments created by a shared scoped arena
  * can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread. This might be useful when
  * multiple threads need to access the same memory segment concurrently (e.g. in the case of parallel processing).
- * Moreover, a shared arena {@linkplain #isCloseableBy(Thread) can be closed} by any thread.
+ * Moreover, a shared scoped arena {@linkplain #isCloseableBy(Thread) can be closed} by any thread.
  *
  * @since 20
  */
@@ -94,7 +84,7 @@ public non-sealed class ScopedArena implements Arena, AutoCloseable {
         this(arena.sessionImpl);
     }
 
-    private ScopedArena(MemorySessionImpl sessionImpl) {
+    ScopedArena(MemorySessionImpl sessionImpl) {
         this.sessionImpl = sessionImpl;
     }
 
@@ -132,8 +122,10 @@ public non-sealed class ScopedArena implements Arena, AutoCloseable {
      * {@inheritDoc}
      */
     @Override
-    public final MemorySegment wrap(long address, Runnable cleanupAction) {
-        return sessionImpl.wrap(address, cleanupAction);
+    @CallerSensitive
+    public final MemorySegment wrap(long address, long size, Runnable cleanupAction) {
+        Reflection.ensureNativeAccess(Reflection.getCallerClass(), ScopedArena.class, "wrap");
+        return sessionImpl.wrap(address, size, cleanupAction);
     }
 
     /**
@@ -160,17 +152,4 @@ public non-sealed class ScopedArena implements Arena, AutoCloseable {
         return sessionImpl.isCloseableBy(thread);
     }
 
-    /**
-     * {@return a new confined arena, owned by the current thread}
-     */
-    public static ScopedArena openConfined() {
-        return new ScopedArena(MemorySessionImpl.createConfined(Thread.currentThread()));
-    }
-
-    /**
-     * {@return a new shared arena}
-     */
-    public static ScopedArena openShared() {
-        return new ScopedArena(MemorySessionImpl.createShared());
-    }
 }

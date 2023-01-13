@@ -42,7 +42,7 @@ public class PanamaMainInvoke {
 
     public static void testInvokeMemorySegment() throws Throwable {
         System.out.println("Trying to get MemorySegment");
-        var mh = MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnboundedSlice",
+        var mh = MethodHandles.lookup().findVirtual(MemorySegment.class, "asUnbounded",
                 MethodType.methodType(MemorySegment.class));
         var seg = (MemorySegment)mh.invokeExact(MemorySegment.NULL);
         System.out.println("Got MemorySegment");

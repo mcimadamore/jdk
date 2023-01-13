@@ -59,8 +59,7 @@ public class TestClassLoaderFindNative {
 
     @Test
     public void testVariableSymbolLookup() {
-        MemorySegment segment = Arena.global().wrap(SymbolLookup.loaderLookup().find("c").get().address(), null)
-                .asUnboundedSlice(0, ValueLayout.JAVA_INT.byteSize());
+        MemorySegment segment = Arena.global().wrap(SymbolLookup.loaderLookup().find("c").get().address(), ValueLayout.JAVA_INT.byteSize(),null);
         assertEquals(segment.get(JAVA_BYTE, 0), 42);
     }
 }

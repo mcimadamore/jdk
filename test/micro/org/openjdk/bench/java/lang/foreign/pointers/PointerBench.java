@@ -35,6 +35,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -48,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 public class PointerBench {
 
-    final ScopedArena arena = ScopedArena.openConfined();
+    final ScopedArena arena = Arena.openConfined();
     static final int ELEM_SIZE = 1_000_000;
     Pointer<Integer> intPointer = Pointer.allocate(NativeType.C_INT, ELEM_SIZE, arena);
     Pointer<Pointer<Integer>> intPointerPointer = Pointer.allocate(NativeType.C_INT_PTR, ELEM_SIZE, arena);
@@ -128,7 +129,7 @@ public class PointerBench {
     public int testLoopPointerPointerInt_segment() {
         int sum = 0;
         for (long i = 0 ; i < ELEM_SIZE ; i++) {
-            var segment = intPointerSegment.getAtIndex(UNSAFE_ADDRESS, i).asUnboundedSlice();
+            var segment = intPointerSegment.getAtIndex(UNSAFE_ADDRESS, i).asUnbounded();
             sum += segment.get(ValueLayout.JAVA_INT, 0);
         }
         return sum;

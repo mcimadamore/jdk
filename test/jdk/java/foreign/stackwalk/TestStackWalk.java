@@ -78,6 +78,7 @@
  *   TestStackWalk
  */
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -114,7 +115,7 @@ public class TestStackWalk extends NativeTestHelper {
     static boolean armed;
 
     public static void main(String[] args) throws Throwable {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment stub = linker.upcallStub(MH_m, FunctionDescriptor.ofVoid(), arena);
             armed = false;
             for (int i = 0; i < 20_000; i++) {

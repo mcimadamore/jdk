@@ -62,7 +62,7 @@ public class TestUpcallAsync extends TestUpcallBase {
         List<Consumer<Object>> returnChecks = new ArrayList<>();
         List<Consumer<Object[]>> argChecks = new ArrayList<>();
         MemorySegment addr = findNativeOrThrow(fName);
-        try (ScopedArena arena = ScopedArena.openShared()) {
+        try (ScopedArena arena = Arena.openShared()) {
             FunctionDescriptor descriptor = function(ret, paramTypes, fields);
             MethodHandle mh = downcallHandle(ABI, addr, arena, descriptor);
             Object[] args = makeArgs(Arena.auto(), ret, paramTypes, fields, returnChecks, argChecks);

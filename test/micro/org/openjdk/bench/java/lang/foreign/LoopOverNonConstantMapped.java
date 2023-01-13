@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
@@ -95,7 +96,7 @@ public class LoopOverNonConstantMapped extends JavaLayouts {
             ((MappedByteBuffer)byteBuffer).force();
         }
         fileChannel = FileChannel.open(tempPath, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        arena = ScopedArena.openConfined();
+        arena = Arena.openConfined();
         segment = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, ALLOC_SIZE, arena);
         unsafe_addr = segment.address();
     }

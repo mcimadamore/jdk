@@ -55,7 +55,7 @@ import jdk.internal.reflect.Reflection;
  * a variable argument list, as follows:
  * {@snippet lang = java:
  * void upcall(int n, MemorySegment vaListSegment) {
- *    try (ScopedArena arena = ScopedArena.openConfined()) {
+ *    try (ScopedArena arena = Arena.openConfined()) {
  *        VaList vaList = VaList.ofAddress(vaListSegment.address(), arena);
  *        VaList copy = vaList.copy();
  *        int i = vaList.nextVarg(C_INT);
@@ -228,9 +228,9 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
 
     /**
      * Creates a variable argument list from the given address value, using the provided allocator. The address is typically obtained
-     * by calling {@link MemorySegment#address()} on a foreign memory segment instance. The provided native allocator determines
-     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link ScopedArena},
-     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain ScopedArena#close() closed}.
+     * by calling {@link MemorySegment#address()} on a foreign memory segment instance. The provided arena determines
+     * the lifecycle of the returned variable argument list. For instance, if the arena is a {@linkplain ScopedArena scoped arena},
+     * the returned variable argument list will no longer be accessible after the scoped arena has been {@linkplain ScopedArena#close() closed}.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -254,9 +254,9 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
     }
 
     /**
-     * Creates a variable argument list using a builder (see {@link Builder}). The provided native allocator determines
-     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link ScopedArena},
-     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain ScopedArena#close() closed}.
+     * Creates a variable argument list using a builder (see {@link Builder}). The provided arena determines
+     * the lifecycle of the returned variable argument list. For instance, if the arena is a {@linkplain ScopedArena scoped arena},
+     * the returned variable argument list will no longer be accessible after the scoped arena has been {@linkplain ScopedArena#close() closed}.
      * <p>
      * Note that when there are no elements added to the created va list,
      * this method will return the same as {@link #empty()}.

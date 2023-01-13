@@ -60,7 +60,7 @@ public class LoopOverNew extends JavaLayouts {
     static final int CARRIER_SIZE = (int)JAVA_INT.byteSize();
     static final int ALLOC_SIZE = ELEM_SIZE * CARRIER_SIZE;
     static final MemoryLayout ALLOC_LAYOUT = MemoryLayout.sequenceLayout(ELEM_SIZE, JAVA_INT);
-    final ScopedArena arena = ScopedArena.openConfined();
+    final ScopedArena arena = Arena.openConfined();
     final SegmentAllocator recyclingAlloc = SegmentAllocator.prefixAllocator(arena.allocate(ALLOC_LAYOUT));
 
     @TearDown
@@ -79,7 +79,7 @@ public class LoopOverNew extends JavaLayouts {
 
     @Benchmark
     public void segment_loop_confined() {
-        try (ScopedArena arena = ScopedArena.openConfined()) {
+        try (ScopedArena arena = Arena.openConfined()) {
             MemorySegment segment = arena.allocate(ALLOC_SIZE, 4);
             for (int i = 0; i < ELEM_SIZE; i++) {
                 VH_INT.set(segment, (long) i, i);
@@ -89,7 +89,7 @@ public class LoopOverNew extends JavaLayouts {
 
     @Benchmark
     public void segment_loop_shared() {
-        try (ScopedArena arena = ScopedArena.openShared()) {
+        try (ScopedArena arena = Arena.openShared()) {
             MemorySegment segment = arena.allocate(ALLOC_SIZE, 4);
             for (int i = 0; i < ELEM_SIZE; i++) {
                 VH_INT.set(segment, (long) i, i);

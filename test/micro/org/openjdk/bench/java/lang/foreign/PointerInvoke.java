@@ -25,6 +25,7 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
@@ -52,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 3, jvmArgsAppend = { "--enable-native-access=ALL-UNNAMED", "--enable-preview" })
 public class PointerInvoke extends CLayouts {
 
-    ScopedArena arena = ScopedArena.openConfined();
+    ScopedArena arena = Arena.openConfined();
     MemorySegment segment = arena.allocate(100);
 
     static {
@@ -87,8 +88,7 @@ public class PointerInvoke extends CLayouts {
 
     @Benchmark
     public int panama_call_as_new_segment() throws Throwable {
-        MemorySegment newSegment = arena.wrap(segment.address(), null)
-                .asUnboundedSlice(0, 100);
+        MemorySegment newSegment = arena.wrap(segment.address(), 100, null);
         return (int)F_PTR.invokeExact(newSegment);
     }
 }

@@ -132,9 +132,7 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     private static SysVVaList readFromAddress(long address, Arena allocator) {
-        MemorySegment segment = allocator.wrap(address, null)
-                .asUnboundedSlice()
-                .asSlice(0, LAYOUT.byteSize());
+        MemorySegment segment = allocator.wrap(address, LAYOUT.byteSize(), null);
         MemorySegment regSaveArea = getRegSaveArea(segment, allocator);
         MemorySegment overflowArgArea = getArgOverflowArea(segment, allocator);
         return new SysVVaList(segment, overflowArgArea, regSaveArea, MAX_GP_OFFSET, MAX_FP_OFFSET);
@@ -171,14 +169,12 @@ public non-sealed class SysVVaList implements VaList {
 
     private static MemorySegment getRegSaveArea(MemorySegment segment, Arena allocator) {
         var reg_save_area = ((MemorySegment)VH_reg_save_area.get(segment));
-        return allocator.wrap(reg_save_area.address(), null)
-                .asUnboundedSlice(0, LAYOUT_REG_SAVE_AREA.byteSize());
+        return allocator.wrap(reg_save_area.address(), LAYOUT_REG_SAVE_AREA.byteSize(), null);
     }
 
     private static MemorySegment getArgOverflowArea(MemorySegment segment, Arena allocator) {
         var overflow_arg_area = ((MemorySegment)VH_overflow_arg_area.get(segment));
-        return allocator.wrap(overflow_arg_area.address(), null)
-                .asUnboundedSlice();
+        return allocator.wrap(overflow_arg_area.address(), Long.MAX_VALUE, null);
     }
 
     private long preAlignOffset(MemoryLayout layout) {
