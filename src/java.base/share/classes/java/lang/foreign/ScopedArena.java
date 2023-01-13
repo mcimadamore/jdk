@@ -82,7 +82,21 @@ import jdk.internal.javac.PreviewFeature;
  * @since 20
  */
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-public non-sealed interface ScopedArena extends Arena, AutoCloseable {
+public non-sealed class ScopedArena implements Arena, AutoCloseable {
+
+    private MemorySessionImpl sessionImpl;
+
+    /**
+     * Wraps a new arena around an existing one.
+     * @param arena arena.
+     */
+    protected ScopedArena(ScopedArena arena) {
+        this(arena.sessionImpl);
+    }
+
+    private ScopedArena(MemorySessionImpl sessionImpl) {
+        this.sessionImpl = sessionImpl;
+    }
 
     /**
      * Closes this arena. If this method completes normally, the segments associated with this arena
@@ -102,25 +116,61 @@ public non-sealed interface ScopedArena extends Arena, AutoCloseable {
      * such that {@code isCloseableBy(T) == false}.
      */
     @Override
-    void close();
+    public void close() {
+        sessionImpl.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public final boolean isAlive() {
+        return sessionImpl.isAlive();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public final MemorySegment wrap(long address, Runnable cleanupAction) {
+        return sessionImpl.wrap(address, cleanupAction);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MemorySegment allocate(long byteSize, long byteAlignment) {
+        return sessionImpl.allocate(byteSize, byteAlignment);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public final boolean isAccessibleBy(Thread thread) {
+        return sessionImpl.isAccessibleBy(thread);
+    }
 
     /**
      * {@return {@code true} if the provided thread can close this arena}
      * @param thread the thread to be tested.
      */
-    boolean isCloseableBy(Thread thread);
+    public final boolean isCloseableBy(Thread thread) {
+        return sessionImpl.isCloseableBy(thread);
+    }
 
     /**
      * {@return a new confined arena, owned by the current thread}
      */
-    static ScopedArena openConfined() {
-        return MemorySessionImpl.createConfined(Thread.currentThread());
+    public static ScopedArena openConfined() {
+        return new ScopedArena(MemorySessionImpl.createConfined(Thread.currentThread()));
     }
 
     /**
      * {@return a new shared arena}
      */
-    static ScopedArena openShared() {
-        return MemorySessionImpl.createShared();
+    public static ScopedArena openShared() {
+        return new ScopedArena(MemorySessionImpl.createShared());
     }
 }

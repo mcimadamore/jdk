@@ -234,7 +234,7 @@ public interface SymbolLookup {
             throw new IllegalArgumentException("Cannot open library: " + libDesc);
         }
         // register hook to unload library when 'libScope' becomes not alive
-        ((MemorySessionImpl) libScope).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
+        MemorySessionImpl.toSessionImpl(libScope).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
             @Override
             public void cleanup() {
                 nativeLibraries.unload(library);

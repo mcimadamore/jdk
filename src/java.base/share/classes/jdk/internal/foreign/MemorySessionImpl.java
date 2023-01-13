@@ -26,9 +26,9 @@
 
 package jdk.internal.foreign;
 
-import java.lang.foreign.ScopedArena;
-import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -37,6 +37,7 @@ import java.util.Objects;
 
 import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -53,7 +54,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements Arena, ScopedArena, SegmentAllocator
+        implements SegmentAllocator, Arena, AutoCloseable
         permits ConfinedSession, GlobalSession, SharedSession {
     static final int OPEN = 0;
     static final int CLOSING = -1;
@@ -61,8 +62,10 @@ public abstract sealed class MemorySessionImpl
 
     static final VarHandle STATE;
     static final int MAX_FORKS = Integer.MAX_VALUE;
+    static final long SESSION_IMPL_OFFSET;
 
     public static final MemorySessionImpl GLOBAL = new GlobalSession(null);
+    public static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final ScopedMemoryAccess.ScopedAccessError ALREADY_CLOSED = new ScopedMemoryAccess.ScopedAccessError(MemorySessionImpl::alreadyClosed);
     static final ScopedMemoryAccess.ScopedAccessError WRONG_THREAD = new ScopedMemoryAccess.ScopedAccessError(MemorySessionImpl::wrongThread);
@@ -74,6 +77,7 @@ public abstract sealed class MemorySessionImpl
     static {
         try {
             STATE = MethodHandles.lookup().findVarHandle(MemorySessionImpl.class, "state", int.class);
+            SESSION_IMPL_OFFSET = UNSAFE.objectFieldOffset(ScopedArena.class, "sessionImpl");
         } catch (Exception ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -84,11 +88,18 @@ public abstract sealed class MemorySessionImpl
         addInternal(ResourceList.ResourceCleanup.ofRunnable(runnable));
     }
 
-    @Override
     public boolean isCloseableBy(Thread thread) {
         Objects.requireNonNull(thread);
         return ownerThread() == null || // shared
                 ownerThread() == thread;
+    }
+
+    public static MemorySessionImpl toSessionImpl(Arena arena) {
+        if (arena instanceof ScopedArena) {
+            return (MemorySessionImpl)UNSAFE.getReference(arena, SESSION_IMPL_OFFSET);
+        } else {
+            return (MemorySessionImpl)arena;
+        }
     }
 
     /**
@@ -144,7 +155,6 @@ public abstract sealed class MemorySessionImpl
         return NativeMemorySegmentImpl.makeNativeSegment(byteSize, byteAlignment, this);
     }
 
-    @Override
     public MemorySegment wrap(long address, Runnable cleanupAction) {
         if (cleanupAction != null) {
             addOrCleanupIfFail(ResourceCleanup.ofRunnable(cleanupAction));

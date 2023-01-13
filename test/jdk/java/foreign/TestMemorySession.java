@@ -338,11 +338,11 @@ public class TestMemorySession {
     interface SessionSupplier extends Supplier<MemorySessionImpl> {
 
         static void close(MemorySessionImpl session) {
-            ((MemorySessionImpl)session).close();
+            session.close();
         }
 
         static boolean isImplicit(MemorySessionImpl session) {
-            return !((MemorySessionImpl)session).isCloseable();
+            return !session.isCloseable();
         }
 
         static SessionSupplier ofImplicit() {
