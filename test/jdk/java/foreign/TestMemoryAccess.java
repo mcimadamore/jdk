@@ -30,12 +30,12 @@
  * @run testng/othervm -Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false -Djava.lang.invoke.VarHandle.VAR_HANDLE_IDENTITY_ADAPT=true -Xverify:all TestMemoryAccess
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 
@@ -92,7 +92,7 @@ public class TestMemoryAccess {
 
     private void testAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, MemoryLayout layout, VarHandle handle, Checker checker) {
         MemorySegment outer_segment;
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(layout));
             boolean isRO = segment.isReadOnly();
             try {
@@ -124,7 +124,7 @@ public class TestMemoryAccess {
 
     private void testArrayAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, ArrayChecker checker) {
         MemorySegment outer_segment;
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(seq));
             boolean isRO = segment.isReadOnly();
             try {
@@ -193,7 +193,7 @@ public class TestMemoryAccess {
 
     private void testMatrixAccessInternal(Function<MemorySegment, MemorySegment> viewFactory, SequenceLayout seq, VarHandle handle, MatrixChecker checker) {
         MemorySegment outer_segment;
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = viewFactory.apply(arena.allocate(seq));
             boolean isRO = segment.isReadOnly();
             try {
@@ -465,8 +465,8 @@ public class TestMemoryAccess {
         };
 
         MatrixChecker ADDR = (handle, segment, r, c) -> {
-            handle.set(segment, r, c, NativeAllocator.global().wrap(r + c, null));
-            assertEquals(NativeAllocator.global().wrap(r + c, null), (MemorySegment) handle.get(segment, r, c));
+            handle.set(segment, r, c, Arena.global().wrap(r + c, null));
+            assertEquals(Arena.global().wrap(r + c, null), (MemorySegment) handle.get(segment, r, c));
         };
 
         MatrixChecker FLOAT = (handle, segment, r, c) -> {

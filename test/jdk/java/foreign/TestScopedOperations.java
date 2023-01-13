@@ -28,10 +28,10 @@
  * @run testng/othervm --enable-native-access=ALL-UNNAMED TestScopedOperations
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -74,7 +74,7 @@ public class TestScopedOperations {
 
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpAfterClose(String name, ScopedOperation<Z> scopedOperation) {
-        Arena arena = Arena.openConfined();
+        ScopedArena arena = ScopedArena.openConfined();
         Z obj = scopedOperation.apply(arena);
         arena.close();
         try {
@@ -87,7 +87,7 @@ public class TestScopedOperations {
 
     @Test(dataProvider = "scopedOperations")
     public <Z> void testOpOutsideConfinement(String name, ScopedOperation<Z> scopedOperation) {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             Z obj = scopedOperation.apply(arena);
             AtomicReference<Throwable> failed = new AtomicReference<>();
             Thread t = new Thread(() -> {
@@ -161,13 +161,13 @@ public class TestScopedOperations {
         return scopedOperations.stream().map(op -> new Object[] { op.name, op }).toArray(Object[][]::new);
     }
 
-    static class ScopedOperation<X> implements Consumer<X>, Function<NativeAllocator, X> {
+    static class ScopedOperation<X> implements Consumer<X>, Function<Arena, X> {
 
-        final Function<NativeAllocator, X> factory;
+        final Function<Arena, X> factory;
         final Consumer<X> operation;
         final String name;
 
-        private ScopedOperation(Function<NativeAllocator, X> factory, Consumer<X> operation, String name) {
+        private ScopedOperation(Function<Arena, X> factory, Consumer<X> operation, String name) {
             this.factory = factory;
             this.operation = operation;
             this.name = name;
@@ -179,15 +179,15 @@ public class TestScopedOperations {
         }
 
         @Override
-        public X apply(NativeAllocator session) {
+        public X apply(Arena session) {
             return factory.apply(session);
         }
 
-        static <Z> void of(Function<NativeAllocator, Z> factory, Consumer<Z> consumer, String name) {
+        static <Z> void of(Function<Arena, Z> factory, Consumer<Z> consumer, String name) {
             scopedOperations.add(new ScopedOperation<>(factory, consumer, name));
         }
 
-        static void ofScope(Consumer<NativeAllocator> scopeConsumer, String name) {
+        static void ofScope(Consumer<Arena> scopeConsumer, String name) {
             scopedOperations.add(new ScopedOperation<>(Function.identity(), scopeConsumer, name));
         }
 
@@ -237,9 +237,9 @@ public class TestScopedOperations {
                 }
             }
 
-            final Function<NativeAllocator, MemorySegment> segmentFactory;
+            final Function<Arena, MemorySegment> segmentFactory;
 
-            SegmentFactory(Function<NativeAllocator, MemorySegment> segmentFactory) {
+            SegmentFactory(Function<Arena, MemorySegment> segmentFactory) {
                 this.segmentFactory = segmentFactory;
             }
         }
@@ -247,9 +247,9 @@ public class TestScopedOperations {
         enum AllocatorFactory {
             NATIVE_ALLOCATOR(scope -> scope);
 
-            final Function<NativeAllocator, SegmentAllocator> allocatorFactory;
+            final Function<Arena, SegmentAllocator> allocatorFactory;
 
-            AllocatorFactory(Function<NativeAllocator, SegmentAllocator> allocatorFactory) {
+            AllocatorFactory(Function<Arena, SegmentAllocator> allocatorFactory) {
                 this.allocatorFactory = allocatorFactory;
             }
         }

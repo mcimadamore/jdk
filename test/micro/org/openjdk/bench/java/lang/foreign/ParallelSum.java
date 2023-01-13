@@ -23,7 +23,7 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
@@ -69,7 +69,7 @@ public class ParallelSum extends JavaLayouts {
 
     static final Unsafe unsafe = Utils.unsafe;
 
-    Arena arena;
+    ScopedArena arena;
     MemorySegment segment;
     long address;
 
@@ -79,7 +79,7 @@ public class ParallelSum extends JavaLayouts {
         for (int i = 0; i < ELEM_SIZE; i++) {
             unsafe.putInt(address + (i * CARRIER_SIZE), i);
         }
-        arena = Arena.openShared();
+        arena = ScopedArena.openShared();
         segment = arena.allocate(ALLOC_SIZE, CARRIER_SIZE);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);

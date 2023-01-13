@@ -34,7 +34,7 @@
 
 import org.testng.annotations.Test;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemorySegment;
@@ -59,7 +59,7 @@ public class TestDowncallStack extends TestDowncallBase {
         MemorySegment addr = findNativeOrThrow("s" + fName);
         FunctionDescriptor descriptor = functionStack(ret, paramTypes, fields);
         Object[] args = makeArgsStack(paramTypes, fields, checks);
-        try (Arena arena = Arena.openShared()) {
+        try (ScopedArena arena = ScopedArena.openShared()) {
             boolean needsScope = descriptor.returnLayout().map(GroupLayout.class::isInstance).orElse(false);
             SegmentAllocator allocator = needsScope ?
                     arena :

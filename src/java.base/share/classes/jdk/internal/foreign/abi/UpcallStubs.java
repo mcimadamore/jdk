@@ -25,9 +25,7 @@
 package jdk.internal.foreign.abi;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
-
-import jdk.internal.foreign.MemorySessionImpl;
+import java.lang.foreign.Arena;
 
 public final class UpcallStubs {
 
@@ -50,7 +48,7 @@ public final class UpcallStubs {
         registerNatives();
     }
 
-    static MemorySegment makeUpcall(long entry, NativeAllocator allocator) {
+    static MemorySegment makeUpcall(long entry, Arena allocator) {
         return allocator.wrap(entry,
                 () -> freeUpcallStub(entry));
     }

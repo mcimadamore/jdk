@@ -22,7 +22,7 @@
  *
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -46,7 +46,7 @@ public class TestSlices {
 
     @Test(dataProvider = "slices")
     public void testSlices(VarHandle handle, int lo, int hi, int[] values) {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocate(LAYOUT);;
             //init
             for (long i = 0 ; i < 2 ; i++) {
@@ -61,7 +61,7 @@ public class TestSlices {
 
     @Test(dataProvider = "slices")
     public void testSliceBadIndex(VarHandle handle, int lo, int hi, int[] values) {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocate(LAYOUT);;
             assertThrows(() -> handle.get(segment, lo, 0));
             assertThrows(() -> handle.get(segment, 0, hi));

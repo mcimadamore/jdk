@@ -25,11 +25,11 @@
  */
 package jdk.internal.foreign.abi.aarch64.linux;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.VaList;
 import java.lang.foreign.SegmentAllocator;
@@ -123,7 +123,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static LinuxAArch64VaList readFromAddress(long address, NativeAllocator allocator) {
+    private static LinuxAArch64VaList readFromAddress(long address, Arena allocator) {
         MemorySegment segment = allocator.wrap(address, null)
                 .asUnboundedSlice()
                 .asSlice(0, LAYOUT.byteSize());
@@ -136,7 +136,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment ms = NativeAllocator.global().allocate(LAYOUT);
+        MemorySegment ms = Arena.global().allocate(LAYOUT);
         VH_stack.set(ms, MemorySegment.NULL);
         VH_gr_top.set(ms, MemorySegment.NULL);
         VH_vr_top.set(ms, MemorySegment.NULL);
@@ -324,7 +324,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
                         gpRegsArea.asSlice(currentGPOffset()));
                     consumeGPSlots(1);
 
-                    try (Arena arena = Arena.openConfined()) {
+                    try (ScopedArena arena = ScopedArena.openConfined()) {
                         MemorySegment slice = arena.wrap(ptr.address(), null)
                                 .asUnboundedSlice()
                                 .asSlice(0, layout.byteSize());
@@ -395,11 +395,11 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         }
     }
 
-    static LinuxAArch64VaList.Builder builder(NativeAllocator allocator) {
+    static LinuxAArch64VaList.Builder builder(Arena allocator) {
         return new LinuxAArch64VaList.Builder(allocator);
     }
 
-    public static VaList ofAddress(long address, NativeAllocator allocator) {
+    public static VaList ofAddress(long address, Arena allocator) {
         return readFromAddress(address, allocator);
     }
 
@@ -443,7 +443,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
     }
 
     public static non-sealed class Builder implements VaList.Builder {
-        private final NativeAllocator allocator;
+        private final Arena allocator;
         private final MemorySegment gpRegs;
         private final MemorySegment fpRegs;
 
@@ -451,7 +451,7 @@ public non-sealed class LinuxAArch64VaList implements VaList {
         private long currentFPOffset = 0;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        Builder(NativeAllocator allocator) {
+        Builder(Arena allocator) {
             this.allocator = allocator;
             this.gpRegs = allocator.allocate(LAYOUT_GP_REGS);
             this.fpRegs = allocator.allocate(LAYOUT_FP_REGS);

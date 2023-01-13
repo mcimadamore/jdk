@@ -40,7 +40,7 @@
  *   TestUpcallDeopt
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -79,7 +79,7 @@ public class TestUpcallDeopt extends NativeTestHelper {
     // we need to deoptimize through an uncommon trap in the callee of the optimized upcall stub
     // that is created when calling upcallStub below
     public static void main(String[] args) throws Throwable {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment stub = linker.upcallStub(MH_m, FunctionDescriptor.ofVoid(C_INT, C_INT, C_INT, C_INT), arena);
             armed = false;
             for (int i = 0; i < 20_000; i++) {

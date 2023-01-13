@@ -62,10 +62,10 @@ import jdk.internal.vm.annotation.ForceInline;
  * Heap segments can be obtained by calling one of the {@link MemorySegment#ofArray(int[])} factory methods.
  * These methods return a memory segment backed by the on-heap region that holds the specified Java array.
  * <p>
- * Native segments can be obtained by calling one of the {@link NativeAllocator#allocate(long, long)}
+ * Native segments can be obtained by calling one of the {@link Arena#allocate(long, long)}
  * methods, which return a memory segment backed by a newly allocated off-heap region with the given size
  * and aligned to the given alignment constraint. Alternatively, native segments can be obtained by
- * {@link FileChannel#map(MapMode, long, long, NativeAllocator) mapping} a file into a new off-heap region
+ * {@link FileChannel#map(MapMode, long, long, Arena) mapping} a file into a new off-heap region
  * (in some systems, this operation is sometimes referred to as {@code mmap}).
  * Segments obtained in this way are called <em>mapped</em> segments, and their contents can be {@linkplain #force() persisted} and
  * {@linkplain #load() loaded} to and from the underlying memory-mapped file.
@@ -90,8 +90,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * Every memory segment has a {@linkplain #byteSize() size}. The size of a heap segment is derived from the Java array
  * from which it is obtained. This size is predictable across Java runtimes.
  * The size of a native segment is either passed explicitly
- * (as in {@link NativeAllocator#allocate(long)}) or derived from a {@link MemoryLayout}
- * (as in {@link NativeAllocator#allocate(MemoryLayout)}). The size of a memory segment is typically
+ * (as in {@link Arena#allocate(long)}) or derived from a {@link MemoryLayout}
+ * (as in {@link Arena#allocate(MemoryLayout)}). The size of a memory segment is typically
  * a positive number but may be <a href="#wrapping-addresses">zero</a>, but never negative.
  * <p>
  * The address and size of a memory segment jointly ensure that access operations on the segment cannot fall
@@ -104,15 +104,15 @@ import jdk.internal.vm.annotation.ForceInline;
  * That is, a memory segment has <em>temporal bounds</em>. Heap segments feature trivial temporal bounds. That is,
  * an heap segment is considered to be always alive. Conversely, the temporal bounds of a native segment is determined
  * by the native allocator used to obtain it. For instance, native segments allocated by the
- * {@linkplain NativeAllocator#global() global allocator} are always alive. Native segments allocated using an
- * {@linkplain Arena arena allocator} are alive (and accessible) until the arena is {@linkplain Arena#close() closed}.
+ * {@linkplain Arena#global() global allocator} are always alive. Native segments allocated using an
+ * {@linkplain ScopedArena arena allocator} are alive (and accessible) until the arena is {@linkplain ScopedArena#close() closed}.
  * <p>
  * Finally, access operations on memory segments can be {@linkplain #isAccessibleBy(Thread) restricted} to specific threads.
  * Heap segments can always be accessed by any thread. Conversely, access to native segments is subject to the
- * {@linkplain NativeAllocator#isAccessibleBy(Thread) thread-confinement checks} enforced by the native allocator used to obtain them.
- * That is, if a native segment has been obtained from the {@linkplain NativeAllocator#global() global} or
- * the {@linkplain NativeAllocator#auto() automatic} allocator, it can be accessed by any threads. If a native segment has
- * been obtained from an {@link Arena}, then it can only be accessed compatibly with the
+ * {@linkplain Arena#isAccessibleBy(Thread) thread-confinement checks} enforced by the native allocator used to obtain them.
+ * That is, if a native segment has been obtained from the {@linkplain Arena#global() global} or
+ * the {@linkplain Arena#auto() automatic} allocator, it can be accessed by any threads. If a native segment has
+ * been obtained from an {@link ScopedArena}, then it can only be accessed compatibly with the
  * <a href="Arena.html#thread-confinement">arena confinement characteristics</a>.
  *
  * <h2 id="segment-deref">Accessing memory segments</h2>
@@ -167,18 +167,18 @@ import jdk.internal.vm.annotation.ForceInline;
  * segment is derived from the address of the original segment, by adding an offset (expressed in bytes). The size of
  * the sliced segment is either derived implicitly (by subtracting the specified offset from the size of the original segment),
  * or provided explicitly. In other words, a sliced segment has <em>stricter</em> spatial bounds than those of the original segment:
- * {@snippet lang=java :
- * Arena arena = ...
+ * {@snippet lang = java:
+ * ScopedArena arena = ...
  * MemorySegment segment = arena.allocate(100);
  * MemorySegment slice = segment.asSlice(50, 10);
  * slice.get(ValueLayout.JAVA_INT, 20); // Out of bounds!
  * arena.close();
  * slice.get(ValueLayout.JAVA_INT, 0); // Already closed!
- * }
+ *}
  * The above code creates a native segment that is 100 bytes long; then, it creates a slice that starts at offset 50
  * of {@code segment}, and is 10 bytes long. That is, the address of the {@code slice} is {@code segment.address() + 50},
  * and its size is 10. As a result, attempting to read an int value at offset 20 of the
- * {@code slice} segment will result in an exception. The {@linkplain NativeAllocator temporal bounds} of the original segment
+ * {@code slice} segment will result in an exception. The {@linkplain Arena temporal bounds} of the original segment
  * is inherited by its slices; that is, when {@code segment} is no longer {@linkplain #isAlive() alive},
  * {@code slice} will also be become inaccessible.
  * <p>
@@ -188,7 +188,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * from multiple threads). The following code can be used to sum all int values in a memory segment in parallel:
  *
  * {@snippet lang = java:
- * try (Arena arena = Arena.openShared()) {
+ * try (ScopedArena arena = ScopedArena.openShared()) {
  *     SequenceLayout SEQUENCE_LAYOUT = MemoryLayout.sequenceLayout(1024, ValueLayout.JAVA_INT);
  *     MemorySegment segment = arena.allocate(SEQUENCE_LAYOUT);
  *     int sum = segment.elements(ValueLayout.JAVA_INT).parallel()
@@ -247,8 +247,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * <p>
  * The alignment constraint used to access a segment is typically dictated by the shape of the data structure stored
  * in the segment. For example, if the programmer wishes to store a sequence of 8-byte values in a native segment, then
- * the segment should be allocated by specifying a 8-byte alignment constraint, either via {@link NativeAllocator#allocate(long, long)}
- * or {@link NativeAllocator#allocate(MemoryLayout)}. These factories ensure that the off-heap region of memory backing
+ * the segment should be allocated by specifying a 8-byte alignment constraint, either via {@link Arena#allocate(long, long)}
+ * or {@link Arena#allocate(MemoryLayout)}. These factories ensure that the off-heap region of memory backing
  * the returned segment has a starting address that is 8-byte aligned. Subsequently, the programmer can access the
  * segment at the offsets of interest -- 0, 8, 16, 24, etc -- in the knowledge that every such access is aligned.
  * <p>
@@ -366,11 +366,11 @@ import jdk.internal.vm.annotation.ForceInline;
  * into the lifetime intended for said region of memory by the foreign function that allocated it.
  * <p>
  * To access native zero-length memory segments, clients can
- * {@linkplain java.lang.foreign.NativeAllocator#wrap(long, Runnable) obtain} a <em>new</em> native segment,
+ * {@linkplain Arena#wrap(long, Runnable) obtain} a <em>new</em> native segment,
  * with new temporal and spatial bounds, as follows:
  *
  * {@snippet lang = java:
- * NativeAllocator allocator = ... // obtains an allocator
+ * Arena allocator = ... // obtains an allocator
  * MemorySegment foreign = someSegment.get(ValueLayout.ADDRESS, 0);
  * MemorySegment segment = allocator.wrap(foreign.address(), null) // wrap address into segment (size = 0)
  *                              .asUnboundedSlice(0, 4); // unsafe resize (size = 4)
@@ -449,7 +449,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * Returns {@code true}, if this segment is alive. Heap segments are always alive. Whether a native segment is
      * alive depends on the native allocator used to obtain that segment.
      * @return {@code true}, if this segment is alive.
-     * @see NativeAllocator#isAlive()
+     * @see Arena#isAlive()
      */
     boolean isAlive();
 
@@ -459,7 +459,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      *
      * @param thread the thread to be tested.
      * @return {@code true}, if the provided segment can access this segment.
-     * @see NativeAllocator#isAccessibleBy(Thread)
+     * @see Arena#isAccessibleBy(Thread)
      */
     boolean isAccessibleBy(Thread thread);
 
@@ -525,7 +525,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns {@code true} if this segment is a native segment. A native segment is
-     * created e.g. using the {@link NativeAllocator#allocate(long)} (and related) factory, or by
+     * created e.g. using the {@link Arena#allocate(long)} (and related) factory, or by
      * {@linkplain #ofBuffer(Buffer) wrapping} a {@linkplain ByteBuffer#allocateDirect(int) direct buffer}.
      * @return {@code true} if this segment is native segment.
      */
@@ -533,7 +533,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns {@code true} if this segment is a mapped segment. A mapped memory segment is created e.g. using the
-     * {@link FileChannel#map(FileChannel.MapMode, long, long, NativeAllocator)} factory, or by
+     * {@link FileChannel#map(FileChannel.MapMode, long, long, Arena)} factory, or by
      * {@linkplain #ofBuffer(Buffer) wrapping} a {@linkplain java.nio.MappedByteBuffer mapped byte buffer}.
      * @return {@code true} if this segment is a mapped segment.
      */

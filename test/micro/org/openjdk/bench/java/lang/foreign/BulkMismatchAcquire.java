@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
@@ -52,16 +52,16 @@ import java.util.function.Supplier;
 public class BulkMismatchAcquire {
 
     public enum SessionKind {
-        CONFINED(Arena::openConfined),
-        SHARED(Arena::openShared);
+        CONFINED(ScopedArena::openConfined),
+        SHARED(ScopedArena::openShared);
 
-        final Supplier<Arena> arenaFactory;
+        final Supplier<ScopedArena> arenaFactory;
 
-        SessionKind(Supplier<Arena> arenaFactory) {
+        SessionKind(Supplier<ScopedArena> arenaFactory) {
             this.arenaFactory = arenaFactory;
         }
 
-        Arena makeArena() {
+        ScopedArena makeArena() {
             return arenaFactory.get();
         }
     }
@@ -72,7 +72,7 @@ public class BulkMismatchAcquire {
     // large(ish) segments/buffers with same content, 0, for mismatch, non-multiple-of-8 sized
     static final int SIZE_WITH_TAIL = (1024 * 1024) + 7;
 
-    Arena arena;
+    ScopedArena arena;
     MemorySegment mismatchSegmentLarge1;
     MemorySegment mismatchSegmentLarge2;
     ByteBuffer mismatchBufferLarge1;

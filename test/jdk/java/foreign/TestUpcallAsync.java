@@ -33,7 +33,7 @@
  *   TestUpcallAsync
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
@@ -41,7 +41,7 @@ import java.lang.foreign.MemorySegment;
 
 import org.testng.annotations.Test;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -62,10 +62,10 @@ public class TestUpcallAsync extends TestUpcallBase {
         List<Consumer<Object>> returnChecks = new ArrayList<>();
         List<Consumer<Object[]>> argChecks = new ArrayList<>();
         MemorySegment addr = findNativeOrThrow(fName);
-        try (Arena arena = Arena.openShared()) {
+        try (ScopedArena arena = ScopedArena.openShared()) {
             FunctionDescriptor descriptor = function(ret, paramTypes, fields);
             MethodHandle mh = downcallHandle(ABI, addr, arena, descriptor);
-            Object[] args = makeArgs(NativeAllocator.auto(), ret, paramTypes, fields, returnChecks, argChecks);
+            Object[] args = makeArgs(Arena.auto(), ret, paramTypes, fields, returnChecks, argChecks);
 
             mh = mh.asSpreader(Object[].class, args.length);
             mh = MethodHandles.insertArguments(mh, 0, (Object) args);

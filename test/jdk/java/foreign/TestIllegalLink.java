@@ -33,7 +33,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.nio.ByteOrder;
 
 import org.testng.annotations.DataProvider;
@@ -44,7 +44,7 @@ import static org.testng.Assert.fail;
 
 public class TestIllegalLink extends NativeTestHelper {
 
-    private static final MemorySegment DUMMY_TARGET = NativeAllocator.global().wrap(1, null);
+    private static final MemorySegment DUMMY_TARGET = Arena.global().wrap(1, null);
     private static final Linker ABI = Linker.nativeLinker();
 
     @Test(dataProvider = "types")

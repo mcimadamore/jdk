@@ -24,7 +24,7 @@
 package org.openjdk.foreigntest;
 
 import java.lang.foreign.*;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 
 public class PanamaMainDirect {
     public static void main(String[] args) {
@@ -40,7 +40,7 @@ public class PanamaMainDirect {
 
     public static void testDirectAccessMemorySegment() {
         System.out.println("Trying to get MemorySegment");
-        NativeAllocator.global().wrap(0, null).asUnboundedSlice();
+        Arena.global().wrap(0, null).asUnboundedSlice();
         System.out.println("Got MemorySegment");
    }
 }

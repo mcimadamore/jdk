@@ -42,7 +42,7 @@
  * and fill it with values ranging from {@code 0} to {@code 9}, we can use the following code:
  *
  * {@snippet lang = java:
- * MemorySegment segment = NativeAllocator.auto().allocate(10 * 4);
+ * MemorySegment segment = Arena.auto().allocate(10 * 4);
  * for (int i = 0 ; i < 10 ; i++) {
  *     segment.setAtIndex(ValueLayout.JAVA_INT, i, i);
  * }
@@ -50,7 +50,7 @@
  *
  * This code creates a <em>native</em> memory segment, that is, a memory segment backed by
  * off-heap memory; the size of the segment is 40 bytes, enough to store 10 values of the primitive type {@code int}.
- * The segment is allocated with an {@linkplain java.lang.foreign.NativeAllocator#auto() automatic} native allocator. This
+ * The segment is allocated with an {@linkplain java.lang.foreign.Arena#auto() automatic} native allocator. This
  * means that the off-heap region of memory backing the segment is managed, automatically, by the garbage collector.
  * As such, the off-heap memory backing the native segment will be released at some unspecified
  * point <em>after</em> the segment becomes <a href="../../../java/lang/ref/package.html#reachability">unreachable</a>.
@@ -72,10 +72,10 @@
  * and in a timely fashion. For this reason, there might be cases where waiting for the garbage collector to determine that a segment
  * is <a href="../../../java/lang/ref/package.html#reachability">unreachable</a> is not optimal.
  * Clients that operate under these assumptions might want to programmatically release the memory backing a memory segment.
- * This can be done, using the {@link java.lang.foreign.Arena} abstraction, as shown below:
+ * This can be done, using the {@link java.lang.foreign.ScopedArena} abstraction, as shown below:
  *
  * {@snippet lang = java:
- * try (Arena arena = Arena.openConfined()) {
+ * try (ScopedArena arena = ScopedArena.openConfined()) {
  *     MemorySegment segment = arena.allocate(10 * 4);
  *     for (int i = 0 ; i < 10 ; i++) {
  *         segment.setAtIndex(ValueLayout.JAVA_INT, i, i);
@@ -121,7 +121,7 @@
  *     FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)
  * );
  *
- * try (Arena arena = Arena.openConfined()) {
+ * try (ScopedArena arena = ScopedArena.openConfined()) {
  *     MemorySegment cString = arena.allocateUtf8String("Hello");
  *     long len = (long)strlen.invoke(cString); // 5
  * }
@@ -136,7 +136,7 @@
  * From this information, the linker will uniquely determine the sequence of steps which will turn
  * the method handle invocation (here performed using {@link java.lang.invoke.MethodHandle#invoke(java.lang.Object...)})
  * into a foreign function call, according to the rules specified by the ABI of the underlying platform.
- * The {@link java.lang.foreign.Arena} class also provides many useful methods for
+ * The {@link java.lang.foreign.ScopedArena} class also provides many useful methods for
  * interacting with foreign code, such as
  * {@linkplain java.lang.foreign.SegmentAllocator#allocateUtf8String(java.lang.String) converting} Java strings into
  * zero-terminated, UTF-8 strings, as demonstrated in the above example.
@@ -178,18 +178,18 @@
  * using the {@link java.lang.foreign.Linker} interface, as follows:
  *
  * {@snippet lang = java:
- * NativeAllocator allocator = ...
+ * Arena allocator = ...
  * MemorySegment comparFunc = Linker.nativeLinker().upcallStub(
  *     intCompareHandle, intCompareDescriptor, allocator);
  * );
  *}
  *
  * The {@link java.lang.foreign.FunctionDescriptor} instance created in the previous step is then used to
- * {@linkplain java.lang.foreign.Linker#upcallStub(java.lang.invoke.MethodHandle, FunctionDescriptor, NativeAllocator) create}
+ * {@linkplain java.lang.foreign.Linker#upcallStub(java.lang.invoke.MethodHandle, FunctionDescriptor, Arena) create}
  * a new upcall stub; the layouts in the function descriptors allow the linker to determine the sequence of steps which
  * allow foreign code to call the stub for {@code intCompareHandle} according to the rules specified by the ABI of the
  * underlying platform.
- * The lifecycle of the upcall stub is determined by the {@linkplain java.lang.foreign.NativeAllocator allocator}
+ * The lifecycle of the upcall stub is determined by the {@linkplain java.lang.foreign.Arena allocator}
  * provided when the upcall stub is created.
  *
  * <h2 id="restricted">Restricted methods</h2>

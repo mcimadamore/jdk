@@ -29,7 +29,7 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.ref.Cleaner.Cleanable;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -1206,7 +1206,7 @@ public class FileChannelImpl
 
     @Override
     public MemorySegment map(MapMode mode, long offset, long size,
-                             NativeAllocator allocator)
+                             Arena allocator)
             throws IOException {
         Objects.requireNonNull(mode, "Mode is null");
         Objects.requireNonNull(allocator, "Session is null");

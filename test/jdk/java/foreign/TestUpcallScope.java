@@ -32,7 +32,7 @@
  *   TestUpcallScope
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
 import org.testng.annotations.Test;
@@ -53,7 +53,7 @@ public class TestUpcallScope extends TestUpcallBase {
         List<Consumer<Object>> returnChecks = new ArrayList<>();
         List<Consumer<Object[]>> argChecks = new ArrayList<>();
         MemorySegment addr = findNativeOrThrow(fName);
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MethodHandle mh = downcallHandle(ABI, addr, arena, function(ret, paramTypes, fields));
             Object[] args = makeArgs(arena, ret, paramTypes, fields, returnChecks, argChecks);
             Object[] callArgs = args;

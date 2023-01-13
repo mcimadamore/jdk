@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import sun.misc.Unsafe;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -60,7 +60,7 @@ public class BulkOps {
     static final int CARRIER_SIZE = (int)JAVA_INT.byteSize();
     static final int ALLOC_SIZE = ELEM_SIZE * CARRIER_SIZE;
 
-    final Arena arena = Arena.openShared();
+    final ScopedArena arena = ScopedArena.openShared();
 
     final long unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
     final MemorySegment segment = arena.allocate(ALLOC_SIZE);

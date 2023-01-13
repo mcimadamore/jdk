@@ -22,9 +22,9 @@
  */
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
@@ -68,7 +68,7 @@ public class AbstractChannelsTest {
 
     static final Random RANDOM = RandomFactory.getRandom();
 
-    static ByteBuffer segmentBufferOfSize(NativeAllocator session, int size) {
+    static ByteBuffer segmentBufferOfSize(Arena session, int size) {
         var segment = session.allocate(size, 1);
         for (int i = 0; i < size; i++) {
             segment.set(JAVA_BYTE, i, ((byte)RANDOM.nextInt()));
@@ -76,7 +76,7 @@ public class AbstractChannelsTest {
         return segment.asByteBuffer();
     }
 
-    static ByteBuffer[] segmentBuffersOfSize(int len, NativeAllocator session, int size) {
+    static ByteBuffer[] segmentBuffersOfSize(int len, Arena session, int size) {
         ByteBuffer[] bufs = new ByteBuffer[len];
         for (int i = 0; i < len; i++)
             bufs[i] = segmentBufferOfSize(session, size);
@@ -88,7 +88,7 @@ public class AbstractChannelsTest {
      * where heap can be from the global session or session-less, and direct are
      * associated with the given session.
      */
-    static ByteBuffer[] mixedBuffersOfSize(int len, NativeAllocator session, int size) {
+    static ByteBuffer[] mixedBuffersOfSize(int len, Arena session, int size) {
         ByteBuffer[] bufs;
         boolean atLeastOneSessionBuffer = false;
         do {
@@ -150,21 +150,21 @@ public class AbstractChannelsTest {
         };
     }
 
-    static class ArenaSupplier implements Supplier<Arena> {
+    static class ArenaSupplier implements Supplier<ScopedArena> {
 
-        static final Supplier<Arena> NEW_CONFINED =
-                new ArenaSupplier(Arena::openConfined, "confined arena");
-        static final Supplier<Arena> NEW_SHARED =
-                new ArenaSupplier(Arena::openShared, "shared arena");
+        static final Supplier<ScopedArena> NEW_CONFINED =
+                new ArenaSupplier(ScopedArena::openConfined, "confined arena");
+        static final Supplier<ScopedArena> NEW_SHARED =
+                new ArenaSupplier(ScopedArena::openShared, "shared arena");
 
-        private final Supplier<Arena> supplier;
+        private final Supplier<ScopedArena> supplier;
         private final String str;
-        private ArenaSupplier(Supplier<Arena> supplier, String str) {
+        private ArenaSupplier(Supplier<ScopedArena> supplier, String str) {
             this.supplier = supplier;
             this.str = str;
         }
         @Override public String toString() { return str; }
-        @Override public Arena get() { return supplier.get(); }
+        @Override public ScopedArena get() { return supplier.get(); }
     }
 }
 

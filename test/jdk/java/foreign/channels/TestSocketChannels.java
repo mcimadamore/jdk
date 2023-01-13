@@ -30,7 +30,7 @@
  * @run testng/othervm TestSocketChannels
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -58,13 +58,13 @@ public class TestSocketChannels extends AbstractChannelsTest {
     static final Class<WrongThreadException> WTE = WrongThreadException.class;
 
     @Test(dataProvider = "closeableArenas")
-    public void testBasicIOWithClosedSegment(Supplier<Arena> arenaSupplier)
+    public void testBasicIOWithClosedSegment(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
         try (var channel = SocketChannel.open();
              var server = ServerSocketChannel.open();
              var connectedChannel = connectChannels(server, channel)) {
-            Arena drop = arenaSupplier.get();
+            ScopedArena drop = arenaSupplier.get();
             ByteBuffer bb = segmentBufferOfSize(drop, 16);
             drop.close();
             assertMessage(expectThrows(ISE, () -> channel.read(bb)),                           "Already closed");
@@ -77,13 +77,13 @@ public class TestSocketChannels extends AbstractChannelsTest {
     }
 
     @Test(dataProvider = "closeableArenas")
-    public void testScatterGatherWithClosedSegment(Supplier<Arena> arenaSupplier)
+    public void testScatterGatherWithClosedSegment(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
         try (var channel = SocketChannel.open();
              var server = ServerSocketChannel.open();
              var connectedChannel = connectChannels(server, channel)) {
-            Arena drop = arenaSupplier.get();
+            ScopedArena drop = arenaSupplier.get();
             ByteBuffer[] buffers = segmentBuffersOfSize(8, drop, 16);
             drop.close();
             assertMessage(expectThrows(ISE, () -> channel.write(buffers)),       "Already closed");
@@ -94,10 +94,10 @@ public class TestSocketChannels extends AbstractChannelsTest {
     }
 
     @Test(dataProvider = "closeableArenas")
-    public void testBasicIO(Supplier<Arena> arenaSupplier)
+    public void testBasicIO(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
-        Arena drop;
+        ScopedArena drop;
         try (var sc1 = SocketChannel.open();
              var ssc = ServerSocketChannel.open();
              var sc2 = connectChannels(ssc, sc1);
@@ -134,7 +134,7 @@ public class TestSocketChannels extends AbstractChannelsTest {
     }
 
     @Test(dataProvider = "confinedArenas")
-    public void testIOOnConfinedFromAnotherThread(Supplier<Arena> arenaSupplier)
+    public void testIOOnConfinedFromAnotherThread(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
         try (var channel = SocketChannel.open();
@@ -163,10 +163,10 @@ public class TestSocketChannels extends AbstractChannelsTest {
     }
 
     @Test(dataProvider = "closeableArenas")
-    public void testScatterGatherIO(Supplier<Arena> arenaSupplier)
+    public void testScatterGatherIO(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
-        Arena drop;
+        ScopedArena drop;
         try (var sc1 = SocketChannel.open();
              var ssc = ServerSocketChannel.open();
              var sc2 = connectChannels(ssc, sc1);
@@ -181,7 +181,7 @@ public class TestSocketChannels extends AbstractChannelsTest {
     }
 
     @Test(dataProvider = "closeableArenas")
-    public void testBasicIOWithDifferentSessions(Supplier<Arena> arenaSupplier)
+    public void testBasicIOWithDifferentSessions(Supplier<ScopedArena> arenaSupplier)
          throws Exception
     {
         try (var sc1 = SocketChannel.open();

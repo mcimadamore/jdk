@@ -25,7 +25,7 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 3, jvmArgsAppend = { "--enable-native-access=ALL-UNNAMED", "--enable-preview" })
 public class PointerInvoke extends CLayouts {
 
-    Arena arena = Arena.openConfined();
+    ScopedArena arena = ScopedArena.openConfined();
     MemorySegment segment = arena.allocate(100);
 
     static {

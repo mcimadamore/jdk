@@ -25,11 +25,11 @@
 
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SegmentAllocator;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -57,7 +57,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 @Fork(value = 3, jvmArgsAppend = { "--enable-native-access=ALL-UNNAMED", "--enable-preview" })
 public class StrLenTest extends CLayouts {
 
-    Arena arena = Arena.openConfined();
+    ScopedArena arena = ScopedArena.openConfined();
 
     SegmentAllocator segmentAllocator;
     SegmentAllocator arenaAllocator = new RingAllocator(arena);
@@ -96,7 +96,7 @@ public class StrLenTest extends CLayouts {
 
     @Benchmark
     public int panama_strlen() throws Throwable {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocateUtf8String(str);
             return (int)STRLEN.invokeExact(segment);
         }
@@ -148,7 +148,7 @@ public class StrLenTest extends CLayouts {
         SegmentAllocator current;
         long rem;
 
-        public RingAllocator(NativeAllocator session) {
+        public RingAllocator(Arena session) {
             this.segment = session.allocate(1024);
             reset();
         }

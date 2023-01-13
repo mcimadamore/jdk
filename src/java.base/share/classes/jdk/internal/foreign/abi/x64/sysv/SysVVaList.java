@@ -25,11 +25,10 @@
  */
 package jdk.internal.foreign.abi.x64.sysv;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -132,7 +131,7 @@ public non-sealed class SysVVaList implements VaList {
         this.fpLimit = fpLimit;
     }
 
-    private static SysVVaList readFromAddress(long address, NativeAllocator allocator) {
+    private static SysVVaList readFromAddress(long address, Arena allocator) {
         MemorySegment segment = allocator.wrap(address, null)
                 .asUnboundedSlice()
                 .asSlice(0, LAYOUT.byteSize());
@@ -142,7 +141,7 @@ public non-sealed class SysVVaList implements VaList {
     }
 
     private static MemorySegment emptyListAddress() {
-        MemorySegment base = NativeAllocator.global().allocate(LAYOUT);
+        MemorySegment base = Arena.global().allocate(LAYOUT);
         VH_gp_offset.set(base, MAX_GP_OFFSET);
         VH_fp_offset.set(base, MAX_FP_OFFSET);
         VH_overflow_arg_area.set(base, MemorySegment.NULL);
@@ -170,13 +169,13 @@ public non-sealed class SysVVaList implements VaList {
         VH_fp_offset.set(segment, i);
     }
 
-    private static MemorySegment getRegSaveArea(MemorySegment segment, NativeAllocator allocator) {
+    private static MemorySegment getRegSaveArea(MemorySegment segment, Arena allocator) {
         var reg_save_area = ((MemorySegment)VH_reg_save_area.get(segment));
         return allocator.wrap(reg_save_area.address(), null)
                 .asUnboundedSlice(0, LAYOUT_REG_SAVE_AREA.byteSize());
     }
 
-    private static MemorySegment getArgOverflowArea(MemorySegment segment, NativeAllocator allocator) {
+    private static MemorySegment getArgOverflowArea(MemorySegment segment, Arena allocator) {
         var overflow_arg_area = ((MemorySegment)VH_overflow_arg_area.get(segment));
         return allocator.wrap(overflow_arg_area.address(), null)
                 .asUnboundedSlice();
@@ -329,11 +328,11 @@ public non-sealed class SysVVaList implements VaList {
         }
     }
 
-    static SysVVaList.Builder builder(NativeAllocator allocator) {
+    static SysVVaList.Builder builder(Arena allocator) {
         return new SysVVaList.Builder(allocator);
     }
 
-    public static VaList ofAddress(long address, NativeAllocator allocator) {
+    public static VaList ofAddress(long address, Arena allocator) {
         return readFromAddress(address, allocator);
     }
 
@@ -367,13 +366,13 @@ public non-sealed class SysVVaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final NativeAllocator allocator;
+        private final Arena allocator;
         private final MemorySegment reg_save_area;
         private long currentGPOffset = 0;
         private long currentFPOffset = FP_OFFSET;
         private final List<SimpleVaArg> stackArgs = new ArrayList<>();
 
-        public Builder(NativeAllocator allocator) {
+        public Builder(Arena allocator) {
             this.allocator = allocator;
             this.reg_save_area = allocator.allocate(LAYOUT_REG_SAVE_AREA);
         }

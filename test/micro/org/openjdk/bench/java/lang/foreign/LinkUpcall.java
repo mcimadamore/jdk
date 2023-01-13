@@ -35,7 +35,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +64,7 @@ public class LinkUpcall extends CLayouts {
 
     @Benchmark
     public MemorySegment link_blank() {
-        return LINKER.upcallStub(BLANK, BLANK_DESC, NativeAllocator.auto());
+        return LINKER.upcallStub(BLANK, BLANK_DESC, Arena.auto());
     }
 
     static void blank() {}

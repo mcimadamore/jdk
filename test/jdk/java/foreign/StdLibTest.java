@@ -195,7 +195,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         String strcat(String s1, String s2) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment buf = arena.allocate(s1.length() + s2.length() + 1);
                 buf.setUtf8String(0, s1);
                 MemorySegment other = arena.allocateUtf8String(s2);
@@ -205,7 +205,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int strcmp(String s1, String s2) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment ns1 = arena.allocateUtf8String(s1);
                 MemorySegment ns2 = arena.allocateUtf8String(s2);
                 return (int)strcmp.invokeExact(ns1, ns2);
@@ -213,21 +213,21 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int puts(String msg) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment s = arena.allocateUtf8String(msg);
                 return (int)puts.invokeExact(s);
             }
         }
 
         int strlen(String msg) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment s = arena.allocateUtf8String(msg);
                 return (int)strlen.invokeExact(s);
             }
         }
 
         Tm gmtime(long arg) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment time = arena.allocate(8);
                 time.set(C_LONG_LONG, 0, arg);
                 return new Tm((MemorySegment)gmtime.invokeExact(time));
@@ -276,7 +276,7 @@ public class StdLibTest extends NativeTestHelper {
 
         int[] qsort(int[] arr) throws Throwable {
             //init native array
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment nativeArr = arena.allocateArray(C_INT, arr);
 
                 //call qsort
@@ -299,7 +299,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int printf(String format, List<PrintfArg> args) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment formatStr = arena.allocateUtf8String(format);
                 return (int)specializedPrintf(args).invokeExact(formatStr,
                         args.stream().map(a -> a.nativeValue(arena)).toArray());
@@ -307,7 +307,7 @@ public class StdLibTest extends NativeTestHelper {
         }
 
         int vprintf(String format, List<PrintfArg> args) throws Throwable {
-            try (var arena = Arena.openConfined()) {
+            try (var arena = ScopedArena.openConfined()) {
                 MemorySegment formatStr = arena.allocateUtf8String(format);
                 VaList vaList = VaList.make(b -> args.forEach(a -> a.accept(b, arena)), arena);
                 return (int)vprintf.invokeExact(formatStr, vaList.segment());
@@ -385,7 +385,7 @@ public class StdLibTest extends NativeTestHelper {
                 .toArray(Object[][]::new);
     }
 
-    enum PrintfArg implements BiConsumer<VaList.Builder, Arena> {
+    enum PrintfArg implements BiConsumer<VaList.Builder, ScopedArena> {
 
         INTEGRAL(int.class, C_INT, "%d", arena -> 42, 42, VaList.Builder::addVarg),
         STRING(MemorySegment.class, C_POINTER, "%s", arena -> {
@@ -397,12 +397,12 @@ public class StdLibTest extends NativeTestHelper {
         final Class<?> carrier;
         final ValueLayout layout;
         final String format;
-        final Function<Arena, ?> nativeValueFactory;
+        final Function<ScopedArena, ?> nativeValueFactory;
         final Object javaValue;
         @SuppressWarnings("rawtypes")
         final VaListBuilderCall builderCall;
 
-        <Z, L extends ValueLayout> PrintfArg(Class<?> carrier, L layout, String format, Function<Arena, Z> nativeValueFactory, Object javaValue, VaListBuilderCall<Z, L> builderCall) {
+        <Z, L extends ValueLayout> PrintfArg(Class<?> carrier, L layout, String format, Function<ScopedArena, Z> nativeValueFactory, Object javaValue, VaListBuilderCall<Z, L> builderCall) {
             this.carrier = carrier;
             this.layout = layout;
             this.format = format;
@@ -413,7 +413,7 @@ public class StdLibTest extends NativeTestHelper {
 
         @Override
         @SuppressWarnings("unchecked")
-        public void accept(VaList.Builder builder, Arena arena) {
+        public void accept(VaList.Builder builder, ScopedArena arena) {
             builderCall.build(builder, layout, nativeValueFactory.apply(arena));
         }
 
@@ -421,7 +421,7 @@ public class StdLibTest extends NativeTestHelper {
             void build(VaList.Builder builder, L layout, V value);
         }
 
-        public Object nativeValue(Arena arena) {
+        public Object nativeValue(ScopedArena arena) {
             return nativeValueFactory.apply(arena);
         }
     }

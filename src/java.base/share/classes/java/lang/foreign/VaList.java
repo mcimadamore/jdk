@@ -41,7 +41,7 @@ import jdk.internal.reflect.Reflection;
 /**
  * Helper class to create and manipulate variable argument lists, similar in functionality to a C {@code va_list}.
  * <p>
- * A variable argument list can be created using the {@link #make(Consumer, NativeAllocator)} factory, as follows:
+ * A variable argument list can be created using the {@link #make(Consumer, Arena)} factory, as follows:
  * {@snippet lang = java:
  * VaList vaList = VaList.make(builder ->
  *                                    builder.addVarg(C_INT, 42)
@@ -55,7 +55,7 @@ import jdk.internal.reflect.Reflection;
  * a variable argument list, as follows:
  * {@snippet lang = java:
  * void upcall(int n, MemorySegment vaListSegment) {
- *    try (Arena arena = Arena.openConfined()) {
+ *    try (ScopedArena arena = ScopedArena.openConfined()) {
  *        VaList vaList = VaList.ofAddress(vaListSegment.address(), arena);
  *        VaList copy = vaList.copy();
  *        int i = vaList.nextVarg(C_INT);
@@ -94,8 +94,8 @@ import jdk.internal.reflect.Reflection;
  * <p>
  * Whether this detection succeeds depends on the factory method used to create the variable argument list:
  * <ul>
- *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, NativeAllocator)} are capable of detecting out-of-bounds reads;</li>
- *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, NativeAllocator)} are not capable of detecting out-of-bounds reads</li>
+ *     <li>Variable argument lists created <em>safely</em>, using {@link #make(Consumer, Arena)} are capable of detecting out-of-bounds reads;</li>
+ *     <li>Variable argument lists created <em>unsafely</em>, using {@link #ofAddress(long, Arena)} are not capable of detecting out-of-bounds reads</li>
  * </ul>
  * <p>
  * This class is not thread safe, and all accesses should occur within a single thread
@@ -229,8 +229,8 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
     /**
      * Creates a variable argument list from the given address value, using the provided allocator. The address is typically obtained
      * by calling {@link MemorySegment#address()} on a foreign memory segment instance. The provided native allocator determines
-     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link Arena},
-     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain Arena#close() closed}.
+     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link ScopedArena},
+     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain ScopedArena#close() closed}.
      * <p>
      * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
      * Restricted methods are unsafe, and, if used incorrectly, their use might crash
@@ -240,14 +240,14 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param address the address of the variable argument list.
      * @param allocator the allocator used to create the new variable argument list.
      * @return a new variable argument list backed by an off-heap region of memory starting at the given address value.
-     * @throws IllegalStateException         if {@code allocator} is not {@linkplain NativeAllocator#isAlive() alive}.
+     * @throws IllegalStateException         if {@code allocator} is not {@linkplain Arena#isAlive() alive}.
      * @throws WrongThreadException          if this method is called from a thread {@code T},
      *                                       such that {@code allocator.isAccessibleBy(T) == false}.
      * @throws UnsupportedOperationException if the underlying native platform is not supported.
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
-    static VaList ofAddress(long address, NativeAllocator allocator) {
+    static VaList ofAddress(long address, Arena allocator) {
         Reflection.ensureNativeAccess(Reflection.getCallerClass(), VaList.class, "ofAddress");
         Objects.requireNonNull(allocator);
         return SharedUtils.newVaListOfAddress(address, allocator);
@@ -255,8 +255,8 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
 
     /**
      * Creates a variable argument list using a builder (see {@link Builder}). The provided native allocator determines
-     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link Arena},
-     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain Arena#close() closed}.
+     * the lifecycle of the returned variable argument list. For instance, if the allocator is an {@link ScopedArena},
+     * the returned variable argument list will no longer be accessible after the arena has been {@linkplain ScopedArena#close() closed}.
      * <p>
      * Note that when there are no elements added to the created va list,
      * this method will return the same as {@link #empty()}.
@@ -268,11 +268,11 @@ public sealed interface VaList permits WinVaList, SysVVaList, LinuxAArch64VaList
      * @param allocator the allocator to be associated with the new variable arity list.
      * @return a new variable argument list.
      * @throws UnsupportedOperationException if the underlying native platform is not supported.
-     * @throws IllegalStateException         if {@code allocator} is not {@linkplain NativeAllocator#isAlive() alive}.
+     * @throws IllegalStateException         if {@code allocator} is not {@linkplain Arena#isAlive() alive}.
      * @throws WrongThreadException if this method is called from a thread {@code T},
      * such that {@code allocator.isAccessibleBy(T) == false}.
      */
-    static VaList make(Consumer<Builder> actions, NativeAllocator allocator) {
+    static VaList make(Consumer<Builder> actions, Arena allocator) {
         Objects.requireNonNull(actions);
         Objects.requireNonNull(allocator);
         return SharedUtils.newVaList(actions, allocator);

@@ -23,8 +23,8 @@
 
 import org.testng.annotations.Test;
 
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Arena;
-import java.lang.foreign.NativeAllocator;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -51,11 +51,11 @@ public class LibraryLookupTest {
 
     @Test
     void testLoadLibraryConfined() {
-        try (Arena arena0 = Arena.openConfined()) {
+        try (ScopedArena arena0 = ScopedArena.openConfined()) {
             callFunc(loadLibrary(arena0));
-            try (Arena arena1 = Arena.openConfined()) {
+            try (ScopedArena arena1 = ScopedArena.openConfined()) {
                 callFunc(loadLibrary(arena1));
-                try (Arena arena2 = Arena.openConfined()) {
+                try (ScopedArena arena2 = ScopedArena.openConfined()) {
                     callFunc(loadLibrary(arena2));
                 }
             }
@@ -65,13 +65,13 @@ public class LibraryLookupTest {
     @Test(expectedExceptions = IllegalStateException.class)
     void testLoadLibraryConfinedClosed() {
         MemorySegment addr;
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             addr = loadLibrary(arena);
         }
         callFunc(addr);
     }
 
-    private static MemorySegment loadLibrary(NativeAllocator session) {
+    private static MemorySegment loadLibrary(Arena session) {
         SymbolLookup lib = SymbolLookup.libraryLookup(LIB_PATH, session);
         MemorySegment addr = lib.find("inc").get();
         return addr;
@@ -93,12 +93,12 @@ public class LibraryLookupTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     void testBadLibraryLookupName() {
-        SymbolLookup.libraryLookup("nonExistent", NativeAllocator.global());
+        SymbolLookup.libraryLookup("nonExistent", Arena.global());
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     void testBadLibraryLookupPath() {
-        SymbolLookup.libraryLookup(Path.of("nonExistent"), NativeAllocator.global());
+        SymbolLookup.libraryLookup(Path.of("nonExistent"), Arena.global());
     }
 
     @Test
@@ -115,7 +115,7 @@ public class LibraryLookupTest {
         @Override
         public void run() {
             for (int i = 0 ; i < ITERATIONS ; i++) {
-                try (Arena arena = Arena.openConfined()) {
+                try (ScopedArena arena = ScopedArena.openConfined()) {
                     callFunc(loadLibrary(arena));
                 }
             }
@@ -124,7 +124,7 @@ public class LibraryLookupTest {
 
     @Test
     void testLoadLibrarySharedClosed() throws Throwable {
-        Arena arena = Arena.openShared();
+        ScopedArena arena = ScopedArena.openShared();
         MemorySegment addr = loadLibrary(arena);
         ExecutorService accessExecutor = Executors.newCachedThreadPool();
         for (int i = 0; i < NUM_ACCESSORS ; i++) {

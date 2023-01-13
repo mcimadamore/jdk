@@ -24,7 +24,7 @@
 
 import java.lang.foreign.*;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
@@ -379,11 +379,11 @@ public class CallGeneratorHelper extends NativeTestHelper {
     @SuppressWarnings("unchecked")
     static Object makeArg(MemoryLayout layout, List<Consumer<Object>> checks, boolean check) throws ReflectiveOperationException {
         if (layout instanceof GroupLayout) {
-            MemorySegment segment = NativeAllocator.auto().allocate(layout);
+            MemorySegment segment = Arena.auto().allocate(layout);
             initStruct(segment, (GroupLayout)layout, checks, check);
             return segment;
         } else if (isPointer(layout)) {
-            MemorySegment segment = NativeAllocator.auto().allocate(1L);
+            MemorySegment segment = Arena.auto().allocate(1L);
             if (check) {
                 checks.add(o -> {
                     try {

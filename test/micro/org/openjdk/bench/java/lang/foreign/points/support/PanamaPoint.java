@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign.points.support;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
@@ -62,11 +62,11 @@ public class PanamaPoint extends CLayouts implements AutoCloseable {
         );
     }
 
-    Arena arena;
+    ScopedArena arena;
     private final MemorySegment segment;
 
     public PanamaPoint(int x, int y) {
-        this.arena = Arena.openConfined();
+        this.arena = ScopedArena.openConfined();
         this.segment = arena.allocate(LAYOUT);
         setX(x);
         setY(y);

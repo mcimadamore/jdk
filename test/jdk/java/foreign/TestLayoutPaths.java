@@ -28,7 +28,7 @@
  * @run testng TestLayoutPaths
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
@@ -433,7 +433,7 @@ public class TestLayoutPaths {
         MethodHandle sliceHandle = layout.sliceHandle(pathElements);
         sliceHandle = sliceHandle.asSpreader(long[].class, indexes.length);
 
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocate(layout);
             MemorySegment slice = (MemorySegment) sliceHandle.invokeExact(segment, indexes);
             assertEquals(slice.address() - segment.address(), expectedBitOffset / 8);
@@ -468,7 +468,7 @@ public class TestLayoutPaths {
             return;
         }
 
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocate(layout);
 
             try {

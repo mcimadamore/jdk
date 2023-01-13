@@ -27,8 +27,8 @@
  * @run testng TestMismatch
  */
 
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Arena;
-import java.lang.foreign.NativeAllocator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -172,7 +172,7 @@ public class TestMismatch {
     public void testEmpty() {
         var s1 = MemorySegment.ofArray(new byte[0]);
         assertEquals(s1.mismatch(s1), -1);
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             var nativeSegment = arena.allocate(4, 4);;
             var s2 = nativeSegment.asSlice(0, 0);
             assertEquals(s1.mismatch(s2), -1);
@@ -184,7 +184,7 @@ public class TestMismatch {
     public void testLarge() {
         // skip if not on 64 bits
         if (ValueLayout.ADDRESS.byteSize() > 32) {
-            try (Arena arena = Arena.openConfined()) {
+            try (ScopedArena arena = ScopedArena.openConfined()) {
                 var s1 = arena.allocate((long) Integer.MAX_VALUE + 10L, 8);;
                 var s2 = arena.allocate((long) Integer.MAX_VALUE + 10L, 8);;
                 assertEquals(s1.mismatch(s1), -1);
@@ -228,7 +228,7 @@ public class TestMismatch {
     @Test
     public void testClosed() {
         MemorySegment s1, s2;
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             s1 = arena.allocate(4, 1);;
             s2 = arena.allocate(4, 1);;
         }
@@ -239,7 +239,7 @@ public class TestMismatch {
 
     @Test
     public void testThreadAccess() throws Exception {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             var segment = arena.allocate(4, 1);;
             {
                 AtomicReference<RuntimeException> exception = new AtomicReference<>();
@@ -281,7 +281,7 @@ public class TestMismatch {
     }
 
     enum SegmentKind {
-        NATIVE(i -> NativeAllocator.auto().allocate(i)),
+        NATIVE(i -> Arena.auto().allocate(i)),
         ARRAY(i -> MemorySegment.ofArray(new byte[i]));
 
         final IntFunction<MemorySegment> segmentFactory;

@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -79,7 +79,7 @@ public class LoopOverNonConstantMapped extends JavaLayouts {
     }
 
     FileChannel fileChannel;
-    Arena arena;
+    ScopedArena arena;
     MemorySegment segment;
     long unsafe_addr;
 
@@ -95,7 +95,7 @@ public class LoopOverNonConstantMapped extends JavaLayouts {
             ((MappedByteBuffer)byteBuffer).force();
         }
         fileChannel = FileChannel.open(tempPath, StandardOpenOption.READ, StandardOpenOption.WRITE);
-        arena = Arena.openConfined();
+        arena = ScopedArena.openConfined();
         segment = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0L, ALLOC_SIZE, arena);
         unsafe_addr = segment.address();
     }

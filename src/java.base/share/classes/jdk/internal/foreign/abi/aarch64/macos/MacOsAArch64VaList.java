@@ -25,11 +25,11 @@
  */
 package jdk.internal.foreign.abi.aarch64.macos;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -107,7 +107,7 @@ public non-sealed class MacOsAArch64VaList implements VaList {
                 case STRUCT_REFERENCE -> {
                     checkElement(layout, VA_SLOT_SIZE_BYTES);
                     MemorySegment structAddr = (MemorySegment) VH_address.get(segment);
-                    try (Arena arena = Arena.openConfined()) {
+                    try (ScopedArena arena = ScopedArena.openConfined()) {
                         MemorySegment struct = arena.wrap(structAddr.address(), null)
                                 .asUnboundedSlice()
                                 .asSlice(0, layout.byteSize());
@@ -162,12 +162,12 @@ public non-sealed class MacOsAArch64VaList implements VaList {
         }
     }
 
-    static MacOsAArch64VaList ofAddress(long address, NativeAllocator allocator) {
+    static MacOsAArch64VaList ofAddress(long address, Arena allocator) {
         MemorySegment segment = allocator.wrap(address, null).asUnboundedSlice();
         return new MacOsAArch64VaList(segment);
     }
 
-    static Builder builder(NativeAllocator allocator) {
+    static Builder builder(Arena allocator) {
         return new Builder(allocator);
     }
 
@@ -185,10 +185,10 @@ public non-sealed class MacOsAArch64VaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final NativeAllocator allocator;
+        private final Arena allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(NativeAllocator allocator) {
+        public Builder(Arena allocator) {
             this.allocator = allocator;
         }
 

@@ -25,11 +25,10 @@
  */
 package jdk.internal.foreign.abi.x64.windows;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.VaList;
 import java.lang.foreign.ValueLayout;
@@ -152,11 +151,11 @@ public non-sealed class WinVaList implements VaList {
         }
     }
 
-    static WinVaList ofAddress(long address, NativeAllocator allocator) {
+    static WinVaList ofAddress(long address, Arena allocator) {
         return new WinVaList(allocator.wrap(address, null).asUnboundedSlice());
     }
 
-    static Builder builder(NativeAllocator allocator) {
+    static Builder builder(Arena allocator) {
         return new Builder(allocator);
     }
 
@@ -174,10 +173,10 @@ public non-sealed class WinVaList implements VaList {
 
     public static non-sealed class Builder implements VaList.Builder {
 
-        private final NativeAllocator allocator;
+        private final Arena allocator;
         private final List<SimpleVaArg> args = new ArrayList<>();
 
-        public Builder(NativeAllocator allocator) {
+        public Builder(Arena allocator) {
             this.allocator = allocator;
         }
 

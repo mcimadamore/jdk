@@ -39,7 +39,7 @@ import org.testng.annotations.NoInjection;
 import org.testng.annotations.Test;
 
 import java.lang.constant.Constable;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -81,7 +81,7 @@ import static org.testng.Assert.fail;
 public class TestNulls {
 
     static final Class<?>[] CLASSES = new Class<?>[] {
-            Arena.class,
+            ScopedArena.class,
             MemorySegment.class,
             MemoryLayout.class,
             MemoryLayout.PathElement.class,
@@ -102,13 +102,13 @@ public class TestNulls {
             VaList.Builder.class,
             FunctionDescriptor.class,
             SegmentAllocator.class,
-            NativeAllocator.class,
+            Arena.class,
             SymbolLookup.class
     };
 
     static final Set<String> EXCLUDE_LIST = Set.of(
-            "java.lang.foreign.NativeAllocator/wrap(long,java.lang.Runnable)/1/0",
             "java.lang.foreign.Arena/wrap(long,java.lang.Runnable)/1/0",
+            "java.lang.foreign.ScopedArena/wrap(long,java.lang.Runnable)/1/0",
             "java.lang.foreign.MemorySegment.MemorySession/openConfined(java.lang.ref.Cleaner)/0/0",
             "java.lang.foreign.MemorySegment.MemorySession/openShared(java.lang.ref.Cleaner)/0/0",
             "java.lang.foreign.MemoryLayout/withAttribute(java.lang.String,java.lang.constant.Constable)/1/0",
@@ -184,8 +184,8 @@ public class TestNulls {
         addDefaultMapping(Linker.class, Linker.nativeLinker());
         addDefaultMapping(VaList.class, VaListHelper.vaList);
         addDefaultMapping(VaList.Builder.class, VaListHelper.vaListBuilder);
-        addDefaultMapping(Arena.class, Arena.openConfined());
-        addDefaultMapping(NativeAllocator.class, NativeAllocator.auto());
+        addDefaultMapping(ScopedArena.class, ScopedArena.openConfined());
+        addDefaultMapping(Arena.class, Arena.auto());
         addDefaultMapping(SegmentAllocator.class, SegmentAllocator.prefixAllocator(MemorySegment.ofArray(new byte[10])));
         addDefaultMapping(Supplier.class, () -> null);
         addDefaultMapping(ClassLoader.class, TestNulls.class.getClassLoader());
@@ -200,7 +200,7 @@ public class TestNulls {
             vaList = VaList.make(b -> {
                 builderRef.set(b);
                 b.addVarg(JAVA_LONG, 42L);
-            }, NativeAllocator.auto());
+            }, Arena.auto());
             vaListBuilder = builderRef.get();
         }
     }

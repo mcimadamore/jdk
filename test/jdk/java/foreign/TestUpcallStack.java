@@ -32,10 +32,10 @@
  *   TestUpcallStack
  */
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 
 import org.testng.annotations.Test;
 
@@ -55,7 +55,7 @@ public class TestUpcallStack extends TestUpcallBase {
         List<Consumer<Object>> returnChecks = new ArrayList<>();
         List<Consumer<Object[]>> argChecks = new ArrayList<>();
         MemorySegment addr = findNativeOrThrow("s" + fName);
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MethodHandle mh = downcallHandle(ABI, addr, arena, functionStack(ret, paramTypes, fields));
             Object[] args = makeArgsStack(arena, ret, paramTypes, fields, returnChecks, argChecks);
             Object[] callArgs = args;
@@ -71,7 +71,7 @@ public class TestUpcallStack extends TestUpcallBase {
         return function(ret, params, fields, STACK_PREFIX_LAYOUTS);
     }
 
-    static Object[] makeArgsStack(NativeAllocator session, Ret ret, List<ParamType> params, List<StructFieldType> fields, List<Consumer<Object>> checks, List<Consumer<Object[]>> argChecks) throws ReflectiveOperationException {
+    static Object[] makeArgsStack(Arena session, Ret ret, List<ParamType> params, List<StructFieldType> fields, List<Consumer<Object>> checks, List<Consumer<Object[]>> argChecks) throws ReflectiveOperationException {
         return makeArgs(session, ret, params, fields, checks, argChecks, STACK_PREFIX_LAYOUTS);
     }
 

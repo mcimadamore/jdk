@@ -35,7 +35,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 public class PointerBench {
 
-    final Arena arena = Arena.openConfined();
+    final ScopedArena arena = ScopedArena.openConfined();
     static final int ELEM_SIZE = 1_000_000;
     Pointer<Integer> intPointer = Pointer.allocate(NativeType.C_INT, ELEM_SIZE, arena);
     Pointer<Pointer<Integer>> intPointerPointer = Pointer.allocate(NativeType.C_INT_PTR, ELEM_SIZE, arena);

@@ -31,7 +31,7 @@
 
 import org.testng.annotations.Test;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
@@ -49,7 +49,7 @@ public class TestDontRelease extends NativeTestHelper  {
     @Test
     public void testDontRelease() {
         MethodHandle handle = downcallHandle("test_ptr", FunctionDescriptor.ofVoid(ADDRESS));
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment segment = arena.allocate(JAVA_INT);
             segment.whileAlive(() -> {
                 Thread t = new Thread(() -> {

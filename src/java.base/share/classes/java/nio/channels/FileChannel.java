@@ -26,9 +26,8 @@
 package java.nio.channels;
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
@@ -1056,7 +1055,7 @@ public abstract class FileChannel
      *          {@code offset + size} overflows the range of {@code long}.
      *
      * @throws  IllegalStateException
-     *          If {@code allocator} is not {@linkplain NativeAllocator#isAlive() alive}.
+     *          If {@code allocator} is not {@linkplain Arena#isAlive() alive}.
      * @throws  WrongThreadException
      *          If this method is called from a thread other than the thread
      *          {@linkplain MemorySegment#isAccessibleBy(Thread) owning} the
@@ -1082,7 +1081,7 @@ public abstract class FileChannel
      * @since   19
      */
     @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
-    public MemorySegment map(MapMode mode, long offset, long size, NativeAllocator allocator)
+    public MemorySegment map(MapMode mode, long offset, long size, Arena allocator)
         throws IOException
     {
         throw new UnsupportedOperationException();

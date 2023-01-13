@@ -33,7 +33,7 @@
  */
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -68,7 +68,7 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
 
     /** Tests that confined sessions are not supported. */
     @Test(dataProvider = "confinedArenas")
-    public void testWithConfined(Supplier<Arena> arenaSupplier)
+    public void testWithConfined(Supplier<ScopedArena> arenaSupplier)
         throws Throwable
     {
         try (var channel = AsynchronousSocketChannel.open();
@@ -101,13 +101,13 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
 
     /** Tests that I/O with a closed session throws a suitable exception. */
     @Test(dataProvider = "sharedArenasAndTimeouts")
-    public void testIOWithClosedSharedSession(Supplier<Arena> arenaSupplier, int timeout)
+    public void testIOWithClosedSharedSession(Supplier<ScopedArena> arenaSupplier, int timeout)
         throws Exception
     {
         try (var channel = AsynchronousSocketChannel.open();
              var server = AsynchronousServerSocketChannel.open();
              var connectedChannel = connectChannels(server, channel)) {
-            Arena drop = arenaSupplier.get();
+            ScopedArena drop = arenaSupplier.get();
             ByteBuffer bb = segmentBufferOfSize(drop, 64);
             ByteBuffer[] buffers = segmentBuffersOfSize(8, drop, 32);
             drop.close();
@@ -152,10 +152,10 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
 
     /** Tests basic I/O operations work with views over implicit and shared sessions. */
     @Test(dataProvider = "sharedArenas")
-    public void testBasicIOWithSupportedSession(Supplier<Arena> arenaSupplier)
+    public void testBasicIOWithSupportedSession(Supplier<ScopedArena> arenaSupplier)
         throws Exception
     {
-        Arena drop;
+        ScopedArena drop;
         try (var asc1 = AsynchronousSocketChannel.open();
              var assc = AsynchronousServerSocketChannel.open();
              var asc2 = connectChannels(assc, asc1);
@@ -200,7 +200,7 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
 
     /** Tests that a session is not closeable when there is an outstanding read operation. */
     @Test(dataProvider = "sharedArenasAndTimeouts")
-    public void testCloseWithOutstandingRead(Supplier<Arena> arenaSupplier, int timeout)
+    public void testCloseWithOutstandingRead(Supplier<ScopedArena> arenaSupplier, int timeout)
         throws Throwable
     {
         try (var asc1 = AsynchronousSocketChannel.open();
@@ -236,7 +236,7 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
     /** Tests that a session is not closeable when there is an outstanding write operation. */
     // Note: limited scenarios are checked, given the 5 sec sleep!
     @Test(dataProvider = "sharedArenasAndTimeouts")
-    public void testCloseWithOutstandingWrite(Supplier<Arena> arenaSupplier, int timeout)
+    public void testCloseWithOutstandingWrite(Supplier<ScopedArena> arenaSupplier, int timeout)
          throws Throwable
     {
         try (var asc1 = AsynchronousSocketChannel.open();

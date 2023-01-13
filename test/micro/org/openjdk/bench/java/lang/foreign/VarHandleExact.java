@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.MemorySegment;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -58,12 +58,12 @@ public class VarHandleExact {
         exact = generic.withInvokeExactBehavior();
     }
 
-    Arena arena;
+    ScopedArena arena;
     MemorySegment data;
 
     @Setup
     public void setup() {
-        arena = Arena.openConfined();
+        arena = ScopedArena.openConfined();
         data = arena.allocate(JAVA_INT);
     }
 

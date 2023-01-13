@@ -27,7 +27,7 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
@@ -111,7 +111,7 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
 
     // factories
 
-    public static MemorySegment makeNativeSegment(long byteSize, long byteAlignment, NativeAllocator allocator) {
+    public static MemorySegment makeNativeSegment(long byteSize, long byteAlignment, Arena allocator) {
         if (VM.isDirectMemoryPageAligned()) {
             byteAlignment = Math.max(byteAlignment, NIO_ACCESS.pageSize());
         }
@@ -143,20 +143,20 @@ public sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl pe
     // associated with MemorySegment::ofAddress.
 
     @ForceInline
-    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, NativeAllocator allocator, Runnable action) {
+    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, Arena allocator, Runnable action) {
         return allocator.wrap(min, action)
                 .asUnboundedSlice(0, byteSize);
     }
 
     @ForceInline
-    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, NativeAllocator allocator) {
+    public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize, Arena allocator) {
         return allocator.wrap(min, null)
                 .asUnboundedSlice(0, byteSize);
     }
 
     @ForceInline
     public static MemorySegment makeNativeSegmentUnchecked(long min, long byteSize) {
-        return NativeAllocator.global().wrap(min, null)
+        return Arena.global().wrap(min, null)
                 .asUnboundedSlice(0, byteSize);
     }
 }

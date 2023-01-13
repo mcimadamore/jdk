@@ -33,7 +33,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -50,7 +50,7 @@ public class LoopOverOfAddress extends JavaLayouts {
     public long segment_loop_addr() {
         long res = 0;
         for (int i = 0; i < ITERATIONS; i++) {
-            res += NativeAllocator.global().wrap(i % 100, null).address();
+            res += Arena.global().wrap(i % 100, null).address();
         }
         return res;
     }
@@ -59,7 +59,7 @@ public class LoopOverOfAddress extends JavaLayouts {
     public long segment_loop_addr_size() {
         long res = 0;
         for (int i = 0; i < ITERATIONS; i++) {
-            res += NativeAllocator.global().wrap(i, null)
+            res += Arena.global().wrap(i, null)
                     .asUnboundedSlice(0, i % 100).address();
         }
         return res;
@@ -69,7 +69,7 @@ public class LoopOverOfAddress extends JavaLayouts {
     public long segment_loop_addr_size_session() {
         long res = 0;
         for (int i = 0; i < ITERATIONS; i++) {
-            res += NativeAllocator.global().wrap(i, null)
+            res += Arena.global().wrap(i, null)
                     .asUnboundedSlice(0, i % 100).address();
         }
         return res;

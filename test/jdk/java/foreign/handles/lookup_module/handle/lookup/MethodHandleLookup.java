@@ -23,7 +23,7 @@
 
 package handle.lookup;
 
-import java.lang.foreign.NativeAllocator;
+import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
 
 import java.lang.invoke.MethodHandle;
@@ -57,10 +57,10 @@ public class MethodHandleLookup {
                             MethodType.methodType(MemorySegment.class, long.class, long.class)),
                             "MemorySegment::asUnboundedSlice/2" },
                     { MethodHandles.lookup().findStatic(SymbolLookup.class, "libraryLookup",
-                            MethodType.methodType(SymbolLookup.class, String.class, NativeAllocator.class)),
+                            MethodType.methodType(SymbolLookup.class, String.class, Arena.class)),
                             "SymbolLookup::libraryLookup(String)" },
                     { MethodHandles.lookup().findStatic(SymbolLookup.class, "libraryLookup",
-                            MethodType.methodType(SymbolLookup.class, Path.class, NativeAllocator.class)),
+                            MethodType.methodType(SymbolLookup.class, Path.class, Arena.class)),
                             "SymbolLookup::libraryLookup(Path)" },
             };
         } catch (Throwable ex) {

@@ -32,7 +32,7 @@
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
@@ -71,7 +71,7 @@ public class TestCaptureCallState extends NativeTestHelper {
 
         VarHandle errnoHandle = stl.layout().varHandle(groupElement(testCase.threadLocalName()));
 
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             MemorySegment saveSeg = arena.allocate(stl.layout());
             int testValue = 42;
             boolean needsAllocator = testCase.nativeDesc().returnLayout().map(StructLayout.class::isInstance).orElse(false);

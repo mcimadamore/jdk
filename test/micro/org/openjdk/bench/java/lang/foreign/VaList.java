@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.Arena;
+import java.lang.foreign.ScopedArena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 
@@ -72,7 +72,7 @@ public class VaList extends CLayouts {
 
     @Benchmark
     public void vaList() throws Throwable {
-        try (Arena arena = Arena.openConfined()) {
+        try (ScopedArena arena = ScopedArena.openConfined()) {
             java.lang.foreign.VaList vaList = java.lang.foreign.VaList.make(b ->
                     b.addVarg(C_INT, 1)
                             .addVarg(C_DOUBLE, 2D)
