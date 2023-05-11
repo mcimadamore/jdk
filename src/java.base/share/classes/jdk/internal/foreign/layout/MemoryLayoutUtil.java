@@ -48,7 +48,7 @@ public final class MemoryLayoutUtil {
     }
 
     public static MemoryLayout requireNoUnboundedSequence(MemoryLayout layout) {
-        if (layout instanceof SequenceLayout seq && !seq.isBounded()) {
+        if (layout instanceof UnboundedSequenceLayoutImpl) {
             throw new IllegalArgumentException("Unexpected unbounded sequence layout");
         }
         return layout;

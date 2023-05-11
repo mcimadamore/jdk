@@ -50,31 +50,31 @@ import static org.testng.Assert.*;
 
 public class TestArrays {
 
-    static SequenceLayout bytes = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout bytes = MemoryLayout.sequenceLayout(100,
             JAVA_BYTE
     );
 
-    static SequenceLayout chars = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout chars = MemoryLayout.sequenceLayout(100,
             JAVA_CHAR
     );
 
-    static SequenceLayout shorts = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout shorts = MemoryLayout.sequenceLayout(100,
             JAVA_SHORT
     );
 
-    static SequenceLayout ints = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout ints = MemoryLayout.sequenceLayout(100,
             JAVA_INT
     );
 
-    static SequenceLayout floats = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout floats = MemoryLayout.sequenceLayout(100,
             JAVA_FLOAT
     );
 
-    static SequenceLayout longs = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout longs = MemoryLayout.sequenceLayout(100,
             JAVA_LONG
     );
 
-    static SequenceLayout doubles = MemoryLayout.sequenceLayout(100,
+    static BoundedSequenceLayout doubles = MemoryLayout.sequenceLayout(100,
             JAVA_DOUBLE
     );
 
@@ -86,13 +86,13 @@ public class TestArrays {
     static VarHandle longHandle = longs.varHandle(PathElement.sequenceElement());
     static VarHandle doubleHandle = doubles.varHandle(PathElement.sequenceElement());
 
-    static void initBytes(MemorySegment base, SequenceLayout seq, BiConsumer<MemorySegment, Long> handleSetter) {
+    static void initBytes(MemorySegment base, BoundedSequenceLayout seq, BiConsumer<MemorySegment, Long> handleSetter) {
         for (long i = 0; i < seq.elementCount() ; i++) {
             handleSetter.accept(base, i);
         }
     }
 
-    static void checkBytes(MemorySegment base, SequenceLayout layout, Function<MemorySegment, Object> arrayFactory, BiFunction<MemorySegment, Long, Object> handleGetter) {
+    static void checkBytes(MemorySegment base, BoundedSequenceLayout layout, Function<MemorySegment, Object> arrayFactory, BiFunction<MemorySegment, Long, Object> handleGetter) {
         int nelems = (int)layout.elementCount();
         Object arr = arrayFactory.apply(base);
         for (int i = 0; i < nelems; i++) {

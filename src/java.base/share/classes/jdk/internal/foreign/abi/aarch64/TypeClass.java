@@ -25,6 +25,7 @@
  */
 package jdk.internal.foreign.abi.aarch64;
 
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -71,7 +72,7 @@ public enum TypeClass {
         for (MemoryLayout member : gl.memberLayouts()) {
             if (member instanceof GroupLayout memberGl) {
                 scalarLayoutsInternal(out, memberGl);
-            } else if (member instanceof SequenceLayout memberSl) {
+            } else if (member instanceof BoundedSequenceLayout memberSl) {
                 for (long i = 0; i < memberSl.elementCount(); i++) {
                     out.add(memberSl.elementLayout());
                 }

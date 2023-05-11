@@ -26,6 +26,7 @@
 
 package jdk.internal.foreign.abi.riscv64.linux;
 
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -102,7 +103,7 @@ public enum TypeClass {
                     }
                     return currCounter;
                 }
-                case SequenceLayout sequenceLayout -> {
+                case BoundedSequenceLayout sequenceLayout -> {
                     long elementCount = sequenceLayout.elementCount();
                     if (elementCount == 0) {
                         return FieldCounter.EMPTY;
@@ -148,7 +149,7 @@ public enum TypeClass {
                 offset += memberLayout.byteSize();
             }
             return fields;
-        } else if (layout instanceof SequenceLayout sequenceLayout) {
+        } else if (layout instanceof BoundedSequenceLayout sequenceLayout) {
             List<FlattenedFieldDesc> fields = new ArrayList<>();
             MemoryLayout elementLayout = sequenceLayout.elementLayout();
             for (long i = 0; i < sequenceLayout.elementCount(); i++) {

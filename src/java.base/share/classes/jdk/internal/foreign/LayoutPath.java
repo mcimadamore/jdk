@@ -28,6 +28,7 @@ package jdk.internal.foreign;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.AddressLayout;
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -97,7 +98,9 @@ public class LayoutPath {
         check(SequenceLayout.class, "attempting to select a sequence element from a non-sequence layout");
         SequenceLayout seq = (SequenceLayout)layout;
         MemoryLayout elem = seq.elementLayout();
-        return LayoutPath.nestedPath(elem, offset, addStride(elem.bitSize()), addBound(seq.elementCount()), derefAdapters, this);
+        long maxIndex = seq instanceof BoundedSequenceLayout boundedSequenceLayout ?
+                boundedSequenceLayout.elementCount() : Long.MAX_VALUE;
+        return LayoutPath.nestedPath(elem, offset, addStride(elem.bitSize()), addBound(maxIndex), derefAdapters, this);
     }
 
     public LayoutPath sequenceElement(long start, long step) {
@@ -106,10 +109,15 @@ public class LayoutPath {
         checkSequenceBounds(seq, start);
         MemoryLayout elem = seq.elementLayout();
         long elemSize = elem.bitSize();
-        long nelems = step > 0 ?
-                seq.elementCount() - start :
-                start + 1;
-        long maxIndex = Math.ceilDiv(nelems, Math.abs(step));
+        long maxIndex;
+        if (seq instanceof BoundedSequenceLayout boundedSequenceLayout) {
+            long nelems = step > 0 ?
+                    boundedSequenceLayout.elementCount() - start :
+                    start + 1;
+            maxIndex = Math.ceilDiv(nelems, Math.abs(step));
+        } else {
+            maxIndex = Long.MAX_VALUE;
+        }
         return LayoutPath.nestedPath(elem, offset + (start * elemSize),
                                      addStride(elemSize * step), addBound(maxIndex), derefAdapters, this);
     }
@@ -271,8 +279,9 @@ public class LayoutPath {
     }
 
     private void checkSequenceBounds(SequenceLayout seq, long index) {
-        if (index >= seq.elementCount()) {
-            throw badLayoutPath(String.format("Sequence index out of bound; found: %d, size: %d", index, seq.elementCount()));
+        if (seq instanceof BoundedSequenceLayout boundedSequenceLayout &&
+                index >= boundedSequenceLayout.elementCount()) {
+            throw badLayoutPath(String.format("Sequence index out of bound; found: %d, size: %d", index, boundedSequenceLayout.elementCount()));
         }
     }
 

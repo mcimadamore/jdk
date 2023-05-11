@@ -32,6 +32,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.PaddingLayout;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SequenceLayout;
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.StructLayout;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.UnionLayout;
@@ -203,7 +204,7 @@ public class NativeTestHelper {
             MemoryLayout.PathElement fieldPath = groupElement(fieldLayout.name().orElseThrow());
             Consumer<Object> check = initField(random, segment, union, fieldLayout, fieldPath, allocator);
             return new TestValue(segment, check);
-        } else if (layout instanceof SequenceLayout array) {
+        } else if (layout instanceof BoundedSequenceLayout array) {
             MemorySegment segment = allocator.allocate(array);
             List<Consumer<Object>> elementChecks = new ArrayList<>();
             for (int i = 0; i < array.elementCount(); i++) {

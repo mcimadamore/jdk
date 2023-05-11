@@ -27,6 +27,7 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.AddressLayout;
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
@@ -204,8 +205,11 @@ public final class Utils {
     }
 
     static long unboundedSize(MemoryLayout layout) {
-        return layout instanceof SequenceLayout seq && !seq.isBounded() ?
-                Long.MAX_VALUE : layout.byteSize();
+        return switch (layout) {
+            case BoundedSequenceLayout bseq -> layout.byteSize();
+            case SequenceLayout seq -> Long.MAX_VALUE;
+            default -> layout.byteSize();
+        };
     }
 
     public static void checkAllocationSizeAndAlign(long byteSize, long byteAlignment) {

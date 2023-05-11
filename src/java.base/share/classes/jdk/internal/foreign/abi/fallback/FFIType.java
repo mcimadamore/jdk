@@ -27,6 +27,7 @@ package jdk.internal.foreign.abi.fallback;
 import jdk.internal.foreign.Utils;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -115,7 +116,7 @@ class FFIType {
             assert grpl instanceof UnionLayout;
             // JDK-8301800
             throw new IllegalArgumentException("Fallback linker does not support by-value unions: " + grpl);
-        } else if (layout instanceof SequenceLayout sl) {
+        } else if (layout instanceof BoundedSequenceLayout sl) {
             List<MemoryLayout> elements = Collections.nCopies(Math.toIntExact(sl.elementCount()), sl.elementLayout());
             return make(elements, abi, scope);
         }

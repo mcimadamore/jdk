@@ -24,6 +24,7 @@
  */
 package jdk.internal.foreign.abi.x64.sysv;
 
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -218,7 +219,7 @@ class TypeClass {
             }
         } else if (l instanceof PaddingLayout) {
             return;
-        } else if (l instanceof SequenceLayout seq) {
+        } else if (l instanceof BoundedSequenceLayout seq) {
             MemoryLayout elem = seq.elementLayout();
             for (long i = 0 ; i < seq.elementCount() ; i++) {
                 groupByEightBytes(elem, offset, groups);

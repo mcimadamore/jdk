@@ -25,29 +25,24 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.BoundedSequenceLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl> implements SequenceLayout {
+public final class BoundedSequenceLayoutImpl extends AbstractLayout<BoundedSequenceLayoutImpl> implements BoundedSequenceLayout {
 
     private final long elemCount;
     private final MemoryLayout elementLayout;
 
-    private SequenceLayoutImpl(long elemCount, MemoryLayout elementLayout) {
+    private BoundedSequenceLayoutImpl(long elemCount, MemoryLayout elementLayout) {
         this(elemCount, elementLayout, elementLayout.bitAlignment(), Optional.empty());
     }
 
-    private SequenceLayoutImpl(long elemCount, MemoryLayout elementLayout, long bitAlignment, Optional<String> name) {
+    BoundedSequenceLayoutImpl(long elemCount, MemoryLayout elementLayout, long bitAlignment, Optional<String> name) {
         super(Math.multiplyExact(elemCount, elementLayout.bitSize()), bitAlignment, name);
         this.elemCount = elemCount;
-        this.elementLayout = elementLayout;
-    }
-
-    private SequenceLayoutImpl(MemoryLayout elementLayout) {
-        super(0, elementLayout.bitAlignment(), Optional.empty());
-        this.elemCount = -1;
         this.elementLayout = elementLayout;
     }
 
@@ -62,30 +57,16 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      * {@return the element count of this sequence layout}
      */
     public long elementCount() {
-        checkBound();
         return elemCount;
     }
 
     @Override
-    public boolean isBounded() {
-        return elemCount != -1;
-    }
-
-    private void checkBound() {
-        if (elemCount == -1) {
-            throw new UnsupportedOperationException("Unbounded sequence layout");
-        }
-    }
-
-    @Override
     public long bitSize() {
-        checkBound();
         return super.bitSize();
     }
 
     @Override
     public long byteSize() {
-        checkBound();
         return super.byteSize();
     }
 
@@ -97,8 +78,8 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      * @return a sequence layout with the given element count.
      * @throws IllegalArgumentException if {@code elementCount < 0}.
      */
-    public SequenceLayout withElementCount(long elementCount) {
-        return new SequenceLayoutImpl(elementCount, elementLayout, bitAlignment(), name());
+    public BoundedSequenceLayout withElementCount(long elementCount) {
+        return new BoundedSequenceLayoutImpl(elementCount, elementLayout, bitAlignment(), name());
     }
 
     /**
@@ -135,12 +116,12 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      *                                  multiplying the element counts does not yield the same element count as the flattened projection of this
      *                                  sequence layout.
      */
-    public SequenceLayout reshape(long... elementCounts) {
+    public BoundedSequenceLayout reshape(long... elementCounts) {
         Objects.requireNonNull(elementCounts);
         if (elementCounts.length == 0) {
             throw new IllegalArgumentException();
         }
-        SequenceLayout flat = flatten();
+        BoundedSequenceLayout flat = flatten();
         long expectedCount = flat.elementCount();
 
         long actualCount = 1;
@@ -174,7 +155,7 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
         for (int i = elementCounts.length - 1; i >= 0; i--) {
             res = MemoryLayout.sequenceLayout(elementCounts[i], res);
         }
-        return (SequenceLayoutImpl) res;
+        return (BoundedSequenceLayoutImpl) res;
     }
 
     /**
@@ -194,10 +175,10 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      * @return a sequence layout with the same size as this layout (but, possibly, with different
      * element count), whose element layout is not a sequence layout.
      */
-    public SequenceLayout flatten() {
+    public BoundedSequenceLayout flatten() {
         long count = elementCount();
         MemoryLayout elemLayout = elementLayout();
-        while (elemLayout instanceof SequenceLayoutImpl elemSeq) {
+        while (elemLayout instanceof BoundedSequenceLayoutImpl elemSeq) {
             count = count * elemSeq.elementCount();
             elemLayout = elemSeq.elementLayout();
         }
@@ -207,13 +188,13 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     @Override
     public String toString() {
         return decorateLayoutString(String.format("[%s:%s]",
-                !isBounded() ? "*" : elemCount, elementLayout));
+                elemCount, elementLayout));
     }
 
     @Override
     public boolean equals(Object other) {
         return this == other ||
-                other instanceof SequenceLayoutImpl otherSeq &&
+                other instanceof BoundedSequenceLayoutImpl otherSeq &&
                         super.equals(other) &&
                         elemCount == otherSeq.elemCount &&
                         elementLayout.equals(otherSeq.elementLayout);
@@ -225,12 +206,12 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     }
 
     @Override
-    SequenceLayoutImpl dup(long bitAlignment, Optional<String> name) {
-        return new SequenceLayoutImpl(elementCount(), elementLayout, bitAlignment, name);
+    BoundedSequenceLayoutImpl dup(long bitAlignment, Optional<String> name) {
+        return new BoundedSequenceLayoutImpl(elementCount(), elementLayout, bitAlignment, name);
     }
 
     @Override
-    public SequenceLayoutImpl withBitAlignment(long bitAlignment) {
+    public BoundedSequenceLayoutImpl withBitAlignment(long bitAlignment) {
         if (bitAlignment < elementLayout.bitAlignment()) {
             throw new IllegalArgumentException("Invalid alignment constraint");
         }
@@ -242,11 +223,7 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
         return bitAlignment() == elementLayout.bitAlignment();
     }
 
-    public static SequenceLayout of(long elementCount, MemoryLayout elementLayout) {
-        return new SequenceLayoutImpl(elementCount, MemoryLayoutUtil.requireNoUnboundedSequence(elementLayout));
-    }
-
-    public static SequenceLayout of(MemoryLayout elementLayout) {
-        return new SequenceLayoutImpl(MemoryLayoutUtil.requireNoUnboundedSequence(elementLayout));
+    public static BoundedSequenceLayout of(long elementCount, MemoryLayout elementLayout) {
+        return new BoundedSequenceLayoutImpl(elementCount, MemoryLayoutUtil.requireNoUnboundedSequence(elementLayout));
     }
 }

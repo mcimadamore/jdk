@@ -41,8 +41,9 @@ import jdk.internal.foreign.LayoutPath.PathElementImpl.PathKind;
 import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.layout.MemoryLayoutUtil;
 import jdk.internal.foreign.layout.PaddingLayoutImpl;
-import jdk.internal.foreign.layout.SequenceLayoutImpl;
+import jdk.internal.foreign.layout.BoundedSequenceLayoutImpl;
 import jdk.internal.foreign.layout.StructLayoutImpl;
+import jdk.internal.foreign.layout.UnboundedSequenceLayoutImpl;
 import jdk.internal.foreign.layout.UnionLayoutImpl;
 import jdk.internal.javac.PreviewFeature;
 
@@ -698,8 +699,9 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      * <ul>
      *     <li>two value layouts are considered equal if they have the same {@linkplain ValueLayout#order() order},
      *     and {@linkplain ValueLayout#carrier() carrier}</li>
-     *     <li>two sequence layouts are considered equal if they have the same element count (see {@link SequenceLayout#elementCount()}), and
-     *     if their element layouts (see {@link SequenceLayout#elementLayout()}) are also equal</li>
+     *     <li>two sequence layouts are considered equal if they are bounded and have the same element count
+     *     (see {@link BoundedSequenceLayout#elementCount()}), and if their element layouts
+     *     (see {@link SequenceLayout#elementLayout()}) are also equal</li>
      *     <li>two group layouts are considered equal if they are of the same type (see {@link StructLayout},
      *     {@link UnionLayout}) and if their member layouts (see {@link GroupLayout#memberLayouts()}) are also equal</li>
      * </ul>
@@ -740,12 +742,12 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      * @throws IllegalArgumentException if {@code elementCount } is negative.
      * @throws IllegalArgumentException if {@code elementLayout.bitSize() % elementLayout.bitAlignment() != 0}.
      */
-    static SequenceLayout sequenceLayout(long elementCount, MemoryLayout elementLayout) {
+    static BoundedSequenceLayout sequenceLayout(long elementCount, MemoryLayout elementLayout) {
         MemoryLayoutUtil.requireNonNegative(elementCount);
         Objects.requireNonNull(elementLayout);
         Utils.checkElementAlignment(elementLayout, "Element layout size is not multiple of alignment");
         return wrapOverflow(() ->
-                SequenceLayoutImpl.of(elementCount, elementLayout));
+                BoundedSequenceLayoutImpl.of(elementCount, elementLayout));
     }
 
     /**
@@ -757,7 +759,7 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      */
     static SequenceLayout sequenceLayout(MemoryLayout elementLayout) {
         Objects.requireNonNull(elementLayout);
-        return SequenceLayoutImpl.of(elementLayout);
+        return UnboundedSequenceLayoutImpl.of(elementLayout);
     }
 
     /**
