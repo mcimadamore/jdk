@@ -70,7 +70,7 @@ public class CLayouts {
      * The {@code T*} native type.
      */
     public static final AddressLayout C_POINTER = ValueLayout.ADDRESS
-            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
+            .withTargetLayout(MemoryLayout.maximalSequenceLayout(ValueLayout.JAVA_BYTE));
 
     private static Linker LINKER = Linker.nativeLinker();
 
