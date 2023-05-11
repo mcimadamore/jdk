@@ -55,6 +55,11 @@ import jdk.internal.javac.PreviewFeature;
 @PreviewFeature(feature=PreviewFeature.Feature.FOREIGN)
 public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayoutImpl {
 
+    /**
+     * {@return {@code true}, if the sequence layout has an element count}
+     */
+    boolean isBounded();
+
 
     /**
      * {@return the element layout associated with this sequence layout}
@@ -146,9 +151,4 @@ public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayo
      * @throws IllegalArgumentException if {@code bitAlignment < elementLayout().bitAlignment()}.
      */
     SequenceLayout withBitAlignment(long bitAlignment);
-
-    /**
-     * A sequence layout of <em>maximal size</em>, whose element layout is {@link ValueLayout#JAVA_BYTE}.
-     */
-    SequenceLayout UNBOUNDED_BYTES = MemoryLayout.sequenceLayout(Long.MAX_VALUE / 8, ValueLayout.JAVA_BYTE);
 }

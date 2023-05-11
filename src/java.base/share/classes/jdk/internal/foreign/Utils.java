@@ -30,6 +30,7 @@ import java.lang.foreign.AddressLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
@@ -192,7 +193,7 @@ public final class Utils {
 
     public static long pointeeByteSize(AddressLayout addressLayout) {
         return addressLayout.targetLayout()
-                .map(MemoryLayout::byteSize)
+                .map(Utils::unboundedSize)
                 .orElse(0L);
     }
 
@@ -200,6 +201,11 @@ public final class Utils {
         return addressLayout.targetLayout()
                 .map(MemoryLayout::byteAlignment)
                 .orElse(1L);
+    }
+
+    static long unboundedSize(MemoryLayout layout) {
+        return layout instanceof SequenceLayout seq && !seq.isBounded() ?
+                Long.MAX_VALUE : layout.byteSize();
     }
 
     public static void checkAllocationSizeAndAlign(long byteSize, long byteAlignment) {

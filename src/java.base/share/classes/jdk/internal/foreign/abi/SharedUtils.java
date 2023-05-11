@@ -81,7 +81,7 @@ public final class SharedUtils {
 
     public static final AddressLayout C_POINTER = ADDRESS
             .withBitAlignment(64)
-            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
+            .withTargetLayout(MemoryLayout.sequenceLayout(JAVA_BYTE));
 
     public static final Arena DUMMY_ARENA = new Arena() {
         @Override

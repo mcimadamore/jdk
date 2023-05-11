@@ -212,7 +212,8 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
         return switch (ml) {
             case StructLayout sl -> MemoryLayout.structLayout(stripNames(sl.memberLayouts()));
             case UnionLayout ul -> MemoryLayout.unionLayout(stripNames(ul.memberLayouts()));
-            case SequenceLayout sl -> MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()));
+            case SequenceLayout sl when sl.isBounded() -> MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()));
+            case SequenceLayout sl when !sl.isBounded() -> MemoryLayout.sequenceLayout(stripNames(sl.elementLayout()));
             case AddressLayout al -> al.targetLayout()
                     .map(tl -> al.withoutName().withTargetLayout(stripNames(tl)))
                     .orElseGet(al::withoutName);

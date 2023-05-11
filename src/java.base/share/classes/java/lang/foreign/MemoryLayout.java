@@ -749,6 +749,18 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
     }
 
     /**
+     * Creates an unbounded sequence layout with the given element layout.
+     *
+     * @param elementLayout the sequence element layout.
+     * @return a new sequence layout with the given element layout and maximum element count.
+     * @throws IllegalArgumentException if {@code elementLayout.bitSize() % elementLayout.bitAlignment() != 0}.
+     */
+    static SequenceLayout sequenceLayout(MemoryLayout elementLayout) {
+        Objects.requireNonNull(elementLayout);
+        return SequenceLayoutImpl.of(elementLayout);
+    }
+
+    /**
      * Creates a struct layout with the given member layouts.
      *
      * @param elements The member layouts of the struct layout.

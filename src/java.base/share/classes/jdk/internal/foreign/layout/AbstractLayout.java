@@ -73,11 +73,11 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
         return byteAlignment;
     }
 
-    public final long byteSize() {
+    public long byteSize() {
         return byteSize;
     }
 
-    public final long bitSize() {
+    public long bitSize() {
         return byteSize * 8;
     }
 

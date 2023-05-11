@@ -45,6 +45,7 @@ public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> 
         long size = 0;
         long align = 8;
         for (MemoryLayout elem : elements) {
+            MemoryLayoutUtil.requireNoUnboundedSequence(elem);
             size = Math.max(size, elem.bitSize());
             align = Math.max(align, elem.bitAlignment());
         }

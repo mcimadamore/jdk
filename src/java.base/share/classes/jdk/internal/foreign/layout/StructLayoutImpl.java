@@ -45,6 +45,7 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
         long size = 0;
         long align = 8;
         for (MemoryLayout elem : elements) {
+            MemoryLayoutUtil.requireNoUnboundedSequence(elem);
             if (size % elem.bitAlignment() != 0) {
                 throw new IllegalArgumentException("Invalid alignment constraint for member layout: " + elem);
             }

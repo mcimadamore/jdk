@@ -35,7 +35,6 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -190,7 +189,9 @@ public class TestIllegalLink extends NativeTestHelper {
         if (IS_SYSV) {
             cases.add(new Object[] {
                     FunctionDescriptor.ofVoid(MemoryLayout.structLayout(
-                            SequenceLayout.UNBOUNDED_BYTES)),
+                            MemoryLayout.sequenceLayout(
+                                Long.MAX_VALUE / 32, C_INT
+                            ))),
                     "GroupLayout is too large"
             });
         }

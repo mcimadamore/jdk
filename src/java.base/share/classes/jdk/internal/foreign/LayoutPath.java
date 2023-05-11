@@ -68,7 +68,7 @@ public class LayoutPath {
             MH_SLICE = lookup.findVirtual(MemorySegment.class, "asSlice",
                     MethodType.methodType(MemorySegment.class, long.class, long.class));
             MH_SEGMENT_RESIZE = lookup.findStatic(LayoutPath.class, "resizeSegment",
-                    MethodType.methodType(MemorySegment.class, MemorySegment.class, MemoryLayout.class));
+                    MethodType.methodType(MemorySegment.class, MemorySegment.class, AddressLayout.class));
         } catch (Throwable ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -170,12 +170,12 @@ public class LayoutPath {
         MemoryLayout derefLayout = addressLayout.targetLayout().get();
         MethodHandle handle = dereferenceHandle(false).toMethodHandle(VarHandle.AccessMode.GET);
         handle = MethodHandles.filterReturnValue(handle,
-                MethodHandles.insertArguments(MH_SEGMENT_RESIZE, 1, derefLayout));
+                MethodHandles.insertArguments(MH_SEGMENT_RESIZE, 1, addressLayout));
         return derefPath(derefLayout, handle, this);
     }
 
-    private static MemorySegment resizeSegment(MemorySegment segment, MemoryLayout layout) {
-        return Utils.longToAddress(segment.address(), layout.byteSize(), layout.byteAlignment());
+    private static MemorySegment resizeSegment(MemorySegment segment, AddressLayout layout) {
+        return Utils.longToAddress(segment.address(), Utils.pointeeByteSize(layout), Utils.pointeeByteAlign(layout));
     }
 
     // Layout path projections

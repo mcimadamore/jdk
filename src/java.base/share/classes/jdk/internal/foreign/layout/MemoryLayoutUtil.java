@@ -25,6 +25,9 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.SequenceLayout;
+
 public final class MemoryLayoutUtil {
 
     private MemoryLayoutUtil() {
@@ -42,6 +45,13 @@ public final class MemoryLayoutUtil {
             throw new IllegalArgumentException("Invalid bitSize: " + bitSize);
         }
         return bitSize;
+    }
+
+    public static MemoryLayout requireNoUnboundedSequence(MemoryLayout layout) {
+        if (layout instanceof SequenceLayout seq && !seq.isBounded()) {
+            throw new IllegalArgumentException("Unexpected unbounded sequence layout");
+        }
+        return layout;
     }
 
 }

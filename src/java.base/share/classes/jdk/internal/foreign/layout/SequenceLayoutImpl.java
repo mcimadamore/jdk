@@ -45,6 +45,12 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
         this.elementLayout = elementLayout;
     }
 
+    private SequenceLayoutImpl(MemoryLayout elementLayout) {
+        super(0, elementLayout.bitAlignment(), Optional.empty());
+        this.elemCount = -1;
+        this.elementLayout = elementLayout;
+    }
+
     /**
      * {@return the element layout associated with this sequence layout}
      */
@@ -56,7 +62,31 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      * {@return the element count of this sequence layout}
      */
     public long elementCount() {
+        checkBound();
         return elemCount;
+    }
+
+    @Override
+    public boolean isBounded() {
+        return elemCount != -1;
+    }
+
+    private void checkBound() {
+        if (elemCount == -1) {
+            throw new UnsupportedOperationException("Unbounded sequence layout");
+        }
+    }
+
+    @Override
+    public long bitSize() {
+        checkBound();
+        return super.bitSize();
+    }
+
+    @Override
+    public long byteSize() {
+        checkBound();
+        return super.byteSize();
     }
 
     /**
@@ -176,9 +206,8 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
 
     @Override
     public String toString() {
-        boolean max = (Long.MAX_VALUE / elementLayout.bitSize()) == elemCount;
         return decorateLayoutString(String.format("[%s:%s]",
-                max ? "*" : elemCount, elementLayout));
+                !isBounded() ? "*" : elemCount, elementLayout));
     }
 
     @Override
@@ -214,7 +243,10 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     }
 
     public static SequenceLayout of(long elementCount, MemoryLayout elementLayout) {
-        return new SequenceLayoutImpl(elementCount, elementLayout);
+        return new SequenceLayoutImpl(elementCount, MemoryLayoutUtil.requireNoUnboundedSequence(elementLayout));
     }
 
+    public static SequenceLayout of(MemoryLayout elementLayout) {
+        return new SequenceLayoutImpl(MemoryLayoutUtil.requireNoUnboundedSequence(elementLayout));
+    }
 }
