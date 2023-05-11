@@ -80,8 +80,7 @@ public final class SharedUtils {
     public static final MethodHandle MH_CHECK_SYMBOL;
 
     public static final AddressLayout C_POINTER = ADDRESS
-            .withBitAlignment(64)
-            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
+            .withTargetLayout(MemoryLayout.maximalSequenceLayout(JAVA_BYTE));
 
     public static final Arena DUMMY_ARENA = new Arena() {
         @Override

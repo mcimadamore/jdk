@@ -444,10 +444,31 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      * This is equivalent to the following code:
      * {@snippet lang=java :
      * MemoryLayout layout = ...
-     * long elementCount = Long.MAX_SIZE / layout.bitSize();
-     * VarHandle arrayHandle = MemoryLayout.sequenceLayout(elementCount, layout)
+     * VarHandle arrayHandle = MemoryLayout.maximalSequenceLayout(layout)
      *                                     .varHandle(PathElement.sequenceElement(), ...);
      * }
+     *
+     * @apiNote This method might be useful when clients operate on a sequence layout whose size is not known statically.
+     * In such cases, clients might still want to be able to obtain a dereference var handle for a value layout nested
+     * in an element of such a sequence layout:
+     *
+     * {@snippet lang = java:
+     * StructLayout point = MemoryLayout.structLayout(
+     *         ValueLayout.JAVA_INT.withName("x"),
+     *         ValueLayout.JAVA_INT.withName("y"));
+     *
+     * VarHandle xs = point.arrayElementVarHandle(PathElement.groupElement("x"));
+     * VarHandle ys = point.arrayElementVarHandle(PathElement.groupElement("x"));
+     *
+     * MemorySegment points = Arena.ofAuto().allocateArray(point, 10);
+     * for (int i = 0 ; i < 10 ; i++) {
+     *     xs.set(i, i * 2);
+     *     ys.set(i, i * 4);
+     * }
+     * }
+     *
+     * In other words, this method allows client to operate directly at the level of the sequence element layout, thus
+     * removing the need of creating intermediate sequence layouts.
      *
      * @param elements the layout path elements.
      * @return a var handle which can be used to access a memory segment as an array of elements described by this layout.
@@ -457,11 +478,11 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      * dereference path element} for an address layout that has no {@linkplain AddressLayout#targetLayout() target layout}.
      * @see MethodHandles#memorySegmentViewVarHandle(ValueLayout)
      * @see MemoryLayout#varHandle(PathElement...)
-     * @see SequenceLayout
+     * @see MemoryLayout#maximalSequenceLayout(MemoryLayout)
      */
     default VarHandle arrayElementVarHandle(PathElement... elements) {
         Objects.requireNonNull(elements);
-        SequenceLayout seq = sequenceLayout(Long.MAX_VALUE / bitSize(), this);
+        SequenceLayout seq = maximalSequenceLayout(this);
         PathElement[] newElements = new PathElement[elements.length + 1];
         System.arraycopy(elements, 0, newElements, 1, elements.length);
         newElements[0] = PathElement.sequenceElement();
@@ -729,6 +750,35 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
      */
     static PaddingLayout paddingLayout(long bitSize) {
         return PaddingLayoutImpl.of(MemoryLayoutUtil.requireBitSizeValid(bitSize, false));
+    }
+
+    /**
+     * Creates a <em>maximal</em> sequence layout with the given element layout. A maximal sequence layout
+     * is a sequence layout whose element count is the maximum element count such that the size of the resulting
+     * sequence layout does not overflow a {@code long}.
+     * <p>
+     * This is equivalent to the following code:
+     * {@snippet lang = java:
+     * sequenceLayout(Long.MAX_VALUE / elementLayout.bitSize(), elementLayout);
+     * }
+     *
+     * @apiNote A maximal sequence layout might be useful when clients operate on a sequence layout whose size is not
+     * known statically, in a way that is similar to {@link #arrayElementVarHandle(PathElement...)}). Additionally,
+     * this method might be used when {@linkplain AddressLayout#withTargetLayout(MemoryLayout) specifying} an address
+     * layout's target layout, in case the address layout models the address of a memory region whose size is not
+     * known statically.
+     * <p>
+     * As the bit size of the resulting sequence layout is {@linkplain Long#MAX_VALUE}, this layout should never be
+     * used for {@linkplain SegmentAllocator#allocate(MemoryLayout) allocating memory segments}.
+     *
+     * @param elementLayout the sequence element layout.
+     * @return a new sequence layout with the given element layout and maximum element count.
+     * @throws IllegalArgumentException if {@code elementLayout.bitSize() % elementLayout.bitAlignment() != 0}.
+     * @see #arrayElementVarHandle(PathElement...)
+     */
+    static SequenceLayout maximalSequenceLayout(MemoryLayout elementLayout) {
+        Objects.requireNonNull(elementLayout);
+        return sequenceLayout(Long.MAX_VALUE / elementLayout.bitSize(), elementLayout);
     }
 
     /**
