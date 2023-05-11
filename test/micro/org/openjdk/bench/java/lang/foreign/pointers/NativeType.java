@@ -41,7 +41,7 @@ public sealed abstract class NativeType<X> {
     }
 
     private static final AddressLayout UNSAFE_ADDRESS = ValueLayout.ADDRESS
-            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
+            .withTargetLayout(MemoryLayout.sequenceLayout(Long.MAX_VALUE / 8, ValueLayout.JAVA_BYTE));
 
     public final static class OfPointer<X> extends NativeType<X> {
         public AddressLayout layout() {

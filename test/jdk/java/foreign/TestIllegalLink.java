@@ -190,7 +190,7 @@ public class TestIllegalLink extends NativeTestHelper {
         if (IS_SYSV) {
             cases.add(new Object[] {
                     FunctionDescriptor.ofVoid(MemoryLayout.structLayout(
-                            SequenceLayout.UNBOUNDED_BYTES)),
+                            MemoryLayout.sequenceLayout(Long.MAX_VALUE / 32, ValueLayout.JAVA_INT))),
                     "GroupLayout is too large"
             });
         }

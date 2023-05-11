@@ -146,9 +146,4 @@ public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayo
      * @throws IllegalArgumentException if {@code bitAlignment < elementLayout().bitAlignment()}.
      */
     SequenceLayout withBitAlignment(long bitAlignment);
-
-    /**
-     * A sequence layout of <em>maximal size</em>, whose element layout is {@link ValueLayout#JAVA_BYTE}.
-     */
-    SequenceLayout UNBOUNDED_BYTES = MemoryLayout.sequenceLayout(Long.MAX_VALUE / 8, ValueLayout.JAVA_BYTE);
 }
