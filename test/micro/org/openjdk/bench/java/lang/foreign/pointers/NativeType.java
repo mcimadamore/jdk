@@ -26,6 +26,7 @@ package org.openjdk.bench.java.lang.foreign.pointers;
 import java.lang.foreign.AddressLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 
 public sealed abstract class NativeType<X> {
@@ -40,7 +41,7 @@ public sealed abstract class NativeType<X> {
     }
 
     private static final AddressLayout UNSAFE_ADDRESS = ValueLayout.ADDRESS
-            .withTargetLayout(MemoryLayout.sequenceLayout(ValueLayout.JAVA_BYTE));
+            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
 
     public final static class OfPointer<X> extends NativeType<X> {
         public AddressLayout layout() {

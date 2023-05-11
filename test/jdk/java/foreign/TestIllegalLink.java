@@ -35,6 +35,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -148,7 +149,7 @@ public class TestIllegalLink extends NativeTestHelper {
             },
             {
                     FunctionDescriptor.ofVoid(MemoryLayout.structLayout(
-                            MemoryLayout.sequenceLayout(
+                            MemoryLayout.sequenceLayout(10,
                                 C_INT.withBitAlignment(8)
                             ))),
                     "Layout bit alignment must be natural alignment"
@@ -169,7 +170,7 @@ public class TestIllegalLink extends NativeTestHelper {
                     "Layout does not have the right byte order"
             },
             {
-                    FunctionDescriptor.of(MemoryLayout.structLayout(MemoryLayout.sequenceLayout(C_INT.withOrder(nonNativeOrder())))),
+                    FunctionDescriptor.of(MemoryLayout.structLayout(MemoryLayout.sequenceLayout(10, C_INT.withOrder(nonNativeOrder())))),
                     "Layout does not have the right byte order"
             },
             {
@@ -189,9 +190,7 @@ public class TestIllegalLink extends NativeTestHelper {
         if (IS_SYSV) {
             cases.add(new Object[] {
                     FunctionDescriptor.ofVoid(MemoryLayout.structLayout(
-                            MemoryLayout.sequenceLayout(
-                                C_INT
-                            ))),
+                            SequenceLayout.UNBOUNDED_BYTES)),
                     "GroupLayout is too large"
             });
         }

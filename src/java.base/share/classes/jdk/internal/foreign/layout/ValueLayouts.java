@@ -115,21 +115,6 @@ public final class ValueLayouts {
                             order.equals(otherValue.order);
         }
 
-        public final VarHandle arrayElementVarHandle(int... shape) {
-            Objects.requireNonNull(shape);
-            MemoryLayout layout = self();
-            List<MemoryLayout.PathElement> path = new ArrayList<>();
-            for (int i = shape.length; i > 0; i--) {
-                int size = shape[i - 1];
-                if (size < 0) throw new IllegalArgumentException("Invalid shape size: " + size);
-                layout = MemoryLayout.sequenceLayout(size, layout);
-                path.add(MemoryLayout.PathElement.sequenceElement());
-            }
-            layout = MemoryLayout.sequenceLayout(layout);
-            path.add(MemoryLayout.PathElement.sequenceElement());
-            return layout.varHandle(path.toArray(new MemoryLayout.PathElement[0]));
-        }
-
         /**
          * {@return the carrier associated with this value layout}
          */

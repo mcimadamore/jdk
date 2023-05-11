@@ -47,6 +47,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -80,7 +81,7 @@ public final class SharedUtils {
 
     public static final AddressLayout C_POINTER = ADDRESS
             .withBitAlignment(64)
-            .withTargetLayout(MemoryLayout.sequenceLayout(JAVA_BYTE));
+            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
 
     public static final Arena DUMMY_ARENA = new Arena() {
         @Override

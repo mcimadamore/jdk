@@ -39,6 +39,7 @@ import java.lang.foreign.AddressLayout;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 import java.util.concurrent.TimeUnit;
 
@@ -60,7 +61,7 @@ public class PointerBench {
     MemorySegment pointSegment = pointPointer.segment();
 
     public static final AddressLayout UNSAFE_ADDRESS = ValueLayout.ADDRESS
-            .withTargetLayout(MemoryLayout.sequenceLayout(ValueLayout.JAVA_BYTE));
+            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
 
     @Setup
     public void setup() {

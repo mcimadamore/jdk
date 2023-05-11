@@ -160,9 +160,9 @@ public class TestMemoryAccess {
 
     @Test(dataProvider = "matrixElements")
     public void testMatrixAccessAlt(Function<MemorySegment, MemorySegment> viewFactory, ValueLayout elemLayout, MatrixChecker checker) {
-        SequenceLayout seq = MemoryLayout.sequenceLayout(20,
-                MemoryLayout.sequenceLayout(10, elemLayout.withName("elem")));
-        testMatrixAccessInternal(viewFactory, seq, elemLayout.arrayElementVarHandle(10), checker);
+        SequenceLayout innerSeq = MemoryLayout.sequenceLayout(10, elemLayout.withName("elem"));
+        SequenceLayout outerSeq = MemoryLayout.sequenceLayout(20, innerSeq);
+        testMatrixAccessInternal(viewFactory, outerSeq, innerSeq.arrayElementVarHandle(PathElement.sequenceElement()), checker);
     }
 
     @Test(dataProvider = "matrixElements")

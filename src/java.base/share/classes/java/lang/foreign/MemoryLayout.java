@@ -435,6 +435,40 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
     }
 
     /**
+     * Creates a <em>strided</em> var handle that can be used to access a memory segment as an array of elements
+     * described by this layout. Let {@code N} be the number of {@code long} coordinates
+     * in the var handle obtained by calling the {@link #varHandle(PathElement...)} with the provided layout path;
+     * the var handle returned by this method will feature {@code N + 1} {@code long} coordinate. The first of such
+     * coordinate will be used to select the array element at which the dereference operation should occur.
+     * <p>
+     * This is equivalent to the following code:
+     * {@snippet lang=java :
+     * MemoryLayout layout = ...
+     * long elementCount = Long.MAX_SIZE / layout.bitSize();
+     * VarHandle arrayHandle = MemoryLayout.sequenceLayout(elementCount, layout)
+     *                                     .varHandle(PathElement.sequenceElement(), ...);
+     * }
+     *
+     * @param elements the layout path elements.
+     * @return a var handle which can be used to access a memory segment as an array of elements described by this layout.
+     * @throws UnsupportedOperationException if the layout path has one or more elements with incompatible alignment constraint.
+     * @throws IllegalArgumentException if the layout path in {@code elements} does not select a value layout (see {@link ValueLayout}).
+     * @throws IllegalArgumentException if the layout path in {@code elements} contains a {@linkplain PathElement#dereferenceElement()
+     * dereference path element} for an address layout that has no {@linkplain AddressLayout#targetLayout() target layout}.
+     * @see MethodHandles#memorySegmentViewVarHandle(ValueLayout)
+     * @see MemoryLayout#varHandle(PathElement...)
+     * @see SequenceLayout
+     */
+    default VarHandle arrayElementVarHandle(PathElement... elements) {
+        Objects.requireNonNull(elements);
+        SequenceLayout seq = sequenceLayout(Long.MAX_VALUE / bitSize(), this);
+        PathElement[] newElements = new PathElement[elements.length + 1];
+        System.arraycopy(elements, 0, newElements, 1, elements.length);
+        newElements[0] = PathElement.sequenceElement();
+        return seq.varHandle(newElements);
+    }
+
+    /**
      * Creates a method handle which, given a memory segment, returns a {@linkplain MemorySegment#asSlice(long,long) slice}
      * corresponding to the layout selected by the given layout path, where the path is considered rooted in this layout.
      *
@@ -712,24 +746,6 @@ public sealed interface MemoryLayout permits SequenceLayout, GroupLayout, Paddin
         Utils.checkElementAlignment(elementLayout, "Element layout size is not multiple of alignment");
         return wrapOverflow(() ->
                 SequenceLayoutImpl.of(elementCount, elementLayout));
-    }
-
-    /**
-     * Creates a sequence layout with the given element layout and the maximum element
-     * count such that it does not overflow a {@code long}.
-     *
-     * This is equivalent to the following code:
-     * {@snippet lang = java:
-     * sequenceLayout(Long.MAX_VALUE / elementLayout.bitSize(), elementLayout);
-     * }
-     *
-     * @param elementLayout the sequence element layout.
-     * @return a new sequence layout with the given element layout and maximum element count.
-     * @throws IllegalArgumentException if {@code elementLayout.bitSize() % elementLayout.bitAlignment() != 0}.
-     */
-    static SequenceLayout sequenceLayout(MemoryLayout elementLayout) {
-        Objects.requireNonNull(elementLayout);
-        return sequenceLayout(Long.MAX_VALUE / elementLayout.bitSize(), elementLayout);
     }
 
     /**

@@ -122,7 +122,7 @@ public class NativeTestHelper {
      * The {@code T*} native type.
      */
     public static final AddressLayout C_POINTER = ValueLayout.ADDRESS.withBitAlignment(64)
-            .withTargetLayout(MemoryLayout.sequenceLayout(C_CHAR));
+            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
 
     public static final Linker LINKER = Linker.nativeLinker();
 

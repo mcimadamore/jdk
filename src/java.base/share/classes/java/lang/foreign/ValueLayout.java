@@ -77,66 +77,6 @@ public sealed interface ValueLayout extends MemoryLayout permits
     ValueLayout withoutName();
 
     /**
-     * Creates a <em>strided</em> var handle that can be used to access a memory segment as multi-dimensional
-     * array. The layout of this array is a sequence layout with {@code shape.length} nested sequence layouts. The element
-     * layout of the sequence layout at depth {@code shape.length} is this value layout.
-     * As a result, if {@code shape.length == 0}, the array layout will feature only one dimension.
-     * <p>
-     * The resulting var handle will feature {@code sizes.length + 1} coordinates of type {@code long}, which are
-     * used as indices into a multi-dimensional array.
-     * <p>
-     * For instance, the following method call:
-     *
-     * {@snippet lang=java :
-     * VarHandle arrayHandle = ValueLayout.JAVA_INT.arrayElementVarHandle(10, 20);
-     * }
-     *
-     * Can be used to access a multi-dimensional array whose layout is as follows:
-     *
-     * {@snippet lang = java:
-     * SequenceLayout arrayLayout = MemoryLayout.sequenceLayout(
-     *                                      MemoryLayout.sequenceLayout(10,
-     *                                                  MemoryLayout.sequenceLayout(20, ValueLayout.JAVA_INT)));
-     *}
-     *
-     * The resulting var handle {@code arrayHandle} will feature 3 coordinates of type {@code long}; each coordinate
-     * is interpreted as an index into the corresponding sequence layout. If we refer to the var handle coordinates, from left
-     * to right, as {@code x}, {@code y} and {@code z} respectively, the final offset accessed by the var handle can be
-     * computed with the following formula:
-     *
-     * <blockquote><pre>{@code
-     * offset = (10 * 20 * 4 * x) + (20 * 4 * y) + (4 * z)
-     * }</pre></blockquote>
-     *
-     * Additionally, the values of {@code x}, {@code y} and {@code z} are constrained as follows:
-     * <ul>
-     *     <li>{@code 0 <= x < arrayLayout.elementCount() }</li>
-     *     <li>{@code 0 <= y < 10 }</li>
-     *     <li>{@code 0 <= z < 20 }</li>
-     * </ul>
-     * <p>
-     * Consider the following access expressions:
-     * {@snippet lang=java :
-     * int value1 = arrayHandle.get(10, 2, 4); // ok, accessed offset = 8176
-     * int value2 = arrayHandle.get(0, 0, 30); // out of bounds value for z
-     * }
-     * In the first case, access is well-formed, as the values for {@code x}, {@code y} and {@code z} conform to
-     * the bounds specified above. In the second case, access fails with {@link IndexOutOfBoundsException},
-     * as the value for {@code z} is outside its specified bounds.
-     *
-     * @param shape the size of each nested array dimension.
-     * @return a var handle which can be used to access a memory segment as a multi-dimensional array,
-     * featuring {@code shape.length + 1}
-     * {@code long} coordinates.
-     * @throws IllegalArgumentException if {@code shape[i] < 0}, for at least one index {@code i}.
-     * @throws UnsupportedOperationException if {@code bitAlignment() > bitSize()}.
-     * @see MethodHandles#memorySegmentViewVarHandle
-     * @see MemoryLayout#varHandle(PathElement...)
-     * @see SequenceLayout
-     */
-    VarHandle arrayElementVarHandle(int... shape);
-
-    /**
      * {@return the carrier associated with this value layout}
      */
     Class<?> carrier();
