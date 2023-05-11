@@ -25,6 +25,8 @@
  */
 package jdk.internal.foreign.layout;
 
+import jdk.internal.foreign.Utils;
+
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
 import java.util.Objects;
@@ -145,6 +147,19 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
             res = MemoryLayout.sequenceLayout(elementCounts[i], res);
         }
         return (SequenceLayoutImpl) res;
+    }
+
+    @Override
+    public SequenceLayout reshape(MemoryLayout elementLayout) {
+        Objects.requireNonNull(elementLayout);
+        Utils.checkElementAlignment(elementLayout, "New element layout size is not multiple of alignment");
+        if (elementLayout.byteAlignment() > byteAlignment()) {
+            throw new IllegalArgumentException("New element layout has incompatible alignment constraints");
+        }
+        if ((byteSize() % elementLayout.byteSize()) != 0) {
+            throw new IllegalArgumentException("Sequence size is not a multiple of layout size");
+        }
+        return new SequenceLayoutImpl(bitSize() / elementLayout.bitSize(), elementLayout, bitAlignment(), Optional.empty());
     }
 
     /**

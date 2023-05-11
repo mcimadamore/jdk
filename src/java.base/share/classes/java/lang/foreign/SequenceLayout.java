@@ -111,6 +111,23 @@ public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayo
     SequenceLayout reshape(long... elementCounts);
 
     /**
+     * Re-arrange this sequence layout as a new sequence layout with the new provided element layout. Let {@code S}
+     * be the size (in bits) of this sequence layout and {@code E} be the size (in bits) of the provided element layout;
+     * the element count of the returned sequence layout is inferred to be {@code S / E}:
+     *
+     * {@snippet lang=java :
+     * var ints = MemoryLayout.sequenceLayout(10, ValueLayout.JAVA_INT); // ints.bitSize()  = 320
+     * var bytes = ints.reshape(ValueLayout.JAVA_BYTE);                  // bytes.bitSize() = 320 * 8 = 2560
+     * }
+     * @param elementLayout the new element layout.
+     * @throws IllegalArgumentException if the size of this sequence layout is not a multiple of the size of the provided element layout.
+     * @throws IllegalArgumentException if {@code elementLayout.bitSize() % elementLayout.bitAlignment() != 0}.
+     * @throws IllegalArgumentException if {@code elementLayout.bitAlignment() > this.bitAlignment()}.
+     * @return a sequence layout that has the same size as this sequence layout, but the provided element layout.
+     */
+    SequenceLayout reshape(MemoryLayout elementLayout);
+
+    /**
      * Returns a flattened sequence layout. The element layout of the returned sequence layout
      * is the first non-sequence element layout found by recursively traversing the element layouts of this sequence layout.
      * This transformation preserves the layout size; nested sequence layout in this sequence layout will
@@ -150,5 +167,5 @@ public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayo
     /**
      * A sequence layout of <em>maximal size</em>, whose element layout is {@link ValueLayout#JAVA_BYTE}.
      */
-    SequenceLayout UNBOUNDED_BYTES = MemoryLayout.sequenceLayout(Long.MAX_VALUE / 8, ValueLayout.JAVA_BYTE);
+    SequenceLayout MAX_BYTES = MemoryLayout.sequenceLayout(Long.MAX_VALUE / 8, ValueLayout.JAVA_BYTE);
 }

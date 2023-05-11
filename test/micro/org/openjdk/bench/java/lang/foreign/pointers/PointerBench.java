@@ -37,7 +37,6 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.AddressLayout;
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
@@ -61,7 +60,7 @@ public class PointerBench {
     MemorySegment pointSegment = pointPointer.segment();
 
     public static final AddressLayout UNSAFE_ADDRESS = ValueLayout.ADDRESS
-            .withTargetLayout(SequenceLayout.UNBOUNDED_BYTES);
+            .withTargetLayout(SequenceLayout.MAX_BYTES);
 
     @Setup
     public void setup() {
