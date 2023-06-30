@@ -236,7 +236,7 @@ public class StackableScope {
     /**
      * Returns true if the given scope is on the current thread's scope stack.
      */
-    private static boolean contains(StackableScope scope) {
+    public static boolean contains(StackableScope scope) {
         assert scope != null;
         StackableScope current = head();
         while (current != null && current != scope) {

@@ -53,7 +53,7 @@ import jdk.internal.vm.annotation.ForceInline;
  */
 public abstract sealed class MemorySessionImpl
         implements Scope
-        permits ConfinedSession, GlobalSession, SharedSession {
+        permits ConfinedSession, GlobalSession, SharedSession, StructuredSession {
     static final int OPEN = 0;
     static final int CLOSED = -1;
 
@@ -136,6 +136,10 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
+    public static MemorySessionImpl createStructured(Thread thread) {
+        return new StructuredSession(thread);
+    }
+
     public static MemorySessionImpl createShared() {
         return new SharedSession();
     }
@@ -166,7 +170,7 @@ public abstract sealed class MemorySessionImpl
         return owner;
     }
 
-    public final boolean isAccessibleBy(Thread thread) {
+    public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
         return owner == null || owner == thread;
     }
@@ -188,12 +192,17 @@ public abstract sealed class MemorySessionImpl
      * please use {@link #checkValidState()}.
      */
     @ForceInline
-    public void checkValidStateRaw() {
-        if (owner != null && owner != Thread.currentThread()) {
-            throw WRONG_THREAD;
-        }
+    public final void checkValidStateRaw() {
+        checkThreadRaw();
         if (state < OPEN) {
             throw ALREADY_CLOSED;
+        }
+    }
+
+    @ForceInline
+    void checkThreadRaw() {
+        if (owner != null && owner != Thread.currentThread()) {
+            throw WRONG_THREAD;
         }
     }
 
