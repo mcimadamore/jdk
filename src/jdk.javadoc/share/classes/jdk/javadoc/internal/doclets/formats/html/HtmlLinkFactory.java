@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -244,14 +246,33 @@ public class HtmlLinkFactory {
             flags = utils.elementFlags(typeElement);
             previewTarget = typeElement;
             restrictedTarget = null;
-        } else if (linkInfo.getTargetMember() != null) {
+        } else if (linkInfo.getContext() == HtmlLinkInfo.Kind.SHOW_PREVIEW
+                && linkInfo.getTargetMember() != null && showPreview) {
+            // We piggy back on whether to show preview info, for both preview AND
+            // restricted methods superscripts. That's because when e.g. we are generating a
+            // method summary we do not want either superscript.
             flags = utils.elementFlags(linkInfo.getTargetMember());
-            previewTarget = previewTarget(flags, linkInfo, showPreview);
-            restrictedTarget = restrictedTarget(flags, linkInfo, showPreview);
+            TypeElement enclosing = utils.getEnclosingTypeElement(linkInfo.getTargetMember());
+            Set<ElementFlag> enclosingFlags = utils.elementFlags(enclosing);
+            if (flags.contains(ElementFlag.PREVIEW) && enclosingFlags.contains(ElementFlag.PREVIEW)) {
+                if (enclosing.equals(m_writer.getCurrentPageElement())) {
+                    //skip the PREVIEW tag:
+                    flags = EnumSet.copyOf(flags);
+                    flags.remove(ElementFlag.PREVIEW);
+                }
+                previewTarget = enclosing;
+            } else {
+                previewTarget = linkInfo.getTargetMember();
+            }
+            if (flags.contains(ElementFlag.RESTRICTED)) {
+                restrictedTarget = (ExecutableElement) linkInfo.getTargetMember();
+            } else {
+                restrictedTarget = null;
+            }
         } else {
             flags = EnumSet.noneOf(ElementFlag.class);
-            previewTarget = null;
             restrictedTarget = null;
+            previewTarget = null;
         }
 
         Content link = new ContentBuilder();
@@ -264,17 +285,15 @@ public class HtmlLinkFactory {
                                 label,
                                 linkInfo.getStyle(),
                                 title));
-                        boolean needsSpace = false;
+                        Consumer<Content> spacer = NO_SPACE;
                         if (flags.contains(ElementFlag.PREVIEW)) {
                             link.add(HtmlTree.SUP(m_writer.links.createLink(
                                     filename.fragment(m_writer.htmlIds.forPreviewSection(previewTarget).name()),
                                     m_writer.contents.previewMark)));
-                            needsSpace = true;
+                            spacer = ADD_SPACE;
                         }
                         if (flags.contains(ElementFlag.RESTRICTED)) {
-                            if (needsSpace) {
-                                link.add(Entity.NO_BREAK_SPACE);
-                            }
+                            spacer.accept(link);
                             link.add(HtmlTree.SUP(m_writer.links.createLink(
                                     filename.fragment(m_writer.htmlIds.forRestrictedSection(restrictedTarget).name()),
                                     m_writer.contents.restrictedMark)));
@@ -288,19 +307,17 @@ public class HtmlLinkFactory {
                 label, linkInfo.getStyle(), true);
             if (crossLink != null) {
                 link.add(crossLink);
-                boolean needsSpace = false;
+                Consumer<Content> spacer = NO_SPACE;
                 if (flags.contains(ElementFlag.PREVIEW)) {
                     link.add(HtmlTree.SUP(m_writer.getCrossClassLink(
                         typeElement,
                         m_writer.htmlIds.forPreviewSection(previewTarget).name(),
                         m_writer.contents.previewMark,
                         null, false)));
-                    needsSpace = true;
+                    spacer = ADD_SPACE;
                 }
                 if (flags.contains(ElementFlag.RESTRICTED)) {
-                    if (needsSpace) {
-                        link.add(Entity.NO_BREAK_SPACE);
-                    }
+                    spacer.accept(link);
                     link.add(HtmlTree.SUP(m_writer.getCrossClassLink(
                             typeElement,
                             m_writer.htmlIds.forRestrictedSection(restrictedTarget).name(),
@@ -312,48 +329,21 @@ public class HtmlLinkFactory {
         }
         // Can't link so just write label.
         link.add(label);
-        boolean needsSpace = false;
+        Consumer<Content> spacer = NO_SPACE;
         if (flags.contains(ElementFlag.PREVIEW)) {
             link.add(HtmlTree.SUP(m_writer.contents.previewMark));
-            needsSpace = true;
+            spacer = ADD_SPACE;
         }
         if (flags.contains(ElementFlag.RESTRICTED)) {
-            if (needsSpace) {
-                link.add(Entity.NO_BREAK_SPACE);
-            }
+            spacer.accept(link);
             link.add(HtmlTree.SUP(m_writer.contents.restrictedMark));
         }
         return link;
     }
 
-    Element previewTarget(Set<ElementFlag> flags, HtmlLinkInfo linkInfo, boolean showPreview) {
-        if (linkInfo.getContext() == HtmlLinkInfo.Kind.SHOW_PREVIEW && showPreview) {
-            TypeElement enclosing = utils.getEnclosingTypeElement(linkInfo.getTargetMember());
-            Set<ElementFlag> enclosingFlags = utils.elementFlags(enclosing);
-            if (flags.contains(ElementFlag.PREVIEW) && enclosingFlags.contains(ElementFlag.PREVIEW)) {
-                if (enclosing.equals(m_writer.getCurrentPageElement())) {
-                    //skip the PREVIEW tag:
-                    flags.remove(ElementFlag.PREVIEW);
-                }
-                return enclosing;
-            } else {
-                return linkInfo.getTargetMember();
-            }
-        } else {
-            flags.remove(ElementFlag.PREVIEW);
-            return null;
-        }
-    }
-
-    ExecutableElement restrictedTarget(Set<ElementFlag> flags, HtmlLinkInfo linkInfo, boolean showPreview) {
-        if (linkInfo.getContext() == HtmlLinkInfo.Kind.SHOW_PREVIEW && showPreview) {
-            if (flags.contains(ElementFlag.RESTRICTED)) {
-                return (ExecutableElement) linkInfo.getTargetMember();
-            }
-        }
-        flags.remove(ElementFlag.RESTRICTED);
-        return null;
-    }
+    // where
+        private static final Consumer<Content> NO_SPACE = (c) -> { };
+        private static final Consumer<Content> ADD_SPACE = (c) -> c.add(Entity.NO_BREAK_SPACE);
 
     /**
      * Returns links to the type parameters.
