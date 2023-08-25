@@ -30,6 +30,7 @@ import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 
@@ -509,11 +510,6 @@ public sealed interface Linker permits AbstractLinker {
      * {@snippet lang=java :
      * linker.downcallHandle(function).bindTo(symbol);
      * }
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param address  the native memory segment whose {@linkplain MemorySegment#address() base address} is the
      *                 address of the target foreign function.
@@ -528,6 +524,7 @@ public sealed interface Linker permits AbstractLinker {
      * @see SymbolLookup
      */
     @CallerSensitive
+    @Restricted
     MethodHandle downcallHandle(MemorySegment address, FunctionDescriptor function, Option... options);
 
     /**
@@ -560,11 +557,6 @@ public sealed interface Linker permits AbstractLinker {
      * The returned method handle will throw an {@link IllegalArgumentException} if the {@link MemorySegment}
      * representing the target address of the foreign function is the {@link MemorySegment#NULL} address.
      * The returned method handle will additionally throw {@link NullPointerException} if any argument passed to it is {@code null}.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param function the function descriptor of the target foreign function.
      * @param options  the linker options associated with this linkage request.
@@ -574,6 +566,7 @@ public sealed interface Linker permits AbstractLinker {
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
+    @Restricted
     MethodHandle downcallHandle(FunctionDescriptor function, Option... options);
 
     /**
@@ -597,11 +590,6 @@ public sealed interface Linker permits AbstractLinker {
      * try/catch block to catch any unexpected exceptions. This can be done using the
      * {@link java.lang.invoke.MethodHandles#catchException(MethodHandle, Class, MethodHandle)} method handle combinator,
      * and handle exceptions as desired in the corresponding catch block.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param target the target method handle.
      * @param function the upcall stub function descriptor.
@@ -618,6 +606,7 @@ public sealed interface Linker permits AbstractLinker {
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
+    @Restricted
     MemorySegment upcallStub(MethodHandle target, FunctionDescriptor function, Arena arena, Linker.Option... options);
 
     /**

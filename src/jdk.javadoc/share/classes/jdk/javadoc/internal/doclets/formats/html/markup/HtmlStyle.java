@@ -383,6 +383,22 @@ public enum HtmlStyle {
     previewLabel,
 
     /**
+     * The class for a block describing the "restricted" status of a declaration.
+     */
+    restrictedBlock,
+
+    /**
+     * The class for the details in a block describing the "restricted" status of a declaration.
+     */
+    restrictedComment,
+
+    /**
+     * The class for the "Restricted" label in a block describing the "restricted" status
+     * of a declaration.
+     */
+    restrictedLabel,
+
+    /**
      * The class for a list containing the tags of an element.
      */
     tagList,

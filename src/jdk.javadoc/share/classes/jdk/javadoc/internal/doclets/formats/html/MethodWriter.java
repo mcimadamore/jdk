@@ -109,6 +109,7 @@ public class MethodWriter extends AbstractExecutableMemberWriter {
                 buildSignature(methodContent);
                 buildDeprecationInfo(methodContent);
                 buildPreviewInfo(methodContent);
+                buildRestrictedInfo(methodContent);
                 buildMethodComments(methodContent);
                 buildTagInfo(methodContent);
 
@@ -132,6 +133,10 @@ public class MethodWriter extends AbstractExecutableMemberWriter {
     @Override
     protected void buildPreviewInfo(Content target) {
         addPreview(currentMethod, target);
+    }
+
+    protected void buildRestrictedInfo(Content target) {
+        addRestricted(currentMethod, target);
     }
 
     /**
@@ -213,6 +218,10 @@ public class MethodWriter extends AbstractExecutableMemberWriter {
 
     protected void addPreview(ExecutableElement method, Content content) {
         addPreviewInfo(method, content);
+    }
+
+    protected void addRestricted(ExecutableElement method, Content content) {
+        addRestrictedInfo(method, content);
     }
 
     protected void addComments(TypeMirror holderType, ExecutableElement method, Content methodContent) {

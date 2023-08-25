@@ -50,6 +50,7 @@ import jdk.internal.foreign.Utils;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.layout.ValueLayouts;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -593,11 +594,6 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
 
     /**
      * Returns a new memory segment that has the same address and scope as this segment, but with the provided size.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @param newSize the size of the returned segment.
      * @return a new memory segment that has the same address and scope as this segment, but the new
@@ -607,6 +603,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
+    @Restricted
     MemorySegment reinterpret(long newSize);
 
     /**
@@ -626,11 +623,6 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * }
      * That is, the cleanup action receives a segment that is associated with a fresh scope that is always alive,
      * and is accessible from any thread. The size of the segment accepted by the cleanup action is {@link #byteSize()}.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @apiNote The cleanup action (if present) should take care not to leak the received segment to external
      * clients which might access the segment after its backing region of memory is no longer available. Furthermore,
@@ -646,6 +638,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
+    @Restricted
     MemorySegment reinterpret(Arena arena, Consumer<MemorySegment> cleanup);
 
     /**
@@ -665,11 +658,6 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * }
      * That is, the cleanup action receives a segment that is associated with a fresh scope that is always alive,
      * and is accessible from any thread. The size of the segment accepted by the cleanup action is {@code newSize}.
-     * <p>
-     * This method is <a href="package-summary.html#restricted"><em>restricted</em></a>.
-     * Restricted methods are unsafe, and, if used incorrectly, their use might crash
-     * the JVM or, worse, silently result in memory corruption. Thus, clients should refrain from depending on
-     * restricted methods, and use safe and supported functionalities, where possible.
      *
      * @apiNote The cleanup action (if present) should take care not to leak the received segment to external
      * clients which might access the segment after its backing region of memory is no longer available. Furthermore,
@@ -688,6 +676,7 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalCallerException If the caller is in a module that does not have native access enabled.
      */
     @CallerSensitive
+    @Restricted
     MemorySegment reinterpret(long newSize, Arena arena, Consumer<MemorySegment> cleanup);
 
     /**

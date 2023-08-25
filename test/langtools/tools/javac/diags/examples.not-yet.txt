@@ -215,3 +215,6 @@ compiler.misc.illegal.signature                               # the compiler can
 
 # this one needs a forged class file to be reproduced
 compiler.err.annotation.unrecognized.attribute.name
+
+# restricted method warning
+compiler.warn.is.restricted
