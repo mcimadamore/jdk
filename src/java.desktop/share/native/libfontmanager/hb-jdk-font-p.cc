@@ -118,41 +118,7 @@ hb_jdk_get_glyph_from_name (hb_font_t *font HB_UNUSED,
   return false;
 }
 
-static hb_font_funcs_t *
-_hb_jdk_get_font_funcs(hb_font_get_nominal_glyph_func_t nominal_fn,
-                       hb_font_get_variation_glyph_func_t variation_fn,
-                       hb_font_get_glyph_h_advance_func_t h_advance_fn,
-                       hb_font_get_glyph_v_advance_func_t v_advance_fn,
-                       hb_font_get_glyph_contour_point_func_t contour_pt_fn)
-{
-    hb_font_funcs_t *ff = hb_font_funcs_create();
-   
-    /* JDK supplies these and they are bound to the right Font/Strike */
-    hb_font_funcs_set_nominal_glyph_func(ff, nominal_fn, NULL, NULL);
-    hb_font_funcs_set_variation_glyph_func(ff, variation_fn, NULL, NULL);
-    hb_font_funcs_set_glyph_h_advance_func(ff, h_advance_fn, NULL, NULL);
-    hb_font_funcs_set_glyph_v_advance_func(ff, v_advance_fn, NULL, NULL);
-    hb_font_funcs_set_glyph_contour_point_func(ff, contour_pt_fn, NULL, NULL);
 
-    /* These are all simple default implementations */
-    hb_font_funcs_set_glyph_h_origin_func(ff,
-                    hb_jdk_get_glyph_h_origin, NULL, NULL);
-    hb_font_funcs_set_glyph_v_origin_func(ff,
-                    hb_jdk_get_glyph_v_origin, NULL, NULL);
-    hb_font_funcs_set_glyph_h_kerning_func(ff,
-                    hb_jdk_get_glyph_h_kerning, NULL, NULL);
-    hb_font_funcs_set_glyph_v_kerning_func(ff,
-                    hb_jdk_get_glyph_v_kerning, NULL, NULL);
-    hb_font_funcs_set_glyph_extents_func(ff,
-                    hb_jdk_get_glyph_extents, NULL, NULL);
-    hb_font_funcs_set_glyph_name_func(ff,
-                    hb_jdk_get_glyph_name, NULL, NULL);
-    hb_font_funcs_set_glyph_from_name_func(ff,
-                    hb_jdk_get_glyph_from_name, NULL, NULL);
-    hb_font_funcs_make_immutable(ff); // done setting functions.
-
-  return ff;
-}
 
 static void _do_nothing(void) {
 }
@@ -208,22 +174,13 @@ hb_font_t* jdk_font_create_hbp(
                hb_face_t* face,
                float ptSize, float devScale,
                hb_destroy_func_t destroy,
-               hb_font_get_nominal_glyph_func_t nominal_fn,
-               hb_font_get_variation_glyph_func_t variation_fn,
-               hb_font_get_glyph_h_advance_func_t h_advance_fn,
-               hb_font_get_glyph_v_advance_func_t v_advance_fn,
-               hb_font_get_glyph_contour_point_func_t contour_pt_fn) {
+               hb_font_funcs_t *font_funcs) {
 
     hb_font_t *font;
 
     font = hb_font_create(face);
     hb_font_set_funcs(font,
-                      _hb_jdk_get_font_funcs(
-                          nominal_fn,
-                          variation_fn,
-                          h_advance_fn,
-                          h_advance_fn,
-                          contour_pt_fn),
+                      font_funcs,
                       NULL,
                       (hb_destroy_func_t)_do_nothing);
     hb_font_set_scale(font,
@@ -231,5 +188,40 @@ hb_font_t* jdk_font_create_hbp(
                       HBFloatToFixed(ptSize*devScale));
   return font;
 }
+
+JDKEXPORT hb_font_funcs_t * jdk_get_hb_font_funcs(hb_font_get_nominal_glyph_func_t nominal_fn,
+                                 hb_font_get_variation_glyph_func_t variation_fn,
+                                 hb_font_get_glyph_h_advance_func_t h_advance_fn,
+                                 hb_font_get_glyph_v_advance_func_t v_advance_fn,
+                                 hb_font_get_glyph_contour_point_func_t contour_pt_fn)
+          {
+              hb_font_funcs_t *ff = hb_font_funcs_create();
+
+              /* JDK supplies these and they are bound to the right Font/Strike */
+              hb_font_funcs_set_nominal_glyph_func(ff, nominal_fn, NULL, NULL);
+              hb_font_funcs_set_variation_glyph_func(ff, variation_fn, NULL, NULL);
+              hb_font_funcs_set_glyph_h_advance_func(ff, h_advance_fn, NULL, NULL);
+              hb_font_funcs_set_glyph_v_advance_func(ff, v_advance_fn, NULL, NULL);
+              hb_font_funcs_set_glyph_contour_point_func(ff, contour_pt_fn, NULL, NULL);
+
+              /* These are all simple default implementations */
+              hb_font_funcs_set_glyph_h_origin_func(ff,
+                              hb_jdk_get_glyph_h_origin, NULL, NULL);
+              hb_font_funcs_set_glyph_v_origin_func(ff,
+                              hb_jdk_get_glyph_v_origin, NULL, NULL);
+              hb_font_funcs_set_glyph_h_kerning_func(ff,
+                              hb_jdk_get_glyph_h_kerning, NULL, NULL);
+              hb_font_funcs_set_glyph_v_kerning_func(ff,
+                              hb_jdk_get_glyph_v_kerning, NULL, NULL);
+              hb_font_funcs_set_glyph_extents_func(ff,
+                              hb_jdk_get_glyph_extents, NULL, NULL);
+              hb_font_funcs_set_glyph_name_func(ff,
+                              hb_jdk_get_glyph_name, NULL, NULL);
+              hb_font_funcs_set_glyph_from_name_func(ff,
+                              hb_jdk_get_glyph_from_name, NULL, NULL);
+              hb_font_funcs_make_immutable(ff); // done setting functions.
+
+            return ff;
+          }
 
 } // extern "C"

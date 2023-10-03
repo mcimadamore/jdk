@@ -126,6 +126,7 @@ public class HBShaper {
     private static final MethodHandle create_face_handle;
     private static final MethodHandle dispose_face_handle;
     private static final MethodHandle jdk_hb_shape_handle;
+    private static final MethodHandle jdk_hb_font_funcs_handle;
 
     private static final MemorySegment get_var_glyph_stub;
     private static final MemorySegment get_nominal_glyph_stub;
@@ -133,7 +134,9 @@ public class HBShaper {
     private static final MemorySegment get_v_advance_stub;
     private static final MemorySegment get_contour_pt_stub;
 
-    private static MemorySegment store_layout_results_stub;
+    private static final MemorySegment font_funcs_pointer;
+
+    private static final MemorySegment store_layout_results_stub;
 
    private static FunctionDescriptor
        getFunctionDescriptor(MemoryLayout retType,
@@ -188,15 +191,23 @@ public class HBShaper {
             JAVA_FLOAT,  // startY
             JAVA_INT,    // flags,
             JAVA_INT,    // slot,
-            ADDRESS,     // glyph_fn
-            ADDRESS,     // variation_fn
-            ADDRESS,     // h_advance_fn
-            ADDRESS,     // v_advance_fn
-            ADDRESS,     // contour_pt_fn
+            ADDRESS,     // font_funcs
             ADDRESS);    // store_results_fn
 
         Optional<MemorySegment> shape_sym = SYM_LOOKUP.find("jdk_hb_shape");
         jdk_hb_shape_handle = LINKER.downcallHandle(shape_sym.get(), shapeDesc);
+
+       FunctionDescriptor jdk_hb_font_funcsDesc = FunctionDescriptor.of(
+               ADDRESS,     // font_funcs*
+               ADDRESS,     // glyph_fn
+               ADDRESS,     // variation_fn
+               ADDRESS,     // h_advance_fn
+               ADDRESS,     // v_advance_fn
+               ADDRESS);     // contour_pt_fn
+
+
+        Optional<MemorySegment> font_funcs_sym = SYM_LOOKUP.find("jdk_get_hb_font_funcs");
+       jdk_hb_font_funcs_handle = LINKER.downcallHandle(font_funcs_sym.get(), jdk_hb_font_funcsDesc);
 
         Arena garena = Arena.global(); // creating stubs that exist until VM exit.
         FunctionDescriptor get_var_glyph_fd = getFunctionDescriptor(JAVA_INT,  // return type
@@ -259,6 +270,22 @@ public class HBShaper {
         SequenceLayout glyphInfosLayout = MemoryLayout.sequenceLayout(GlyphInfoLayout);
         codePointHandle = getVarHandle(glyphInfosLayout, "codepoint");
         clusterHandle = getVarHandle(glyphInfosLayout, "cluster");
+
+        MemorySegment temp = null;
+        try {
+            temp = (MemorySegment) jdk_hb_font_funcs_handle.invokeExact(
+                    get_nominal_glyph_stub,
+                    get_var_glyph_stub,
+                    get_h_advance_stub,
+                    get_v_advance_stub,
+                    get_contour_pt_stub
+            );
+        } catch (Throwable ex) {
+            ex.printStackTrace();
+        }
+
+       font_funcs_pointer = temp;
+
     }
 
 
@@ -431,13 +458,10 @@ public class HBShaper {
                      ptSize, matrix, hbface, chars, text.length,
                      script, offset, limit,
                      baseIndex, startX, startY, flags, slot,
-                     get_nominal_glyph_stub,
-                     get_var_glyph_stub,
-                     get_h_advance_stub,
-                     get_v_advance_stub,
-                     get_contour_pt_stub,
+                     font_funcs_pointer,
                      store_layout_results_stub);
             } catch (Throwable t) {
+                t.printStackTrace();
             }
         });
     }
@@ -532,6 +556,7 @@ public class HBShaper {
                 }
                 face = (MemorySegment)create_face_handle.invokeExact(get_table_data_fn);
             } catch (Throwable t) {
+                t.printStackTrace();
             }
         }
 
@@ -540,6 +565,7 @@ public class HBShaper {
             try {
                 dispose_face_handle.invokeExact(face);
             } catch (Throwable t) {
+                t.printStackTrace();
             }
         }
     }
