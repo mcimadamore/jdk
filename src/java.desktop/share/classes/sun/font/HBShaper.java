@@ -444,7 +444,7 @@ public class HBShaper {
         ScopedValue.where(scopedVars, vars)
                    .run(() -> {
 
-            try (Arena arena = Arena.ofConfined()) {
+            Arena arena = Arena.ofConfined();
 
                 float startX = (float)startPt.getX();
                 float startY = (float)startPt.getY();
@@ -454,15 +454,18 @@ public class HBShaper {
                 MemorySegment chars = arena.allocateArray(JAVA_CHAR, text.length);
                 MemorySegment.copy(text, 0, chars, JAVA_CHAR, 0, text.length);
 
-                /*int ret =*/ jdk_hb_shape_handle.invokeExact(
-                     ptSize, matrix, hbface, chars, text.length,
-                     script, offset, limit,
-                     baseIndex, startX, startY, flags, slot,
-                     font_funcs_pointer,
-                     store_layout_results_stub);
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
+                try {
+                    /*int ret =*/
+                    jdk_hb_shape_handle.invokeExact(
+                            ptSize, matrix, hbface, chars, text.length,
+                            script, offset, limit,
+                            baseIndex, startX, startY, flags, slot,
+                            font_funcs_pointer,
+                            store_layout_results_stub);
+                } catch (Throwable ex) {
+                    ex.printStackTrace();
+                }
+            arena.close();
         });
     }
 
