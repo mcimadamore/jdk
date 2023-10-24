@@ -2818,7 +2818,8 @@ public class JavacParser implements Parser {
         case ASSERT:
             return List.of(parseSimpleStatement());
         case MONKEYS_AT:
-        case FINAL: {
+        case FINAL:
+        case STATIC: {
             dc = token.docComment();
             JCModifiers mods = modifiersOpt();
             if (isDeclaration()) {
@@ -3497,27 +3498,11 @@ public class JavacParser implements Parser {
                     flag = Flags.SEALED;
                     break;
                 }
-                if (isLazyStaticIdentifier()) {
-                    // @@@: make sure this is a field
-                    checkSourceLevel(Feature.LAZY_STATICS);
-                    flag = Flags.LAZY | Flags.STATIC | Flags.FINAL;
-                    nextToken();
-                    nextToken();
-                    break;
-                }
                 break loop;
             }
             default: break loop;
             }
-            if ((flags & flag) != 0) {
-                if ((flag == Flags.STATIC && (flags & Flags.LAZY) != 0) ||
-                        ((flag & Flags.LAZY) != 0 && (flags & (Flags.STATIC | Flags.LAZY)) == Flags.STATIC)) {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos,
-                            Errors.IllegalCombinationOfModifiers(Set.of(Flags.Flag.LAZY), Set.of(Flags.Flag.STATIC)));
-                } else {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
-                }
-            }
+            if ((flags & flag) != 0) log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
             lastPos = token.pos;
             nextToken();
             if (flag == Flags.ANNOTATION) {
@@ -4719,9 +4704,8 @@ public class JavacParser implements Parser {
         // Field
         if (!isVoid && typarams.isEmpty()) {
             if (!isRecord || (isRecord && (mods.flags & Flags.STATIC) != 0)) {
-                boolean isLazy = (mods.flags & Flags.LAZY) != 0;
                 List<JCTree> defs =
-                    variableDeclaratorsRest(pos, mods, type, name, isInterface || isLazy, dc,
+                    variableDeclaratorsRest(pos, mods, type, name, isInterface, dc,
                                             new ListBuffer<JCTree>(), false).toList();
                 accept(SEMI);
                 storeEnd(defs.last(), S.prevToken().endPos);
@@ -4859,7 +4843,7 @@ public class JavacParser implements Parser {
     }
 
     protected boolean isLazyStaticIdentifier() {
-        return (token.name() == names.lazy && peekToken(0, TokenKind.SUB, STATIC));
+        return false;
     }
 
     private boolean allowedAfterSealedOrNonSealed(Token next, boolean local, boolean currentIsNonSealed) {

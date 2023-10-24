@@ -1215,10 +1215,10 @@ public class Check {
                 mask = LocalVarFlags;
             else if ((sym.owner.flags_field & INTERFACE) != 0) {
                 implicit = InterfaceVarFlags;
-                mask = InterfaceVarFlags | LAZY;
+                mask = InterfaceVarFlags;
             }
             else
-                mask = VarFlags | LAZY;
+                mask = VarFlags;
             break;
         case MTH:
             if (sym.name == names.init) {
@@ -1308,9 +1308,6 @@ public class Check {
                 mask |= INTERFACE;
             }
             else {
-                if ((illegal & LAZY) != 0) {
-                    illegal &= ~STATIC;
-                }
                 log.error(pos,
                         Errors.ModNotAllowedHere(asFlagSet(illegal)));
             }

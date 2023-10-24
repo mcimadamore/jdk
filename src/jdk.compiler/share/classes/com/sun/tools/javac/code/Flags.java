@@ -313,11 +313,6 @@ public class Flags {
     public static final long NAME_FILLED = 1L<<52; //ParamSymbols only
 
     /**
-     * Flag to mark a lazy static field
-     */
-    public static final long LAZY= 1L<<49; // VarSymbols only (shared with LAMBDA_METHOD)
-
-    /**
      * Flag to indicate the given ModuleSymbol is a system module.
      */
     public static final long SYSTEM_MODULE = 1L<<53; //ModuleSymbols only
@@ -433,14 +428,14 @@ public class Flags {
         RecordMethodFlags                 = AccessFlags | ABSTRACT | STATIC |
                                             SYNCHRONIZED | FINAL | STRICTFP;
     public static final long
-        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED | LAZY,
+        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED,
         ExtendedMemberClassFlags          = (long)MemberClassFlags | SEALED | NON_SEALED,
         ExtendedMemberStaticClassFlags    = (long) MemberStaticClassFlags | SEALED | NON_SEALED,
         ExtendedClassFlags                = (long)ClassFlags | SEALED | NON_SEALED,
         ModifierFlags                     = ((long)StandardFlags & ~INTERFACE) | DEFAULT | SEALED | NON_SEALED,
         InterfaceMethodMask               = ABSTRACT | PRIVATE | STATIC | PUBLIC | STRICTFP | DEFAULT,
         AnnotationTypeElementMask         = ABSTRACT | PUBLIC,
-        LocalVarFlags                     = FINAL | PARAMETER,
+        LocalVarFlags                     = FINAL | PARAMETER | STATIC,
         ReceiverParamFlags                = PARAMETER;
 
     public static Set<Modifier> asModifierSet(long flags) {
@@ -532,12 +527,7 @@ public class Flags {
         BAD_OVERRIDE(Flags.BAD_OVERRIDE),
         SIGNATURE_POLYMORPHIC(Flags.SIGNATURE_POLYMORPHIC),
         THROWS(Flags.THROWS),
-        LAZY(Flags.LAZY) {
-            @Override
-            public String toString() {
-                return "lazy-static";
-            }
-        },
+        LAMBDA_METHOD(Flags.LAMBDA_METHOD),
         TYPE_TRANSLATED(Flags.TYPE_TRANSLATED),
         MODULE(Flags.MODULE),
         AUTOMATIC_MODULE(Flags.AUTOMATIC_MODULE),

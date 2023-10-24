@@ -102,7 +102,6 @@ public class Lower extends TreeTranslator {
     private final PkgInfo pkginfoOpt;
     private final boolean optimizeOuterThis;
     private final boolean useMatchException;
-    private final boolean desugarLazyStatics;
 
     @SuppressWarnings("this-escape")
     protected Lower(Context context) {
@@ -134,7 +133,6 @@ public class Lower extends TreeTranslator {
         Preview preview = Preview.instance(context);
         useMatchException = Feature.PATTERN_SWITCH.allowedInSource(source) &&
                             (preview.isEnabled() || !preview.isPreview(Feature.PATTERN_SWITCH));
-        desugarLazyStatics = options.isSet("desugarLazyStatics");
     }
 
     /** The currently enclosing class.
@@ -1126,36 +1124,8 @@ public class Lower extends TreeTranslator {
         return accessor;
     }
 
-    MethodSymbol lazyStaticAccessSymbol(Symbol sym) {
-        // lookup symbol and create one if it doesn't exist
-        Symbol getter = sym.owner.members().findFirst(lazyStaticGetName(sym));
-        if (getter == null) {
-            getter =  new MethodSymbol(
-                    STATIC | SYNTHETIC | (sym.flags() & AccessFlags),
-                    lazyStaticGetName(sym),
-                    new MethodType(List.nil(), sym.type, List.nil(), syms.methodClass),
-                    sym.owner);
-            sym.owner.members().enter(getter);
-        }
-        return (MethodSymbol)getter;
-    }
-
-    JCMethodDecl lazyStaticAccessDef(Symbol sym) {
-        MethodSymbol getter = lazyStaticAccessSymbol(sym);
-        Assert.checkNonNull(getter);
-        // create synthetic getter tree
-        JCMethodDecl initDef = make.MethodDef(getter, make.Block(0, List.of(make.Return(make.Ident(sym)))));
-        JCClassDecl currentDecl = classDef(currentClass);
-        currentDecl.defs = currentDecl.defs.prepend(initDef);
-        return initDef;
-    }
-
     Name lazyStaticInitName(Symbol sym) {
         return sym.name.append('$', names.fromString("init"));
-    }
-
-    Name lazyStaticGetName(Symbol sym) {
-        return sym.name.append('$', names.fromString("get"));
     }
 
     /** The qualifier to be used for accessing a symbol in an outer class.
@@ -1289,16 +1259,6 @@ public class Lower extends TreeTranslator {
             break;
         case MTH: case VAR:
             if (sym.owner.kind == TYP) {
-                boolean isLazyStatic = (sym.flags() & LAZY) != 0;
-                if (desugarLazyStatics && isLazyStatic &&
-                        sym.owner != currentClass) {
-                    Symbol access = lazyStaticAccessSymbol(sym);
-                    JCExpression receiver = make.Select(
-                            base != null ? base : make.QualIdent(access.owner),
-                            access);
-                    return make.App(receiver, List.nil());
-                }
-
                 // Access methods are required for
                 //  - private members,
                 //  - protected members in a superclass of an
@@ -3714,13 +3674,13 @@ public class Lower extends TreeTranslator {
                 new MethodSymbol((tree.mods.flags&STATIC) | BLOCK,
                                  names.empty, null,
                                  currentClass);
-            // handle lazy
-            if ((tree.sym.flags() & LAZY) != 0) {
-                splitInit(tree);
-                lazyStaticAccessDef(tree.sym);
-            }
         }
-        if (tree.init != null) tree.init = translate(tree.init, tree.type);
+        // handle static locals
+        if (tree.sym.isStatic() && tree.sym.owner.kind == MTH) {
+            splitInit(tree);
+        } else {
+            if (tree.init != null) tree.init = translate(tree.init, tree.type);
+        }
         result = tree;
         currentMethodSym = oldMethodSym;
     }
@@ -3735,7 +3695,7 @@ public class Lower extends TreeTranslator {
                 currentClass);
         enterSynthetic(tree.pos(), initSym, currentClass.members());
         // create synthetic init tree
-        JCExpression initExpr = tree.init;
+        JCExpression initExpr = translate(tree.init, tree.type);
         JCMethodDecl initDef = make.MethodDef(initSym, make.Block(0, List.of(make.Return(initExpr))));
         JCClassDecl currentDecl = classDef(currentClass);
         currentDecl.defs = currentDecl.defs.prepend(initDef);

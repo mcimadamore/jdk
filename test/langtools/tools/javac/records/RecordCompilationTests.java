@@ -574,7 +574,7 @@ class RecordCompilationTests extends CompilationTestCase {
 
         // can't be explicitly static
         for (String s : List.of("static record RR() { }", "static interface I {}", "static enum E { A }")) {
-            assertFail("compiler.err.illegal.start.of.expr", "class R { void m() { #S } }".replaceFirst("#S", s));
+            assertOK("class R { void m() { #S } }".replaceFirst("#S", s));
         }
 
         // but static fields can be accessed

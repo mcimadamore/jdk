@@ -81,7 +81,6 @@ public class Gen extends JCTree.Visitor {
 
     /** Format of stackmap tables to be generated. */
     private final Code.StackMapFormat stackMap;
-    private final boolean desugarLazyStatics;
 
     /** A type that serves as the expected type for all method expressions.
      */
@@ -133,7 +132,6 @@ public class Gen extends JCTree.Visitor {
         this.stackMap = StackMapFormat.JSR202;
         annotate = Annotate.instance(context);
         qualifiedSymbolCache = new HashMap<>();
-        desugarLazyStatics = options.isSet("desugarLazyStatics");
     }
 
     /** Switches
@@ -2321,7 +2319,7 @@ public class Gen extends JCTree.Visitor {
 
     public void visitIdent(JCIdent tree) {
         Symbol sym = tree.sym;
-        if (desugarLazyStatics && isLazyStatic(sym)) {
+        if (isStaticLocal(sym)) {
             sym = ((VarSymbol)sym).lazyConstValue();
         }
         if (tree.name == names._this || tree.name == names._super) {
@@ -2361,9 +2359,6 @@ public class Gen extends JCTree.Visitor {
 
     public void visitSelect(JCFieldAccess tree) {
         Symbol sym = tree.sym;
-        if (desugarLazyStatics && isLazyStatic(sym)) {
-            sym = ((VarSymbol)sym).lazyConstValue();
-        }
 
         if (tree.name == names._class) {
             code.emitLdc((LoadableConstant)checkDimension(tree.pos(), tree.selected.type));
@@ -2432,8 +2427,10 @@ public class Gen extends JCTree.Visitor {
         return sym.kind == MTH && ((MethodSymbol)sym).isDynamic();
     }
 
-    public boolean isLazyStatic(Symbol sym) {
-        return (sym.flags() & LAZY) != 0;
+    public boolean isStaticLocal(Symbol sym) {
+        return sym.kind == VAR &&
+                sym.isStatic() &&
+                sym.owner.kind == MTH;
     }
 
     public void visitLiteral(JCLiteral tree) {
