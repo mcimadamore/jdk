@@ -27,6 +27,7 @@ package com.sun.tools.javac.jvm;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import com.sun.tools.javac.jvm.PoolConstant.LoadableConstant;
 import com.sun.tools.javac.tree.TreeInfo.PosKind;
@@ -72,7 +73,7 @@ public class Gen extends JCTree.Visitor {
     private final TreeMaker make;
     private final Names names;
     private final Target target;
-    private final Name accessDollar;
+    private final String accessDollar;
     private final Types types;
     private final Lower lower;
     private final Annotate annotate;
@@ -97,6 +98,7 @@ public class Gen extends JCTree.Visitor {
      */
     final PoolWriter poolWriter;
 
+    @SuppressWarnings("this-escape")
     protected Gen(Context context) {
         context.put(genKey, this);
 
@@ -111,8 +113,7 @@ public class Gen extends JCTree.Visitor {
         concat = StringConcat.instance(context);
 
         methodType = new MethodType(null, null, null, syms.methodClass);
-        accessDollar = names.
-            fromString("access" + target.syntheticNameChar());
+        accessDollar = "access" + target.syntheticNameChar();
         lower = Lower.instance(context);
 
         Options options = Options.instance(context);
@@ -173,6 +174,8 @@ public class Gen extends JCTree.Visitor {
     Chain switchExpressionFalseChain;
     List<LocalItem> stackBeforeSwitchExpression;
     LocalItem switchResult;
+    Set<JCMethodInvocation> invocationsWithPatternMatchingCatch = Set.of();
+    ListBuffer<int[]> patternMatchingInvocationRanges;
 
     /** Cache the symbol to reflect the qualifying type.
      *  key: corresponding type
@@ -339,9 +342,10 @@ public class Gen extends JCTree.Visitor {
     /** Does given name start with "access$" and end in an odd digit?
      */
     private boolean isOddAccessName(Name name) {
+        final String string = name.toString();
         return
-            name.startsWith(accessDollar) &&
-            (name.getByteAt(name.getByteLength() - 1) & 1) == 1;
+            string.startsWith(accessDollar) &&
+            (string.charAt(string.length() - 1) & 1) != 0;
     }
 
 /* ************************************************************************
@@ -862,6 +866,10 @@ public class Gen extends JCTree.Visitor {
      *  @param pt      The expression's expected type (proto-type).
      */
     public Item genExpr(JCTree tree, Type pt) {
+        if (!code.isAlive()) {
+            return items.makeStackItem(pt);
+        }
+
         Type prevPt = this.pt;
         try {
             if (tree.type.constValue() != null) {
@@ -1094,6 +1102,29 @@ public class Gen extends JCTree.Visitor {
     }
 
     public void visitBlock(JCBlock tree) {
+        if (tree.patternMatchingCatch != null) {
+            Set<JCMethodInvocation> prevInvocationsWithPatternMatchingCatch = invocationsWithPatternMatchingCatch;
+            ListBuffer<int[]> prevRanges = patternMatchingInvocationRanges;
+            State startState = code.state.dup();
+            try {
+                invocationsWithPatternMatchingCatch = tree.patternMatchingCatch.calls2Handle();
+                patternMatchingInvocationRanges = new ListBuffer<>();
+                doVisitBlock(tree);
+            } finally {
+                Chain skipCatch = code.branch(goto_);
+                JCCatch handler = tree.patternMatchingCatch.handler();
+                code.entryPoint(startState, handler.param.sym.type);
+                genPatternMatchingCatch(handler, env, patternMatchingInvocationRanges.toList());
+                code.resolve(skipCatch);
+                invocationsWithPatternMatchingCatch = prevInvocationsWithPatternMatchingCatch;
+                patternMatchingInvocationRanges = prevRanges;
+            }
+        } else {
+            doVisitBlock(tree);
+        }
+    }
+
+    private void doVisitBlock(JCBlock tree) {
         int limit = code.nextreg;
         Env<GenContext> localEnv = env.dup(tree, new GenContext());
         genStats(tree.stats, localEnv);
@@ -1249,11 +1280,17 @@ public class Gen extends JCTree.Visitor {
     }
     //where:
         private boolean hasTry(JCSwitchExpression tree) {
-            boolean[] hasTry = new boolean[1];
-            new TreeScanner() {
+            class HasTryScanner extends TreeScanner {
+                private boolean hasTry;
+
                 @Override
                 public void visitTry(JCTry tree) {
-                    hasTry[0] = true;
+                    hasTry = true;
+                }
+
+                @Override
+                public void visitSynchronized(JCSynchronized tree) {
+                    hasTry = true;
                 }
 
                 @Override
@@ -1263,8 +1300,12 @@ public class Gen extends JCTree.Visitor {
                 @Override
                 public void visitLambda(JCLambda tree) {
                 }
-            }.scan(tree);
-            return hasTry[0];
+            };
+
+            HasTryScanner hasTryScanner = new HasTryScanner();
+
+            hasTryScanner.scan(tree);
+            return hasTryScanner.hasTry;
         }
 
     private void handleSwitch(JCTree swtch, JCExpression selector, List<JCCase> cases,
@@ -1301,9 +1342,9 @@ public class Gen extends JCTree.Visitor {
 
             List<JCCase> l = cases;
             for (int i = 0; i < labels.length; i++) {
-                if (l.head.labels.head.isExpression()) {
+                if (l.head.labels.head instanceof JCConstantCaseLabel constLabel) {
                     Assert.check(l.head.labels.size() == 1);
-                    int val = ((Number)((JCExpression) l.head.labels.head).type.constValue()).intValue();
+                    int val = ((Number) constLabel.expr.type.constValue()).intValue();
                     labels[i] = val;
                     if (val < lo) lo = val;
                     if (hi < val) hi = val;
@@ -1656,17 +1697,32 @@ public class Gen extends JCTree.Visitor {
                         }
                     }
                 }
-                VarSymbol exparam = tree.param.sym;
-                code.statBegin(tree.pos);
-                code.markStatBegin();
-                int limit = code.nextreg;
-                code.newLocal(exparam);
-                items.makeLocalItem(exparam).store();
-                code.statBegin(TreeInfo.firstStatPos(tree.body));
-                genStat(tree.body, env, CRT_BLOCK);
-                code.endScopes(limit);
-                code.statBegin(TreeInfo.endPos(tree.body));
+                genCatchBlock(tree, env);
             }
+        }
+        void genPatternMatchingCatch(JCCatch tree,
+                                     Env<GenContext> env,
+                                     List<int[]> ranges) {
+            for (int[] range : ranges) {
+                JCExpression subCatch = tree.param.vartype;
+                int catchType = makeRef(tree.pos(), subCatch.type);
+                registerCatch(tree.pos(),
+                              range[0], range[1], code.curCP(),
+                              catchType);
+            }
+            genCatchBlock(tree, env);
+        }
+        void genCatchBlock(JCCatch tree, Env<GenContext> env) {
+            VarSymbol exparam = tree.param.sym;
+            code.statBegin(tree.pos);
+            code.markStatBegin();
+            int limit = code.nextreg;
+            code.newLocal(exparam);
+            items.makeLocalItem(exparam).store();
+            code.statBegin(TreeInfo.firstStatPos(tree.body));
+            genStat(tree.body, env, CRT_BLOCK);
+            code.endScopes(limit);
+            code.statBegin(TreeInfo.endPos(tree.body));
         }
         // where
         List<Pair<List<Attribute.TypeCompound>, JCExpression>> catchTypesWithAnnotations(JCCatch tree) {
@@ -1884,7 +1940,13 @@ public class Gen extends JCTree.Visitor {
         if (!msym.isDynamic()) {
             code.statBegin(tree.pos);
         }
-        result = m.invoke();
+        if (invocationsWithPatternMatchingCatch.contains(tree)) {
+            int start = code.curCP();
+            result = m.invoke();
+            patternMatchingInvocationRanges.add(new int[] {start, code.curCP()});
+        } else {
+            result = m.invoke();
+        }
     }
 
     public void visitConditional(JCConditional tree) {

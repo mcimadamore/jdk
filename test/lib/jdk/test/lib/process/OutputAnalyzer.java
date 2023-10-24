@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -218,7 +218,7 @@ public final class OutputAnalyzer {
         String stderr = getStderr();
         if (!stdout.contains(expectedString) && !stderr.contains(expectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + expectedString + "' missing from stdout/stderr \n");
+            throw new RuntimeException("'" + expectedString + "' missing from stdout/stderr");
         }
         return this;
     }
@@ -233,7 +233,7 @@ public final class OutputAnalyzer {
         String stdout = getStdout();
         if (!stdout.contains(expectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + expectedString + "' missing from stdout \n");
+            throw new RuntimeException("'" + expectedString + "' missing from stdout");
         }
         return this;
     }
@@ -248,7 +248,7 @@ public final class OutputAnalyzer {
         String stderr = getStderr();
         if (!stderr.contains(expectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + expectedString + "' missing from stderr \n");
+            throw new RuntimeException("'" + expectedString + "' missing from stderr");
         }
         return this;
     }
@@ -264,11 +264,11 @@ public final class OutputAnalyzer {
         String stderr = getStderr();
         if (stdout.contains(notExpectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + notExpectedString + "' found in stdout \n");
+            throw new RuntimeException("'" + notExpectedString + "' found in stdout");
         }
         if (stderr.contains(notExpectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + notExpectedString + "' found in stderr \n");
+            throw new RuntimeException("'" + notExpectedString + "' found in stderr");
         }
         return this;
     }
@@ -302,7 +302,7 @@ public final class OutputAnalyzer {
         String stdout = getStdout();
         if (stdout.contains(notExpectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + notExpectedString + "' found in stdout \n");
+            throw new RuntimeException("'" + notExpectedString + "' found in stdout");
         }
         return this;
     }
@@ -317,7 +317,7 @@ public final class OutputAnalyzer {
         String stderr = getStderr();
         if (stderr.contains(notExpectedString)) {
             reportDiagnosticSummary();
-            throw new RuntimeException("'" + notExpectedString + "' found in stderr \n");
+            throw new RuntimeException("'" + notExpectedString + "' found in stderr");
         }
         return this;
     }
@@ -338,7 +338,7 @@ public final class OutputAnalyzer {
         if (!stdoutMatcher.find() && !stderrMatcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                  + "' missing from stdout/stderr \n");
+                  + "' missing from stdout/stderr");
         }
         return this;
     }
@@ -356,7 +356,7 @@ public final class OutputAnalyzer {
         if (!matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                  + "' missing from stdout \n");
+                  + "' missing from stdout");
         }
         return this;
     }
@@ -374,7 +374,7 @@ public final class OutputAnalyzer {
         if (!matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + pattern
-                  + "' missing from stderr \n");
+                  + "' missing from stderr");
         }
         return this;
     }
@@ -393,7 +393,7 @@ public final class OutputAnalyzer {
         if (matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                    + "' found in stdout: '" + matcher.group() + "' \n");
+                    + "' found in stdout: '" + matcher.group() + "'");
         }
 
         String stderr = getStderr();
@@ -401,7 +401,7 @@ public final class OutputAnalyzer {
         if (matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                    + "' found in stderr: '" + matcher.group() + "' \n");
+                    + "' found in stderr: '" + matcher.group() + "'");
         }
 
         return this;
@@ -420,7 +420,7 @@ public final class OutputAnalyzer {
         if (matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                    + "' found in stdout \n");
+                    + "' found in stdout");
         }
         return this;
     }
@@ -438,7 +438,7 @@ public final class OutputAnalyzer {
         if (matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + regexp
-                    + "' found in stderr \n");
+                    + "' found in stderr");
         }
         return this;
     }
@@ -487,7 +487,7 @@ public final class OutputAnalyzer {
         if (getExitValue() != expectedExitValue) {
             reportDiagnosticSummary();
             throw new RuntimeException("Expected to get exit value of ["
-                    + expectedExitValue + "]\n");
+                    + expectedExitValue + "], exit value is: [" + getExitValue() + "]");
         }
         return this;
     }
@@ -502,7 +502,7 @@ public final class OutputAnalyzer {
         if (getExitValue() == notExpectedExitValue) {
             reportDiagnosticSummary();
             throw new RuntimeException("Unexpected to get exit value of ["
-                    + notExpectedExitValue + "]\n");
+                    + notExpectedExitValue + "]");
         }
         return this;
     }
@@ -637,7 +637,7 @@ public final class OutputAnalyzer {
         if (!matcher.find()) {
             reportDiagnosticSummary();
             throw new RuntimeException("'" + pattern
-                  + "' missing from stderr \n");
+                  + "' missing from stderr");
         }
         return this;
     }
@@ -671,15 +671,15 @@ public final class OutputAnalyzer {
     /**
      * @see #shouldMatchByLine(String, String, String)
      */
-    public OutputAnalyzer shouldMatchByLineFrom(String from, String pattern) {
-        return shouldMatchByLine(from, null, pattern);
+    public OutputAnalyzer shouldMatchByLineFrom(String fromPattern, String pattern) {
+        return shouldMatchByLine(fromPattern, null, pattern);
     }
 
     /**
      * @see #shouldMatchByLine(String, String, String)
      */
-    public OutputAnalyzer shouldMatchByLineTo(String to, String pattern) {
-        return shouldMatchByLine(null, to, pattern);
+    public OutputAnalyzer shouldMatchByLineTo(String toPattern, String pattern) {
+        return shouldMatchByLine(null, toPattern, pattern);
     }
 
     /**
@@ -687,17 +687,17 @@ public final class OutputAnalyzer {
      * {@code pattern} line by line. The whole output could be matched or
      * just a subset of it.
      *
-     * @param from
-     *            The line (excluded) from where output will be matched.
-     *            Set {@code from} to null for matching from the first line.
-     * @param to
-     *            The line (excluded) until where output will be matched.
-     *            Set {@code to} to null for matching until the last line.
+     * @param fromPattern
+     *            The pattern of line (excluded) from where output will be matched.
+     *            Set {@code fromPattern} to null for matching from the first line.
+     * @param toPattern
+     *            The pattern of line (excluded) until where output will be matched.
+     *            Set {@code toPattern} to null for matching until the last line.
      * @param pattern
      *            Matching pattern
      */
-    public OutputAnalyzer shouldMatchByLine(String from, String to, String pattern) {
-        return shouldMatchByLine(getOutput(), from, to, pattern);
+    public OutputAnalyzer shouldMatchByLine(String fromPattern, String toPattern, String pattern) {
+        return shouldMatchByLine(getOutput(), fromPattern, toPattern, pattern);
     }
 
     /**
@@ -705,34 +705,34 @@ public final class OutputAnalyzer {
      * {@code pattern} line by line. The whole stdout could be matched or
      * just a subset of it.
      *
-     * @param from
-     *            The line (excluded) from where stdout will be matched.
-     *            Set {@code from} to null for matching from the first line.
-     * @param to
-     *            The line (excluded) until where stdout will be matched.
-     *            Set {@code to} to null for matching until the last line.
+     * @param fromPattern
+     *            The pattern of line (excluded) from where stdout will be matched.
+     *            Set {@code fromPattern} to null for matching from the first line.
+     * @param toPattern
+     *            The pattern of line (excluded) until where stdout will be matched.
+     *            Set {@code toPattern} to null for matching until the last line.
      * @param pattern
      *            Matching pattern
      */
-    public OutputAnalyzer stdoutShouldMatchByLine(String from, String to, String pattern) {
-        return shouldMatchByLine(getStdout(), from, to, pattern);
+    public OutputAnalyzer stdoutShouldMatchByLine(String fromPattern, String toPattern, String pattern) {
+        return shouldMatchByLine(getStdout(), fromPattern, toPattern, pattern);
     }
 
-    private OutputAnalyzer shouldMatchByLine(String buffer, String from, String to, String pattern) {
+    private OutputAnalyzer shouldMatchByLine(String buffer, String fromPattern, String toPattern, String pattern) {
         List<String> lines = asLines(buffer);
 
         int fromIndex = 0;
-        if (from != null) {
-            fromIndex = indexOf(lines, from, 0) + 1; // + 1 -> apply 'pattern' to lines after 'from' match
+        if (fromPattern != null) {
+            fromIndex = indexOf(lines, fromPattern, 0) + 1; // + 1 -> apply 'pattern' to lines after 'from' match
             Asserts.assertGreaterThan(fromIndex, 0,
-                    "The line/pattern '" + from + "' from where the output should match can not be found");
+                    "The line matched with pattern '" + fromPattern + "' from where the output should match can not be found");
         }
 
         int toIndex = lines.size();
-        if (to != null) {
-            toIndex = indexOf(lines, to, fromIndex);
+        if (toPattern != null) {
+            toIndex = indexOf(lines, toPattern, fromIndex);
             Asserts.assertGreaterThan(toIndex, fromIndex,
-                    "The line/pattern '" + to + "' until where the output should match can not be found");
+                    "The line matched with pattern '" + toPattern + "' until where the output should match can not be found");
         }
 
         List<String> subList = lines.subList(fromIndex, toIndex);

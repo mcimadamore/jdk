@@ -34,12 +34,12 @@ package gc.arguments;
  * @modules java.base/jdk.internal.misc
  * @modules java.management/sun.management
  * @build TestSmallInitialHeapWithLargePageAndNUMA
- * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
- * @run main/othervm -Xbootclasspath/a:. -XX:+UseHugeTLBFS -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI gc.arguments.TestSmallInitialHeapWithLargePageAndNUMA
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI gc.arguments.TestSmallInitialHeapWithLargePageAndNUMA
 */
 
 import jdk.test.lib.process.OutputAnalyzer;
-import sun.hotspot.WhiteBox;
+import jdk.test.whitebox.WhiteBox;
 import jtreg.SkippedException;
 
 public class TestSmallInitialHeapWithLargePageAndNUMA {
@@ -65,7 +65,6 @@ public class TestSmallInitialHeapWithLargePageAndNUMA {
         "-Xms" + String.valueOf(initHeap),
         "-Xmx" + String.valueOf(maxHeap),
         "-XX:+UseNUMA",
-        "-XX:+UseHugeTLBFS",
         "-XX:+PrintFlagsFinal",
         "-version");
     OutputAnalyzer analyzer = new OutputAnalyzer(pb_enabled.start());

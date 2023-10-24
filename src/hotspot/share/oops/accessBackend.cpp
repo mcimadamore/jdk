@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,8 @@
 #include "accessBackend.inline.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "oops/oop.inline.hpp"
+#include "runtime/javaThread.inline.hpp"
 #include "runtime/mutexLocker.hpp"
-#include "runtime/thread.inline.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/debug.hpp"
@@ -209,7 +209,7 @@ namespace AccessInternal {
 
 #ifdef ASSERT
   void check_access_thread_state() {
-    if (VMError::is_error_reported() || Debugging) {
+    if (VMError::is_error_reported() || DebuggingContext::is_enabled()) {
       return;
     }
 

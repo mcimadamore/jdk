@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,39 @@
  */
 
 /**
- * @test
+ * @test id=default
  * @bug 8284161 8287103
  * @summary Test ThredMXBean.findMonitorDeadlockedThreads with cycles of
  *   platform and virtual threads in deadlock
- * @compile --enable-preview -source ${jdk.version} VirtualThreadDeadlocks.java
- * @run main/othervm --enable-preview VirtualThreadDeadlocks PP
- * @run main/othervm --enable-preview VirtualThreadDeadlocks PV
- * @run main/othervm --enable-preview VirtualThreadDeadlocks VV
+ * @modules java.base/java.lang:+open java.management
+ * @library /test/lib
+ * @run main/othervm VirtualThreadDeadlocks PP
+ * @run main/othervm VirtualThreadDeadlocks PV
+ * @run main/othervm VirtualThreadDeadlocks VV
+ */
+
+/**
+ * @test id=no-vmcontinuations
+ * @requires vm.continuations
+ * @modules java.base/java.lang:+open java.management
+ * @library /test/lib
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:-VMContinuations VirtualThreadDeadlocks PP
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:-VMContinuations VirtualThreadDeadlocks PV
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:-VMContinuations VirtualThreadDeadlocks VV
  */
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
+import java.util.concurrent.CyclicBarrier;
 import java.util.stream.Stream;
+import jdk.test.lib.thread.VThreadRunner;
 
 public class VirtualThreadDeadlocks {
     private static final Object LOCK1 = new Object();
     private static final Object LOCK2 = new Object();
 
-    private static volatile boolean lock2Held;
+    private static final CyclicBarrier barrier = new CyclicBarrier(2);
 
     /**
      * PP = test deadlock with two platform threads
@@ -49,6 +62,8 @@ public class VirtualThreadDeadlocks {
      * VV = test deadlock with two virtual threads
      */
     public static void main(String[] args) throws Exception {
+        // need at least two carrier threads due to pinning
+        VThreadRunner.ensureParallelism(2);
 
         // start thread1
         Thread.Builder builder1 = (args[0].charAt(0) == 'P')
@@ -56,9 +71,7 @@ public class VirtualThreadDeadlocks {
                 : Thread.ofVirtual();
         Thread thread1 = builder1.start(() -> {
             synchronized (LOCK1) {
-                while (!lock2Held) {
-                    try { Thread.sleep(10); } catch (Exception e) { }
-                }
+                try { barrier.await(); } catch (Exception ie) {}
                 synchronized (LOCK2) { }
             }
         });
@@ -70,7 +83,7 @@ public class VirtualThreadDeadlocks {
                 : Thread.ofVirtual();
         Thread thread2 = builder2.start(() -> {
             synchronized (LOCK2) {
-                lock2Held = true;
+                try { barrier.await(); } catch (Exception ie) {}
                 synchronized (LOCK1) { }
             }
         });
@@ -98,6 +111,9 @@ public class VirtualThreadDeadlocks {
     private static void awaitBlocked(Thread thread) throws InterruptedException {
         while (thread.getState() != Thread.State.BLOCKED) {
             Thread.sleep(10);
+            if (!thread.isAlive()) {
+                throw new RuntimeException("Thread " + thread + " is terminated.");
+            }
         }
     }
 

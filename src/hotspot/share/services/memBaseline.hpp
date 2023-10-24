@@ -64,6 +64,7 @@ class MemBaseline {
 
   size_t                 _instance_class_count;
   size_t                 _array_class_count;
+  size_t                 _thread_count;
 
   // Allocation sites information
   // Malloc allocation sites
@@ -84,11 +85,11 @@ class MemBaseline {
  public:
   // create a memory baseline
   MemBaseline():
-    _instance_class_count(0), _array_class_count(0),
+    _instance_class_count(0), _array_class_count(0), _thread_count(0),
     _baseline_type(Not_baselined) {
   }
 
-  bool baseline(bool summaryOnly = true);
+  void baseline(bool summaryOnly = true);
 
   BaselineType baseline_type() const { return _baseline_type; }
 
@@ -140,7 +141,7 @@ class MemBaseline {
   size_t malloc_tracking_overhead() const {
     assert(baseline_type() != Not_baselined, "Not yet baselined");
     MemBaseline* bl = const_cast<MemBaseline*>(this);
-    return bl->_malloc_memory_snapshot.malloc_overhead()->size();
+    return bl->_malloc_memory_snapshot.malloc_overhead();
   }
 
   MallocMemory* malloc_memory(MEMFLAGS flag) {
@@ -171,7 +172,7 @@ class MemBaseline {
 
   size_t thread_count() const {
     assert(baseline_type() != Not_baselined, "Not yet baselined");
-    return _malloc_memory_snapshot.thread_count();
+    return _thread_count;
   }
 
   // reset the baseline for reuse
@@ -180,6 +181,7 @@ class MemBaseline {
     // _malloc_memory_snapshot and _virtual_memory_snapshot are copied over.
     _instance_class_count  = 0;
     _array_class_count = 0;
+    _thread_count = 0;
 
     _malloc_sites.clear();
     _virtual_memory_sites.clear();
@@ -188,7 +190,7 @@ class MemBaseline {
 
  private:
   // Baseline summary information
-  bool baseline_summary();
+  void baseline_summary();
 
   // Baseline allocation sites (detail tracking only)
   bool baseline_allocation_sites();

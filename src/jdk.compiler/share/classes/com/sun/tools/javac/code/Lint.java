@@ -100,6 +100,7 @@ public class Lint
 
     private static final Map<String, LintCategory> map = new ConcurrentHashMap<>(20);
 
+    @SuppressWarnings("this-escape")
     protected Lint(Context context) {
         // initialize values according to the lint options
         Options options = Options.instance(context);
@@ -215,6 +216,11 @@ public class Lint
         FINALLY("finally"),
 
         /**
+          * Warn about compiler possible lossy conversions.
+          */
+        LOSSY_CONVERSIONS("lossy-conversions"),
+
+        /**
           * Warn about compiler generation of a default constructor.
           */
         MISSING_EXPLICIT_CTOR("missing-explicit-ctor"),
@@ -233,6 +239,11 @@ public class Lint
          * Warn about issues relating to use of command line options
          */
         OPTIONS("options"),
+
+        /**
+         * Warn when any output file is written to more than once.
+         */
+        OUTPUT_FILE_CLASH("output-file-clash"),
 
         /**
          * Warn about issues regarding method overloads.
@@ -302,6 +313,11 @@ public class Lint
         TEXT_BLOCKS("text-blocks"),
 
         /**
+         * Warn about possible 'this' escapes before subclass instance is fully initialized.
+         */
+        THIS_ESCAPE("this-escape"),
+
+        /**
          * Warn about issues relating to use of try blocks (i.e. try-with-resources)
          */
         TRY("try"),
@@ -319,7 +335,12 @@ public class Lint
         /**
          * Warn about use of preview features.
          */
-        PREVIEW("preview");
+        PREVIEW("preview"),
+
+        /**
+         * Warn about use of restricted methods.
+         */
+        RESTRICTED("restricted");
 
         LintCategory(String option) {
             this(option, false);

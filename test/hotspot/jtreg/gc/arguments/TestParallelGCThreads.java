@@ -31,8 +31,8 @@ package gc.arguments;
  * @library /
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @build sun.hotspot.WhiteBox
- * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
+ * @build jdk.test.whitebox.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI gc.arguments.TestParallelGCThreads
  */
 
@@ -41,7 +41,7 @@ import java.util.List;
 import jdk.test.lib.Asserts;
 import jdk.test.lib.process.OutputAnalyzer;
 import jtreg.SkippedException;
-import sun.hotspot.gc.GC;
+import jdk.test.whitebox.gc.GC;
 
 public class TestParallelGCThreads {
 
@@ -113,14 +113,14 @@ public class TestParallelGCThreads {
       }
     }
 
-    // 4294967295 == (unsigned int) -1
-    // So setting ParallelGCThreads=4294967295 should give back 4294967295
+    // Test the max value for ParallelGCThreads
+    // So setting ParallelGCThreads=2147483647 should give back 2147483647
     long count = getParallelGCThreadCount(
         "-XX:+UseSerialGC",
-        "-XX:ParallelGCThreads=4294967295",
+        "-XX:ParallelGCThreads=2147483647",
         "-XX:+PrintFlagsFinal",
         "-version");
-    Asserts.assertEQ(count, 4294967295L, "Specifying ParallelGCThreads=4294967295 does not set the thread count properly!");
+    Asserts.assertEQ(count, 2147483647L, "Specifying ParallelGCThreads=2147483647 does not set the thread count properly!");
   }
 
   public static long getParallelGCThreadCount(String... flags) throws Exception {

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -134,6 +134,8 @@ AC_DEFUN([LIB_BUILD_BINUTILS],
   BINUTILS_SRC="$with_binutils_src"
   UTIL_FIXUP_PATH(BINUTILS_SRC)
 
+  BINUTILS_DIR="$CONFIGURESUPPORT_OUTPUTDIR/binutils"
+
   if ! test -d $BINUTILS_SRC; then
     AC_MSG_ERROR([--with-binutils-src is not pointing to a directory])
   fi
@@ -141,10 +143,14 @@ AC_DEFUN([LIB_BUILD_BINUTILS],
     AC_MSG_ERROR([--with-binutils-src does not look like a binutils source directory])
   fi
 
-  if test -e $BINUTILS_SRC/bfd/libbfd.a && \
-      test -e $BINUTILS_SRC/opcodes/libopcodes.a && \
-      test -e $BINUTILS_SRC/libiberty/libiberty.a && \
-      test -e $BINUTILS_SRC/zlib/libz.a; then
+  if ! test -d $BINUTILS_DIR; then
+    $MKDIR -p $BINUTILS_DIR
+  fi
+
+  if test -e $BINUTILS_DIR/bfd/libbfd.a && \
+      test -e $BINUTILS_DIR/opcodes/libopcodes.a && \
+      test -e $BINUTILS_DIR/libiberty/libiberty.a && \
+      test -e $BINUTILS_DIR/zlib/libz.a; then
     AC_MSG_NOTICE([Found binutils binaries in binutils source directory -- not building])
   else
     # On Windows, we cannot build with the normal Microsoft CL, but must instead use
@@ -175,16 +181,20 @@ AC_DEFUN([LIB_BUILD_BINUTILS],
       fi
     else
       binutils_cc="$CC $SYSROOT_CFLAGS"
-      binutils_target=""
+      if test "x$COMPILE_TYPE" = xcross; then
+        binutils_target="--host=$OPENJDK_TARGET_AUTOCONF_NAME"
+      else
+        binutils_target=""
+      fi
     fi
     binutils_cflags="$binutils_cflags $MACHINE_FLAG $JVM_PICFLAG $C_O_FLAG_NORM"
 
     AC_MSG_NOTICE([Running binutils configure])
-    AC_MSG_NOTICE([configure command line: ./configure --disable-nls CFLAGS="$binutils_cflags" CC="$binutils_cc" $binutils_target])
+    AC_MSG_NOTICE([configure command line: cd $BINUTILS_DIR && $BINUTILS_SRC/configure --disable-nls CFLAGS="$binutils_cflags" CC="$binutils_cc" AR="$AR" $binutils_target])
     saved_dir=`pwd`
-    cd "$BINUTILS_SRC"
-    ./configure --disable-nls CFLAGS="$binutils_cflags" CC="$binutils_cc" $binutils_target
-    if test $? -ne 0 || ! test -e $BINUTILS_SRC/Makefile; then
+    cd "$BINUTILS_DIR"
+    $BINUTILS_SRC/configure --disable-nls CFLAGS="$binutils_cflags" CC="$binutils_cc" AR="$AR" $binutils_target
+    if test $? -ne 0 || ! test -e $BINUTILS_DIR/Makefile; then
       AC_MSG_NOTICE([Automatic building of binutils failed on configure. Try building it manually])
       AC_MSG_ERROR([Cannot continue])
     fi
@@ -197,8 +207,6 @@ AC_DEFUN([LIB_BUILD_BINUTILS],
     cd $saved_dir
     AC_MSG_NOTICE([Building of binutils done])
   fi
-
-  BINUTILS_DIR="$BINUTILS_SRC"
 ])
 
 ################################################################################
@@ -228,14 +236,21 @@ AC_DEFUN([LIB_SETUP_HSDIS_BINUTILS],
   if test "x$BINUTILS_DIR" = xsystem; then
     AC_CHECK_LIB(bfd, bfd_openr, [ HSDIS_LIBS="-lbfd" ], [ binutils_system_error="libbfd not found" ])
     AC_CHECK_LIB(opcodes, disassembler, [ HSDIS_LIBS="$HSDIS_LIBS -lopcodes" ], [ binutils_system_error="libopcodes not found" ])
-    AC_CHECK_LIB(iberty, xmalloc, [ HSDIS_LIBS="$HSDIS_LIBS -liberty" ], [ binutils_system_error="libiberty not found" ])
+    # libiberty is not required on Ubuntu
+    AC_CHECK_LIB(iberty, xmalloc, [ HSDIS_LIBS="$HSDIS_LIBS -liberty" ])
     AC_CHECK_LIB(z, deflate, [ HSDIS_LIBS="$HSDIS_LIBS -lz" ], [ binutils_system_error="libz not found" ])
     HSDIS_CFLAGS="-DLIBARCH_$OPENJDK_TARGET_CPU_LEGACY_LIB"
   elif test "x$BINUTILS_DIR" != x; then
     if test -e $BINUTILS_DIR/bfd/libbfd.a && \
         test -e $BINUTILS_DIR/opcodes/libopcodes.a && \
-        test -e $BINUTILS_DIR/libiberty/libiberty.a; then
-      HSDIS_CFLAGS="-I$BINUTILS_DIR/include -I$BINUTILS_DIR/bfd -DLIBARCH_$OPENJDK_TARGET_CPU_LEGACY_LIB"
+        test -e $BINUTILS_DIR/libiberty/libiberty.a && \
+        test -e $BINUTILS_DIR/zlib/libz.a; then
+      HSDIS_CFLAGS="-DLIBARCH_$OPENJDK_TARGET_CPU_LEGACY_LIB"
+      if test -n "$BINUTILS_SRC"; then
+        HSDIS_CFLAGS="$HSDIS_CFLAGS -I$BINUTILS_SRC/include -I$BINUTILS_DIR/bfd"
+      else
+        HSDIS_CFLAGS="$HSDIS_CFLAGS -I$BINUTILS_DIR/include -I$BINUTILS_DIR/bfd"
+      fi
       HSDIS_LDFLAGS=""
       HSDIS_LIBS="$BINUTILS_DIR/bfd/libbfd.a $BINUTILS_DIR/opcodes/libopcodes.a $BINUTILS_DIR/libiberty/libiberty.a $BINUTILS_DIR/zlib/libz.a"
     fi

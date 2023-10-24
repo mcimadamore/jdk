@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
 /**
  * @test
  * @summary Verifies JVMTI support for VThreads.
- * @compile --enable-preview -source ${jdk.version} VThreadTest.java
- * @run main/othervm/native --enable-preview -agentlib:VThreadTest VThreadTest
+ * @requires vm.continuations
+ * @compile VThreadTest.java
+ * @run main/othervm/native -agentlib:VThreadTest VThreadTest
  */
 
 import java.util.concurrent.*;
@@ -35,6 +36,8 @@ public class VThreadTest {
 
     static final int MSG_COUNT = 10*1000;
     static final SynchronousQueue<String> QUEUE = new SynchronousQueue<>();
+
+    static native boolean check();
 
     static void producer(String msg) throws InterruptedException {
         int ii = 1;
@@ -66,6 +69,9 @@ public class VThreadTest {
         Thread consumer = Thread.ofVirtual().name("VThread-Consumer").start(CONSUMER);
         producer.join();
         consumer.join();
+        if (!check()) {
+            throw new RuntimeException("VThreadTest failed!");
+        }
     }
 
     void runTest() throws Exception {

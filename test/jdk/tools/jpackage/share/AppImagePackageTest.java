@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,13 +87,18 @@ public class AppImagePackageTest {
                 cmd.addArguments("--icon", iconPath("icon"));
             }
             cmd.removeArgumentWithValue("--input");
+            cmd.createJPackageXMLFile("EmptyAppImagePackageTest", "Hello");
 
             // on mac, with --app-image and without --mac-package-identifier,
             // will try to infer it from the image, so foreign image needs it.
             if (TKit.isOSX()) {
                 cmd.addArguments("--mac-package-identifier", name);
             }
-        }).run(Action.CREATE, Action.UNPACK);
+        })
+        // On macOS we always signing app image and signing will fail, since
+        // test produces invalid app bundle.
+        .setExpectedExitCode(TKit.isOSX() ? 1 : 0)
+        .run(Action.CREATE, Action.UNPACK);
         // default: {CREATE, UNPACK, VERIFY}, but we can't verify foreign image
     }
 
@@ -101,4 +106,5 @@ public class AppImagePackageTest {
         return TKit.TEST_SRC_ROOT.resolve(Path.of("resources", name
                 + TKit.ICON_SUFFIX));
     }
+
 }

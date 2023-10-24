@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,10 @@
 #include "gc/shenandoah/shenandoahOopClosures.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
-class ShenandoahCMDrainMarkingStackClosure;
-
 // Base class for mark
 // Mark class does not maintain states. Instead, mark states are
 // maintained by task queues, mark bitmap and SATB buffers (concurrent mark)
 class ShenandoahMark: public StackObj {
-  friend class ShenandoahCMDrainMarkingStackClosure;
-
 protected:
   ShenandoahObjToScanQueueSet* const _task_queues;
 
@@ -49,6 +45,10 @@ public:
   static inline void mark_through_ref(T* p, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context, bool weak);
 
   static void clear();
+
+  // Loom support
+  void start_mark();
+  void end_mark();
 
   // Helpers
   inline ShenandoahObjToScanQueueSet* task_queues() const;
@@ -81,4 +81,3 @@ protected:
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHMARK_HPP
-

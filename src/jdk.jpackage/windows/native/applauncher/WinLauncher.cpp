@@ -34,15 +34,16 @@
 #include "Dll.h"
 #include "WinApp.h"
 #include "Toolbox.h"
+#include "Executor.h"
 #include "FileUtils.h"
+#include "PackageFile.h"
 #include "UniqueHandle.h"
 #include "ErrorHandling.h"
 #include "WinSysInfo.h"
 #include "WinErrorHandling.h"
 
 
-// AllowSetForegroundWindow
-#pragma comment(lib, "user32")
+// AllowSetForegroundWindow - Requires linking with user32
 
 
 namespace {
@@ -133,6 +134,22 @@ tstring getJvmLibPath(const Jvm& jvm) {
 }
 
 
+void addCfgFileLookupDirForEnvVariable(
+        const PackageFile& pkgFile, AppLauncher& appLauncher,
+        const tstring& envVarName) {
+
+    tstring path;
+    JP_TRY;
+    path = SysInfo::getEnvVariable(envVarName);
+    JP_CATCH_ALL;
+
+    if (!path.empty()) {
+        appLauncher.addCfgFileLookupDir(FileUtils::mkpath() << path
+                << pkgFile.getPackageName());
+    }
+}
+
+
 void launchApp() {
     // [RT-31061] otherwise UI can be left in back of other windows.
     ::AllowSetForegroundWindow(ASFW_ANY);
@@ -141,12 +158,19 @@ void launchApp() {
     const tstring appImageRoot = FileUtils::dirname(launcherPath);
     const tstring appDirPath = FileUtils::mkpath() << appImageRoot << _T("app");
 
-    const AppLauncher appLauncher = AppLauncher().setImageRoot(appImageRoot)
+    const PackageFile pkgFile = PackageFile::loadFromAppDir(appDirPath);
+
+    AppLauncher appLauncher = AppLauncher().setImageRoot(appImageRoot)
         .addJvmLibName(_T("bin\\jli.dll"))
         .setAppDir(appDirPath)
         .setLibEnvVariableName(_T("PATH"))
         .setDefaultRuntimePath(FileUtils::mkpath() << appImageRoot
             << _T("runtime"));
+
+    if (!pkgFile.getPackageName().empty()) {
+        addCfgFileLookupDirForEnvVariable(pkgFile, appLauncher, _T("LOCALAPPDATA"));
+        addCfgFileLookupDirForEnvVariable(pkgFile, appLauncher, _T("APPDATA"));
+    }
 
     const bool restart = !appLauncher.libEnvVariableContainsAppDir();
 
@@ -157,29 +181,29 @@ void launchApp() {
 
         jvm = std::unique_ptr<Jvm>();
 
-        STARTUPINFOW si;
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-
-        PROCESS_INFORMATION pi;
-        ZeroMemory(&pi, sizeof(pi));
-
-        if (!CreateProcessW(launcherPath.c_str(), GetCommandLineW(),
-                NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-            JP_THROW(SysError(tstrings::any() << "CreateProcessW() failed",
-                                                            CreateProcessW));
+        UniqueHandle jobHandle(CreateJobObject(NULL, NULL));
+        if (jobHandle.get() == NULL) {
+            JP_THROW(SysError(tstrings::any() << "CreateJobObject() failed",
+                                                            CreateJobObject));
+        }
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo = { };
+        jobInfo.BasicLimitInformation.LimitFlags =
+                                          JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if (!SetInformationJobObject(jobHandle.get(),
+                JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo))) {
+            JP_THROW(SysError(tstrings::any() <<
+                                            "SetInformationJobObject() failed",
+                                                    SetInformationJobObject));
         }
 
-        WaitForSingleObject(pi.hProcess, INFINITE);
+        Executor exec(launcherPath);
+        exec.visible(true).withJobObject(jobHandle.get()).suspended(true).inherit(true);
+        const auto args = SysInfo::getCommandArgs();
+        std::for_each(args.begin(), args.end(), [&exec] (const tstring& arg) {
+            exec.arg(arg);
+        });
 
-        UniqueHandle childProcessHandle(pi.hProcess);
-        UniqueHandle childThreadHandle(pi.hThread);
-
-        DWORD exitCode;
-        if (!GetExitCodeProcess(pi.hProcess, &exitCode)) {
-            JP_THROW(SysError(tstrings::any() << "GetExitCodeProcess() failed",
-                                                        GetExitCodeProcess));
-        }
+        DWORD exitCode = static_cast<DWORD>(exec.execAndWaitForExit());
 
         exit(exitCode);
         return;

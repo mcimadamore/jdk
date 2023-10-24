@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,8 +89,13 @@ ShenandoahSTWMark::ShenandoahSTWMark(bool full_gc) :
 }
 
 void ShenandoahSTWMark::mark() {
-  // Weak reference processing
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
+
+  // Arm all nmethods. Even though this is STW mark, some marking code
+  // piggybacks on nmethod barriers for special instances.
+  ShenandoahCodeRoots::arm_nmethods_for_mark();
+
+  // Weak reference processing
   ShenandoahReferenceProcessor* rp = heap->ref_processor();
   rp->reset_thread_locals();
   rp->set_soft_reference_policy(heap->soft_ref_policy()->should_clear_all_soft_refs());
@@ -100,6 +105,8 @@ void ShenandoahSTWMark::mark() {
     assert(Thread::current()->is_VM_thread(), "Must be");
     heap->verifier()->verify_roots_no_forwarded();
   }
+
+  start_mark();
 
   uint nworkers = heap->workers()->active_workers();
   task_queues()->reserve(nworkers);
@@ -116,6 +123,10 @@ void ShenandoahSTWMark::mark() {
   }
 
   heap->mark_complete_marking_context();
+  end_mark();
+
+  // Mark is finished, can disarm the nmethods now.
+  ShenandoahCodeRoots::disarm_nmethods();
 
   assert(task_queues()->is_empty(), "Should be empty");
   TASKQUEUE_STATS_ONLY(task_queues()->print_taskqueue_stats());
@@ -137,4 +148,3 @@ void ShenandoahSTWMark::finish_mark(uint worker_id) {
             false /* not cancellable */,
             ShenandoahStringDedup::is_enabled() ? ALWAYS_DEDUP : NO_DEDUP, &requests);
 }
-

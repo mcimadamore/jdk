@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,7 +169,7 @@ import java.util.Optional;
  * The tools allows to:
  *  * convert the .sym.txt into class/sig files for ct.sym
  *  * in cooperation with the adjacent history Probe, construct .sym.txt files for previous platforms
- *  * enhance existing .sym.txt files with a a new set .sym.txt for the current platform
+ *  * enhance existing .sym.txt files with a new set .sym.txt for the current platform
  *
  * To convert the .sym.txt files to class/sig files from ct.sym, run:
  *     java build.tool.symbolgenerator.CreateSymbols build-ctsym <platform-description-file> <target-directory>
@@ -2384,7 +2384,8 @@ public class CreateSymbols {
                 MethodDescription method = (MethodDescription) feature;
                 method.methodParameters = new ArrayList<>();
                 for (MethodParameters_attribute.Entry e : params.method_parameter_table) {
-                    String name = cf.constant_pool.getUTF8Value(e.name_index);
+                    String name = e.name_index == 0 ? null
+                            : cf.constant_pool.getUTF8Value(e.name_index);
                     MethodDescription.MethodParam param =
                             new MethodDescription.MethodParam(e.flags, name);
                     method.methodParameters.add(param);
@@ -3699,8 +3700,8 @@ public class CreateSymbols {
                 Function<String, MethodParam> string2Param =
                         p -> {
                             int sep = p.indexOf(':');
-                            return new MethodParam(Integer.parseInt(p.substring(0, sep)),
-                                                    p.substring(sep + 1));
+                            return new MethodParam(Integer.parseInt(p.substring(0, sep), 16),
+                                                   p.substring(sep + 1));
                         };
                 methodParameters =
                         deserializeList(inMethodParameters).stream()

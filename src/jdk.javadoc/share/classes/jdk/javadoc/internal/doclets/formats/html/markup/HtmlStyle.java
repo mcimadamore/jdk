@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,6 +245,19 @@ public enum HtmlStyle {
      * the class for the {@code section} element for the enum constants of an enum class.
      */
     constantsSummary,
+
+    /**
+     * The class for a {@code ul} element in various summary pages containing links to the
+     * contents of the page.
+     */
+    contentsList,
+
+    /**
+     * The class for a {@code ul} element in the preview summary page containing information
+     * about the preview features in the current release.
+     */
+    previewFeatureList,
+
     //</editor-fold>
 
     //<editor-fold desc="details">
@@ -370,15 +383,31 @@ public enum HtmlStyle {
     previewLabel,
 
     /**
-     * The class for the list containing the {@code @see} tags of an element.
+     * The class for a block describing the "restricted" status of a declaration.
      */
-    seeList,
+    restrictedBlock,
 
     /**
-     * The class for the list containing the {@code @see} tags of an element
-     * when some of the tags have longer labels.
+     * The class for the details in a block describing the "restricted" status of a declaration.
      */
-    seeListLong,
+    restrictedComment,
+
+    /**
+     * The class for the "Restricted" label in a block describing the "restricted" status
+     * of a declaration.
+     */
+    restrictedLabel,
+
+    /**
+     * The class for a list containing the tags of an element.
+     */
+    tagList,
+
+    /**
+     * The class for a list containing the tags of an element
+     * when some tags have longer labels or contain commas.
+     */
+    tagListLong,
 
     //</editor-fold>
 
@@ -399,6 +428,13 @@ public enum HtmlStyle {
      * with three columns.
      */
     threeColumnSummary,
+
+    /**
+     * The class of a {@code div} element whose content should be rendered as a table
+     * with three columns where the middle column requires less space as it only contains
+     * a release name.
+     */
+    threeColumnReleaseSummary,
 
     /**
      * The class of a {@code div} element whose content should be rendered as a table
@@ -429,6 +465,12 @@ public enum HtmlStyle {
      * inactive tab above the table.
      */
     caption,
+
+    /**
+     * The class for a {@code div} element containing a row of checkboxes to select
+     * items to view in summary tables.
+     */
+    checkboxes,
 
     /**
      * The class of an element that is part of a table header.
@@ -537,29 +579,6 @@ public enum HtmlStyle {
     notes,
     //</editor-fold>
 
-    //<editor-fold desc="flex layout">
-    //
-    // The following constants are used for the components of the top-level structures for "flex" layout.
-
-    /**
-     * The class of the top-level {@code div} element used to arrange for "flex" layout in
-     * a browser window. The element should contain two child elements: one with class
-     * {@link #flexHeader flex-header} and one with class {@link #flexContent flex-content}.
-     */
-    flexBox,
-
-    /**
-     * The class of the {@code header} element within a {@link #flexBox flex-box} container.
-     * The element is always displayed at the top of the viewport.
-     */
-    flexHeader,
-
-    /**
-     * The class of the {@code div} element within a {@link #flexBox flex-box} container
-     * This element appears below the header and can be scrolled if too big for the available height.
-     */
-    flexContent,
-    //</editor-fold>
 
     //<editor-fold desc="signatures">
     //
@@ -656,11 +675,6 @@ public enum HtmlStyle {
     // The following constants are used for items in the static and interactive search indexes.
 
     /**
-     * The class for a {@code button} in the search page to copy the search URL to the clipboard.
-     */
-    copyUrl,
-
-    /**
      * The class for a {@code details} element in the search page to show additional information.
      */
     pageSearchDetails,
@@ -736,6 +750,11 @@ public enum HtmlStyle {
     docFilePage,
 
     /**
+     * The class of the {@code body} element for the "external specifications" page.
+     */
+    externalSpecsPage,
+
+    /**
      * The class of the {@code body} element for the "help" page.
      */
     helpPage,
@@ -789,6 +808,11 @@ public enum HtmlStyle {
      * The class of the {@code body} element for the page listing any preview items.
      */
     previewListPage,
+
+    /**
+     * The class of the {@code body} element for the page listing restricted methods.
+     */
+    restrictedListPage,
 
     /**
      * The class of the {@code body} element for the search page.
@@ -891,6 +915,8 @@ public enum HtmlStyle {
      */
     highlighted,
 
+    //</editor-fold>
+
     //<editor-fold desc="miscellaneous">
     //
     // The following constants are used in various places across a variety of pages.
@@ -916,6 +942,11 @@ public enum HtmlStyle {
     classUses,
 
     /**
+     * The class for a {@code button} element to copy some page content to the clipboard.
+     */
+    copy,
+
+    /**
      * The class of an {@code a} element for a link with an external target.
      */
     externalLink,
@@ -930,6 +961,11 @@ public enum HtmlStyle {
      * The class of a {@code ul} element with horizontal (inline) display style.
      */
     horizontal,
+
+    /**
+     * The class of a {@code div} element that allows its horizontal overflow to be scrolled.
+     */
+    horizontalScroll,
 
     /**
      * The class of a {@code span} element containing implementation details of
@@ -993,6 +1029,11 @@ public enum HtmlStyle {
      * the package uses page.
      */
     packageUses,
+
+    /**
+     * The class for the list of references to an external specification.
+     */
+    refList,
 
     /**
      * The class of a {@code section} element for a package in the serialized

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,6 +174,7 @@ public class Symtab {
     public final Type serializedLambdaType;
     public final Type varHandleType;
     public final Type methodHandleType;
+    public final Type methodHandlesType;
     public final Type methodHandleLookupType;
     public final Type methodTypeType;
     public final Type nativeHeaderType;
@@ -219,11 +220,15 @@ public class Symtab {
     public final Type functionalInterfaceType;
     public final Type previewFeatureType;
     public final Type previewFeatureInternalType;
+    public final Type restrictedType;
     public final Type typeDescriptorType;
     public final Type recordType;
     public final Type switchBootstrapsType;
+    public final Type constantBootstrapsType;
     public final Type valueBasedType;
     public final Type valueBasedInternalType;
+    public final Type classDescType;
+    public final Type enumDescType;
 
     // For serialization lint checking
     public final Type objectStreamFieldType;
@@ -231,7 +236,18 @@ public class Symtab {
     public final Type objectOutputStreamType;
     public final Type ioExceptionType;
     public final Type objectStreamExceptionType;
+    // For externalization lint checking
     public final Type externalizableType;
+    public final Type objectInputType;
+    public final Type objectOutputType;
+
+    // For string templates
+    public final Type stringTemplateType;
+    public final Type templateRuntimeType;
+    public final Type processorType;
+    public final Type linkageType;
+
+    // for lazy statics
     public final Type constantBootstraps;
 
     /** The symbol representing the length field of an array.
@@ -392,6 +408,7 @@ public class Symtab {
     /** Constructor; enters all predefined identifiers and operators
      *  into symbol table.
      */
+    @SuppressWarnings("this-escape")
     protected Symtab(Context context) throws CompletionFailure {
         context.put(symtabKey, this);
 
@@ -542,6 +559,7 @@ public class Symtab {
         serializedLambdaType = enterClass("java.lang.invoke.SerializedLambda");
         varHandleType = enterClass("java.lang.invoke.VarHandle");
         methodHandleType = enterClass("java.lang.invoke.MethodHandle");
+        methodHandlesType = enterClass("java.lang.invoke.MethodHandles");
         methodHandleLookupType = enterClass("java.lang.invoke.MethodHandles$Lookup");
         methodTypeType = enterClass("java.lang.invoke.MethodType");
         errorType = enterClass("java.lang.Error");
@@ -596,11 +614,15 @@ public class Symtab {
         functionalInterfaceType = enterClass("java.lang.FunctionalInterface");
         previewFeatureType = enterClass("jdk.internal.javac.PreviewFeature");
         previewFeatureInternalType = enterSyntheticAnnotation("jdk.internal.PreviewFeature+Annotation");
+        restrictedType = enterClass("jdk.internal.javac.Restricted");
         typeDescriptorType = enterClass("java.lang.invoke.TypeDescriptor");
         recordType = enterClass("java.lang.Record");
         switchBootstrapsType = enterClass("java.lang.runtime.SwitchBootstraps");
+        constantBootstrapsType = enterClass("java.lang.invoke.ConstantBootstraps");
         valueBasedType = enterClass("jdk.internal.ValueBased");
         valueBasedInternalType = enterSyntheticAnnotation("jdk.internal.ValueBased+Annotation");
+        classDescType = enterClass("java.lang.constant.ClassDesc");
+        enumDescType = enterClass("java.lang.Enum$EnumDesc");
         // For serialization lint checking
         objectStreamFieldType = enterClass("java.io.ObjectStreamField");
         objectInputStreamType = enterClass("java.io.ObjectInputStream");
@@ -608,8 +630,8 @@ public class Symtab {
         ioExceptionType = enterClass("java.io.IOException");
         objectStreamExceptionType = enterClass("java.io.ObjectStreamException");
         externalizableType = enterClass("java.io.Externalizable");
-        constantBootstraps = enterClass("java.lang.invoke.ConstantBootstraps");
-
+        objectInputType  = enterClass("java.io.ObjectInput");
+        objectOutputType = enterClass("java.io.ObjectOutput");
         synthesizeEmptyInterfaceIfMissing(autoCloseableType);
         synthesizeEmptyInterfaceIfMissing(cloneableType);
         synthesizeEmptyInterfaceIfMissing(serializableType);
@@ -619,6 +641,15 @@ public class Symtab {
         synthesizeBoxTypeIfMissing(doubleType);
         synthesizeBoxTypeIfMissing(floatType);
         synthesizeBoxTypeIfMissing(voidType);
+
+        // For string templates
+        stringTemplateType = enterClass("java.lang.StringTemplate");
+        templateRuntimeType = enterClass("java.lang.runtime.TemplateRuntime");
+        processorType = enterClass("java.lang.StringTemplate$Processor");
+        linkageType = enterClass("java.lang.StringTemplate$Processor$Linkage");
+
+        // for lazy statics
+        constantBootstraps = enterClass("java.lang.invoke.ConstantBootstraps");
 
         // Enter a synthetic class that is used to mark internal
         // proprietary classes in ct.sym.  This class does not have a
@@ -675,7 +706,8 @@ public class Symtab {
         if (c == null) {
             c = defineClass(name, owner);
             doEnterClass(msym, c);
-        } else if ((c.name != name || c.owner != owner) && owner.kind == TYP && c.owner.kind == PCK) {
+        } else if ((c.name != name || c.owner != owner) && owner.kind == TYP &&
+                   c.owner.kind == PCK && ((c.flags_field & FROM_SOURCE) == 0)) {
             // reassign fields of classes that might have been loaded with
             // their flat names.
             c.owner.members().remove(c);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,14 +31,16 @@ import java.util.Map;
 import java.util.Optional;
 import static jdk.jpackage.internal.MacBaseInstallerBundler.SIGNING_KEYCHAIN;
 import static jdk.jpackage.internal.MacBaseInstallerBundler.SIGNING_KEY_USER;
-import static jdk.jpackage.internal.MacAppImageBuilder.APP_STORE;
+import static jdk.jpackage.internal.StandardBundlerParam.APP_STORE;
 import static jdk.jpackage.internal.StandardBundlerParam.MAIN_CLASS;
 import static jdk.jpackage.internal.StandardBundlerParam.VERSION;
 import static jdk.jpackage.internal.StandardBundlerParam.SIGN_BUNDLE;
 
 public class MacAppBundler extends AppImageBundler {
      public MacAppBundler() {
-        setAppImageSupplier(MacAppImageBuilder::new);
+        setAppImageSupplier(imageOutDir -> {
+            return new MacAppImageBuilder(imageOutDir, isDependentTask());
+        });
         setParamsValidator(MacAppBundler::doValidate);
     }
 
@@ -60,13 +62,13 @@ public class MacAppBundler extends AppImageBundler {
                     String keychain = SIGNING_KEYCHAIN.fetchFrom(params);
                     String result = null;
                     if (APP_STORE.fetchFrom(params)) {
-                        result = MacBaseInstallerBundler.findKey(
+                        result = MacCertificate.findCertificateKey(
                             "3rd Party Mac Developer Application: ",
                             user, keychain);
                     }
                     // if either not signing for app store or couldn't find
                     if (result == null) {
-                        result = MacBaseInstallerBundler.findKey(
+                        result = MacCertificate.findCertificateKey(
                             "Developer ID Application: ", user, keychain);
                     }
 
@@ -105,16 +107,21 @@ public class MacAppBundler extends AppImageBundler {
             throws ConfigException {
 
         if (StandardBundlerParam.getPredefinedAppImage(params) != null) {
-            return;
-        }
-
-        // validate short version
-        try {
-            String version = VERSION.fetchFrom(params);
-            CFBundleVersion.of(version);
-        } catch (IllegalArgumentException ex) {
-            throw new ConfigException(ex.getMessage(), I18N.getString(
-                    "error.invalid-cfbundle-version.advice"), ex);
+            if (!Optional.ofNullable(
+                    SIGN_BUNDLE.fetchFrom(params)).orElse(Boolean.FALSE)) {
+                throw new ConfigException(
+                        I18N.getString("error.app-image.mac-sign.required"),
+                        null);
+            }
+        } else {
+            // validate short version
+            try {
+                String version = VERSION.fetchFrom(params);
+                CFBundleVersion.of(version);
+            } catch (IllegalArgumentException ex) {
+                throw new ConfigException(ex.getMessage(), I18N.getString(
+                        "error.invalid-cfbundle-version.advice"), ex);
+            }
         }
 
         // reject explicitly set sign to true and no valid signature key

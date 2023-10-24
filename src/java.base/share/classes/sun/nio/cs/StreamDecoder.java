@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,14 +71,10 @@ public class StreamDecoder extends Reader {
                                                      String charsetName)
         throws UnsupportedEncodingException
     {
-        String csn = charsetName;
-        if (csn == null) {
-            csn = Charset.defaultCharset().name();
-        }
         try {
-            return new StreamDecoder(in, lock, Charset.forName(csn));
+            return new StreamDecoder(in, lock, Charset.forName(charsetName));
         } catch (IllegalCharsetNameException | UnsupportedCharsetException x) {
-            throw new UnsupportedEncodingException (csn);
+            throw new UnsupportedEncodingException (charsetName);
         }
     }
 
@@ -215,7 +211,13 @@ public class StreamDecoder extends Reader {
             return n + 1;
         }
 
-        return n + implRead(cbuf, off, off + len);
+        // Read remaining characters
+        int nr = implRead(cbuf, off, off + len);
+
+        // At this point, n is either 1 if a leftover character was read,
+        // or 0 if no leftover character was read. If n is 1 and nr is -1,
+        // indicating EOF, then we don't return their sum as this loses data.
+        return (nr < 0) ? (n == 1 ? 1 : nr) : (n + nr);
     }
 
     public boolean ready() throws IOException {
@@ -372,7 +374,6 @@ public class StreamDecoder extends Reader {
                     eof = true;
                     if ((cb.position() == 0) && (!bb.hasRemaining()))
                         break;
-                    decoder.reset();
                 }
                 continue;
             }

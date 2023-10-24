@@ -29,13 +29,23 @@
  * @modules jdk.compiler/com.sun.tools.javac.api
  *          jdk.compiler/com.sun.tools.javac.launcher
  *          jdk.compiler/com.sun.tools.javac.main
+ *          java.base/jdk.internal.classfile
+ *          java.base/jdk.internal.classfile.attribute
+ *          java.base/jdk.internal.classfile.constantpool
+ *          java.base/jdk.internal.classfile.instruction
+ *          java.base/jdk.internal.classfile.components
+ *          java.base/jdk.internal.classfile.impl
+ *          java.base/jdk.internal.module
  * @build toolbox.JavaTask toolbox.JavacTask toolbox.TestRunner toolbox.ToolBox
  * @run main SourceLauncherTest
  */
 
+import jdk.internal.classfile.*;
+import jdk.internal.classfile.attribute.ModuleResolutionAttribute;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -45,6 +55,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -58,6 +70,8 @@ import toolbox.Task;
 import toolbox.TestRunner;
 import toolbox.TestRunner.Test;
 import toolbox.ToolBox;
+
+import static jdk.internal.module.ClassFileConstants.WARN_INCUBATING;
 
 public class SourceLauncherTest extends TestRunner {
     public static void main(String... args) throws Exception {
@@ -542,7 +556,7 @@ public class SourceLauncherTest extends TestRunner {
         tb.writeJavaFiles(base,
                 "class NotPublic { static void main(String... args) { } }");
         testError(base.resolve("NotPublic.java"), "",
-                "error: 'main' method is not declared 'public static'");
+                "error: can't find main(String[]) method in class: NotPublic");
     }
 
     @Test
@@ -609,7 +623,7 @@ public class SourceLauncherTest extends TestRunner {
     public void testNoOptionsWarnings(Path base) throws IOException {
         tb.writeJavaFiles(base, "public class Main { public static void main(String... args) {}}");
         String log = new JavaTask(tb)
-                .vmOptions("--source", "7")
+                .vmOptions("--source", "8")
                 .className(base.resolve("Main.java").toString())
                 .run(Task.Expect.SUCCESS)
                 .getOutput(Task.OutputKind.STDERR);
@@ -654,6 +668,66 @@ public class SourceLauncherTest extends TestRunner {
                 "at Thrower.throwWhenZero(Thrower.java:8)",
                 "at Thrower.main(Thrower.java:4)");
     }
+
+    @Test
+    public void testNoDuplicateIncubatorWarning(Path base) throws Exception {
+        Path module = base.resolve("lib");
+        Path moduleSrc = module.resolve("src");
+        Path moduleClasses = module.resolve("classes");
+        Files.createDirectories(moduleClasses);
+        tb.cleanDirectory(moduleClasses);
+        tb.writeJavaFiles(moduleSrc, "module test {}");
+        new JavacTask(tb)
+                .outdir(moduleClasses)
+                .files(tb.findJavaFiles(moduleSrc))
+                .run()
+                .writeAll();
+        markModuleAsIncubator(moduleClasses.resolve("module-info.class"));
+        tb.writeJavaFiles(base, "public class Main { public static void main(String... args) {}}");
+        String log = new JavaTask(tb)
+                .vmOptions("--module-path", moduleClasses.toString(),
+                           "--add-modules", "test")
+                .className(base.resolve("Main.java").toString())
+                .run(Task.Expect.SUCCESS)
+                .writeAll()
+                .getOutput(Task.OutputKind.STDERR);
+
+        int numberOfWarnings = log.split("WARNING").length - 1;
+
+        if (log.contains("warning:") || numberOfWarnings != 1) {
+            error("Unexpected warning in error output: " + log);
+        }
+
+        List<String> compileLog = new JavacTask(tb)
+                .options("--module-path", moduleClasses.toString(),
+                         "--add-modules", "test",
+                         "-XDrawDiagnostics",
+                         "-XDsourceLauncher",
+                         "-XDshould-stop.at=FLOW")
+                .files(base.resolve("Main.java").toString())
+                .run(Task.Expect.SUCCESS)
+                .writeAll()
+                .getOutputLines(Task.OutputKind.DIRECT);
+
+        List<String> expectedOutput = List.of(
+                "- compiler.warn.incubating.modules: test",
+                "1 warning"
+        );
+
+        if (!expectedOutput.equals(compileLog)) {
+            error("Unexpected options : " + compileLog);
+        }
+    }
+        //where:
+        private static void markModuleAsIncubator(Path moduleInfoFile) throws Exception {
+            ClassModel cf = Classfile.of().parse(moduleInfoFile);
+            ModuleResolutionAttribute newAttr = ModuleResolutionAttribute.of(WARN_INCUBATING);
+            byte[] newBytes = Classfile.of().transform(cf, ClassTransform.dropping(ce -> ce instanceof Attributes)
+                    .andThen(ClassTransform.endHandler(classBuilder -> classBuilder.with(newAttr))));
+            try (OutputStream out = Files.newOutputStream(moduleInfoFile)) {
+                out.write(newBytes);
+            }
+        }
 
     Result run(Path file, List<String> runtimeArgs, List<String> appArgs) {
         List<String> args = new ArrayList<>();

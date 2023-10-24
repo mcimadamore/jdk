@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,28 @@
  */
 package java.lang;
 
-import java.lang.Thread.Builder;
 import java.lang.Thread.Builder.OfPlatform;
 import java.lang.Thread.Builder.OfVirtual;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
+import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.ContinuationSupport;
 
 /**
  * Defines static methods to create platform and virtual thread builders.
  */
 class ThreadBuilders {
+    private ThreadBuilders() { }
 
     /**
-     * Base implementation of ThreadBuilder.
+     * Base class for Thread.Builder implementations.
      */
-    static abstract non-sealed
-    class BaseThreadBuilder<T extends Builder> implements Builder {
+    private static class BaseThreadBuilder {
         private String name;
         private long counter;
         private int characteristics;
@@ -73,52 +75,29 @@ class ThreadBuilders {
             }
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public T name(String name) {
+        void setName(String name) {
             this.name = Objects.requireNonNull(name);
             this.counter = -1;
-            return (T) this;
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public T name(String prefix, long start) {
+        void setName(String prefix, long start) {
             Objects.requireNonNull(prefix);
             if (start < 0)
                 throw new IllegalArgumentException("'start' is negative");
             this.name = prefix;
             this.counter = start;
-            return (T) this;
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public T allowSetThreadLocals(boolean allow) {
-            if (allow) {
-                characteristics &= ~Thread.NO_THREAD_LOCALS;
-            } else {
-                characteristics |= Thread.NO_THREAD_LOCALS;
-            }
-            return (T) this;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public T inheritInheritableThreadLocals(boolean inherit) {
+        void setInheritInheritableThreadLocals(boolean inherit) {
             if (inherit) {
                 characteristics &= ~Thread.NO_INHERIT_THREAD_LOCALS;
             } else {
                 characteristics |= Thread.NO_INHERIT_THREAD_LOCALS;
             }
-            return (T) this;
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public T uncaughtExceptionHandler(UncaughtExceptionHandler ueh) {
+        void setUncaughtExceptionHandler(UncaughtExceptionHandler ueh) {
             this.uhe = Objects.requireNonNull(ueh);
-            return (T) this;
         }
     }
 
@@ -126,17 +105,44 @@ class ThreadBuilders {
      * ThreadBuilder.OfPlatform implementation.
      */
     static final class PlatformThreadBuilder
-            extends BaseThreadBuilder<OfPlatform> implements OfPlatform {
+            extends BaseThreadBuilder implements OfPlatform {
         private ThreadGroup group;
         private boolean daemon;
         private boolean daemonChanged;
         private int priority;
         private long stackSize;
 
+        PlatformThreadBuilder() {
+        }
+
         @Override
         String nextThreadName() {
             String name = super.nextThreadName();
             return (name != null) ? name : Thread.genThreadName();
+        }
+
+        @Override
+        public OfPlatform name(String name) {
+            setName(name);
+            return this;
+        }
+
+        @Override
+        public OfPlatform name(String prefix, long start) {
+            setName(prefix, start);
+            return this;
+        }
+
+        @Override
+        public OfPlatform inheritInheritableThreadLocals(boolean inherit) {
+            setInheritInheritableThreadLocals(inherit);
+            return this;
+        }
+
+        @Override
+        public OfPlatform uncaughtExceptionHandler(UncaughtExceptionHandler ueh) {
+            setUncaughtExceptionHandler(ueh);
+            return this;
         }
 
         @Override
@@ -202,13 +208,47 @@ class ThreadBuilders {
      * ThreadBuilder.OfVirtual implementation.
      */
     static final class VirtualThreadBuilder
-            extends BaseThreadBuilder<OfVirtual> implements OfVirtual {
-        private Executor scheduler;  // set by tests
+            extends BaseThreadBuilder implements OfVirtual {
+        private Executor scheduler;
+
+        VirtualThreadBuilder() {
+        }
+
+        // invoked by tests
+        VirtualThreadBuilder(Executor scheduler) {
+            if (!ContinuationSupport.isSupported())
+                throw new UnsupportedOperationException();
+            this.scheduler = Objects.requireNonNull(scheduler);
+        }
+
+        @Override
+        public OfVirtual name(String name) {
+            setName(name);
+            return this;
+        }
+
+        @Override
+        public OfVirtual name(String prefix, long start) {
+            setName(prefix, start);
+            return this;
+        }
+
+        @Override
+        public OfVirtual inheritInheritableThreadLocals(boolean inherit) {
+            setInheritInheritableThreadLocals(inherit);
+            return this;
+        }
+
+        @Override
+        public OfVirtual uncaughtExceptionHandler(UncaughtExceptionHandler ueh) {
+            setUncaughtExceptionHandler(ueh);
+            return this;
+        }
 
         @Override
         public Thread unstarted(Runnable task) {
             Objects.requireNonNull(task);
-            var thread = new VirtualThread(scheduler, nextThreadName(), characteristics(), task);
+            var thread = newVirtualThread(scheduler, nextThreadName(), characteristics(), task);
             UncaughtExceptionHandler uhe = uncaughtExceptionHandler();
             if (uhe != null)
                 thread.uncaughtExceptionHandler(uhe);
@@ -349,11 +389,83 @@ class ThreadBuilders {
         public Thread newThread(Runnable task) {
             Objects.requireNonNull(task);
             String name = nextThreadName();
-            Thread thread = new VirtualThread(scheduler, name, characteristics(), task);
+            Thread thread = newVirtualThread(scheduler, name, characteristics(), task);
             UncaughtExceptionHandler uhe = uncaughtExceptionHandler();
             if (uhe != null)
                 thread.uncaughtExceptionHandler(uhe);
             return thread;
+        }
+    }
+
+    /**
+     * Creates a new virtual thread to run the given task.
+     */
+    static Thread newVirtualThread(Executor scheduler,
+                                   String name,
+                                   int characteristics,
+                                   Runnable task) {
+        if (ContinuationSupport.isSupported()) {
+            return new VirtualThread(scheduler, name, characteristics, task);
+        } else {
+            if (scheduler != null)
+                throw new UnsupportedOperationException();
+            return new BoundVirtualThread(name, characteristics, task);
+        }
+    }
+
+    /**
+     * A "virtual thread" that is backed by a platform thread. This implementation
+     * is intended for platforms that don't have the underlying VM support for
+     * continuations. It can also be used for testing.
+     */
+    static final class BoundVirtualThread extends BaseVirtualThread {
+        private static final Unsafe U = Unsafe.getUnsafe();
+        private final Runnable task;
+        private boolean runInvoked;
+
+        BoundVirtualThread(String name, int characteristics, Runnable task) {
+            super(name, characteristics, true);
+            this.task = task;
+        }
+
+        @Override
+        public void run() {
+            // run is specified to do nothing when Thread is a virtual thread
+            if (Thread.currentThread() == this && !runInvoked) {
+                runInvoked = true;
+                Object bindings = Thread.scopedValueBindings();
+                runWith(bindings, task);
+            }
+        }
+
+        @Override
+        void park() {
+            U.park(false, 0L);
+        }
+
+        @Override
+        void parkNanos(long nanos) {
+            U.park(false, nanos);
+        }
+
+        @Override
+        void unpark() {
+            U.unpark(this);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("VirtualThread[#");
+            sb.append(threadId());
+            String name = getName();
+            if (!name.isEmpty()) {
+                sb.append(",");
+                sb.append(name);
+            }
+            sb.append("]/");
+            String stateAsString = threadState().toString();
+            sb.append(stateAsString.toLowerCase(Locale.ROOT));
+            return sb.toString();
         }
     }
 }
