@@ -228,6 +228,11 @@ public interface Tree {
         PARENTHESIZED(ParenthesizedTree.class),
 
         /**
+         * Used for instances of {@link ConstantExpressionTree}.
+         */
+        CONSTANT_EXPRESSION(ConstantExpressionTree.class),
+
+        /**
          * Used for instances of {@link BindingPatternTree}.
          *
          * @since 21

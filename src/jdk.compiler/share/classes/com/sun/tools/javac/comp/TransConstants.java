@@ -25,12 +25,8 @@
 
 package com.sun.tools.javac.comp;
 
-import com.sun.tools.javac.code.Scope;
-import com.sun.tools.javac.code.Scope.WriteableScope;
-import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.DynamicVarSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
-import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Type.MethodType;
@@ -38,29 +34,20 @@ import com.sun.tools.javac.jvm.PoolConstant.LoadableConstant;
 import com.sun.tools.javac.jvm.Target;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
+import com.sun.tools.javac.tree.JCTree.JCConstExpr;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
-import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
-import com.sun.tools.javac.tree.JCTree.JCNewClass;
-import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.tree.TreeTranslator;
-import com.sun.tools.javac.util.Assert;
 import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static com.sun.tools.javac.code.Flags.PRIVATE;
 import static com.sun.tools.javac.code.Flags.STATIC;
 import static com.sun.tools.javac.code.Flags.SYNTHETIC;
-import static com.sun.tools.javac.code.Kinds.Kind.MTH;
 
 public class TransConstants extends TreeTranslator {
 
@@ -97,45 +84,11 @@ public class TransConstants extends TreeTranslator {
      */
     Env<AttrContext> attrEnv;
 
-    /** A table mapping static local symbols to their desugared counterparts.
-     */
-    Map<VarSymbol, VarSymbol> staticLocalsTable;
-
     ListBuffer<JCTree> pendingClassDefs;
 
-    public void visitVarDef(JCVariableDecl tree) {
-        if (tree.sym.isStatic() && tree.sym.owner.kind == MTH) {
-            if (isSplittableStaticLocal(tree)) {
-                splitStaticLocalInit(tree);
-            } else {
-                liftStaticLocal(tree);
-            }
-            // do not emit the variable declaration
-            result = make.Skip();
-        } else {
-            super.visitVarDef(tree);
-        }
-    }
-
     @Override
-    public void visitIdent(JCIdent tree) {
-        if (staticLocalsTable != null && staticLocalsTable.containsKey(tree.sym)) {
-            Symbol translatedSym = staticLocalsTable.get(tree.sym);
-            result = make.Ident(translatedSym);
-        } else {
-            super.visitIdent(tree);
-        }
-    }
-
-    @Override
-    public void visitMethodDef(JCMethodDecl tree) {
-        Map<VarSymbol, VarSymbol> prevStaticLocalsTable = staticLocalsTable;
-        try {
-            staticLocalsTable = new HashMap<>();
-            super.visitMethodDef(tree);
-        } finally {
-            staticLocalsTable = prevStaticLocalsTable;
-        }
+    public void visitConstExpr(JCConstExpr tree) {
+        result = splitConstant(tree);
     }
 
     @Override
@@ -153,48 +106,21 @@ public class TransConstants extends TreeTranslator {
         }
     }
 
-    boolean isSplittableStaticLocal(JCVariableDecl tree) {
-        return tree.sym.isFinal() &&
-                !hasAnonClassDefs(tree);
-    }
-
-    boolean hasAnonClassDefs(JCTree tree) {
-        class AnonClassFinder extends TreeScanner {
-            boolean anonFound;
-
-            @Override
-            public void visitNewClass(JCNewClass tree) {
-                if (tree.def != null) {
-                    anonFound = true;
-                }
-                super.visitNewClass(tree);
-            }
-
-            @Override
-            public void visitClassDef(JCClassDecl tree) {
-                // do not recurse
-            }
-        }
-        AnonClassFinder anonClassFinder = new AnonClassFinder();
-        tree.accept(anonClassFinder);
-        return anonClassFinder.anonFound;
-    }
-
-    private void splitStaticLocalInit(JCVariableDecl tree) {
-        Assert.checkNonNull(tree.init);
+    private JCExpression splitConstant(JCConstExpr tree) {
+        Name constName = names.fromString("const")
+                              .append('$', names.fromString(String.valueOf(pendingClassDefs.size())));
         // create synthetic init symbol
         MethodSymbol initSym = new MethodSymbol(
                 STATIC | SYNTHETIC | PRIVATE,
-                tree.name.append('$', names.fromString("init")),
+                constName.append('$', names.fromString("init")),
                 new MethodType(List.nil(), tree.type, List.nil(), syms.methodClass),
                 currentClass.sym);
-        enterSynthetic(tree.pos(), initSym, currentClass.sym.members());
+        currentClass.sym.members().enter(initSym);
         // create synthetic init tree
-        JCExpression initExpr = translate(tree.init);
+        JCExpression initExpr = translate(tree.expr);
         JCMethodDecl initDef = make.MethodDef(initSym, make.Block(0, List.of(make.Return(initExpr))));
         pendingClassDefs.add(initDef);
-        // drop original init
-        tree.init = null;
+
         List<Type> lazyInit_staticArgTypes = List.of(syms.methodHandleLookupType,
                 syms.stringType,
                 syms.classType,
@@ -204,43 +130,9 @@ public class TransConstants extends TreeTranslator {
                 names.invoke, lazyInit_staticArgTypes, List.nil());
 
         // set a constant value that points to a dynamic symbol, so that Gen can emit the correct ldc
-        DynamicVarSymbol condySym = new DynamicVarSymbol(tree.name, currentClass.sym, bsm.asHandle(), tree.type,
+        DynamicVarSymbol condySym = new DynamicVarSymbol(constName, currentClass.sym, bsm.asHandle(), tree.type,
                 new LoadableConstant[] { initSym.asHandle() });
-        staticLocalsTable.put(tree.sym, condySym);
-    }
-
-    private void liftStaticLocal(JCVariableDecl tree) {
-        Assert.checkNonNull(tree.init);
-        // create synthetic init symbol
-        VarSymbol liftedSym = new VarSymbol(
-                STATIC | SYNTHETIC | PRIVATE,
-                makeSyntheticName(tree.name.append('$', names.fromString("static")), currentClass.sym.members()),
-                tree.sym.type, currentClass.sym);
-        enterSynthetic(tree.pos(), liftedSym, currentClass.sym.members());
-        // create synthetic init tree
-        JCExpression initExpr = translate(tree.init);
-        JCVariableDecl liftedDecl = make.VarDef(liftedSym, initExpr);
-        pendingClassDefs.add(liftedDecl);
-        staticLocalsTable.put(tree.sym, liftedSym);
-    }
-
-    // copied from Lower
-    private void enterSynthetic(DiagnosticPosition pos, Symbol sym, WriteableScope s) {
-        s.enter(sym);
-    }
-
-    private Name makeSyntheticName(Name name, Scope s) {
-        do {
-            name = name.append(
-                    target.syntheticNameChar(),
-                    names.empty);
-        } while (lookupSynthetic(name, s) != null);
-        return name;
-    }
-
-    private Symbol lookupSynthetic(Name name, Scope s) {
-        Symbol sym = s.findFirst(name);
-        return (sym==null || (sym.flags()&SYNTHETIC)==0) ? null : sym;
+        return make.Ident(condySym);
     }
 
     /** Translate a toplevel class and return a list consisting of

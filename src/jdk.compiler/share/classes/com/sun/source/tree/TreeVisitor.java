@@ -380,6 +380,14 @@ public interface TreeVisitor<R,P> {
     R visitParenthesized(ParenthesizedTree node, P p);
 
     /**
+     * Visits a {@code ConstantExpressionTree} node.
+     * @param node the node being visited
+     * @param p a parameter value
+     * @return a result value
+     */
+    R visitConstantExpression(ConstantExpressionTree node, P p);
+
+    /**
      * Visits a {@code ReturnTree} node.
      * @param node the node being visited
      * @param p a parameter value

@@ -1330,6 +1330,12 @@ public class JavacParser implements Parser {
                 }
             } else return illegal();
             break;
+        case CONST:
+            accept(CONST);
+            selectExprMode();
+            t = termRest(term1Rest(term2Rest(term3(), TreeInfo.orPrec)));
+            t = toP(F.at(pos).ConstExpr(t));
+            break;
         case LPAREN:
             if (typeArgs == null && isMode(EXPR)) {
                 ParensResult pres = analyzeParens();
@@ -2818,8 +2824,7 @@ public class JavacParser implements Parser {
         case ASSERT:
             return List.of(parseSimpleStatement());
         case MONKEYS_AT:
-        case FINAL:
-        case STATIC: {
+        case FINAL: {
             dc = token.docComment();
             JCModifiers mods = modifiersOpt();
             if (isDeclaration()) {

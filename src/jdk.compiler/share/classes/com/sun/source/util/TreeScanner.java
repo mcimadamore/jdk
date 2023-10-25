@@ -672,6 +672,20 @@ public class TreeScanner<R,P> implements TreeVisitor<R,P> {
      * @return the result of scanning
      */
     @Override
+    public R visitConstantExpression(ConstantExpressionTree node, P p) {
+        return scan(node.getExpression(), p);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation scans the children in left to right order.
+     *
+     * @param node  {@inheritDoc}
+     * @param p  {@inheritDoc}
+     * @return the result of scanning
+     */
+    @Override
     public R visitAssignment(AssignmentTree node, P p) {
         R r = scan(node.getVariable(), p);
         r = scanAndReduce(node.getExpression(), p, r);

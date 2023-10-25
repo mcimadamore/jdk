@@ -3974,6 +3974,20 @@ public class Attr extends JCTree.Visitor {
             log.error(tree.pos(), Errors.IllegalParenthesizedExpression);
     }
 
+    public void visitConstExpr(JCConstExpr tree) {
+        Env<AttrContext> initEnv = env.dup(tree);
+        try {
+            initEnv.info.staticLevel++;
+            Type owntype = attribTree(tree.expr, initEnv, resultInfo);
+            result = check(tree, owntype, pkind(), resultInfo);
+            Symbol sym = TreeInfo.symbol(tree);
+            if (sym != null && sym.kind.matches(KindSelector.TYP_PCK) && sym.kind != Kind.ERR)
+                log.error(tree.pos(), Errors.IllegalParenthesizedExpression);
+        } finally {
+            initEnv.info.staticLevel--;
+        }
+    }
+
     public void visitAssign(JCAssign tree) {
         Type owntype = attribTree(tree.lhs, env.dup(tree), varAssignmentInfo);
         Type capturedType = capture(owntype);

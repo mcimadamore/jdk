@@ -357,6 +357,13 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
     }
 
     @DefinedBy(Api.COMPILER_TREE)
+    public JCTree visitConstantExpression(ConstantExpressionTree node, P p) {
+        JCConstExpr t = (JCConstExpr) node;
+        JCExpression expr = copy(t.expr, p);
+        return M.at(t.pos).ConstExpr(expr);
+    }
+
+    @DefinedBy(Api.COMPILER_TREE)
     public JCTree visitReturn(ReturnTree node, P p) {
         JCReturn t = (JCReturn) node;
         JCExpression expr = copy(t.expr, p);

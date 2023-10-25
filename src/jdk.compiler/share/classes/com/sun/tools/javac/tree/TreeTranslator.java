@@ -324,6 +324,11 @@ public class TreeTranslator extends JCTree.Visitor {
         result = tree;
     }
 
+    public void visitConstExpr(JCConstExpr tree) {
+        tree.expr = translate(tree.expr);
+        result = tree;
+    }
+
     public void visitAssign(JCAssign tree) {
         tree.lhs = translate(tree.lhs);
         tree.rhs = translate(tree.rhs);
