@@ -482,12 +482,6 @@ public class ClassWriter {
         }
 
         @Override
-        public Void visitLazyValue(LazyValue_attribute attr, ClassOutputStream out) {
-            out.writeShort(attr.lazyvalue_index);
-            return null;
-        }
-
-        @Override
         public Void visitLineNumberTable(LineNumberTable_attribute attr, ClassOutputStream out) {
             out.writeShort(attr.line_number_table.length);
             for (LineNumberTable_attribute.Entry e: attr.line_number_table)

@@ -466,15 +466,6 @@ public class AttributeWriter extends BasicWriter {
                 println("// " + attr.targetPlatform().stringValue());
                 indent(-1);
             }
-/*
-@Override
-    public Void visitLazyValue(LazyValue_attribute attr, Void ignore) {
-        print("LazyValue: ");
-        constantWriter.write(attr.lazyvalue_index);
-        println();
-        return null;
-    }
-*/
             case NestMembersAttribute attr -> {
                 println("NestMembers:");
                 indent(+1);

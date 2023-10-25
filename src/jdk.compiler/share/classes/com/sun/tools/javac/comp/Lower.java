@@ -1124,10 +1124,6 @@ public class Lower extends TreeTranslator {
         return accessor;
     }
 
-    Name lazyStaticInitName(Symbol sym) {
-        return sym.name.append('$', names.fromString("init"));
-    }
-
     /** The qualifier to be used for accessing a symbol in an outer class.
      *  This is either C.sym or C.this.sym, depending on whether or not
      *  sym is static.
@@ -1259,6 +1255,7 @@ public class Lower extends TreeTranslator {
             break;
         case MTH: case VAR:
             if (sym.owner.kind == TYP) {
+
                 // Access methods are required for
                 //  - private members,
                 //  - protected members in a superclass of an
@@ -3675,45 +3672,9 @@ public class Lower extends TreeTranslator {
                                  names.empty, null,
                                  currentClass);
         }
-        // handle static locals
-        if (tree.sym.isStatic() && tree.sym.owner.kind == MTH) {
-            splitInit(tree);
-        } else {
-            if (tree.init != null) tree.init = translate(tree.init, tree.type);
-        }
+        if (tree.init != null) tree.init = translate(tree.init, tree.type);
         result = tree;
         currentMethodSym = oldMethodSym;
-    }
-
-    private MethodSymbol splitInit(JCVariableDecl tree) {
-        Assert.checkNonNull(tree.init);
-        // create synthetic init symbol
-        MethodSymbol initSym = new MethodSymbol(
-                STATIC | SYNTHETIC | PRIVATE,
-                tree.name.append('$', names.fromString("init")),
-                new MethodType(List.nil(), tree.type, List.nil(), syms.methodClass),
-                currentClass);
-        enterSynthetic(tree.pos(), initSym, currentClass.members());
-        // create synthetic init tree
-        JCExpression initExpr = translate(tree.init, tree.type);
-        JCMethodDecl initDef = make.MethodDef(initSym, make.Block(0, List.of(make.Return(initExpr))));
-        JCClassDecl currentDecl = classDef(currentClass);
-        currentDecl.defs = currentDecl.defs.prepend(initDef);
-        // drop original init
-        tree.init = null;
-        List<Type> lazyInit_staticArgTypes = List.of(syms.methodHandleLookupType,
-                syms.stringType,
-                syms.classType,
-                syms.methodHandleType);
-
-        MethodSymbol bsm = rs.resolveInternalMethod(tree, attrEnv, syms.constantBootstraps,
-                names.invoke, lazyInit_staticArgTypes, List.nil());
-
-        // set a constant value that points to a dynamic symbol, so that Gen can emit the correct ldc
-        tree.sym.setData(new DynamicVarSymbol(tree.name, currentClass, bsm.asHandle(), tree.type,
-                new LoadableConstant[] { initSym.asHandle() }));
-
-        return initSym;
     }
 
     public void visitBlock(JCBlock tree) {

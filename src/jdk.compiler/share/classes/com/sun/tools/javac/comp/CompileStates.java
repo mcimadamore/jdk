@@ -61,9 +61,10 @@ public class CompileStates extends HashMap<Env<AttrContext>, CompileStates.Compi
         TRANSTYPES(6),
         TRANSLITERALS(7),
         TRANSPATTERNS(8),
-        UNLAMBDA(9),
-        LOWER(10),
-        GENERATE(11);
+        TRANSCONSTANTS(9),
+        UNLAMBDA(10),
+        LOWER(11),
+        GENERATE(12);
 
         CompileState(int value) {
             this.value = value;

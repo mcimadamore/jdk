@@ -247,7 +247,7 @@ public class Symtab {
     public final Type processorType;
     public final Type linkageType;
 
-    // for lazy statics
+    // for static locals
     public final Type constantBootstraps;
 
     /** The symbol representing the length field of an array.
@@ -648,7 +648,7 @@ public class Symtab {
         processorType = enterClass("java.lang.StringTemplate$Processor");
         linkageType = enterClass("java.lang.StringTemplate$Processor$Linkage");
 
-        // for lazy statics
+        // for static locals
         constantBootstraps = enterClass("java.lang.invoke.ConstantBootstraps");
 
         // Enter a synthetic class that is used to mark internal

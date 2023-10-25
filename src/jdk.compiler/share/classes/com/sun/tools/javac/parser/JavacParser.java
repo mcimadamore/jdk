@@ -4842,10 +4842,6 @@ public class JavacParser implements Parser {
         return false;
     }
 
-    protected boolean isLazyStaticIdentifier() {
-        return false;
-    }
-
     private boolean allowedAfterSealedOrNonSealed(Token next, boolean local, boolean currentIsNonSealed) {
         return local ?
             switch (next.kind) {

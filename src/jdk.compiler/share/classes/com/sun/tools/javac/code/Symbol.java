@@ -1783,18 +1783,8 @@ public abstract class Symbol extends AnnoConstruct implements PoolConstant, Elem
                 } catch (Exception ex) {
                     throw new AssertionError(ex);
                 }
-            } else if (data instanceof DynamicVarSymbol) {
-                return null; // ignore
             }
             return data;
-        }
-
-        public DynamicVarSymbol lazyConstValue() {
-            if (data instanceof DynamicVarSymbol dsym) {
-                return dsym;
-            } else {
-                return null;
-            }
         }
 
         public void setData(Object data) {

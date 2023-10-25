@@ -982,12 +982,6 @@ public class ClassWriter extends ClassFile {
             endAttr(alenIdx);
             acount++;
         }
-        if (v.lazyConstValue() != null) {
-            int alenIdx = writeAttr(names.LazyValue);
-            databuf.appendChar(poolWriter.putConstant(v.lazyConstValue()));
-            endAttr(alenIdx);
-            acount++;
-        }
         acount += writeMemberAttrs(v, false);
         acount += writeExtraAttributes(v);
         endAttrs(acountIdx, acount);

@@ -1213,10 +1213,8 @@ public class Check {
                 mask = ReceiverParamFlags;
             else if (sym.owner.kind != TYP)
                 mask = LocalVarFlags;
-            else if ((sym.owner.flags_field & INTERFACE) != 0) {
-                implicit = InterfaceVarFlags;
-                mask = InterfaceVarFlags;
-            }
+            else if ((sym.owner.flags_field & INTERFACE) != 0)
+                mask = implicit = InterfaceVarFlags;
             else
                 mask = VarFlags;
             break;

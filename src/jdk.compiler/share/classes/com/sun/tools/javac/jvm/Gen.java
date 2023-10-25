@@ -2319,9 +2319,6 @@ public class Gen extends JCTree.Visitor {
 
     public void visitIdent(JCIdent tree) {
         Symbol sym = tree.sym;
-        if (isStaticLocal(sym)) {
-            sym = ((VarSymbol)sym).lazyConstValue();
-        }
         if (tree.name == names._this || tree.name == names._super) {
             Item res = tree.name == names._this
                 ? items.makeThisItem()
@@ -2394,10 +2391,7 @@ public class Gen extends JCTree.Visitor {
             result = items.
                 makeImmediateItem(sym.type, ((VarSymbol) sym).getConstValue());
         } else {
-            if (isInvokeDynamic(sym) || isConstantDynamic(sym)) {
-                if (isConstantDynamic(sym)) {
-                    setTypeAnnotationPositions(tree.pos);
-                }
+            if (isInvokeDynamic(sym)) {
                 result = items.makeDynamicItem(sym);
                 return;
             } else {
@@ -2425,12 +2419,6 @@ public class Gen extends JCTree.Visitor {
 
     public boolean isInvokeDynamic(Symbol sym) {
         return sym.kind == MTH && ((MethodSymbol)sym).isDynamic();
-    }
-
-    public boolean isStaticLocal(Symbol sym) {
-        return sym.kind == VAR &&
-                sym.isStatic() &&
-                sym.owner.kind == MTH;
     }
 
     public void visitLiteral(JCLiteral tree) {

@@ -1632,6 +1632,13 @@ public class JavaCompiler {
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
 
+            if (shouldStop(CompileState.TRANSCONSTANTS))
+                return;
+
+            env.tree = TransConstants.instance(context).translateTopLevelClass(env, env.tree, localMake);
+
+            compileStates.put(env, CompileState.TRANSPATTERNS);
+
             if (scanner.hasLambdas) {
                 if (shouldStop(CompileState.UNLAMBDA))
                     return;

@@ -143,7 +143,6 @@ public class Names {
     public final Name Enum;
     public final Name Exceptions;
     public final Name InnerClasses;
-    public final Name LazyValue;
     public final Name LineNumberTable;
     public final Name LocalVariableTable;
     public final Name LocalVariableTypeTable;
@@ -235,9 +234,6 @@ public class Names {
     public final Name newStringTemplate;
     public final Name newLargeStringTemplate;
     public final Name processStringTemplate;
-
-    // lazy statics
-    public final Name lazy;
 
     public final Name.Table table;
 
@@ -343,7 +339,6 @@ public class Names {
         Enum = fromString("Enum");
         Exceptions = fromString("Exceptions");
         InnerClasses = fromString("InnerClasses");
-        LazyValue = fromString("LazyValue");
         LineNumberTable = fromString("LineNumberTable");
         LocalVariableTable = fromString("LocalVariableTable");
         LocalVariableTypeTable = fromString("LocalVariableTypeTable");
@@ -430,9 +425,6 @@ public class Names {
         typeSwitch = fromString("typeSwitch");
         enumSwitch = fromString("enumSwitch");
         enumConstant = fromString("enumConstant");
-
-        // lazy statics
-        lazy = fromString("lazy");
     }
 
     protected Name.Table createTable(Options options) {
