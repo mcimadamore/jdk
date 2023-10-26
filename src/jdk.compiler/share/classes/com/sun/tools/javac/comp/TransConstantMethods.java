@@ -25,6 +25,7 @@
 
 package com.sun.tools.javac.comp;
 
+import com.sun.source.tree.MemberReferenceTree.ReferenceMode;
 import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Scope.WriteableScope;
 import com.sun.tools.javac.code.Symbol;
@@ -42,6 +43,7 @@ import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
+import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCNewClass;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
@@ -55,6 +57,7 @@ import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.Position;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -106,13 +109,20 @@ public class TransConstantMethods extends TreeTranslator {
     public void visitMethodDef(JCMethodDecl tree) {
         boolean isConstantMethod = (tree.sym.flags() & CONST_METHOD) != 0;
         if (isConstantMethod) {
+            MethodSymbol initSym = dupToStaticInit(tree);
             if (tree.sym.isStatic()) {
                 // condy
-                VarSymbol dynSym = dupToStaticInit(tree);
+                VarSymbol dynSym = makeDynamicRef(tree, initSym);
                 JCStatement retStat = make.Return(make.Ident(dynSym));
                 tree.body = make.Block(0, List.of(retStat));
                 result = tree;
             } else {
+                // generate a CC field and return CC::get
+                VarSymbol ccSym = makeComputedConstant(initSym);
+                JCMethodInvocation ccGet = make.App(make.Select(make.Ident(ccSym), names.get));
+                JCStatement retStat = make.Return(ccGet);
+                tree.body = make.Block(0, List.of(retStat));
+                result = tree;
                 throw new UnsupportedOperationException();
             }
         } else {
@@ -135,11 +145,11 @@ public class TransConstantMethods extends TreeTranslator {
         }
     }
 
-    private VarSymbol dupToStaticInit(JCMethodDecl tree) {
+    private MethodSymbol dupToStaticInit(JCMethodDecl tree) {
         // create synthetic init symbol
         // invariant: the constant method is non-void, non-generic, and 0-ary
         MethodSymbol initSym = new MethodSymbol(
-                STATIC | SYNTHETIC | PRIVATE,
+                (tree.sym.isStatic() ? STATIC : 0) | SYNTHETIC | PRIVATE,
                 tree.name.append('$', names.fromString("init")),
                 tree.sym.type,
                 currentClass.sym);
@@ -147,35 +157,38 @@ public class TransConstantMethods extends TreeTranslator {
         // create synthetic method tree
         JCMethodDecl initDef = make.MethodDef(initSym, translate(tree.body));
         pendingClassDefs.add(initDef);
+        return initSym;
+    }
+
+    private VarSymbol makeDynamicRef(DiagnosticPosition pos, MethodSymbol symbol) {
         // drop original init
         List<Type> lazyInit_staticArgTypes = List.of(syms.methodHandleLookupType,
                 syms.stringType,
                 syms.classType,
                 syms.methodHandleType);
 
-        MethodSymbol bsm = rs.resolveInternalMethod(tree, attrEnv, syms.constantBootstraps,
+        MethodSymbol bsm = rs.resolveInternalMethod(pos, attrEnv, syms.constantBootstraps,
                 names.invoke, lazyInit_staticArgTypes, List.nil());
 
         // set a constant value that points to a dynamic symbol, so that Gen can emit the correct ldc
-        DynamicVarSymbol condySym = new DynamicVarSymbol(tree.name, currentClass.sym, bsm.asHandle(), tree.type.getReturnType(),
-                new LoadableConstant[] { initSym.asHandle() });
+        DynamicVarSymbol condySym = new DynamicVarSymbol(symbol.name, currentClass.sym, bsm.asHandle(), symbol.type.getReturnType(),
+                new LoadableConstant[] { symbol.asHandle() });
         return condySym;
     }
 
-//    private void liftStaticLocal(JCVariableDecl tree) {
-//        Assert.checkNonNull(tree.init);
-//        // create synthetic init symbol
-//        VarSymbol liftedSym = new VarSymbol(
-//                STATIC | SYNTHETIC | PRIVATE,
-//                makeSyntheticName(tree.name.append('$', names.fromString("static")), currentClass.sym.members()),
-//                tree.sym.type, currentClass.sym);
-//        enterSynthetic(tree.pos(), liftedSym, currentClass.sym.members());
-//        // create synthetic init tree
-//        JCExpression initExpr = translate(tree.init);
-//        JCVariableDecl liftedDecl = make.VarDef(liftedSym, initExpr);
-//        pendingClassDefs.add(liftedDecl);
-//        staticLocalsTable.put(tree.sym, liftedSym);
-//    }
+    private VarSymbol makeComputedConstant(DiagnosticPosition pos, MethodSymbol symbol) {
+        // create synthetic init symbol
+        VarSymbol liftedSym = new VarSymbol(
+                SYNTHETIC | PRIVATE,
+                makeSyntheticName(symbol.name.append('$', names.fromString("cc")), currentClass.sym.members()),
+                syms.computedConstantType, currentClass.sym);
+        enterSynthetic(pos, liftedSym, currentClass.sym.members());
+        // create synthetic init tree
+        JCExpression initExpr = make.Reference(ReferenceMode.INVOKE, symbol.name, make.This(currentClass.type), List.nil());
+        JCVariableDecl liftedDecl = make.VarDef(liftedSym, initExpr);
+        pendingClassDefs.add(liftedDecl);
+        return liftedSym;
+    }
 
     // copied from Lower
     private void enterSynthetic(DiagnosticPosition pos, Symbol sym, WriteableScope s) {
