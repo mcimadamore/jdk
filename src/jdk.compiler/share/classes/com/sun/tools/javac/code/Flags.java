@@ -228,7 +228,11 @@ public class Flags {
     /**
      * Flag that marks a multi-catch parameter.
      */
-    public static final long UNION = 1L<<39;
+    public static final long UNION = 1L<<39; // VarSymbols
+
+    /** Flag is set for 'const' methods.
+     */
+    public static final long CONST_METHOD    = 1L<<39; // MethodSymbols
 
     /**
      * Flags an erroneous TypeSymbol as viable for recovery.
@@ -423,19 +427,19 @@ public class Flags {
                                             VOLATILE | TRANSIENT | ENUM,
         ConstructorFlags                  = AccessFlags,
         InterfaceMethodFlags              = ABSTRACT | PUBLIC,
-        MethodFlags                       = AccessFlags | ABSTRACT | STATIC | NATIVE |
-                                            SYNCHRONIZED | FINAL | STRICTFP,
         RecordMethodFlags                 = AccessFlags | ABSTRACT | STATIC |
                                             SYNCHRONIZED | FINAL | STRICTFP;
     public static final long
-        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED,
+        ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED | CONST_METHOD,
         ExtendedMemberClassFlags          = (long)MemberClassFlags | SEALED | NON_SEALED,
         ExtendedMemberStaticClassFlags    = (long) MemberStaticClassFlags | SEALED | NON_SEALED,
         ExtendedClassFlags                = (long)ClassFlags | SEALED | NON_SEALED,
         ModifierFlags                     = ((long)StandardFlags & ~INTERFACE) | DEFAULT | SEALED | NON_SEALED,
-        InterfaceMethodMask               = ABSTRACT | PRIVATE | STATIC | PUBLIC | STRICTFP | DEFAULT,
+        InterfaceMethodMask               = ABSTRACT | PRIVATE | STATIC | PUBLIC | STRICTFP | DEFAULT | CONST_METHOD,
+
+        MethodFlags                       = AccessFlags | ABSTRACT | STATIC | NATIVE | SYNCHRONIZED | FINAL | STRICTFP | CONST_METHOD,
         AnnotationTypeElementMask         = ABSTRACT | PUBLIC,
-        LocalVarFlags                     = FINAL | PARAMETER | STATIC,
+        LocalVarFlags                     = FINAL | PARAMETER,
         ReceiverParamFlags                = PARAMETER;
 
     public static Set<Modifier> asModifierSet(long flags) {
@@ -519,7 +523,7 @@ public class Flags {
         GENERATEDCONSTR(Flags.GENERATEDCONSTR),
         HYPOTHETICAL(Flags.HYPOTHETICAL),
         PROPRIETARY(Flags.PROPRIETARY),
-        UNION(Flags.UNION),
+        CONST(Flags.CONST_METHOD),
         EFFECTIVELY_FINAL(Flags.EFFECTIVELY_FINAL),
         CLASH(Flags.CLASH),
         AUXILIARY(Flags.AUXILIARY),

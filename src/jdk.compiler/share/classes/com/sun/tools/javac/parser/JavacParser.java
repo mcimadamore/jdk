@@ -2818,8 +2818,7 @@ public class JavacParser implements Parser {
         case ASSERT:
             return List.of(parseSimpleStatement());
         case MONKEYS_AT:
-        case FINAL:
-        case STATIC: {
+        case FINAL: {
             dc = token.docComment();
             JCModifiers mods = modifiersOpt();
             if (isDeclaration()) {
@@ -3447,7 +3446,7 @@ public class JavacParser implements Parser {
     /** ModifiersOpt = { Modifier }
      *  Modifier = PUBLIC | PROTECTED | PRIVATE | STATIC | ABSTRACT | FINAL
      *           | NATIVE | SYNCHRONIZED | TRANSIENT | VOLATILE | "@"
-     *           | "@" Annotation
+     *           | "@" Annotation | const
      */
     protected JCModifiers modifiersOpt() {
         return modifiersOpt(null);
@@ -3485,6 +3484,7 @@ public class JavacParser implements Parser {
             case STRICTFP    : flag = Flags.STRICTFP; break;
             case MONKEYS_AT  : flag = Flags.ANNOTATION; break;
             case DEFAULT     : flag = Flags.DEFAULT; break;
+            case CONST       : flag = Flags.CONST_METHOD; break;
             case ERROR       : flag = 0; nextToken(); break;
             case IDENTIFIER  : {
                 if (isNonSealedClassStart(false)) {

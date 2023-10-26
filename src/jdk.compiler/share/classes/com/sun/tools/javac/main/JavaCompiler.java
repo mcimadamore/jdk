@@ -30,7 +30,6 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -84,8 +83,6 @@ import com.sun.tools.javac.util.Log.WriterKind;
 
 import static com.sun.tools.javac.code.Kinds.Kind.*;
 
-import com.sun.tools.javac.code.Lint;
-import com.sun.tools.javac.code.Lint.LintCategory;
 import com.sun.tools.javac.code.Symbol.ModuleSymbol;
 
 import com.sun.tools.javac.resources.CompilerProperties.Errors;
@@ -1632,10 +1629,10 @@ public class JavaCompiler {
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
 
-            if (shouldStop(CompileState.TRANSCONSTANTS))
+            if (shouldStop(CompileState.TRANSCONSTANTMETHODS))
                 return;
 
-            env.tree = TransConstants.instance(context).translateTopLevelClass(env, env.tree, localMake);
+            env.tree = TransConstantMethods.instance(context).translateTopLevelClass(env, env.tree, localMake);
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
 
