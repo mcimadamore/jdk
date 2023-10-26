@@ -247,8 +247,10 @@ public class Symtab {
     public final Type processorType;
     public final Type linkageType;
 
-    // for static locals
-    public final Type constantBootstraps;
+    // for const methods
+    public final Type computedConstantType;
+    public final MethodSymbol computedConstantGet;
+    public final MethodSymbol computedConstantOf;
 
     /** The symbol representing the length field of an array.
      */
@@ -649,7 +651,18 @@ public class Symtab {
         linkageType = enterClass("java.lang.StringTemplate$Processor$Linkage");
 
         // for static locals
-        constantBootstraps = enterClass("java.lang.invoke.ConstantBootstraps");
+        computedConstantType = enterClass("java.lang.ComputedConstant");
+        synthesizeEmptyInterfaceIfMissing(computedConstantType);
+        computedConstantGet = new MethodSymbol(PUBLIC,
+                names.get,
+                new MethodType(List.nil(), objectType,
+                        List.nil(), methodClass),
+                computedConstantType.tsym);
+        computedConstantOf = new MethodSymbol(PUBLIC | STATIC,
+                names.of,
+                new MethodType(List.of(supplierType), computedConstantType,
+                        List.nil(), methodClass),
+                computedConstantType.tsym);
 
         // Enter a synthetic class that is used to mark internal
         // proprietary classes in ct.sym.  This class does not have a

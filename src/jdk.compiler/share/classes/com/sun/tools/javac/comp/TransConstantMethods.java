@@ -34,39 +34,35 @@ import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.MethodType;
+import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.jvm.PoolConstant.LoadableConstant;
 import com.sun.tools.javac.jvm.Target;
 import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
-import com.sun.tools.javac.tree.JCTree.JCExpression;
-import com.sun.tools.javac.tree.JCTree.JCIdent;
+import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
+import com.sun.tools.javac.tree.JCTree.JCMemberReference;
+import com.sun.tools.javac.tree.JCTree.JCMemberReference.ReferenceKind;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
-import com.sun.tools.javac.tree.JCTree.JCNewClass;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.tree.TreeTranslator;
-import com.sun.tools.javac.util.Assert;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
-import com.sun.tools.javac.util.Position;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.sun.tools.javac.util.Pair;
 
 import static com.sun.tools.javac.code.Flags.CONST_METHOD;
+import static com.sun.tools.javac.code.Flags.FINAL;
 import static com.sun.tools.javac.code.Flags.PRIVATE;
 import static com.sun.tools.javac.code.Flags.STATIC;
 import static com.sun.tools.javac.code.Flags.SYNTHETIC;
-import static com.sun.tools.javac.code.Kinds.Kind.MTH;
 
 public class TransConstantMethods extends TreeTranslator {
 
@@ -84,6 +80,8 @@ public class TransConstantMethods extends TreeTranslator {
     private TreeMaker make;
     private Resolve rs;
     private Target target;
+    private Types types;
+    private boolean needsLambdaToMethod;
 
     @SuppressWarnings("this-escape")
     protected TransConstantMethods(Context context) {
@@ -93,6 +91,7 @@ public class TransConstantMethods extends TreeTranslator {
         make = TreeMaker.instance(context);
         rs = Resolve.instance(context);
         target = Target.instance(context);
+        types = Types.instance(context);
     }
 
     /** The currently enclosing class.
@@ -118,12 +117,15 @@ public class TransConstantMethods extends TreeTranslator {
                 result = tree;
             } else {
                 // generate a CC field and return CC::get
-                VarSymbol ccSym = makeComputedConstant(initSym);
-                JCMethodInvocation ccGet = make.App(make.Select(make.Ident(ccSym), names.get));
-                JCStatement retStat = make.Return(ccGet);
+                VarSymbol ccSym = makeComputedConstantField(tree, initSym);
+                JCFieldAccess recv = make.Select(make.Ident(ccSym), names.get);
+                recv.sym = syms.computedConstantGet;
+                recv.type = tree.type;
+                JCMethodInvocation ccGet = make.App(recv);
+                ccGet.type = syms.objectType;
+                JCStatement retStat = make.Return(make.TypeCast(types.boxedTypeOrType(tree.type.getReturnType()), ccGet));
                 tree.body = make.Block(0, List.of(retStat));
                 result = tree;
-                throw new UnsupportedOperationException();
             }
         } else {
             super.visitMethodDef(tree);
@@ -167,7 +169,7 @@ public class TransConstantMethods extends TreeTranslator {
                 syms.classType,
                 syms.methodHandleType);
 
-        MethodSymbol bsm = rs.resolveInternalMethod(pos, attrEnv, syms.constantBootstraps,
+        MethodSymbol bsm = rs.resolveInternalMethod(pos, attrEnv, syms.constantBootstrapsType,
                 names.invoke, lazyInit_staticArgTypes, List.nil());
 
         // set a constant value that points to a dynamic symbol, so that Gen can emit the correct ldc
@@ -176,17 +178,27 @@ public class TransConstantMethods extends TreeTranslator {
         return condySym;
     }
 
-    private VarSymbol makeComputedConstant(DiagnosticPosition pos, MethodSymbol symbol) {
+    private VarSymbol makeComputedConstantField(DiagnosticPosition pos, MethodSymbol symbol) {
         // create synthetic init symbol
         VarSymbol liftedSym = new VarSymbol(
-                SYNTHETIC | PRIVATE,
+                SYNTHETIC | PRIVATE | FINAL,
                 makeSyntheticName(symbol.name.append('$', names.fromString("cc")), currentClass.sym.members()),
                 syms.computedConstantType, currentClass.sym);
         enterSynthetic(pos, liftedSym, currentClass.sym.members());
         // create synthetic init tree
-        JCExpression initExpr = make.Reference(ReferenceMode.INVOKE, symbol.name, make.This(currentClass.type), List.nil());
-        JCVariableDecl liftedDecl = make.VarDef(liftedSym, initExpr);
+        JCMemberReference refExpr = make.Reference(ReferenceMode.INVOKE, symbol.name, make.This(currentClass.type), List.nil());
+        refExpr.target = refExpr.type = new ClassType(Type.noType, List.of(types.boxedTypeOrType(symbol.type.getReturnType())), syms.supplierType.tsym);
+        refExpr.kind = ReferenceKind.BOUND;
+        refExpr.referentType = symbol.type;
+        refExpr.sym = symbol;
+        JCFieldAccess constrRecv = make.Select(make.Ident(syms.computedConstantType.tsym), names.of);
+        constrRecv.type = new MethodType(List.of(syms.supplierType), syms.computedConstantType, List.nil(), syms.methodClass);
+        constrRecv.sym = syms.computedConstantOf;
+        JCMethodInvocation constrCall = make.App(constrRecv, List.of(refExpr));
+        constrCall.type = syms.computedConstantType;
+        JCVariableDecl liftedDecl = make.VarDef(liftedSym, constrCall);
         pendingClassDefs.add(liftedDecl);
+        needsLambdaToMethod = true;
         return liftedSym;
     }
 
@@ -215,17 +227,19 @@ public class TransConstantMethods extends TreeTranslator {
      *               We need this for resolving some additional symbols.
      *  @param cdef  The tree representing the class definition.
      */
-    public JCTree translateTopLevelClass(Env<AttrContext> env, JCTree cdef, TreeMaker make) {
+    public Pair<JCTree, Boolean> translateTopLevelClass(Env<AttrContext> env, JCTree cdef, TreeMaker make) {
         try {
             attrEnv = env;
             this.make = make;
             currentClass = null;
-            return translate(cdef);
+            needsLambdaToMethod = false;
+            return new Pair<>(translate(cdef), needsLambdaToMethod);
         } finally {
             // note that recursive invocations of this method fail hard
             attrEnv = null;
             this.make = null;
             currentClass = null;
+            needsLambdaToMethod = false;
         }
     }
 }

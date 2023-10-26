@@ -1632,11 +1632,12 @@ public class JavaCompiler {
             if (shouldStop(CompileState.TRANSCONSTANTMETHODS))
                 return;
 
-            env.tree = TransConstantMethods.instance(context).translateTopLevelClass(env, env.tree, localMake);
+            Pair<JCTree, Boolean> res = TransConstantMethods.instance(context).translateTopLevelClass(env, env.tree, localMake);
+            env.tree = res.fst;
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
 
-            if (scanner.hasLambdas) {
+            if (scanner.hasLambdas || res.snd) {
                 if (shouldStop(CompileState.UNLAMBDA))
                     return;
 

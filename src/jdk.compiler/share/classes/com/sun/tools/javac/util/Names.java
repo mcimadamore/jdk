@@ -235,6 +235,10 @@ public class Names {
     public final Name newLargeStringTemplate;
     public final Name processStringTemplate;
 
+    // const methods
+
+    public final Name get;
+
     public final Name.Table table;
 
     @SuppressWarnings("this-escape")
@@ -425,6 +429,9 @@ public class Names {
         typeSwitch = fromString("typeSwitch");
         enumSwitch = fromString("enumSwitch");
         enumConstant = fromString("enumConstant");
+
+        // const methods
+        get = fromString("get");
     }
 
     protected Name.Table createTable(Options options) {
