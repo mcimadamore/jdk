@@ -78,7 +78,7 @@ final class ConfinedSession extends MemorySessionImpl {
         }
     }
 
-    void justClose() {
+    boolean justClose() {
         checkValidState();
         int asyncCount = (int)ASYNC_RELEASE_COUNT.getVolatile(this);
         if ((state == 0 && asyncCount == 0)
@@ -87,6 +87,7 @@ final class ConfinedSession extends MemorySessionImpl {
         } else {
             throw alreadyAcquired(state - asyncCount);
         }
+        return true;
     }
 
     /**

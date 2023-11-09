@@ -83,11 +83,16 @@ public class ScopedMemoryAccess {
         registerNatives();
     }
 
-    public boolean closeScope(MemorySessionImpl session) {
+    public Thread[] closeScope(MemorySessionImpl session) {
         return closeScope0(session);
     }
 
-    native boolean closeScope0(MemorySessionImpl session);
+    public Thread[] postCloseScope(MemorySessionImpl session, Thread[] threads) {
+        return postCloseScope0(session, threads);
+    }
+
+    native Thread[] closeScope0(MemorySessionImpl session);
+    native Thread[] postCloseScope0(MemorySessionImpl session, Thread[] threads);
 
     private ScopedMemoryAccess() {}
 

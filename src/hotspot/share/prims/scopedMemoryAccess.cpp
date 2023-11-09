@@ -23,17 +23,18 @@
  */
 
 #include "precompiled.hpp"
-#include "classfile/vmSymbols.hpp"
 #include "jni.h"
 #include "jvm.h"
+#include "classfile/vmSymbols.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/oop.inline.hpp"
-#include "prims/stackwalk.hpp"
-#include "runtime/deoptimization.hpp"
-#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/vframe.inline.hpp"
+#include "runtime/deoptimization.hpp"
+#include "prims/stackwalk.hpp"
+
 
 class CloseScopedMemoryFindOopClosure : public OopClosure {
   oop _deopt;
@@ -67,16 +68,36 @@ public:
   }
 };
 
-class CloseScopedMemoryClosure : public HandshakeClosure {
-  jobject _deopt;
+/*
+ * To store problematic threads during an handshake, we need an atomic data structure.
+ * This is because the handshake closure can run concurrently either on the thread that
+ * is the target of the handshake operation, or on the thread that is performing the
+ * handshake (e.g. if the target thread is blocked, or in native state).
+ */
+class LockFreeStackThreadsElement : public CHeapObj<mtInternal> {
+  typedef LockFreeStackThreadsElement Element;
+
+  Element* volatile _next;
+  static Element* volatile* next_ptr(Element& e) { return &e._next; }
 
 public:
-  jboolean _found;
+  JavaThread* _thread;
+  LockFreeStackThreadsElement(JavaThread* thread) : _next(nullptr), _thread(thread) {}
+  typedef LockFreeStack<Element, &next_ptr> ThreadStack;
+};
 
-  CloseScopedMemoryClosure(jobject deopt, jobject exception)
+typedef LockFreeStackThreadsElement::ThreadStack ThreadStack;
+typedef LockFreeStackThreadsElement ThreadStackElement;
+
+class CloseScopedMemoryClosure : public HandshakeClosure {
+  jobject _deopt;
+  ThreadStack *_threads;
+
+public:
+  CloseScopedMemoryClosure(jobject deopt, ThreadStack *threads)
     : HandshakeClosure("CloseScopedMemory")
     , _deopt(deopt)
-    , _found(false) {}
+    , _threads(threads) {}
 
   void do_thread(Thread* thread) {
 
@@ -122,7 +143,8 @@ public:
           if (var->type() == T_OBJECT) {
             if (var->get_obj() == JNIHandles::resolve(_deopt)) {
               assert(depth < max_critical_stack_depth, "can't have more than %d critical frames", max_critical_stack_depth);
-              _found = true;
+              ThreadStackElement *element = new ThreadStackElement(jt);
+              _threads->push(*element);
               return;
             }
           }
@@ -139,32 +161,94 @@ public:
   }
 };
 
+jobjectArray makeThreadArray(JNIEnv *env, ThreadStack *threads) {
+  jclass threadClass = env->FindClass("java/lang/Thread");
+  jobjectArray threadArray = env->NewObjectArray(threads->length(), threadClass, nullptr);
+  int index = 0;
+  ThreadStackElement *element = threads->pop();
+  while (element != NULL) {
+    JavaThread* thread = element->_thread;
+    env->SetObjectArrayElement(threadArray, index++, JNIHandles::make_local(thread->threadObj()));
+    delete element;
+    element = threads->pop();
+  }
+  return threadArray;
+}
+
 /*
  * This function performs a thread-local handshake against all threads running at the time
- * the given session (deopt) was closed. If the handshake for a given thread is processed while
- * one or more threads is found inside a scoped method (that is, a method inside the ScopedMemoryAccess
- * class annotated with the '@Scoped' annotation), and whose local variables mention the session being
- * closed (deopt), this method returns false, signalling that the session cannot be closed safely.
+ * the given scope (deopt) was closed. If the handshake for a given thread is processed while
+ * the thread is inside a scoped method (that is, a method inside the ScopedMemoryAccess
+ * class annotated with the '@Scoped' annotation), whose local variables mention the scope being
+ * closed (deopt), the thread is added to a problematic list. After the handshake, each thread in
+ * the problematic list is handshaked again, individually, to check that it has exited
+ * the scoped method. This should happen quickly, because once we find a problematic
+ * thread, we also deoptimize it, meaning that when the thread resumes execution, the thread
+ * should also see the updated scope state (and fail on access). This function returns when
+ * the list of problematic threads is empty. To prevent premature thread termination we take
+ * a snapshot of the live threads in the system using a ThreadsListHandle.
  */
-JVM_ENTRY(jboolean, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject deopt, jobject exception))
-  CloseScopedMemoryClosure cl(deopt, exception);
+JVM_ENTRY(jobjectArray, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject deopt))
+  ThreadStack threads;
+  CloseScopedMemoryClosure cl(deopt, &threads);
+  // do a first handshake and collect all problematic threads
   Handshake::execute(&cl);
-  return !cl._found;
+  if (threads.empty()) {
+    // fast-path: return if no problematic thread is found
+    return nullptr;
+  } else {
+     // copy problematic threads
+     return makeThreadArray(env, &threads);
+  }
+JVM_END
+
+JVM_ENTRY(jobjectArray, ScopedMemoryAccess_postCloseScope(JNIEnv *env, jobject receiver, jobject deopt, jobjectArray _threads))
+  ThreadStack threads;
+  CloseScopedMemoryClosure cl(deopt, &threads);
+  // Now iterate over all problematic threads from previous step. Note: we only need to focus on the problematic threads
+  // found in the previous step, as any new thread created after the initial handshake will see the scope as CLOSED,
+  // and will fail to access memory anyway.
+  ThreadsListHandle tlh;
+  int _length = env->GetArrayLength(_threads);
+  for (int i = 0 ; i < _length ; i++) {
+    // If the thread is not in the list handle, it means that the thread has died,
+    // so that we can safely skip further handshakes.
+    jobject thread = env->GetObjectArrayElement(_threads, i);
+    if (thread != nullptr) {
+      oop java_thread = nullptr;
+      JavaThread* receiver = nullptr;
+      bool is_alive = tlh.cv_internal_thread_to_JavaThread(thread, &receiver, &java_thread);
+      if (is_alive) {
+        Handshake::execute(&cl, receiver);
+      }
+    }
+  }
+  if (threads.empty()) {
+    // fast-path: return if no problematic thread is found
+    return nullptr;
+  } else {
+    // copy problematic threads
+    return makeThreadArray(env, &threads);
+  }
 JVM_END
 
 /// JVM_RegisterUnsafeMethods
 
+#define PKG_JL "Ljava/lang/"
 #define PKG_MISC "Ljdk/internal/misc/"
 #define PKG_FOREIGN "Ljdk/internal/foreign/"
 
+#define ARR "["
 #define MEMACCESS "ScopedMemoryAccess"
 #define SCOPE PKG_FOREIGN "MemorySessionImpl;"
+#define JL_THREAD PKG_JL "Thread;"
 
 #define CC (char*)  /*cast a literal from (const char*)*/
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &f)
 
 static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
-    {CC "closeScope0",   CC "(" SCOPE ")Z",           FN_PTR(ScopedMemoryAccess_closeScope)},
+    {CC "closeScope0",       CC "(" SCOPE ")" ARR JL_THREAD,                         FN_PTR(ScopedMemoryAccess_closeScope)},
+    {CC "postCloseScope0",   CC "(" SCOPE ARR JL_THREAD ")" ARR JL_THREAD,           FN_PTR(ScopedMemoryAccess_postCloseScope)},
 };
 
 #undef CC
@@ -179,7 +263,6 @@ static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
 
 JVM_ENTRY(void, JVM_RegisterJDKInternalMiscScopedMemoryAccessMethods(JNIEnv *env, jclass scopedMemoryAccessClass))
   ThreadToNativeFromVM ttnfv(thread);
-
   int ok = env->RegisterNatives(scopedMemoryAccessClass, jdk_internal_misc_ScopedMemoryAccess_methods, sizeof(jdk_internal_misc_ScopedMemoryAccess_methods)/sizeof(JNINativeMethod));
   guarantee(ok == 0, "register jdk.internal.misc.ScopedMemoryAccess natives");
 JVM_END

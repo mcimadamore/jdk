@@ -27,8 +27,13 @@ package jdk.internal.foreign;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
+import sun.security.action.GetPropertyAction;
 
 /**
  * A shared session, which can be shared across multiple threads. Closing a shared session has to ensure that
@@ -40,6 +45,9 @@ import jdk.internal.vm.annotation.ForceInline;
  * checking the liveness bit upon access can be performed in plain mode, as in the confined case.
  */
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
+
+    private static final boolean USE_VIRTUAL_THREADS = Boolean.parseBoolean(
+            GetPropertyAction.privilegedGetProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREADS"));
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
@@ -76,18 +84,23 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         } while (!STATE.compareAndSet(this, value, value - 1));
     }
 
-    void justClose() {
-        int prevState = (int) STATE.compareAndExchange(this, OPEN, CLOSING);
+    boolean justClose() {
+        int prevState = (int) STATE.compareAndExchange(this, OPEN, CLOSED);
         if (prevState < 0) {
             throw alreadyClosed();
         } else if (prevState != OPEN) {
             throw alreadyAcquired(prevState);
         }
-        boolean success = SCOPED_MEMORY_ACCESS.closeScope(this);
-        STATE.setVolatile(this, success ? CLOSED : OPEN);
-        if (!success) {
-            throw alreadyAcquired(1);
+        Thread[] pendingThreads = SCOPED_MEMORY_ACCESS.closeScope(this);
+        if (pendingThreads != null) {
+            if (USE_VIRTUAL_THREADS) {
+                Thread.ofVirtual().start(new PendingThreadHandshaker(pendingThreads));
+            } else {
+                new PendingThreadHandshaker(pendingThreads).run();
+            }
+            return false;
         }
+        return true;
     }
 
     /**
@@ -140,6 +153,23 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
             } else {
                 throw alreadyClosed();
             }
+        }
+    }
+
+    class PendingThreadHandshaker implements Runnable {
+        Thread[] threads;
+
+        PendingThreadHandshaker(Thread[] threads) {
+            this.threads = threads;
+        }
+
+        @Override
+        public void run() {
+            while (threads != null) {
+                threads = SCOPED_MEMORY_ACCESS.postCloseScope(SharedSession.this, threads);
+                Thread.onSpinWait();
+            }
+            resourceList.cleanup();
         }
     }
 }
