@@ -163,7 +163,7 @@ public:
 
 jobjectArray makeThreadArray(JNIEnv *env, ThreadStack *threads) {
   jclass threadClass = env->FindClass("java/lang/Thread");
-  jobjectArray threadArray = env->NewObjectArray(threads->length(), threadClass, nullptr);
+  jobjectArray threadArray = env->NewObjectArray((jint)threads->length(), threadClass, nullptr);
   int index = 0;
   ThreadStackElement *element = threads->pop();
   while (element != NULL) {
