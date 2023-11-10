@@ -67,7 +67,7 @@ non-sealed class GlobalSession extends MemorySessionImpl {
     }
 
     @Override
-    public boolean justClose() {
+    public void justClose() {
         throw nonCloseable();
     }
 

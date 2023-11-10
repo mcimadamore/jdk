@@ -230,12 +230,11 @@ public abstract sealed class MemorySessionImpl
      * a confined session and this method is called outside the owner thread.
      */
     public void close() {
-        if (justClose()) {
-            resourceList.cleanup();
-        }
+        justClose();
+        resourceList.cleanup();
     }
 
-    abstract boolean justClose();
+    abstract void justClose();
 
     /**
      * A list of all cleanup actions associated with a memory session. Cleanup actions are modelled as instances

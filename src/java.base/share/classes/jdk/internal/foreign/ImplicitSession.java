@@ -61,7 +61,7 @@ final class ImplicitSession extends SharedSession {
     }
 
     @Override
-    public boolean justClose() {
+    public void justClose() {
         throw nonCloseable();
     }
 }
