@@ -161,23 +161,9 @@ public:
   }
 };
 
-jobjectArray makeThreadArray(JNIEnv *env, ThreadStack *threads) {
-  jclass threadClass = env->FindClass("java/lang/Thread");
-  jobjectArray threadArray = env->NewObjectArray((jint)threads->length(), threadClass, nullptr);
-  int index = 0;
-  ThreadStackElement *element = threads->pop();
-  while (element != NULL) {
-    JavaThread* thread = element->_thread;
-    env->SetObjectArrayElement(threadArray, index++, JNIHandles::make_local(thread->threadObj()));
-    delete element;
-    element = threads->pop();
-  }
-  return threadArray;
-}
-
 /*
  * This function performs a thread-local handshake against all threads running at the time
- * the given scope (deopt) was closed. If the handshake for a given thread is processed while
+ * the given scope (deopt) was closed. If the hanshake for a given thread is processed while
  * the thread is inside a scoped method (that is, a method inside the ScopedMemoryAccess
  * class annotated with the '@Scoped' annotation), whose local variables mention the scope being
  * closed (deopt), the thread is added to a problematic list. After the handshake, each thread in
@@ -188,67 +174,46 @@ jobjectArray makeThreadArray(JNIEnv *env, ThreadStack *threads) {
  * the list of problematic threads is empty. To prevent premature thread termination we take
  * a snapshot of the live threads in the system using a ThreadsListHandle.
  */
-JVM_ENTRY(jobjectArray, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject deopt))
+JVM_ENTRY(void, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject deopt))
   ThreadStack threads;
   CloseScopedMemoryClosure cl(deopt, &threads);
   // do a first handshake and collect all problematic threads
   Handshake::execute(&cl);
   if (threads.empty()) {
     // fast-path: return if no problematic thread is found
-    return nullptr;
-  } else {
-     // copy problematic threads
-     return makeThreadArray(env, &threads);
+    return;
   }
-JVM_END
-
-JVM_ENTRY(jobjectArray, ScopedMemoryAccess_postCloseScope(JNIEnv *env, jobject receiver, jobject deopt, jobjectArray _threads))
-  ThreadStack threads;
-  CloseScopedMemoryClosure cl(deopt, &threads);
-  // Now iterate over all problematic threads from previous step. Note: we only need to focus on the problematic threads
-  // found in the previous step, as any new thread created after the initial handshake will see the scope as CLOSED,
+  // Now iterate over all problematic threads, until we converge. Note: from this point on,
+  // we only need to focus on the problematic threads found in the previous step, as
+  // any new thread created after the initial handshake will see the scope as CLOSED,
   // and will fail to access memory anyway.
   ThreadsListHandle tlh;
-  int _length = env->GetArrayLength(_threads);
-  for (int i = 0 ; i < _length ; i++) {
+  ThreadStackElement *element = threads.pop();
+  while (element != NULL) {
+    JavaThread* thread = element->_thread;
     // If the thread is not in the list handle, it means that the thread has died,
     // so that we can safely skip further handshakes.
-    jobject thread = env->GetObjectArrayElement(_threads, i);
-    if (thread != nullptr) {
-      oop java_thread = nullptr;
-      JavaThread* receiver = nullptr;
-      bool is_alive = tlh.cv_internal_thread_to_JavaThread(thread, &receiver, &java_thread);
-      if (is_alive) {
-        Handshake::execute(&cl, receiver);
-      }
+    if (tlh.list()->includes(thread)) {
+      Handshake::execute(&cl, thread);
     }
-  }
-  if (threads.empty()) {
-    // fast-path: return if no problematic thread is found
-    return nullptr;
-  } else {
-    // copy problematic threads
-    return makeThreadArray(env, &threads);
+    delete element;
+    element = threads.pop();
   }
 JVM_END
 
 /// JVM_RegisterUnsafeMethods
 
-#define PKG_JL "Ljava/lang/"
 #define PKG_MISC "Ljdk/internal/misc/"
 #define PKG_FOREIGN "Ljdk/internal/foreign/"
 
-#define ARR "["
 #define MEMACCESS "ScopedMemoryAccess"
 #define SCOPE PKG_FOREIGN "MemorySessionImpl;"
-#define JL_THREAD PKG_JL "Thread;"
 
 #define CC (char*)  /*cast a literal from (const char*)*/
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &f)
 
 static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
-    {CC "closeScope0",       CC "(" SCOPE ")" ARR JL_THREAD,                         FN_PTR(ScopedMemoryAccess_closeScope)},
-    {CC "postCloseScope0",   CC "(" SCOPE ARR JL_THREAD ")" ARR JL_THREAD,           FN_PTR(ScopedMemoryAccess_postCloseScope)},
+    {CC "closeScope0",   CC "(" SCOPE ")V",           FN_PTR(ScopedMemoryAccess_closeScope)},
 };
 
 #undef CC
@@ -263,6 +228,7 @@ static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
 
 JVM_ENTRY(void, JVM_RegisterJDKInternalMiscScopedMemoryAccessMethods(JNIEnv *env, jclass scopedMemoryAccessClass))
   ThreadToNativeFromVM ttnfv(thread);
+
   int ok = env->RegisterNatives(scopedMemoryAccessClass, jdk_internal_misc_ScopedMemoryAccess_methods, sizeof(jdk_internal_misc_ScopedMemoryAccess_methods)/sizeof(JNINativeMethod));
   guarantee(ok == 0, "register jdk.internal.misc.ScopedMemoryAccess natives");
 JVM_END

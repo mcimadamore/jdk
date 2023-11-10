@@ -91,15 +91,16 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         } else if (prevState != OPEN) {
             throw alreadyAcquired(prevState);
         }
-        Thread[] pendingThreads = SCOPED_MEMORY_ACCESS.closeScope(this);
-        if (pendingThreads != null) {
-            if (USE_VIRTUAL_THREADS) {
-                Thread.ofVirtual().start(new PendingThreadHandshaker(pendingThreads));
-            } else {
-                new PendingThreadHandshaker(pendingThreads).run();
-            }
-            return false;
-        }
+//        Thread[] pendingThreads = SCOPED_MEMORY_ACCESS.closeScope(this);
+//        if (pendingThreads != null) {
+//            if (USE_VIRTUAL_THREADS) {
+//                Thread.ofVirtual().start(new PendingThreadHandshaker(pendingThreads));
+//            } else {
+//                new PendingThreadHandshaker(pendingThreads).run();
+//            }
+//            return false;
+//        }
+        SCOPED_MEMORY_ACCESS.closeScope(this);
         return true;
     }
 
@@ -156,20 +157,20 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
     }
 
-    class PendingThreadHandshaker implements Runnable {
-        Thread[] threads;
-
-        PendingThreadHandshaker(Thread[] threads) {
-            this.threads = threads;
-        }
-
-        @Override
-        public void run() {
-            while (threads != null) {
-                threads = SCOPED_MEMORY_ACCESS.postCloseScope(SharedSession.this, threads);
-                Thread.onSpinWait();
-            }
-            resourceList.cleanup();
-        }
-    }
+//    class PendingThreadHandshaker implements Runnable {
+//        Thread[] threads;
+//
+//        PendingThreadHandshaker(Thread[] threads) {
+//            this.threads = threads;
+//        }
+//
+//        @Override
+//        public void run() {
+//            while (threads != null) {
+//                threads = SCOPED_MEMORY_ACCESS.postCloseScope(SharedSession.this, threads);
+//                Thread.onSpinWait();
+//            }
+//            resourceList.cleanup();
+//        }
+//    }
 }
