@@ -238,6 +238,7 @@ public class Names {
     // const methods
 
     public final Name get;
+    public final Name bindTo;
 
     public final Name.Table table;
 
@@ -432,6 +433,7 @@ public class Names {
 
         // const methods
         get = fromString("get");
+        bindTo = fromString("bindTo");
     }
 
     protected Name.Table createTable(Options options) {

@@ -251,6 +251,7 @@ public class Symtab {
     public final Type computedConstantType;
     public final MethodSymbol computedConstantGet;
     public final MethodSymbol computedConstantOf;
+    public final MethodSymbol methodHandleBindTo;
 
     /** The symbol representing the length field of an array.
      */
@@ -660,9 +661,14 @@ public class Symtab {
                 computedConstantType.tsym);
         computedConstantOf = new MethodSymbol(PUBLIC | STATIC,
                 names.of,
-                new MethodType(List.of(supplierType), computedConstantType,
+                new MethodType(List.of(classType, methodHandleType), computedConstantType,
                         List.nil(), methodClass),
                 computedConstantType.tsym);
+        methodHandleBindTo = new MethodSymbol(PUBLIC,
+                names.bindTo,
+                new MethodType(List.of(objectType), methodHandleType,
+                        List.nil(), methodClass),
+                methodHandleType.tsym);
 
         // Enter a synthetic class that is used to mark internal
         // proprietary classes in ct.sym.  This class does not have a
