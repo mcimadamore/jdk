@@ -196,7 +196,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             implements StackMapTableAttribute {
         final MethodModel method;
         final LabelContext ctx;
-        List<StackMapFrameInfo> entries = null;
 
         public BoundStackMapTableAttribute(CodeImpl code, ClassReader cf, AttributeMapper<StackMapTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -205,11 +204,8 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<StackMapFrameInfo> entries() {
-            if (entries == null) {
-                entries = new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method)).entries();
-            }
-            return entries;
+        public const List<StackMapFrameInfo> entries() {
+            return new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method)).entries();
         }
     }
 
@@ -223,55 +219,47 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundLineNumberTableAttribute
             extends BoundAttribute<LineNumberTableAttribute>
             implements LineNumberTableAttribute {
-        private List<LineNumberInfo> lineNumbers = null;
 
         public BoundLineNumberTableAttribute(ClassReader cf, AttributeMapper<LineNumberTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<LineNumberInfo> lineNumbers() {
-            if (lineNumbers == null) {
-                int nLn = classReader.readU2(payloadStart);
-                LineNumberInfo[] elements = new LineNumberInfo[nLn];
-                int p = payloadStart + 2;
-                int pEnd = p + (nLn * 4);
-                for (int i = 0; p < pEnd; p += 4, i++) {
-                    int startPc = classReader.readU2(p);
-                    int lineNumber = classReader.readU2(p + 2);
-                    elements[i] = LineNumberInfo.of(startPc, lineNumber);
-                }
-                lineNumbers = List.of(elements);
+        public const List<LineNumberInfo> lineNumbers() {
+            int nLn = classReader.readU2(payloadStart);
+            LineNumberInfo[] elements = new LineNumberInfo[nLn];
+            int p = payloadStart + 2;
+            int pEnd = p + (nLn * 4);
+            for (int i = 0; p < pEnd; p += 4, i++) {
+                int startPc = classReader.readU2(p);
+                int lineNumber = classReader.readU2(p + 2);
+                elements[i] = LineNumberInfo.of(startPc, lineNumber);
             }
-            return lineNumbers;
+            return List.of(elements);
         }
     }
 
     public static final class BoundCharacterRangeTableAttribute extends BoundAttribute<CharacterRangeTableAttribute> implements CharacterRangeTableAttribute {
-        private List<CharacterRangeInfo> characterRangeTable = null;
 
         public BoundCharacterRangeTableAttribute(ClassReader cf, AttributeMapper<CharacterRangeTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<CharacterRangeInfo> characterRangeTable() {
-            if (characterRangeTable == null) {
-                int nLn = classReader.readU2(payloadStart);
-                CharacterRangeInfo[] elements = new CharacterRangeInfo[nLn];
-                int p = payloadStart + 2;
-                int pEnd = p + (nLn * 14);
-                for (int i = 0; p < pEnd; p += 14, i++) {
-                    int startPc = classReader.readU2(p);
-                    int endPc = classReader.readU2(p + 2);
-                    int characterRangeStart = classReader.readInt(p + 4);
-                    int characterRangeEnd = classReader.readInt(p + 8);
-                    int flags = classReader.readU2(p + 12);
-                    elements[i] = CharacterRangeInfo.of(startPc, endPc, characterRangeStart, characterRangeEnd, flags);
-                }
-                characterRangeTable = List.of(elements);
+        public const List<CharacterRangeInfo> characterRangeTable() {
+            int nLn = classReader.readU2(payloadStart);
+            CharacterRangeInfo[] elements = new CharacterRangeInfo[nLn];
+            int p = payloadStart + 2;
+            int pEnd = p + (nLn * 14);
+            for (int i = 0; p < pEnd; p += 14, i++) {
+                int startPc = classReader.readU2(p);
+                int endPc = classReader.readU2(p + 2);
+                int characterRangeStart = classReader.readInt(p + 4);
+                int characterRangeEnd = classReader.readInt(p + 8);
+                int flags = classReader.readU2(p + 12);
+                elements[i] = CharacterRangeInfo.of(startPc, endPc, characterRangeStart, characterRangeEnd, flags);
             }
-            return characterRangeTable;
+            return List.of(elements);
         }
     }
 
@@ -279,7 +267,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             extends BoundAttribute<LocalVariableTableAttribute>
             implements LocalVariableTableAttribute {
         private final CodeImpl codeAttribute;
-        private List<LocalVariableInfo> localVars = null;
 
         public BoundLocalVariableTableAttribute(AttributedElement enclosing, ClassReader cf, AttributeMapper<LocalVariableTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -287,18 +274,15 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<LocalVariableInfo> localVariables() {
-            if (localVars == null) {
-                int cnt = classReader.readU2(payloadStart);
-                BoundLocalVariable[] elements = new BoundLocalVariable[cnt];
-                int p = payloadStart + 2;
-                int pEnd = p + (cnt * 10);
-                for (int i = 0; p < pEnd; p += 10, i++) {
-                    elements[i] = new BoundLocalVariable(codeAttribute, p);
-                }
-                localVars = List.of(elements);
+        public const List<LocalVariableInfo> localVariables() {
+            int cnt = classReader.readU2(payloadStart);
+            BoundLocalVariable[] elements = new BoundLocalVariable[cnt];
+            int p = payloadStart + 2;
+            int pEnd = p + (cnt * 10);
+            for (int i = 0; p < pEnd; p += 10, i++) {
+                elements[i] = new BoundLocalVariable(codeAttribute, p);
             }
-            return localVars;
+            return List.of(elements);
         }
     }
 
@@ -306,7 +290,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             extends BoundAttribute<LocalVariableTypeTableAttribute>
             implements LocalVariableTypeTableAttribute {
         private final CodeImpl codeAttribute;
-        private List<LocalVariableTypeInfo> localVars = null;
 
         public BoundLocalVariableTypeTableAttribute(AttributedElement enclosing, ClassReader cf, AttributeMapper<LocalVariableTypeTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -314,50 +297,42 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<LocalVariableTypeInfo> localVariableTypes() {
-            if (localVars == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                BoundLocalVariableType[] elements = new BoundLocalVariableType[cnt];
-                int p = payloadStart + 2;
-                int pEnd = p + (cnt * 10);
-                for (int i = 0; p < pEnd; p += 10, i++) {
-                    elements[i] = new BoundLocalVariableType(codeAttribute, p);
-                }
-                localVars = List.of(elements);
+        public const List<LocalVariableTypeInfo> localVariableTypes() {
+            final int cnt = classReader.readU2(payloadStart);
+            BoundLocalVariableType[] elements = new BoundLocalVariableType[cnt];
+            int p = payloadStart + 2;
+            int pEnd = p + (cnt * 10);
+            for (int i = 0; p < pEnd; p += 10, i++) {
+                elements[i] = new BoundLocalVariableType(codeAttribute, p);
             }
-            return localVars;
+            return List.of(elements);
         }
     }
 
     public static final class BoundMethodParametersAttribute extends BoundAttribute<MethodParametersAttribute>
             implements MethodParametersAttribute {
-        private List<MethodParameterInfo> parameters = null;
 
         public BoundMethodParametersAttribute(ClassReader cf, AttributeMapper<MethodParametersAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<MethodParameterInfo> parameters() {
-            if (parameters == null) {
-                final int cnt = classReader.readU1(payloadStart);
-                MethodParameterInfo[] elements = new MethodParameterInfo[cnt];
-                int p = payloadStart + 1;
-                int pEnd = p + (cnt * 4);
-                for (int i = 0; p < pEnd; p += 4, i++) {
-                    Utf8Entry name = classReader.readUtf8EntryOrNull(p);
-                    int accessFlags = classReader.readU2(p + 2);
-                    elements[i] = MethodParameterInfo.of(Optional.ofNullable(name), accessFlags);
-                }
-                parameters = List.of(elements);
+        public const List<MethodParameterInfo> parameters() {
+            final int cnt = classReader.readU1(payloadStart);
+            MethodParameterInfo[] elements = new MethodParameterInfo[cnt];
+            int p = payloadStart + 1;
+            int pEnd = p + (cnt * 4);
+            for (int i = 0; p < pEnd; p += 4, i++) {
+                Utf8Entry name = classReader.readUtf8EntryOrNull(p);
+                int accessFlags = classReader.readU2(p + 2);
+                elements[i] = MethodParameterInfo.of(Optional.ofNullable(name), accessFlags);
             }
-            return parameters;
+            return List.of(elements);
         }
     }
 
     public static final class BoundModuleHashesAttribute extends BoundAttribute<ModuleHashesAttribute>
             implements ModuleHashesAttribute {
-        private List<ModuleHashInfo> hashes = null;
 
         public BoundModuleHashesAttribute(ClassReader cf, AttributeMapper<ModuleHashesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -369,47 +344,40 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<ModuleHashInfo> hashes() {
-            if (hashes == null) {
-                final int cnt = classReader.readU2(payloadStart + 2);
-                ModuleHashInfo[] elements = new ModuleHashInfo[cnt];
-                int p = payloadStart + 4;
-                //System.err.printf("%5d: ModuleHashesAttr alg = %s, cnt = %d%n", pos, algorithm(), cnt);
-                for (int i = 0; i < cnt; ++i) {
-                    ModuleEntry module = classReader.readModuleEntry(p);
-                    int hashLength = classReader.readU2(p + 2);
-                    //System.err.printf("%5d:     [%d] module = %s, hashLength = %d%n", p, i, module, hashLength);
-                    p += 4;
-                    elements[i] = ModuleHashInfo.of(module, classReader.readBytes(p, hashLength));
-                    p += hashLength;
-                }
-                hashes = List.of(elements);
+        public const List<ModuleHashInfo> hashes() {
+            final int cnt = classReader.readU2(payloadStart + 2);
+            ModuleHashInfo[] elements = new ModuleHashInfo[cnt];
+            int p = payloadStart + 4;
+            //System.err.printf("%5d: ModuleHashesAttr alg = %s, cnt = %d%n", pos, algorithm(), cnt);
+            for (int i = 0; i < cnt; ++i) {
+                ModuleEntry module = classReader.readModuleEntry(p);
+                int hashLength = classReader.readU2(p + 2);
+                //System.err.printf("%5d:     [%d] module = %s, hashLength = %d%n", p, i, module, hashLength);
+                p += 4;
+                elements[i] = ModuleHashInfo.of(module, classReader.readBytes(p, hashLength));
+                p += hashLength;
             }
-            return hashes;
+            return List.of(elements);
         }
     }
 
     public static final class BoundRecordAttribute extends BoundAttribute<RecordAttribute>
             implements RecordAttribute {
-        private List<RecordComponentInfo> components = null;
 
         public BoundRecordAttribute(ClassReader cf, AttributeMapper<RecordAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<RecordComponentInfo> components() {
-            if (components == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                RecordComponentInfo[] elements = new RecordComponentInfo[cnt];
-                int p = payloadStart + 2;
-                for (int i = 0; i < cnt; i++) {
-                    elements[i] = new BoundRecordComponentInfo(classReader, p);
-                    p = classReader.skipAttributeHolder(p + 4);
-                }
-                components = List.of(elements);
+        public const List<RecordComponentInfo> components() {
+            final int cnt = classReader.readU2(payloadStart);
+            RecordComponentInfo[] elements = new RecordComponentInfo[cnt];
+            int p = payloadStart + 2;
+            for (int i = 0; i < cnt; i++) {
+                elements[i] = new BoundRecordComponentInfo(classReader, p);
+                p = classReader.skipAttributeHolder(p + 4);
             }
-            return components;
+            return List.of(elements);
         }
     }
 
@@ -538,18 +506,14 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     public static final class BoundExceptionsAttribute extends BoundAttribute<ExceptionsAttribute>
             implements ExceptionsAttribute {
-        private List<ClassEntry> exceptions = null;
 
         public BoundExceptionsAttribute(ClassReader cf, AttributeMapper<ExceptionsAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<ClassEntry> exceptions() {
-            if (exceptions == null) {
-                exceptions = readEntryList(payloadStart);
-            }
-            return exceptions;
+        public const List<ClassEntry> exceptions() {
+            return readEntryList(payloadStart);
         }
     }
 
@@ -686,43 +650,33 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     public static final class BoundModulePackagesAttribute extends BoundAttribute<ModulePackagesAttribute>
             implements ModulePackagesAttribute {
-        private List<PackageEntry> packages = null;
 
         public BoundModulePackagesAttribute(ClassReader cf, AttributeMapper<ModulePackagesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<PackageEntry> packages() {
-            if (packages == null) {
-                packages = readEntryList(payloadStart);
-            }
-            return packages;
+        public const List<PackageEntry> packages() {
+            return readEntryList(payloadStart);
         }
     }
 
     public static final class BoundNestMembersAttribute extends BoundAttribute<NestMembersAttribute>
             implements NestMembersAttribute {
 
-        private List<ClassEntry> members = null;
-
         public BoundNestMembersAttribute(ClassReader cf, AttributeMapper<NestMembersAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<ClassEntry> nestMembers() {
-            if (members == null) {
-                members = readEntryList(payloadStart);
-            }
-            return members;
+        public const List<ClassEntry> nestMembers() {
+            return readEntryList(payloadStart);
         }
     }
 
     public static final class BoundBootstrapMethodsAttribute extends BoundAttribute<BootstrapMethodsAttribute>
             implements BootstrapMethodsAttribute {
 
-        private List<BootstrapMethodEntry> bootstraps = null;
         private final int size;
 
         public BoundBootstrapMethodsAttribute(ClassReader reader, AttributeMapper<BootstrapMethodsAttribute> mapper, int pos) {
@@ -736,55 +690,48 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<BootstrapMethodEntry> bootstrapMethods() {
-            if (bootstraps == null) {
-                BootstrapMethodEntry[] bs = new BootstrapMethodEntry[size];
-                int p = payloadStart + 2;
-                for (int i = 0; i < size; ++i) {
-                    final AbstractPoolEntry.MethodHandleEntryImpl handle
-                            = (AbstractPoolEntry.MethodHandleEntryImpl) classReader.readMethodHandleEntry(p);
-                    final List<LoadableConstantEntry> args = readEntryList(p + 2);
-                    p += 4 + args.size() * 2;
-                    int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
-                    bs[i] = new BootstrapMethodEntryImpl(classReader, i, hash, handle, args);
-                }
-                bootstraps = List.of(bs);
+        public const List<BootstrapMethodEntry> bootstrapMethods() {
+            BootstrapMethodEntry[] bs = new BootstrapMethodEntry[size];
+            int p = payloadStart + 2;
+            for (int i = 0; i < size; ++i) {
+                final AbstractPoolEntry.MethodHandleEntryImpl handle
+                        = (AbstractPoolEntry.MethodHandleEntryImpl) classReader.readMethodHandleEntry(p);
+                final List<LoadableConstantEntry> args = readEntryList(p + 2);
+                p += 4 + args.size() * 2;
+                int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
+                bs[i] = new BootstrapMethodEntryImpl(classReader, i, hash, handle, args);
             }
-            return bootstraps;
+            return List.of(bs);
         }
     }
 
     public static final class BoundInnerClassesAttribute extends BoundAttribute<InnerClassesAttribute>
             implements InnerClassesAttribute {
-        private List<InnerClassInfo> classes;
 
         public BoundInnerClassesAttribute(ClassReader cf, AttributeMapper<InnerClassesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<InnerClassInfo> classes() {
-            if (classes == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                int p = payloadStart + 2;
-                InnerClassInfo[] elements = new InnerClassInfo[cnt];
-                for (int i = 0; i < cnt; i++) {
-                    ClassEntry innerClass = classReader.readClassEntry(p); // TODO FIXME
-                    int outerClassIndex = classReader.readU2(p + 2);
-                    ClassEntry outerClass = outerClassIndex == 0
-                            ? null
-                            : (ClassEntry) classReader.entryByIndex(outerClassIndex);
-                    int innerNameIndex = classReader.readU2(p + 4);
-                    Utf8Entry innerName = innerNameIndex == 0
-                            ? null
-                            : (Utf8Entry) classReader.entryByIndex(innerNameIndex);
-                    int flags = classReader.readU2(p + 6);
-                    p += 8;
-                    elements[i] = InnerClassInfo.of(innerClass, Optional.ofNullable(outerClass), Optional.ofNullable(innerName), flags);
-                }
-                classes = List.of(elements);
+        public const List<InnerClassInfo> classes() {
+            final int cnt = classReader.readU2(payloadStart);
+            int p = payloadStart + 2;
+            InnerClassInfo[] elements = new InnerClassInfo[cnt];
+            for (int i = 0; i < cnt; i++) {
+                ClassEntry innerClass = classReader.readClassEntry(p); // TODO FIXME
+                int outerClassIndex = classReader.readU2(p + 2);
+                ClassEntry outerClass = outerClassIndex == 0
+                        ? null
+                        : (ClassEntry) classReader.entryByIndex(outerClassIndex);
+                int innerNameIndex = classReader.readU2(p + 4);
+                Utf8Entry innerName = innerNameIndex == 0
+                        ? null
+                        : (Utf8Entry) classReader.entryByIndex(innerNameIndex);
+                int flags = classReader.readU2(p + 6);
+                p += 8;
+                elements[i] = InnerClassInfo.of(innerClass, Optional.ofNullable(outerClass), Optional.ofNullable(innerName), flags);
             }
-            return classes;
+            return List.of(elements);
         }
     }
 
@@ -808,17 +755,14 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundAnnotationDefaultAttr
             extends BoundAttribute<AnnotationDefaultAttribute>
             implements AnnotationDefaultAttribute {
-        private AnnotationValue annotationValue;
 
         public BoundAnnotationDefaultAttr(ClassReader cf, AttributeMapper<AnnotationDefaultAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public AnnotationValue defaultValue() {
-            if (annotationValue == null)
-                annotationValue = AnnotationReader.readElementValue(classReader, payloadStart);
-            return annotationValue;
+        public const AnnotationValue defaultValue() {
+            return AnnotationReader.readElementValue(classReader, payloadStart);
         }
     }
 
@@ -885,7 +829,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundRuntimeInvisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeInvisibleAnnotationsAttribute>
             implements RuntimeInvisibleAnnotationsAttribute {
-        private List<Annotation> inflated;
 
         public BoundRuntimeInvisibleAnnotationsAttribute(ClassReader cf,
                                                          int payloadStart) {
@@ -893,17 +836,14 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<Annotation> annotations() {
-            if (inflated == null)
-                inflated = AnnotationReader.readAnnotations(classReader, payloadStart);
-            return inflated;
+        public const List<Annotation> annotations() {
+            return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
 
     public static final class BoundRuntimeVisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeVisibleAnnotationsAttribute>
             implements RuntimeVisibleAnnotationsAttribute {
-        private List<Annotation> inflated;
 
         public BoundRuntimeVisibleAnnotationsAttribute(ClassReader cf,
                                                        int payloadStart) {
@@ -911,27 +851,21 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         @Override
-        public List<Annotation> annotations() {
-            if (inflated == null)
-                inflated = AnnotationReader.readAnnotations(classReader, payloadStart);
-            return inflated;
+        public const List<Annotation> annotations() {
+            return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
 
     public static final class BoundPermittedSubclassesAttribute extends BoundAttribute<PermittedSubclassesAttribute>
             implements PermittedSubclassesAttribute {
-        private List<ClassEntry> permittedSubclasses = null;
 
         public BoundPermittedSubclassesAttribute(ClassReader cf, AttributeMapper<PermittedSubclassesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
         @Override
-        public List<ClassEntry> permittedSubclasses() {
-            if (permittedSubclasses == null) {
-                permittedSubclasses = readEntryList(payloadStart);
-            }
-            return permittedSubclasses;
+        public const List<ClassEntry> permittedSubclasses() {
+            return readEntryList(payloadStart);
         }
     }
 

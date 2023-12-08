@@ -65,8 +65,6 @@ public final class SplitConstantPool implements ConstantPoolBuilder {
     private PoolEntry[] myEntries;
     private BootstrapMethodEntryImpl[] myBsmEntries;
     private boolean doneFullScan;
-    private EntryMap<PoolEntry> map;
-    private EntryMap<BootstrapMethodEntryImpl> bsmMap;
 
     public SplitConstantPool() {
         this.size = 1;
@@ -175,35 +173,34 @@ public final class SplitConstantPool implements ConstantPoolBuilder {
         }
     }
 
-    private EntryMap<PoolEntry> map() {
-        if (map == null) {
-            map = new EntryMap<>(Math.max(size, 1024), .75f) {
-                @Override
-                protected PoolEntry fetchElement(int index) {
-                    return entryByIndex(index);
-                }
-            };
-            // Doing a full scan here yields fall-off-the-cliff performance results,
-            // especially if we only need a few entries that are already
-            // inflated (such as attribute names).
-            // So we inflate the map with whatever we've got from the parent, and
-            // later, if we miss, we do a one-time full inflation before creating
-            // a new entry.
-            for (int i=1; i<parentSize; i++) {
-                PoolEntry cpi = parent.cp[i];
-                if (cpi != null)
-                    map.put(cpi.hashCode(), cpi.index());
+    private const EntryMap<PoolEntry> map() {
+        EntryMap<PoolEntry> map = new EntryMap<>(Math.max(size, 1024), .75f) {
+            @Override
+            protected PoolEntry fetchElement(int index) {
+                return entryByIndex(index);
             }
-            for (int i = Math.max(parentSize, 1); i < size; ) {
-                PoolEntry cpi = myEntries[i - parentSize];
+        };
+        // Doing a full scan here yields fall-off-the-cliff performance results,
+        // especially if we only need a few entries that are already
+        // inflated (such as attribute names).
+        // So we inflate the map with whatever we've got from the parent, and
+        // later, if we miss, we do a one-time full inflation before creating
+        // a new entry.
+        for (int i=1; i<parentSize; i++) {
+            PoolEntry cpi = parent.cp[i];
+            if (cpi != null)
                 map.put(cpi.hashCode(), cpi.index());
-                i += cpi.width();
-            }
+        }
+        for (int i = Math.max(parentSize, 1); i < size; ) {
+            PoolEntry cpi = myEntries[i - parentSize];
+            map.put(cpi.hashCode(), cpi.index());
+            i += cpi.width();
         }
         return map;
     }
 
     private void fullScan() {
+        var map = map();
         for (int i=1; i<parentSize;) {
             PoolEntry cpi = parent.entryByIndex(i);
             map.put(cpi.hashCode(), cpi.index());
@@ -212,22 +209,20 @@ public final class SplitConstantPool implements ConstantPoolBuilder {
         doneFullScan = true;
     }
 
-    private EntryMap<BootstrapMethodEntryImpl> bsmMap() {
-        if (bsmMap == null) {
-            bsmMap = new EntryMap<>(Math.max(bsmSize, 16), .75f) {
-                @Override
-                protected BootstrapMethodEntryImpl fetchElement(int index) {
-                    return bootstrapMethodEntry(index);
-                }
-            };
-            for (int i=0; i<parentBsmSize; i++) {
-                BootstrapMethodEntryImpl bsm = parent.bootstrapMethodEntry(i);
-                bsmMap.put(bsm.hash, bsm.index);
+    private const EntryMap<BootstrapMethodEntryImpl> bsmMap() {
+        EntryMap<BootstrapMethodEntryImpl> bsmMap = new EntryMap<>(Math.max(bsmSize, 16), .75f) {
+            @Override
+            protected BootstrapMethodEntryImpl fetchElement(int index) {
+                return bootstrapMethodEntry(index);
             }
-            for (int i = parentBsmSize; i < bsmSize; ++i) {
-                BootstrapMethodEntryImpl bsm = myBsmEntries[i - parentBsmSize];
-                bsmMap.put(bsm.hash, bsm.index);
-            }
+        };
+        for (int i=0; i<parentBsmSize; i++) {
+            BootstrapMethodEntryImpl bsm = parent.bootstrapMethodEntry(i);
+            bsmMap.put(bsm.hash, bsm.index);
+        }
+        for (int i = parentBsmSize; i < bsmSize; ++i) {
+            BootstrapMethodEntryImpl bsm = myBsmEntries[i - parentBsmSize];
+            bsmMap.put(bsm.hash, bsm.index);
         }
         return bsmMap;
     }

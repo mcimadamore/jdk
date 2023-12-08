@@ -38,9 +38,6 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
-    private int[] parameterSlots;
-    private MethodTypeDesc mDesc;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
         this.reader = reader;
@@ -73,11 +70,8 @@ public final class MethodImpl
     }
 
     @Override
-    public MethodTypeDesc methodTypeSymbol() {
-        if (mDesc == null) {
-            mDesc = MethodTypeDesc.ofDescriptor(methodType().stringValue());
-        }
-        return mDesc;
+    public const MethodTypeDesc methodTypeSymbol() {
+        return MethodTypeDesc.ofDescriptor(methodType().stringValue());
     }
 
     @Override
@@ -85,19 +79,18 @@ public final class MethodImpl
         return reader.readU2(startPos);
     }
 
-    @Override
-    public int parameterSlot(int paramNo) {
-        if (parameterSlots == null)
-            parameterSlots = Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
-        return parameterSlots[paramNo];
+    private const int[] parameterSlots() {
+        return Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
     }
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+    public int parameterSlot(int paramNo) {
+        return parameterSlots()[paramNo];
+    }
+
+    @Override
+    public const List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override
