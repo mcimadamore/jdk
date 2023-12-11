@@ -248,10 +248,11 @@ public class Symtab {
     public final Type linkageType;
 
     // for const methods
-    public final Type computedConstantType;
-    public final MethodSymbol computedConstantGet;
-    public final MethodSymbol computedConstantOf;
-    public final MethodSymbol methodHandleBindTo;
+    public final Type constantType;
+    public final MethodSymbol constantGet;
+    public final MethodSymbol constantSet;
+    public final MethodSymbol constantIsBound;
+    public final MethodSymbol constantOf;
 
     /** The symbol representing the length field of an array.
      */
@@ -652,23 +653,28 @@ public class Symtab {
         linkageType = enterClass("java.lang.StringTemplate$Processor$Linkage");
 
         // for static locals
-        computedConstantType = enterClass("java.lang.ComputedConstant");
-        synthesizeEmptyInterfaceIfMissing(computedConstantType);
-        computedConstantGet = new MethodSymbol(PUBLIC,
+        constantType = enterClass("java.lang.Constant");
+        synthesizeEmptyInterfaceIfMissing(constantType);
+        constantGet = new MethodSymbol(PUBLIC,
                 names.get,
                 new MethodType(List.nil(), objectType,
                         List.nil(), methodClass),
-                computedConstantType.tsym);
-        computedConstantOf = new MethodSymbol(PUBLIC | STATIC,
+                constantType.tsym);
+        constantSet = new MethodSymbol(PUBLIC,
+                names.set,
+                new MethodType(List.of(objectType), voidType,
+                        List.nil(), methodClass),
+                constantType.tsym);
+        constantIsBound = new MethodSymbol(PUBLIC,
+                names.isBound,
+                new MethodType(List.nil(), booleanType,
+                        List.nil(), methodClass),
+                constantType.tsym);
+        constantOf = new MethodSymbol(PUBLIC | STATIC,
                 names.of,
-                new MethodType(List.of(classType, methodHandleType), computedConstantType,
+                new MethodType(List.nil(), constantType,
                         List.nil(), methodClass),
-                computedConstantType.tsym);
-        methodHandleBindTo = new MethodSymbol(PUBLIC,
-                names.bindTo,
-                new MethodType(List.of(objectType), methodHandleType,
-                        List.nil(), methodClass),
-                methodHandleType.tsym);
+                constantType.tsym);
 
         // Enter a synthetic class that is used to mark internal
         // proprietary classes in ct.sym.  This class does not have a

@@ -25,7 +25,6 @@
 
 package com.sun.tools.javac.comp;
 
-import com.sun.source.tree.MemberReferenceTree.ReferenceMode;
 import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Scope.WriteableScope;
 import com.sun.tools.javac.code.Symbol;
@@ -34,23 +33,20 @@ import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
-import com.sun.tools.javac.code.Type.ClassType;
 import com.sun.tools.javac.code.Type.MethodType;
-import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.jvm.PoolConstant.LoadableConstant;
 import com.sun.tools.javac.jvm.Target;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
+import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
-import com.sun.tools.javac.tree.JCTree.JCIdent;
-import com.sun.tools.javac.tree.JCTree.JCLiteral;
-import com.sun.tools.javac.tree.JCTree.JCMemberReference;
-import com.sun.tools.javac.tree.JCTree.JCMemberReference.ReferenceKind;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
+import com.sun.tools.javac.tree.JCTree.Tag;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.Context;
@@ -64,7 +60,6 @@ import com.sun.tools.javac.util.Pair;
 import static com.sun.tools.javac.code.Flags.CONST_METHOD;
 import static com.sun.tools.javac.code.Flags.FINAL;
 import static com.sun.tools.javac.code.Flags.PRIVATE;
-import static com.sun.tools.javac.code.Flags.PUBLIC;
 import static com.sun.tools.javac.code.Flags.STATIC;
 import static com.sun.tools.javac.code.Flags.SYNTHETIC;
 
@@ -122,13 +117,7 @@ public class TransConstantMethods extends TreeTranslator {
             } else {
                 // generate a CC field and return CC::get
                 VarSymbol ccSym = makeComputedConstantField(tree, initSym);
-                JCFieldAccess recv = make.Select(make.Ident(ccSym), names.get);
-                recv.sym = syms.computedConstantGet;
-                recv.type = tree.type;
-                JCMethodInvocation ccGet = make.App(recv);
-                ccGet.type = syms.objectType;
-                JCStatement retStat = make.Return(make.TypeCast(types.boxedTypeOrType(tree.type.getReturnType()), ccGet));
-                tree.body = make.Block(0, List.of(retStat));
+                tree.body = computedConstantGet(ccSym, initSym);
                 result = tree;
             }
         } else {
@@ -182,37 +171,47 @@ public class TransConstantMethods extends TreeTranslator {
         return condySym;
     }
 
-    private VarSymbol makeComputedConstantField(DiagnosticPosition pos, MethodSymbol initSymbol) {
+    private VarSymbol makeComputedConstantField(DiagnosticPosition pos, MethodSymbol symbol) {
         // create synthetic init symbol
         VarSymbol liftedSym = new VarSymbol(
                 SYNTHETIC | PRIVATE | FINAL,
-                makeSyntheticName(initSymbol.name.append('$', names.fromString("cc")), currentClass.sym.members()),
-                syms.computedConstantType, currentClass.sym);
+                makeSyntheticName(symbol.name.append('$', names.fromString("cc")), currentClass.sym.members()),
+                syms.constantType, currentClass.sym);
         enterSynthetic(pos, liftedSym, currentClass.sym.members());
-        // create
-
-        JCLiteral initHandle = make.Literal(TypeTag.BOT, null);
-        initHandle.setType(syms.methodHandleType.constType(initSymbol.asHandle()));
-        JCFieldAccess bindToRecv = make.Select(initHandle, names.bindTo);
-        bindToRecv.type = syms.methodHandleBindTo.type;
-        bindToRecv.sym = syms.methodHandleBindTo;
-        JCMethodInvocation bindToCall = make.App(bindToRecv, List.of(make.This(currentClass.type)));
-        bindToCall.type = syms.methodHandleType;
-
-        VarSymbol constantTypeSym = new VarSymbol(
-                STATIC | PUBLIC | FINAL, names._class,
-                syms.classType, initSymbol.type.getReturnType().tsym);
-        JCFieldAccess constantType = make.Select(make.Type(initSymbol.type.getReturnType()), constantTypeSym);
-
-        JCFieldAccess constrRecv = make.Select(make.Ident(syms.computedConstantType.tsym), names.of);
-        constrRecv.type = new MethodType(List.of(syms.classType, syms.methodHandleType), syms.computedConstantType, List.nil(), syms.methodClass);
-        constrRecv.sym = syms.computedConstantOf;
-        JCMethodInvocation constrCall = make.App(constrRecv, List.of(constantType, bindToCall));
-        constrCall.type = syms.computedConstantType;
+        JCFieldAccess constrRecv = make.Select(make.Ident(syms.constantType.tsym), names.of);
+        constrRecv.type = new MethodType(List.nil(), syms.constantType, List.nil(), syms.methodClass);
+        constrRecv.sym = syms.constantOf;
+        JCMethodInvocation constrCall = make.App(constrRecv, List.nil());
+        constrCall.type = syms.constantType;
         JCVariableDecl liftedDecl = make.VarDef(liftedSym, constrCall);
         pendingClassDefs.add(liftedDecl);
         needsLambdaToMethod = true;
         return liftedSym;
+    }
+
+    private JCBlock computedConstantGet(VarSymbol ccSym, MethodSymbol initSym) {
+//        if (!ccSym.isBound()) {
+//            ccSym.set(<init>);
+//        }
+//        return ccSym.get();
+        JCMethodInvocation initCall = make.App(make.Ident(initSym));
+        initCall.type = initSym.type.getReturnType();
+        JCMethodInvocation ccIsBound = makeConstantCall(ccSym, syms.constantIsBound, List.nil());
+        JCExpression notIsBound = make.Unary(Tag.NOT, ccIsBound);
+        notIsBound.type = syms.booleanType;
+        JCMethodInvocation ccGet = makeConstantCall(ccSym, syms.constantGet, List.nil());
+        JCMethodInvocation ccSet = makeConstantCall(ccSym, syms.constantSet, List.of(initCall));
+
+        return make.Block(0, List.of(
+                make.If(notIsBound, make.Exec(ccSet), null),
+                make.Return(make.TypeCast(initSym.type.getReturnType(), ccGet))));
+    }
+
+    private JCMethodInvocation makeConstantCall(VarSymbol ccSym, Symbol ccMethodSym, List<JCExpression> params) {
+        JCFieldAccess recv = make.Select(make.Ident(ccSym), ccMethodSym.name);
+        recv.sym = ccMethodSym;
+        recv.type = ccMethodSym.type;
+        return make.App(recv, params);
     }
 
     // copied from Lower
@@ -246,8 +245,7 @@ public class TransConstantMethods extends TreeTranslator {
             this.make = make;
             currentClass = null;
             needsLambdaToMethod = false;
-            JCTree translated = translate(cdef);
-            return new Pair<>(translated, needsLambdaToMethod);
+            return new Pair<>(translate(cdef), needsLambdaToMethod);
         } finally {
             // note that recursive invocations of this method fail hard
             attrEnv = null;
