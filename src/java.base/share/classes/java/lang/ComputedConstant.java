@@ -225,7 +225,7 @@ import java.util.function.Supplier;
  *}
  *
  * @param <V> The type of the value to be bound
- * @since 22
+ * @since 23
  */
 @PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
 public sealed interface ComputedConstant<V>
