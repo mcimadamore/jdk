@@ -60,8 +60,6 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -128,27 +126,21 @@ public final class ClassImpl
     }
 
     @Override
-    public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
+    public const List<ClassEntry> interfaces() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readClassEntry(pos);
             pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readClassEntry(pos);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
         }
-        return interfaces;
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+    public const List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     // ClassModel

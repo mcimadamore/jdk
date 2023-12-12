@@ -52,8 +52,6 @@ public final class BufferedMethodBuilder
     private final Utf8Entry desc;
     private AccessFlags flags;
     private final MethodModel original;
-    private int[] parameterSlots;
-    MethodTypeDesc mDesc;
 
     public BufferedMethodBuilder(SplitConstantPool constantPool,
                                  ClassFileImpl context,
@@ -97,15 +95,12 @@ public final class BufferedMethodBuilder
     }
 
     @Override
-    public MethodTypeDesc methodTypeSymbol() {
-        if (mDesc == null) {
-            if (original instanceof MethodInfo mi) {
-                mDesc = mi.methodTypeSymbol();
-            } else {
-                mDesc = MethodTypeDesc.ofDescriptor(methodType().stringValue());
-            }
+    public const MethodTypeDesc methodTypeSymbol() {
+        if (original instanceof MethodInfo mi) {
+            return mi.methodTypeSymbol();
+        } else {
+            return MethodTypeDesc.ofDescriptor(methodType().stringValue());
         }
-        return mDesc;
     }
 
     @Override
@@ -113,11 +108,13 @@ public final class BufferedMethodBuilder
         return flags.flagsMask();
     }
 
+    private const int[] parameterSlots() {
+        return Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
+    }
+
     @Override
     public int parameterSlot(int paramNo) {
-        if (parameterSlots == null)
-            parameterSlots = Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
-        return parameterSlots[paramNo];
+        return parameterSlots()[paramNo];
     }
 
     @Override

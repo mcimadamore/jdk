@@ -374,17 +374,13 @@ public abstract sealed class AbstractInstruction
     public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
-        private FieldRefEntry fieldEntry;
-
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, op.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public FieldRefEntry field() {
-            if (fieldEntry == null)
-                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
-            return fieldEntry;
+        public const FieldRefEntry field() {
+            return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
         }
 
         @Override
@@ -404,17 +400,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
-        MemberRefEntry methodEntry;
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, op.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
-            return methodEntry;
+        public const MemberRefEntry method() {
+            return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
         }
 
         @Override
@@ -444,17 +437,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
-        InterfaceMethodRefEntry methodEntry;
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, op.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
-            return methodEntry;
+        public const MemberRefEntry method() {
+            return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
         }
 
         @Override
@@ -484,17 +474,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
-        InvokeDynamicEntry indyEntry;
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, op.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public InvokeDynamicEntry invokedynamic() {
-            if (indyEntry == null)
-                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
-            return indyEntry;
+        public const InvokeDynamicEntry invokedynamic() {
+            return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
         }
 
         @Override
@@ -514,17 +501,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
-        ClassEntry classEntry;
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, Opcode.NEW.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public ClassEntry className() {
-            if (classEntry == null)
-                classEntry = code.classReader.readClassEntry(pos + 1);
-            return classEntry;
+        public const ClassEntry className() {
+            return code.classReader.readClassEntry(pos + 1);
         }
 
         @Override
@@ -621,17 +605,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
-        ClassEntry typeEntry;
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, op.sizeIfFixed(), code, pos);
         }
 
         @Override
-        public ClassEntry type() {
-            if (typeEntry == null)
-                typeEntry = code.classReader.readClassEntry(pos + 1);
-            return typeEntry;
+        public const ClassEntry type() {
+            return code.classReader.readClassEntry(pos + 1);
         }
 
         @Override

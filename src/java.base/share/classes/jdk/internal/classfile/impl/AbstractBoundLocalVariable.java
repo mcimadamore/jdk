@@ -32,8 +32,6 @@ public class AbstractBoundLocalVariable
         extends AbstractElement {
     protected final CodeImpl code;
     protected final int offset;
-    private Utf8Entry nameEntry;
-    private Utf8Entry secondaryEntry;
 
     public AbstractBoundLocalVariable(CodeImpl code, int offset) {
         this.code = code;
@@ -44,20 +42,16 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    public Utf8Entry name() {
-        if (nameEntry == null)
-            nameEntry = (Utf8Entry) code.constantPool().entryByIndex(nameIndex());
-        return nameEntry;
+    public const Utf8Entry name() {
+        return (Utf8Entry) code.constantPool().entryByIndex(nameIndex());
     }
 
     protected int secondaryIndex() {
         return code.classReader.readU2(offset + 6);
     }
 
-    protected Utf8Entry secondaryEntry() {
-        if (secondaryEntry == null)
-            secondaryEntry = (Utf8Entry) code.constantPool().entryByIndex(secondaryIndex());
-        return secondaryEntry;
+    protected const Utf8Entry secondaryEntry() {
+        return (Utf8Entry) code.constantPool().entryByIndex(secondaryIndex());
     }
 
     public Label startScope() {

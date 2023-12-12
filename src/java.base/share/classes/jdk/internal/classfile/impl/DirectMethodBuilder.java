@@ -47,8 +47,6 @@ public final class DirectMethodBuilder
     final Utf8Entry name;
     final Utf8Entry desc;
     int flags;
-    int[] parameterSlots;
-    MethodTypeDesc mDesc;
 
     public DirectMethodBuilder(SplitConstantPool constantPool,
                                ClassFileImpl context,
@@ -82,15 +80,12 @@ public final class DirectMethodBuilder
     }
 
     @Override
-    public MethodTypeDesc methodTypeSymbol() {
-        if (mDesc == null) {
-            if (original instanceof MethodInfo mi) {
-                mDesc = mi.methodTypeSymbol();
-            } else {
-                mDesc = MethodTypeDesc.ofDescriptor(methodType().stringValue());
-            }
+    public const MethodTypeDesc methodTypeSymbol() {
+        if (original instanceof MethodInfo mi) {
+            return mi.methodTypeSymbol();
+        } else {
+            return MethodTypeDesc.ofDescriptor(methodType().stringValue());
         }
-        return mDesc;
     }
 
     @Override
@@ -98,11 +93,13 @@ public final class DirectMethodBuilder
         return flags;
     }
 
+    private const int[] parameterSlots() {
+        return Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
+    }
+
     @Override
     public int parameterSlot(int paramNo) {
-        if (parameterSlots == null)
-            parameterSlots = Util.parseParameterSlots(methodFlags(), methodTypeSymbol());
-        return parameterSlots[paramNo];
+        return parameterSlots()[paramNo];
     }
 
     @Override

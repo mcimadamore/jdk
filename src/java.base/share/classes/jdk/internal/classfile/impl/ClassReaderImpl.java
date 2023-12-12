@@ -63,8 +63,6 @@ public final class ClassReaderImpl
     private final Function<Utf8Entry, AttributeMapper<?>> attributeMapper;
     private final int flags;
     private final int thisClassPos;
-    private ClassEntry thisClass;
-    private Optional<ClassEntry> superclass;
     private final int constantPoolCount;
     private final int[] cpOffset;
 
@@ -73,8 +71,6 @@ public final class ClassReaderImpl
     final PoolEntry[] cp;
 
     private ClassModel containedClass;
-    private List<BootstrapMethodEntryImpl> bsmEntries;
-    private BootstrapMethodsAttribute bootstrapMethodsAttribute;
 
     ClassReaderImpl(byte[] classfileBytes,
                     ClassFileImpl context) {
@@ -148,20 +144,14 @@ public final class ClassReaderImpl
     }
 
     @Override
-    public ClassEntry thisClassEntry() {
-        if (thisClass == null) {
-            thisClass = readEntry(thisClassPos, ClassEntry.class);
-        }
-        return thisClass;
+    public const ClassEntry thisClassEntry() {
+        return readEntry(thisClassPos, ClassEntry.class);
     }
 
     @Override
-    public Optional<ClassEntry> superclassEntry() {
-        if (superclass == null) {
-            int scIndex = readU2(thisClassPos + 2);
-            superclass = Optional.ofNullable(scIndex == 0 ? null : (ClassEntry) entryByIndex(scIndex));
-        }
-        return superclass;
+    public const Optional<ClassEntry> superclassEntry() {
+        int scIndex = readU2(thisClassPos + 2);
+        return Optional.ofNullable(scIndex == 0 ? null : (ClassEntry) entryByIndex(scIndex));
     }
 
     @Override
@@ -250,29 +240,21 @@ public final class ClassReaderImpl
         buf.writeBytes(buffer, p, len);
     }
 
-    BootstrapMethodsAttribute bootstrapMethodsAttribute() {
-
-        if (bootstrapMethodsAttribute == null) {
-            bootstrapMethodsAttribute
-                    = containedClass.findAttribute(Attributes.BOOTSTRAP_METHODS)
-                                    .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
-        }
-
-        return bootstrapMethodsAttribute;
+    const BootstrapMethodsAttribute bootstrapMethodsAttribute() {
+        return containedClass.findAttribute(Attributes.BOOTSTRAP_METHODS)
+                             .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    List<BootstrapMethodEntryImpl> bsmEntries() {
-        if (bsmEntries == null) {
-            bsmEntries = new ArrayList<>();
-            BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
-            List<BootstrapMethodEntry> list = attr.bootstrapMethods();
-            if (!list.isEmpty()) {
-                for (BootstrapMethodEntry bm : list) {
-                    AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
-                    List<LoadableConstantEntry> args = bm.arguments();
-                    int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
-                    bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
-                }
+    const List<BootstrapMethodEntryImpl> bsmEntries() {
+        List<BootstrapMethodEntryImpl> bsmEntries = new ArrayList<>();
+        BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
+        List<BootstrapMethodEntry> list = attr.bootstrapMethods();
+        if (!list.isEmpty()) {
+            for (BootstrapMethodEntry bm : list) {
+                AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
+                List<LoadableConstantEntry> args = bm.arguments();
+                int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
+                bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
             }
         }
         return bsmEntries;
