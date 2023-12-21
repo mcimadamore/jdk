@@ -26,6 +26,7 @@
 package java.lang.invoke;
 
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.constant.ComputedConstant;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
 import jdk.internal.org.objectweb.asm.ClassReader;
@@ -60,6 +61,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.lang.invoke.LambdaForm.BasicType.V_TYPE;
@@ -5145,6 +5147,34 @@ assert((int)twice.invokeExact(21) == 42);
                 return zero(Wrapper.OBJECT, type);
             return identity(type).bindTo(value);
         }
+    }
+
+    /**
+     * Produces a method handle of the requested return type which computes the returned value at most once,
+     * using the provided method handle.
+     * @param type the return type of the desired method handle
+     * @param supplier the method handle used to lazily compute the constant value returned by the method handle
+     * @return a method handle of the given return type and no arguments, which always returns the same value
+     * @throws NullPointerException if the {@code type} argument is null
+     * @throws NullPointerException if the {@code supplier} argument is null
+     * @throws IllegalArgumentException if the supplier method handle takes any parameters
+     * @throws IllegalArgumentException if the return type of the supplier method handle is different from the provided type
+     */
+    public static MethodHandle lazyConstant(Class<?> type, MethodHandle supplier) {
+        class Holder {
+            static final MethodHandle CC_GET;
+
+            static {
+                try {
+                    CC_GET = MethodHandles.lookup().findVirtual(ComputedConstant.class, "get",
+                            MethodType.methodType(Object.class));
+                } catch (Throwable ex) {
+                    throw new ExceptionInInitializerError(ex);
+                }
+            }
+        }
+        ComputedConstant<Object> cc = ComputedConstant.of(type, supplier);
+        return Holder.CC_GET.bindTo(cc).asType(MethodType.methodType(type));
     }
 
     /**

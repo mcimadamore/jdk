@@ -35,7 +35,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -54,6 +56,19 @@ public class ComputedConstantStatic {
     public static final Supplier<Integer> CONSTANT = ComputedConstant.of(SUPPLIER);
     public static final Supplier<Integer> CONSTANT_NULL = ComputedConstant.of(NULL_SUPPLIER);
     public static final Supplier<Integer> DC = new DoubleChecked<>(SUPPLIER);
+
+    public static final MethodHandle CONSTANT_GETTER;
+
+    static {
+        try {
+            MethodHandle supplierHandle = MethodHandles.lookup()
+                    .findVirtual(Supplier.class, "get", MethodType.methodType(Object.class))
+                    .bindTo(SUPPLIER).asType(MethodType.methodType(Integer.class));
+            CONSTANT_GETTER = MethodHandles.lazyConstant(Integer.class, supplierHandle);
+        } catch (Throwable ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
 
     private int value;
 
@@ -77,6 +92,11 @@ public class ComputedConstantStatic {
     @Benchmark
     public void constant(Blackhole bh) {
         bh.consume(CONSTANT.get());
+    }
+
+    @Benchmark
+    public void constantHandle(Blackhole bh) throws Throwable {
+        bh.consume((Integer)CONSTANT_GETTER.invokeExact());
     }
 
     @Benchmark

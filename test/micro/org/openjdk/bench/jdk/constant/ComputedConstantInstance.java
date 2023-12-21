@@ -37,6 +37,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -55,16 +58,31 @@ public class ComputedConstantInstance {
     public Supplier<Integer> constantNull;
     public Supplier<Integer> doubleChecked;
 
+    public MethodHandle constantGetter;
+
     @Setup(Level.Iteration)
     public void setupIteration() {
         constant = ComputedConstant.of(SUPPLIER);
         constantNull = ComputedConstant.of(NULL_SUPPLIER);
         doubleChecked = new DoubleChecked<>(SUPPLIER);
+        try {
+            MethodHandle supplierHandle = MethodHandles.lookup()
+                    .findVirtual(Supplier.class, "get", MethodType.methodType(Object.class))
+                    .bindTo(SUPPLIER).asType(MethodType.methodType(Integer.class));
+            constantGetter = MethodHandles.lazyConstant(Integer.class, supplierHandle);
+        } catch (Throwable ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
     }
 
     @Benchmark
     public void constant(Blackhole bh) {
         bh.consume(constant.get());
+    }
+
+    @Benchmark
+    public void constantHandle(Blackhole bh) throws Throwable {
+        bh.consume((Integer) constantGetter.invokeExact());
     }
 
     @Benchmark
