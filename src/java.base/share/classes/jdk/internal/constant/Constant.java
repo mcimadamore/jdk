@@ -15,7 +15,6 @@ import java.util.function.Supplier;
  * @param <V> the type of the value to be bound
  * @since 23
  */
-@PreviewFeature(feature = PreviewFeature.Feature.COMPUTED_CONSTANTS)
 public sealed interface Constant<V>
         permits StandardConstant {
 
