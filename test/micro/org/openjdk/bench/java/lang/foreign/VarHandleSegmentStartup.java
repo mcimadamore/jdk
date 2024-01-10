@@ -39,14 +39,14 @@ public class VarHandleSegmentStartup {
 
     final MemorySegment segment = Arena.ofAuto().allocate(ValueLayout.JAVA_LONG);
 
-    static final VarHandle Z_HANDLE = ValueLayout.JAVA_BOOLEAN.varHandle();
-    static final VarHandle C_HANDLE = ValueLayout.JAVA_CHAR.varHandle();
-    static final VarHandle S_HANDLE = ValueLayout.JAVA_SHORT.varHandle();
-    static final VarHandle I_HANDLE = ValueLayout.JAVA_INT.varHandle();
-    static final VarHandle J_HANDLE = ValueLayout.JAVA_LONG.varHandle();
-    static final VarHandle F_HANDLE = ValueLayout.JAVA_FLOAT.varHandle();
-    static final VarHandle D_HANDLE = ValueLayout.JAVA_DOUBLE.varHandle();
-    static final VarHandle A_HANDLE = ValueLayout.ADDRESS.varHandle();
+    static final VarHandle Z_HANDLE = ValueLayout.JAVA_BOOLEAN.varHandle().withInvokeExactBehavior();
+    static final VarHandle C_HANDLE = ValueLayout.JAVA_CHAR.varHandle().withInvokeExactBehavior();
+    static final VarHandle S_HANDLE = ValueLayout.JAVA_SHORT.varHandle().withInvokeExactBehavior();
+    static final VarHandle I_HANDLE = ValueLayout.JAVA_INT.varHandle().withInvokeExactBehavior();
+    static final VarHandle J_HANDLE = ValueLayout.JAVA_LONG.varHandle().withInvokeExactBehavior();
+    static final VarHandle F_HANDLE = ValueLayout.JAVA_FLOAT.varHandle().withInvokeExactBehavior();
+    static final VarHandle D_HANDLE = ValueLayout.JAVA_DOUBLE.varHandle().withInvokeExactBehavior();
+    static final VarHandle A_HANDLE = ValueLayout.ADDRESS.varHandle().withInvokeExactBehavior();
 
     // getters
 
