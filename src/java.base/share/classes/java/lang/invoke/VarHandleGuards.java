@@ -237,6 +237,46 @@ final class VarHandleGuards {
     @ForceInline
     @LambdaForm.Compiled
     @Hidden
+    static final float guard_LJ_F(VarHandle handle, Object arg0, long arg1, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            return (float) MethodHandle.linkToStatic(handle, arg0, arg1, handle.vform.getMemberName(ad.mode));
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            return (float) mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
+    static final double guard_LJ_D(VarHandle handle, Object arg0, long arg1, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            return (double) MethodHandle.linkToStatic(handle, arg0, arg1, handle.vform.getMemberName(ad.mode));
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            return (double) mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
+    static final Object guard_LJ_L(VarHandle handle, Object arg0, long arg1, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            Object r = MethodHandle.linkToStatic(handle, arg0, arg1, handle.vform.getMemberName(ad.mode));
+            return ad.returnType.cast(r);
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            return mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
     static final float guard_L_F(VarHandle handle, Object arg0, VarHandle.AccessDescriptor ad) throws Throwable {
         boolean direct = handle.checkAccessModeThenIsDirect(ad);
         if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {

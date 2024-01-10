@@ -31,13 +31,15 @@ import jdk.internal.foreign.Utils;
  * Base class for memory segment var handle view implementations.
  */
 abstract sealed class VarHandleSegmentViewBase extends VarHandle permits
+        VarHandleSegmentAsBooleans,
         VarHandleSegmentAsBytes,
         VarHandleSegmentAsChars,
         VarHandleSegmentAsDoubles,
         VarHandleSegmentAsFloats,
         VarHandleSegmentAsInts,
         VarHandleSegmentAsLongs,
-        VarHandleSegmentAsShorts {
+        VarHandleSegmentAsShorts,
+        VarHandleSegmentAsSegments {
 
     /** endianness **/
     final boolean be;

@@ -37,6 +37,17 @@ define GenerateScopedOp
 
   $1_Type := $2
 
+  ifeq ($$($1_Type), Boolean)
+    $1_type := boolean
+    $1_BoxType := $$($1_Type)
+
+    $1_rawType := $$($1_type)
+    $1_RawType := $$($1_Type)
+    $1_RawBoxType := $$($1_BoxType)
+
+    $1_ARGS += -Kboolean
+  endif
+
   ifeq ($$($1_Type), Byte)
     $1_type := byte
     $1_BoxType := $$($1_Type)
@@ -136,7 +147,7 @@ endef
 ################################################################################
 # Setup a rule for generating the ScopedMemoryAccess java class
 
-SCOPE_MEMORY_ACCESS_TYPES := Byte Short Char Int Long Float Double
+SCOPE_MEMORY_ACCESS_TYPES := Boolean Byte Short Char Int Long Float Double
 $(foreach t, $(SCOPE_MEMORY_ACCESS_TYPES), \
   $(eval $(call GenerateScopedOp,BIN_$t,$t)))
 

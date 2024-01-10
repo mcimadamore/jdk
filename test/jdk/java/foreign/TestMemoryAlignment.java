@@ -116,7 +116,8 @@ public class TestMemoryAlignment {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment segment = arena.allocate(g);;
             vh_c.set(segment, 0L, Byte.MIN_VALUE);
-            assertEquals(vh_c.get(segment, 0L), Byte.MIN_VALUE);
+            Object o = vh_c.get(segment, 0L);
+            assertEquals(o, Byte.MIN_VALUE);
             vh_s.set(segment, 0L, Short.MIN_VALUE);
             assertEquals(vh_s.get(segment, 0L), Short.MIN_VALUE);
             vh_i.set(segment, 0L, Integer.MIN_VALUE);

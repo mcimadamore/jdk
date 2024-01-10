@@ -31,18 +31,15 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 import sun.invoke.util.Wrapper;
@@ -58,27 +55,6 @@ public final class Utils {
 
     // Suppresses default constructor, ensuring non-instantiability.
     private Utils() {}
-
-    private static final MethodHandle BYTE_TO_BOOL;
-    private static final MethodHandle BOOL_TO_BYTE;
-    private static final MethodHandle ADDRESS_TO_LONG;
-    private static final MethodHandle LONG_TO_ADDRESS;
-
-    static {
-        try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            BYTE_TO_BOOL = lookup.findStatic(Utils.class, "byteToBoolean",
-                    MethodType.methodType(boolean.class, byte.class));
-            BOOL_TO_BYTE = lookup.findStatic(Utils.class, "booleanToByte",
-                    MethodType.methodType(byte.class, boolean.class));
-            ADDRESS_TO_LONG = lookup.findStatic(SharedUtils.class, "unboxSegment",
-                    MethodType.methodType(long.class, MemorySegment.class));
-            LONG_TO_ADDRESS = lookup.findStatic(Utils.class, "longToAddress",
-                    MethodType.methodType(MemorySegment.class, long.class, long.class, long.class));
-        } catch (Throwable ex) {
-            throw new ExceptionInInitializerError(ex);
-        }
-    }
 
     public static long alignUp(long n, long alignment) {
         return (n + alignment - 1) & -alignment;
@@ -111,37 +87,20 @@ public final class Utils {
         }
 
         Class<?> baseCarrier = layout.carrier();
-        if (layout.carrier() == MemorySegment.class) {
-            baseCarrier = switch ((int) ValueLayout.ADDRESS.byteSize()) {
-                case Long.BYTES -> long.class;
-                case Integer.BYTES -> int.class;
-                default -> throw new UnsupportedOperationException("Unsupported address layout");
-            };
-        } else if (layout.carrier() == boolean.class) {
-            baseCarrier = byte.class;
+
+        Optional<MemoryLayout> dereferenceLayout = Optional.empty();
+        if (layout instanceof AddressLayout addressLayout) {
+            dereferenceLayout = addressLayout.targetLayout();
         }
 
         handle = SharedSecrets.getJavaLangInvokeAccess().memorySegmentViewHandle(baseCarrier,
-                layout.byteAlignment() - 1, layout.order());
+                layout.byteAlignment() - 1, layout.order(), dereferenceLayout);
 
-        if (layout.carrier() == boolean.class) {
-            handle = MethodHandles.filterValue(handle, BOOL_TO_BYTE, BYTE_TO_BOOL);
-        } else if (layout instanceof AddressLayout addressLayout) {
-            handle = MethodHandles.filterValue(handle,
-                    MethodHandles.explicitCastArguments(ADDRESS_TO_LONG, MethodType.methodType(baseCarrier, MemorySegment.class)),
-                    MethodHandles.explicitCastArguments(MethodHandles.insertArguments(LONG_TO_ADDRESS, 1,
-                            pointeeByteSize(addressLayout), pointeeByteAlign(addressLayout)),
-                            MethodType.methodType(MemorySegment.class, baseCarrier)));
-        }
         return VarHandleCache.put(layout, handle);
     }
 
     public static boolean byteToBoolean(byte b) {
         return b != 0;
-    }
-
-    private static byte booleanToByte(boolean b) {
-        return b ? (byte)1 : (byte)0;
     }
 
     @ForceInline
