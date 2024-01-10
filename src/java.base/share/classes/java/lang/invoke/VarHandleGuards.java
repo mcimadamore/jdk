@@ -1115,6 +1115,51 @@ final class VarHandleGuards {
     @ForceInline
     @LambdaForm.Compiled
     @Hidden
+    static final void guard_LJF_V(VarHandle handle, Object arg0, long arg1, float arg2, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else if (direct && handle.vform.getMethodType_V(ad.type) == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1, arg2);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
+    static final void guard_LJD_V(VarHandle handle, Object arg0, long arg1, double arg2, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else if (direct && handle.vform.getMethodType_V(ad.type) == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1, arg2);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
+    static final void guard_LJL_V(VarHandle handle, Object arg0, long arg1, Object arg2, VarHandle.AccessDescriptor ad) throws Throwable {
+        boolean direct = handle.checkAccessModeThenIsDirect(ad);
+        if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else if (direct && handle.vform.getMethodType_V(ad.type) == ad.symbolicMethodTypeErased) {
+            MethodHandle.linkToStatic(handle, arg0, arg1, arg2, handle.vform.getMemberName(ad.mode));
+        } else {
+            MethodHandle mh = handle.getMethodHandle(ad.mode);
+            mh.asType(ad.symbolicMethodTypeInvoker).invokeBasic(handle.asDirect(), arg0, arg1, arg2);
+        }
+    }
+
+    @ForceInline
+    @LambdaForm.Compiled
+    @Hidden
     static final boolean guard_LJJJ_Z(VarHandle handle, Object arg0, long arg1, long arg2, long arg3, VarHandle.AccessDescriptor ad) throws Throwable {
         boolean direct = handle.checkAccessModeThenIsDirect(ad);
         if (direct && handle.vform.methodType_table[ad.type] == ad.symbolicMethodTypeErased) {

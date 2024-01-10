@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package org.openjdk.bench.java.lang.foreign;
 
 import org.openjdk.jmh.annotations.*;
-import sun.misc.Unsafe;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -137,5 +136,95 @@ public class VarHandleSegmentStartup {
     @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
     public MemorySegment vh_addr_get_no_guard() {
         return (MemorySegment) A_HANDLE.get(segment, 0L);
+    }
+
+    // setters
+
+    @Benchmark
+    public void vh_bool_set() {
+        Z_HANDLE.set(segment, 0L, true);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_bool_set_no_guard() {
+        Z_HANDLE.set(segment, 0L, true);
+    }
+
+    @Benchmark
+    public void vh_char_set() {
+        C_HANDLE.set(segment, 0L, 'c');
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_char_set_no_guard() {
+        C_HANDLE.set(segment, 0L, 'c');
+    }
+
+    @Benchmark
+    public void vh_short_set() {
+        S_HANDLE.set(segment, 0L, (short)0);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_short_set_no_guard() {
+        S_HANDLE.set(segment, 0L, (short)0);
+    }
+
+    @Benchmark
+    public void vh_int_set() {
+        I_HANDLE.set(segment, 0L, 0);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_int_set_no_guard() {
+        I_HANDLE.set(segment, 0L, 0);
+    }
+
+    @Benchmark
+    public void vh_long_set() {
+        J_HANDLE.set(segment, 0L, 0L);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_long_set_no_guard() {
+        J_HANDLE.set(segment, 0L, 0L);
+    }
+
+    @Benchmark
+    public void vh_float_set() {
+        F_HANDLE.set(segment, 0L, 0f);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_float_set_no_guard() {
+        F_HANDLE.set(segment, 0L, 0f);
+    }
+
+    @Benchmark
+    public void vh_double_set() {
+        D_HANDLE.set(segment, 0L, 0d);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_double_set_no_guard() {
+        D_HANDLE.set(segment, 0L, 0d);
+    }
+
+    @Benchmark
+    public void vh_addr_set() {
+        A_HANDLE.set(segment, 0L, MemorySegment.NULL);
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = "-Djava.lang.invoke.VarHandle.VAR_HANDLE_GUARDS=false")
+    public void vh_addr_set_no_guard() {
+        A_HANDLE.set(segment, 0L, MemorySegment.NULL);
     }
 }
