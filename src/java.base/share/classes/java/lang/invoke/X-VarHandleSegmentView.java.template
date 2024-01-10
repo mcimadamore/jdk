@@ -164,8 +164,9 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
     }
 
     @ForceInline
+    @SuppressWarnings("cast")
     static $rawType$ toRaw(VarHandleSegmentViewBase handle, $type$ v) {
-        return SharedUtils.unboxSegment((MemorySegment)v);
+        return ($rawType$)SharedUtils.unboxSegment((MemorySegment)v);
     }
 
     @ForceInline

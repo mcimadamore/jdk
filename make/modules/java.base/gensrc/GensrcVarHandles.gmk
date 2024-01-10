@@ -265,9 +265,15 @@ define GenerateVarHandleMemorySegment
     $1_type := Object
     $1_BoxType := Object
 
-    $1_rawType := long
-    $1_RawType := Long
-    $1_RawBoxType := Long
+    ifeq ($$(OPENJDK_TARGET_CPU_BITS), 64)
+      $1_rawType := long
+      $1_RawType := Long
+      $1_RawBoxType := Long
+    else
+      $1_rawType := int
+      $1_RawType := Int
+      $1_RawBoxType := Integer
+    endif
 
     $1_ARGS += -Kaddress
     $1_ARGS += -KCAS
