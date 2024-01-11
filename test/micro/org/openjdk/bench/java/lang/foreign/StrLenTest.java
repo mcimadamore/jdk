@@ -57,7 +57,7 @@ public class StrLenTest extends CLayouts {
     SegmentAllocator arenaAllocator = new RingAllocator(arena);
     SlicingPool pool = new SlicingPool();
 
-    StackArena stackArena = StackArena.newStack();
+    Stack stack = Stack.newStack();
 
     @Param({"5", "20", "100"})
     public int size;
@@ -84,6 +84,7 @@ public class StrLenTest extends CLayouts {
     @TearDown
     public void tearDown() {
         arena.close();
+        stack.close();
     }
 
     @Benchmark
@@ -113,7 +114,7 @@ public class StrLenTest extends CLayouts {
 
     @Benchmark
     public int panama_strlen_stack() throws Throwable {
-        try (Arena arena = stackArena.push()) {
+        try (Arena arena = stack.push()) {
             return (int) STRLEN.invokeExact(arena.allocateFrom(str));
         }
     }

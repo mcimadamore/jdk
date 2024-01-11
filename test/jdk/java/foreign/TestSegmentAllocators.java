@@ -536,6 +536,7 @@ public class TestSegmentAllocators {
     static Object[][] allocators() {
         return new Object[][] {
                 { SegmentAllocator.prefixAllocator(Arena.global().allocate(10, 1)) },
+                { Stack.newStack().push() }
         };
     }
 }
