@@ -225,6 +225,9 @@ public final class Stack implements AutoCloseable {
         }
 
         private void checkTop() {
+            // invariant: there can be only one arena such that: (a) its scope is not yet closed, and (b) its start offset
+            // is equal to the pending offset in the stack. Ideally, we'd just save a pointer to the top arena in the stack,
+            // but doing so defeats escape analysis optimizations.
             MemorySessionImpl.toMemorySession(arena).checkValidState();
             if (startOffset != pendingStart) {
                 throw new IllegalStateException("Not top arena!");
