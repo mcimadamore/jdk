@@ -31,7 +31,6 @@ import jdk.internal.vm.annotation.ForceInline;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
 
-import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.Utils;
 
 import java.util.Objects;
@@ -166,7 +165,12 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
     @ForceInline
     @SuppressWarnings("cast")
     static $rawType$ toRaw(VarHandleSegmentViewBase handle, $type$ v) {
-        return ($rawType$)SharedUtils.unboxSegment((MemorySegment)v);
+        // copy SharedUtils::unboxSegment to avoid lambda clinit in SharedUtils which spins bytecode
+        MemorySegment segment = (MemorySegment)v;
+        if (!segment.isNative()) {
+            throw new IllegalArgumentException("Heap segment not allowed: " + segment);
+        }
+        return segment.address();
     }
 
     @ForceInline
