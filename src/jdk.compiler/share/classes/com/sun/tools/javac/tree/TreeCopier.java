@@ -286,9 +286,8 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
     @DefinedBy(Api.COMPILER_TREE)
     public JCTree visitStringTemplate(StringTemplateTree node, P p) {
         JCStringTemplate t = (JCStringTemplate) node;
-        JCExpression processor = copy(t.processor, p);
         List<JCExpression> expressions = copy(t.expressions, p);
-        return M.at(t.pos).StringTemplate(processor, t.fragments, expressions);
+        return M.at(t.pos).StringTemplate(t.fragments, expressions);
     }
 
     @DefinedBy(Api.COMPILER_TREE)

@@ -354,7 +354,6 @@ public class TreeScanner extends Visitor {
     }
 
     public void visitStringTemplate(JCStringTemplate tree) {
-        scan(tree.processor);
         scan(tree.expressions);
     }
 

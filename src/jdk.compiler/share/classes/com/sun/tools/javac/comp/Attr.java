@@ -4997,22 +4997,14 @@ public class Attr extends JCTree.Visitor {
     }
 
     public void visitStringTemplate(JCStringTemplate tree) {
-        JCExpression processor = tree.processor;
-        Type processorType = attribTree(processor, env, new ResultInfo(KindSelector.VAL, Type.noType));
-        chk.checkProcessorType(processor, processorType, env);
-        Type processMethodType = getProcessMethodType(tree, processorType);
-        tree.processMethodType = processMethodType;
-        Type resultType = processMethodType.getReturnType();
-
         Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
 
         for (JCExpression arg : tree.expressions) {
             chk.checkNonVoid(arg.pos(), attribExpr(arg, localEnv));
         }
 
-        tree.type = resultType;
-        result = resultType;
-        check(tree, resultType, KindSelector.VAL, resultInfo);
+        result = tree.type = syms.stringTemplateType;
+        check(tree, tree.type, KindSelector.VAL, resultInfo);
     }
 
     private Type getProcessMethodType(JCStringTemplate tree, Type processorType) {

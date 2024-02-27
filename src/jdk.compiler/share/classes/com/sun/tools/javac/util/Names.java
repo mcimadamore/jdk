@@ -234,6 +234,7 @@ public class Names {
     public final Name newStringTemplate;
     public final Name newLargeStringTemplate;
     public final Name processStringTemplate;
+    public final Name interpolate;
 
     public final Name.Table table;
 
@@ -420,6 +421,7 @@ public class Names {
         newStringTemplate = fromString("newStringTemplate");
         newLargeStringTemplate = fromString("newLargeStringTemplate");
         processStringTemplate = fromString("processStringTemplate");
+        interpolate = fromString("interpolate");
 
         // pattern switches
         typeSwitch = fromString("typeSwitch");

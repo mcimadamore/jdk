@@ -36,12 +36,6 @@ import jdk.internal.javac.PreviewFeature;
  */
 @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES, reflective=true)
 public interface StringTemplateTree extends ExpressionTree {
-    /**
-     * Returns templated string processor (may be qualified) or null.
-     *
-     * @return templated string processor
-     */
-    ExpressionTree getProcessor();
 
     /**
      * Returns string fragments.

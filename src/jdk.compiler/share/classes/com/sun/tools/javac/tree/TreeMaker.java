@@ -552,10 +552,9 @@ public class TreeMaker implements JCTree.Factory {
         return tree;
     }
 
-    public JCStringTemplate StringTemplate(JCExpression processor,
-                                           List<String> fragments,
+    public JCStringTemplate StringTemplate(List<String> fragments,
                                            List<JCExpression> expressions) {
-        JCStringTemplate tree = new JCStringTemplate(processor, fragments, expressions);
+        JCStringTemplate tree = new JCStringTemplate(fragments, expressions);
         tree.pos = pos;
         return tree;
     }

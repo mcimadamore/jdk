@@ -224,12 +224,7 @@ public interface StringTemplate {
      * @throws NullPointerException if stringTemplate is null
      */
     static String toString(StringTemplate stringTemplate) {
-        Objects.requireNonNull(stringTemplate, "stringTemplate should not be null");
-        return "StringTemplate{ fragments = [ \"" +
-                String.join("\", \"", stringTemplate.fragments()) +
-                "\" ], values = " +
-                stringTemplate.values() +
-                " }";
+        return stringTemplate.interpolate();
     }
 
     /**

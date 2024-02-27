@@ -589,7 +589,7 @@ public class TreeInfo {
             }
             case STRING_TEMPLATE: {
                 JCStringTemplate node = (JCStringTemplate) tree;
-                return node.processor == null ? node.pos : getStartPos(node.processor);
+                return node.pos;
             }
             case ERRONEOUS: {
                 JCErroneous node = (JCErroneous)tree;

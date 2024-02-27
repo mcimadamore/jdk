@@ -3408,6 +3408,13 @@ public class Lower extends TreeTranslator {
     /** Expand a boxing or unboxing conversion if needed. */
     @SuppressWarnings("unchecked") // XXX unchecked
     <T extends JCExpression> T boxIfNeeded(T tree, Type type) {
+        if (tree.type.tsym == syms.stringType.tsym &&
+                type.tsym == syms.stringTemplateType.tsym) {
+            return (T)boxString(tree);
+        } else if (tree.type.tsym == syms.stringTemplateType.tsym &&
+                type.tsym == syms.stringType.tsym) {
+            return (T)unboxStringTemplate(tree);
+        }
         boolean havePrimitive = tree.type.isPrimitive();
         if (havePrimitive == type.isPrimitive())
             return tree;
@@ -3440,6 +3447,30 @@ public class Lower extends TreeTranslator {
                                          List.<Type>nil()
                                          .prepend(tree.type));
         return make.App(make.QualIdent(valueOfSym), List.of(tree));
+    }
+
+    /**
+     * Box a string into a string template
+     */
+    JCExpression boxString(JCExpression stringTree) {
+        make_at(stringTree.pos());
+        Symbol stringTemplateOfSym = lookupMethod(stringTree.pos(),
+                names.of,
+                syms.stringTemplateType,
+                List.of(syms.stringType));
+        return make.App(make.QualIdent(stringTemplateOfSym), List.of(stringTree));
+    }
+
+    /**
+     * Box a string into a string template
+     */
+    JCExpression unboxStringTemplate(JCExpression stringTemplateTree) {
+        make_at(stringTemplateTree.pos());
+        Symbol stringTemplateOfSym = lookupMethod(stringTemplateTree.pos(),
+                names.interpolate,
+                syms.stringTemplateType,
+                List.nil());
+        return make.App(make.Select(stringTemplateTree, stringTemplateOfSym), List.nil());
     }
 
     /** Unbox an object to a primitive value. */

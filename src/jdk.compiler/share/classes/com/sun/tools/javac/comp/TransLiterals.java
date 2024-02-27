@@ -141,175 +141,37 @@ public final class TransLiterals extends TreeTranslator {
         }
     }
 
-    final class TransStringTemplate {
-        final JCStringTemplate tree;
-        final JCExpression processor;
-        final List<String> fragments;
-        final List<JCExpression> expressions;
-        final List<Type> expressionTypes;
-        final boolean useValuesList;
+    public void visitStringTemplate(JCStringTemplate tree) {
+        tree.expressions = translate(tree.expressions);
 
-        TransStringTemplate(JCStringTemplate tree) {
-            this.tree = tree;
-            this.processor = tree.processor;
-            this.fragments = tree.fragments;
-            this.expressions = translate(tree.expressions);
-            this.expressionTypes = expressions.stream()
-                    .map(arg -> arg.type == syms.botType ? syms.objectType : arg.type)
-                    .collect(List.collector());
-            int slots = expressionTypes.stream()
-                    .mapToInt(t -> types.isSameType(t, syms.longType) ||
-                            types.isSameType(t, syms.doubleType) ? 2 : 1).sum();
-            this.useValuesList = 200 < slots; // StringConcatFactory.MAX_INDY_CONCAT_ARG_SLOTS
-         }
-
-        JCExpression concatExpression(List<String> fragments, List<JCExpression> expressions) {
-            JCExpression expr = null;
-            Iterator<JCExpression> iterator = expressions.iterator();
-            for (String fragment : fragments) {
-                expr = expr == null ? makeString(fragment)
-                        : makeBinary(Tag.PLUS, expr, makeString(fragment));
-                if (iterator.hasNext()) {
-                    JCExpression expression = iterator.next();
-                    Type expressionType = expression.type;
-                    expr = makeBinary(Tag.PLUS, expr, expression.setType(expressionType));
-                }
-            }
-            return expr;
-        }
-
-        JCExpression bsmCall(Name name, Name bootstrapName, Type type,
-                             List<JCExpression> args,
-                             List<Type> argTypes,
-                             List<LoadableConstant> staticArgValues,
-                             List<Type> staticArgsTypes) {
-            Symbol bsm = rs.resolveQualifiedMethod(tree.pos(), env,
-                    syms.templateRuntimeType, bootstrapName, staticArgsTypes, List.nil());
-            MethodType indyType = new MethodType(argTypes, type, List.nil(), syms.methodClass);
-            DynamicMethodSymbol dynSym = new DynamicMethodSymbol(
-                    name,
-                    syms.noSymbol,
-                    ((MethodSymbol)bsm).asHandle(),
-                    indyType,
-                    staticArgValues.toArray(new LoadableConstant[0])
-            );
-            JCFieldAccess qualifier = make.Select(make.Type(syms.processorType), dynSym.name);
-            qualifier.sym = dynSym;
-            qualifier.type = type;
-            JCMethodInvocation apply = make.Apply(List.nil(), qualifier, args);
-            apply.type = type;
-            return apply;
-        }
-
-        JCExpression processCall(JCExpression stringTemplate) {
-            MethodSymbol appyMeth = lookupMethod(tree.pos(), names.process,
-                    syms.processorType, List.of(syms.stringTemplateType));
-            JCExpression applySelect = make.Select(processor, appyMeth);
-            JCExpression process = make.Apply(null, applySelect, List.of(stringTemplate))
-                    .setType(syms.objectType);
-            JCTypeCast cast = make.TypeCast(tree.type, process);
-            return cast;
-        }
-
-        JCExpression newStringTemplate() {
-            List<LoadableConstant> staticArgValues = List.nil();
-            List<Type> staticArgsTypes =
-                    List.of(syms.methodHandleLookupType, syms.stringType,
-                            syms.methodTypeType);
-            if (useValuesList) {
-                JCNewArray fragmentArray = make.NewArray(make.Type(syms.stringType),
-                        List.nil(), makeStringList(fragments));
-                fragmentArray.type = new ArrayType(syms.stringType, syms.arrayClass);
-                JCNewArray valuesArray = make.NewArray(make.Type(syms.objectType),
-                        List.nil(), expressions);
-                valuesArray.type = new ArrayType(syms.objectType, syms.arrayClass);
-                return bsmCall(names.process, names.newLargeStringTemplate, syms.stringTemplateType,
-                        List.of(fragmentArray, valuesArray),
-                        List.of(fragmentArray.type, valuesArray.type),
-                        staticArgValues, staticArgsTypes);
-            } else {
-                for (String fragment : fragments) {
-                    staticArgValues = staticArgValues.append(LoadableConstant.String(fragment));
-                    staticArgsTypes = staticArgsTypes.append(syms.stringType);
-                }
-                return bsmCall(names.process, names.newStringTemplate, syms.stringTemplateType,
-                        expressions, expressionTypes, staticArgValues, staticArgsTypes);
-            }
-        }
-
-        JCExpression bsmProcessCall() {
-            List<JCExpression> args = expressions.prepend(processor);
-            List<Type> argTypes = expressionTypes.prepend(processor.type);
-            VarSymbol processorSym = (VarSymbol)TreeInfo.symbol(processor);
-            List<LoadableConstant> staticArgValues = List.of(processorSym.asMethodHandle(true));
-            List<Type> staticArgsTypes =
-                    List.of(syms.methodHandleLookupType, syms.stringType,
-                            syms.methodTypeType, syms.methodHandleType);
-            for (String fragment : fragments) {
+        List<LoadableConstant> staticArgValues = List.nil();
+        List<Type> staticArgsTypes =
+                List.of(syms.methodHandleLookupType, syms.stringType,
+                        syms.methodTypeType);
+        List<Type> expressionTypes = tree.expressions.stream()
+                .map(arg -> arg.type == syms.botType ? syms.objectType : arg.type)
+                .collect(List.collector());
+        int slots = expressionTypes.stream()
+                .mapToInt(t -> types.isSameType(t, syms.longType) ||
+                        types.isSameType(t, syms.doubleType) ? 2 : 1).sum();
+        if (200 < slots) { // StringConcatFactory.MAX_INDY_CONCAT_ARG_SLOTS
+            JCNewArray fragmentArray = make.NewArray(make.Type(syms.stringType),
+                    List.nil(), makeStringList(tree.fragments));
+            fragmentArray.type = new ArrayType(syms.stringType, syms.arrayClass);
+            JCNewArray valuesArray = make.NewArray(make.Type(syms.objectType),
+                    List.nil(), tree.expressions);
+            valuesArray.type = new ArrayType(syms.objectType, syms.arrayClass);
+            result = bsmCall(tree.pos(), names.process, names.newLargeStringTemplate, syms.stringTemplateType,
+                    List.of(fragmentArray, valuesArray),
+                    List.of(fragmentArray.type, valuesArray.type),
+                    staticArgValues, staticArgsTypes);
+        } else {
+            for (String fragment : tree.fragments) {
                 staticArgValues = staticArgValues.append(LoadableConstant.String(fragment));
                 staticArgsTypes = staticArgsTypes.append(syms.stringType);
             }
-            return bsmCall(names.process, names.processStringTemplate, tree.type,
-                    args, argTypes, staticArgValues, staticArgsTypes);
-        }
-
-        boolean isNamedProcessor(Name name) {
-            Symbol sym = switch (processor) {
-                case JCIdent ident -> ident.sym;
-                case JCFieldAccess access -> access.sym;
-                default -> null;
-            };
-            if (sym instanceof VarSymbol varSym) {
-                if (varSym.flags() == (Flags.PUBLIC | Flags.FINAL | Flags.STATIC) &&
-                        varSym.name == name &&
-                        types.isSameType(varSym.owner.type, syms.stringTemplateType)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        boolean isLinkageProcessor() {
-            return !useValuesList &&
-                   types.isSubtype(processor.type, syms.linkageType) &&
-                   processor.type.isFinal() &&
-                   TreeInfo.symbol(processor) instanceof VarSymbol varSymbol &&
-                   varSymbol.isStatic() &&
-                   varSymbol.isFinal();
-        }
-
-        JCExpression visit() {
-            JCExpression result;
-            make.at(tree.pos);
-
-            if (isNamedProcessor(names.RAW)) {
-                result = newStringTemplate();
-            } else if (isNamedProcessor(names.STR)) {
-                result = concatExpression(fragments, expressions);
-            } else if (isLinkageProcessor()) {
-                result = bsmProcessCall();
-            } else {
-                result = processCall(newStringTemplate());
-            }
-
-            return result;
-        }
-    }
-
-    public void visitStringTemplate(JCStringTemplate tree) {
-        int prevPos = make.pos;
-        try {
-            tree.processor = translate(tree.processor);
-            tree.expressions = translate(tree.expressions);
-
-            TransStringTemplate transStringTemplate = new TransStringTemplate(tree);
-
-            result = transStringTemplate.visit();
-        } catch (Throwable ex) {
-            ex.printStackTrace();
-            throw ex;
-        } finally {
-            make.at(prevPos);
+            result = bsmCall(tree.pos(), names.process, names.newStringTemplate, syms.stringTemplateType,
+                    tree.expressions, expressionTypes, staticArgValues, staticArgsTypes);
         }
     }
 
@@ -332,6 +194,29 @@ public final class TransLiterals extends TreeTranslator {
         }
     }
 
+    private JCExpression bsmCall(DiagnosticPosition pos, Name name, Name bootstrapName, Type type,
+                         List<JCExpression> args,
+                         List<Type> argTypes,
+                         List<LoadableConstant> staticArgValues,
+                         List<Type> staticArgsTypes) {
+        Symbol bsm = rs.resolveQualifiedMethod(pos, env,
+                syms.templateRuntimeType, bootstrapName, staticArgsTypes, List.nil());
+        MethodType indyType = new MethodType(argTypes, type, List.nil(), syms.methodClass);
+        DynamicMethodSymbol dynSym = new DynamicMethodSymbol(
+                name,
+                syms.noSymbol,
+                ((MethodSymbol)bsm).asHandle(),
+                indyType,
+                staticArgValues.toArray(new LoadableConstant[0])
+        );
+        JCFieldAccess qualifier = make.Select(make.Type(syms.processorType), dynSym.name);
+        qualifier.sym = dynSym;
+        qualifier.type = type;
+        JCMethodInvocation apply = make.Apply(List.nil(), qualifier, args);
+        apply.type = type;
+        return apply;
+    }
+
     public JCTree translateTopLevelClass(Env<AttrContext> env, JCTree cdef, TreeMaker make) {
         try {
             this.make = make;
@@ -344,5 +229,4 @@ public final class TransLiterals extends TreeTranslator {
 
         return cdef;
     }
-
 }

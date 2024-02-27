@@ -1746,10 +1746,6 @@ public class Flow {
 
         @Override
         public void visitStringTemplate(JCStringTemplate tree) {
-            for (Type thrown : tree.processMethodType.getThrownTypes()) {
-                markThrown(tree, thrown);
-            }
-
             scan(tree.expressions);
         }
 

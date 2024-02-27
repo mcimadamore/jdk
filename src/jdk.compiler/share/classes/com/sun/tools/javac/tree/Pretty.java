@@ -1478,10 +1478,6 @@ public class Pretty extends JCTree.Visitor {
 
     public void visitStringTemplate(JCStringTemplate tree) {
         try {
-            JCExpression processor = tree.processor;
-            print("[");
-            printExpr(processor);
-            print("]");
             print("\"" + tree.fragments.stream().collect(Collectors.joining("\\{}")) + "\"");
             print("(");
             printExprs(tree.expressions);
