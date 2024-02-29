@@ -282,7 +282,7 @@ public final class TransLiterals extends TreeTranslator {
             JCExpression result;
             make.at(tree.pos);
 
-            if (isNamedProcessor(names.RAW)) {
+            if (processor == null || isNamedProcessor(names.RAW)) {
                 result = newStringTemplate();
             } else if (isNamedProcessor(names.STR)) {
                 result = concatExpression(fragments, expressions);
