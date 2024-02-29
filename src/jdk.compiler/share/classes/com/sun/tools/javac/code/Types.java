@@ -599,6 +599,12 @@ public class Types {
         if (t.hasTag(ERROR)) {
             return true;
         }
+        if (s.tsym == syms.stringTemplateType.tsym &&
+                t.constValue() instanceof String) {
+            // allow conversion from (constant) String to StringTemplate
+            return true;
+        }
+
         boolean tPrimitive = t.isPrimitive();
         boolean sPrimitive = s.isPrimitive();
         if (tPrimitive == sPrimitive) {

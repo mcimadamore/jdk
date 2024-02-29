@@ -641,8 +641,11 @@ public class Check {
             if (found.isNumeric() && req.isNumeric()) {
                 checkContext.report(pos, diags.fragment(Fragments.PossibleLossOfPrecision(found, req)));
                 return types.createErrorType(found);
+            } else if (found.tsym == syms.stringType.tsym && req.tsym == syms.stringTemplateType.tsym) {
+                checkContext.report(pos, diags.fragment(Fragments.InconvertibleStringTemplate(req)));
+            } else {
+                checkContext.report(pos, diags.fragment(Fragments.InconvertibleTypes(found, req)));
             }
-            checkContext.report(pos, diags.fragment(Fragments.InconvertibleTypes(found, req)));
             return types.createErrorType(found);
         }
     }
