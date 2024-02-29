@@ -1647,6 +1647,11 @@ public class Types {
         // if same type
         if (t == s)
             return true;
+        // if source is constant string and target is string template
+        if (t.constValue() instanceof String &&
+                s.tsym.type == syms.stringTemplateType) {
+            return true;
+        }
         // if one of the types is primitive
         if (t.isPrimitive() != s.isPrimitive()) {
             t = skipTypeVars(t, false);
