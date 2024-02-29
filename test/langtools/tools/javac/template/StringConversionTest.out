@@ -1,0 +1,7 @@
+StringConversionTest.java:9:38: compiler.err.prob.found.req: (compiler.misc.inconvertible.string.template: java.lang.StringTemplate)
+StringConversionTest.java:15:55: compiler.err.prob.found.req: (compiler.misc.inconvertible.string.template: java.lang.StringTemplate)
+StringConversionTest.java:21:9: compiler.err.cant.apply.symbol: kindname.method, m, java.lang.StringTemplate, java.lang.String, kindname.class, StringConversionTest, (compiler.misc.no.conforming.assignment.exists: (compiler.misc.inconvertible.string.template: java.lang.StringTemplate))
+StringConversionTest.java:28:18: compiler.err.prob.found.req: (compiler.misc.inconvertible.types: java.lang.String, java.lang.StringTemplate)
+- compiler.note.preview.filename: StringConversionTest.java, DEFAULT
+- compiler.note.preview.recompile
+4 errors
