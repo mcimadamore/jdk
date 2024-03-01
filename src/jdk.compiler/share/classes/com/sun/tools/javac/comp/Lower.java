@@ -3408,10 +3408,6 @@ public class Lower extends TreeTranslator {
     /** Expand a boxing or unboxing conversion if needed. */
     @SuppressWarnings("unchecked") // XXX unchecked
     <T extends JCExpression> T boxIfNeeded(T tree, Type type) {
-        if (tree.type.constValue() instanceof String &&
-                type.tsym == syms.stringTemplateType.tsym) {
-            return (T)boxConstantString(tree);
-        }
         boolean havePrimitive = tree.type.isPrimitive();
         if (havePrimitive == type.isPrimitive())
             return tree;
@@ -3444,18 +3440,6 @@ public class Lower extends TreeTranslator {
                                          List.<Type>nil()
                                          .prepend(tree.type));
         return make.App(make.QualIdent(valueOfSym), List.of(tree));
-    }
-
-    /**
-     * Box a string into a string template
-     */
-    JCExpression boxConstantString(JCExpression stringTree) {
-        make_at(stringTree.pos());
-        Symbol stringTemplateOfSym = lookupMethod(stringTree.pos(),
-                names.of,
-                syms.stringTemplateType,
-                List.of(syms.stringType));
-        return make.App(make.QualIdent(stringTemplateOfSym), List.of(stringTree));
     }
 
     /** Unbox an object to a primitive value. */

@@ -127,14 +127,9 @@ public class TransTypes extends TreeTranslator {
     JCExpression coerce(JCExpression tree, Type target) {
         Type btarget = target.baseType();
         if (tree.type.isPrimitive() == target.isPrimitive()) {
-            if (tree.type.constValue() instanceof String &&
-                    target.tsym.type == syms.stringTemplateType) {
-                return cast(tree, btarget);
-            } else {
-                return types.isAssignable(tree.type, btarget, types.noWarnings)
-                        ? tree
-                        : cast(tree, btarget);
-            }
+            return types.isAssignable(tree.type, btarget, types.noWarnings)
+                ? tree
+                : cast(tree, btarget);
         }
         return tree;
     }
@@ -850,16 +845,6 @@ public class TransTypes extends TreeTranslator {
                 .map(e -> translate(e, erasure(e.type))).collect(List.collector());
         tree.type = erasure(tree.type);
         result = tree;
-    }
-
-    @Override
-    public void visitLiteral(JCLiteral tree) {
-        //FIXME
-        if (tree.type.tsym == syms.stringType.tsym) {
-            result = retype(tree, tree.type, pt);
-        } else {
-            result = tree;
-        }
     }
 
     public void visitSelect(JCFieldAccess tree) {
