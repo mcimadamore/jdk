@@ -533,6 +533,12 @@ public class JavaTokenizer extends UnicodeReader {
                 if (hasStringTemplateErrors) {
                     break;
                 } else if (accept("\"\"\"")) {
+                    if (accept('t')) {
+                        if (!isStringTemplate) {
+                            fragmentRanges = fragmentRanges.append(pos);
+                        }
+                        isStringTemplate = true;
+                    }
                     if (isStringTemplate && tk == TokenKind.STRINGLITERAL) {
                         tk = TokenKind.STRINGFRAGMENT;
                     }
@@ -563,6 +569,12 @@ public class JavaTokenizer extends UnicodeReader {
                 if (hasStringTemplateErrors) {
                     break;
                 } else if (accept('\"')) {
+                    if (accept('t')) {
+                        if (!isStringTemplate) {
+                            fragmentRanges = fragmentRanges.append(pos);
+                        }
+                        isStringTemplate = true;
+                    }
                     if (isStringTemplate && tk == TokenKind.STRINGLITERAL) {
                         tk = TokenKind.STRINGFRAGMENT;
                     }

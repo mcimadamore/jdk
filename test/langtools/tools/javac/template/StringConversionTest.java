@@ -7,30 +7,30 @@
 class StringConversionTest {
     static void testAssign(String prefix) {
         StringTemplate st1 = "Hello" + prefix; // bad
-        StringTemplate st2 = "Hello"; // ok
-        StringTemplate st3 = "{prefix}hello"; // ok
+        StringTemplate st2 = "Hello"t; // ok
+        StringTemplate st3 = "{prefix}hello"t; // ok
     }
 
     static void testCast(String prefix) {
         StringTemplate st1 = (StringTemplate) "Hello" + prefix; // bad
-        StringTemplate st2 = (StringTemplate) "Hello"; // ok
-        StringTemplate st3 = (StringTemplate) "{prefix}hello"; // ok
+        StringTemplate st2 = (StringTemplate) "Hello"t; // ok
+        StringTemplate st3 = (StringTemplate) "{prefix}hello"t; // ok
     }
 
     static void testCall(String prefix) {
         m("Hello" + prefix); // bad
-        m("Hello"); // ok
-        m("\{prefix}Hello"); // ok
+        m("Hello"t); // ok
+        m("\{prefix}Hello"t); // ok
     }
 
     static void testSwitch(String prefix) {
         switch ("Hello" + prefix) {
             case StringTemplate st -> { } // bad
         };
-        switch ("Hello") {
+        switch ("Hello"t) {
             case StringTemplate st -> { } // ok
         };
-        switch ("\{prefix}Hello") {
+        switch ("\{prefix}Hello"t) {
             case StringTemplate st -> { } // ok
         };
     }
