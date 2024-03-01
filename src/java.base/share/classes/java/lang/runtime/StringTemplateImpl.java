@@ -104,16 +104,16 @@ final class StringTemplateImpl extends Carriers.CarrierObject implements StringT
         }
     }
 
-    @Override
-    public String interpolate() {
-        try {
-            return (String)interpolateMH.invokeExact(this);
-        } catch (RuntimeException | Error ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            throw new RuntimeException("string template interpolate failure", ex);
-        }
-    }
+//    @Override
+//    public String interpolate() {
+//        try {
+//            return (String)interpolateMH.invokeExact(this);
+//        } catch (RuntimeException | Error ex) {
+//            throw ex;
+//        } catch (Throwable ex) {
+//            throw new RuntimeException("string template interpolate failure", ex);
+//        }
+//    }
 
     @Override
     public boolean equals(Object other) {
