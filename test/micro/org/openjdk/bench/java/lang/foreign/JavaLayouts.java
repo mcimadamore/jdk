@@ -27,6 +27,8 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
+import static java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
@@ -42,6 +44,10 @@ public class JavaLayouts {
 
     static final VarHandle VH_LONG_UNALIGNED = arrayVarHandle(JAVA_LONG_UNALIGNED);
     static final VarHandle VH_LONG = arrayVarHandle(JAVA_LONG);
+
+    static final VarHandle VH_DOUBLE_UNALIGNED = arrayVarHandle(JAVA_DOUBLE_UNALIGNED);
+    static final VarHandle VH_DOUBLE = arrayVarHandle(JAVA_DOUBLE);
+
 
     private static VarHandle arrayVarHandle(ValueLayout layout) {
         return MethodHandles.insertCoordinates(layout.arrayElementVarHandle(), 1, 0L);
