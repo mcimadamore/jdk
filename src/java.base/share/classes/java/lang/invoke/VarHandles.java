@@ -28,6 +28,7 @@ package java.lang.invoke;
 import jdk.internal.foreign.Utils;
 import sun.invoke.util.Wrapper;
 
+import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -310,32 +311,29 @@ final class VarHandles {
      * to adapt the returned var handle and insert the appropriate checks.
      *
      * @param carrier the Java carrier type.
-     * @param alignmentMask alignment requirement to be checked upon access. In bytes. Expressed as a mask.
-     * @param byteOrder the byte order.
+     * @param layout the layout.
      * @return the created VarHandle.
      */
-    static VarHandle memorySegmentViewHandle(Class<?> carrier, long alignmentMask,
-                                             ByteOrder byteOrder) {
+    static VarHandle memorySegmentViewHandle(Class<?> carrier, ValueLayout layout) {
         if (!carrier.isPrimitive() || carrier == void.class || carrier == boolean.class) {
             throw new IllegalArgumentException("Invalid carrier: " + carrier.getName());
         }
-        boolean be = byteOrder == ByteOrder.BIG_ENDIAN;
         boolean exact = VAR_HANDLE_SEGMENT_FORCE_EXACT;
 
         if (carrier == byte.class) {
-            return maybeAdapt(new VarHandleSegmentAsBytes(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsBytes(layout, exact));
         } else if (carrier == char.class) {
-            return maybeAdapt(new VarHandleSegmentAsChars(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsChars(layout, exact));
         } else if (carrier == short.class) {
-            return maybeAdapt(new VarHandleSegmentAsShorts(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsShorts(layout, exact));
         } else if (carrier == int.class) {
-            return maybeAdapt(new VarHandleSegmentAsInts(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsInts(layout, exact));
         } else if (carrier == float.class) {
-            return maybeAdapt(new VarHandleSegmentAsFloats(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsFloats(layout, exact));
         } else if (carrier == long.class) {
-            return maybeAdapt(new VarHandleSegmentAsLongs(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsLongs(layout, exact));
         } else if (carrier == double.class) {
-            return maybeAdapt(new VarHandleSegmentAsDoubles(be, alignmentMask, exact));
+            return maybeAdapt(new VarHandleSegmentAsDoubles(layout, exact));
         } else {
             throw new IllegalStateException("Cannot get here");
         }

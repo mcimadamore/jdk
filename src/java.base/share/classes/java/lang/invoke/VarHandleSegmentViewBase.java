@@ -25,6 +25,8 @@
 
 package java.lang.invoke;
 
+import java.lang.foreign.ValueLayout;
+
 /**
  * Base class for memory segment var handle view implementations.
  */
@@ -37,19 +39,15 @@ abstract sealed class VarHandleSegmentViewBase extends VarHandle permits
         VarHandleSegmentAsLongs,
         VarHandleSegmentAsShorts {
 
-    /** endianness **/
-    final boolean be;
+    /** the layout associated with this var handle */
+    final ValueLayout layout;
 
-    /** alignment constraint (in bytes, expressed as a bit mask) **/
-    final long alignmentMask;
-
-    VarHandleSegmentViewBase(VarForm form, boolean be, long alignmentMask, boolean exact) {
+    VarHandleSegmentViewBase(VarForm form, ValueLayout layout, boolean exact) {
         super(form, exact);
-        this.be = be;
-        this.alignmentMask = alignmentMask;
+        this.layout = layout;
     }
 
-    static UnsupportedOperationException newUnsupportedAccessModeForAlignment(long alignment) {
-        return new UnsupportedOperationException("Unsupported access mode for alignment: " + alignment);
+    static UnsupportedOperationException newUnsupportedAccessMode(ValueLayout layout) {
+        return new UnsupportedOperationException("Unsupported access mode for layout: " + layout);
     }
 }
