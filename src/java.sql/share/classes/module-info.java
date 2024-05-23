@@ -23,6 +23,8 @@
  * questions.
  */
 
+import jdk.internal.javac.ParticipatesInPreview;
+
 /**
  * Defines the JDBC API.
  *
@@ -31,6 +33,7 @@
  * @moduleGraph
  * @since 9
  */
+@ParticipatesInPreview
 module java.sql {
     requires transitive java.logging;
     requires transitive java.transaction.xa;

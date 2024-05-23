@@ -438,6 +438,19 @@ public final class StringTemplate extends Carriers.CarrierObject  {
     }
 
     /**
+     * TBD
+     * @param <T> TBD
+     * @param owner TBD
+     * @param supplier TBD
+     * @return TBD
+     */
+    public <T> T getMetaData(Object owner, Supplier<T> supplier) {
+        Objects.requireNonNull(owner, "owner must not be null");
+        Objects.requireNonNull(supplier, "supplier must not be null");
+        return sharedData.getMetaData(owner, supplier);
+    }
+
+    /**
      * Test this {@link StringTemplate} against another {@link StringTemplate} for equality.
      *
      * @param other  other {@link StringTemplate}
@@ -944,7 +957,7 @@ public final class StringTemplate extends Carriers.CarrierObject  {
         public <T> T getMetaData(StringTemplate st, Object owner, Supplier<T> supplier) {
             Objects.requireNonNull(st, "st must not be null");
             Objects.requireNonNull(owner, "owner must not be null");
-            Objects.requireNonNull(st, "supplier must not be null");
+            Objects.requireNonNull(supplier, "supplier must not be null");
             return st.sharedData.getMetaData(owner, supplier);
         }
 
