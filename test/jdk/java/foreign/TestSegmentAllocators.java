@@ -478,8 +478,13 @@ public class TestSegmentAllocators {
     }
 
     enum AllocationFactory {
+        ARENA(false, (_, arena) -> arena),
+        ZEROING(false, (_, arena) -> SegmentAllocator.zeroingAllocator(arena)),
         SLICING(true, (size, arena) -> {
             return SegmentAllocator.slicingAllocator(arena.allocate(size, 1));
+        }),
+        ZERO_SLICING(true, (size, arena) -> {
+            return SegmentAllocator.zeroingAllocator(SLICING.factory.apply(size, arena));
         });
 
         private final boolean isBound;
@@ -611,8 +616,15 @@ public class TestSegmentAllocators {
 
     @DataProvider(name = "allocators")
     static Object[][] allocators() {
+        SegmentAllocator prefix = SegmentAllocator.prefixAllocator(Arena.global().allocate(10, 1));
+        SegmentAllocator slicing = SegmentAllocator.slicingAllocator(Arena.global().allocate(10, 1));
         return new Object[][] {
-                { SegmentAllocator.prefixAllocator(Arena.global().allocate(10, 1)) },
+                { Arena.global() },
+                { SegmentAllocator.zeroingAllocator(Arena.global()) },
+                { prefix },
+                { SegmentAllocator.zeroingAllocator(prefix) },
+                { slicing },
+                { SegmentAllocator.zeroingAllocator(slicing) },
         };
     }
 }

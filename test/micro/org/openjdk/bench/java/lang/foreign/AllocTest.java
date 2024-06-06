@@ -71,16 +71,23 @@ public class AllocTest extends CLayouts {
     }
 
     @Benchmark
-    public long alloc_calloc_arena() {
+    public MemorySegment alloc_calloc_arena() {
         try (CallocArena arena = new CallocArena()) {
-            return arena.allocate(size).address();
+            return arena.allocate(size);
         }
     }
 
     @Benchmark
-    public long alloc_unsafe_arena() {
+    public MemorySegment alloc_unsafe_arena() {
         try (UnsafeArena arena = new UnsafeArena()) {
-            return arena.allocate(size).address();
+            return arena.allocate(size);
+        }
+    }
+
+    @Benchmark
+    public MemorySegment alloc_zeroing_arena() {
+        try (ZeroingArena arena = new ZeroingArena()) {
+            return arena.allocate(size);
         }
     }
 
@@ -137,6 +144,26 @@ public class AllocTest extends CLayouts {
             MemorySegment segment = MemorySegment.ofAddress(Utils.unsafe.allocateMemory(byteSize));
             Utils.unsafe.setMemory(segment.address(), byteSize, (byte)0);
             return segment.reinterpret(byteSize, arena, ms -> Utils.unsafe.freeMemory(segment.address()));
+        }
+    }
+
+    public static class ZeroingArena implements Arena {
+        final Arena arena = Arena.ofConfined();
+        final SegmentAllocator allocator = SegmentAllocator.zeroingAllocator(arena);
+
+        @Override
+        public Scope scope() {
+            return arena.scope();
+        }
+
+        @Override
+        public void close() {
+            arena.close();
+        }
+
+        @Override
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            return allocator.allocate(byteSize, byteAlignment);
         }
     }
 }

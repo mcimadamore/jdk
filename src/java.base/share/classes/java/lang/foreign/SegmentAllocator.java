@@ -33,7 +33,7 @@ import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.ArenaImpl;
 import jdk.internal.foreign.SlicingAllocator;
 import jdk.internal.foreign.StringSupport;
-import jdk.internal.foreign.Utils;
+import jdk.internal.foreign.ZeroingAllocator;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -710,6 +710,20 @@ public interface SegmentAllocator {
     static SegmentAllocator prefixAllocator(MemorySegment segment) {
         assertWritable(segment);
         return (AbstractMemorySegmentImpl)segment;
+    }
+
+    /**
+     * {@return a segment allocator zero-initializes the segments obtained by the provided allocator}
+     * <p>
+     * Equivalent to (but likely more efficient than) the following code:
+     * {@snippet lang=java :
+     * SegmentAllocator allocator = ...
+     * SegmentAllocator zeroingAllocator = (size, align) -> allocator.allocate(size, align).fill((byte)0);
+     * }
+     * @param allocator the allocator the returned allocator delegates to
+     */
+    static SegmentAllocator zeroingAllocator(SegmentAllocator allocator) {
+        return ZeroingAllocator.of(allocator);
     }
 
     private static void assertWritable(MemorySegment segment) {

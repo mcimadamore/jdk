@@ -88,6 +88,13 @@ public class AllocFromTest extends CLayouts {
     }
 
     @Benchmark
+    public MemorySegment alloc_zeroing_arena() {
+        try (ZeroingArena arena = new ZeroingArena()) {
+            return arena.allocateFrom(ValueLayout.JAVA_BYTE, arr);
+        }
+    }
+
+    @Benchmark
     public MemorySegment alloc_pool_arena() {
         try (Arena arena = pool.acquire()) {
             return arena.allocateFrom(ValueLayout.JAVA_BYTE, arr);
@@ -167,6 +174,31 @@ public class AllocFromTest extends CLayouts {
         public MemorySegment allocate(long byteSize, long byteAlignment) {
             return MemorySegment.ofAddress(Utils.unsafe.allocateMemory(byteSize))
                     .reinterpret(byteSize, arena, ms -> Utils.unsafe.freeMemory(ms.address()));
+        }
+    }
+
+    public static class ZeroingArena implements Arena {
+        final Arena arena = Arena.ofConfined();
+        final SegmentAllocator allocator = SegmentAllocator.zeroingAllocator(arena);
+
+        @Override
+        public Scope scope() {
+            return arena.scope();
+        }
+
+        @Override
+        public void close() {
+            arena.close();
+        }
+
+        @Override
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public MemorySegment allocateFrom(ValueLayout.OfByte layout, byte... elements) {
+            return allocator.allocateFrom(layout, elements);
         }
     }
 }
