@@ -192,13 +192,13 @@ public class AllocFromTest extends CLayouts {
         }
 
         @Override
-        public MemorySegment allocate(long byteSize, long byteAlignment) {
-            throw new UnsupportedOperationException();
+        public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
+            return allocator.allocateRaw(byteSize, byteAlignment);
         }
 
         @Override
-        public MemorySegment allocateFrom(ValueLayout.OfByte layout, byte... elements) {
-            return allocator.allocateFrom(layout, elements);
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            return allocator.allocate(byteSize, byteAlignment);
         }
     }
 }

@@ -660,6 +660,26 @@ public interface SegmentAllocator {
     MemorySegment allocate(long byteSize, long byteAlignment);
 
     /**
+     * {@return a new memory segment with the given {@code byteSize} and
+     * {@code byteAlignment}}. This method can be used by clients to
+     * request an uninitialized memory segment, if this allocator
+     * supports it.
+     *
+     * @param byteSize the size (in bytes) of the block of memory
+     *                 to be allocated
+     * @param byteAlignment the alignment (in bytes) of the block of memory
+     *                      to be allocated
+     * @throws IllegalArgumentException if {@code byteSize < 0},
+     *         {@code byteAlignment <= 0},
+     *         or if {@code byteAlignment} is not a power of 2
+     * @see ZeroingAllocator
+     * @implSpec the default implementation of this method delegates to {@link SegmentAllocator#allocate(long, long)}
+     */
+    default MemorySegment allocateRaw(long byteSize, long byteAlignment) {
+        return allocate(byteSize, byteAlignment);
+    }
+
+    /**
      * Returns a segment allocator that responds to allocation requests by returning
      * consecutive slices obtained from the provided segment. Each new allocation
      * request will return a new slice starting at the current offset (modulo additional
@@ -723,7 +743,20 @@ public interface SegmentAllocator {
      * @param allocator the allocator the returned allocator delegates to
      */
     static SegmentAllocator zeroingAllocator(SegmentAllocator allocator) {
-        return ZeroingAllocator.of(allocator);
+        class OfZeroing implements SegmentAllocator {
+            @Override
+            public MemorySegment allocate(long byteSize, long byteAlignment) {
+                return allocateRaw(byteSize, byteAlignment).fill((byte)0);
+            }
+
+            @Override
+            public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
+                return allocator.allocateRaw(byteSize, byteAlignment);
+            }
+        };
+        return (allocator instanceof OfZeroing || allocator instanceof ArenaImpl) ?
+                allocator :
+                new OfZeroing();
     }
 
     private static void assertWritable(MemorySegment segment) {
@@ -735,22 +768,16 @@ public interface SegmentAllocator {
 
     @ForceInline
     private MemorySegment allocateNoInit(long byteSize) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(byteSize, 1) :
-                allocate(byteSize);
+        return allocateRaw(byteSize, 1);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment()) :
-                allocate(layout);
+        return allocateRaw(layout.byteSize(), layout.byteAlignment());
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout, long size) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment()) :
-                allocate(layout, size);
+        return allocateRaw(layout.byteSize() * size, layout.byteAlignment());
     }
 }

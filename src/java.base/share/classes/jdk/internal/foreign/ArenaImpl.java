@@ -50,14 +50,15 @@ public final class ArenaImpl implements Arena, ZeroingAllocator {
         session.close();
     }
 
-    public MemorySegment allocateNoInit(long byteSize, long byteAlignment) {
+    @Override
+    public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         return SegmentFactories.allocateSegment(byteSize, byteAlignment, session, shouldReserveMemory);
     }
 
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
-        MemorySegment segment = allocateNoInit(byteSize, byteAlignment);
+        MemorySegment segment = allocateRaw(byteSize, byteAlignment);
         return segment.fill((byte)0);
     }
 }
