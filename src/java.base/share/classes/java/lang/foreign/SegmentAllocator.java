@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
-import jdk.internal.foreign.ArenaImpl;
 import jdk.internal.foreign.SlicingAllocator;
 import jdk.internal.foreign.StringSupport;
 import jdk.internal.foreign.ZeroingAllocator;
@@ -735,22 +734,22 @@ public interface SegmentAllocator {
 
     @ForceInline
     private MemorySegment allocateNoInit(long byteSize) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(byteSize, 1) :
+        return this instanceof ZeroingAllocator zeroingAllocator ?
+                zeroingAllocator.allocateRaw(byteSize, 1) :
                 allocate(byteSize);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment()) :
+        return this instanceof ZeroingAllocator zeroingAllocator ?
+                zeroingAllocator.allocateRaw(layout.byteSize(), layout.byteAlignment()) :
                 allocate(layout);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout, long size) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment()) :
+        return this instanceof ZeroingAllocator zeroingAllocator ?
+                zeroingAllocator.allocateRaw(layout.byteSize() * size, layout.byteAlignment()) :
                 allocate(layout, size);
     }
 }
