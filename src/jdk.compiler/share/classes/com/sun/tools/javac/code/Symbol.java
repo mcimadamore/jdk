@@ -358,7 +358,7 @@ public abstract class Symbol extends AnnoConstruct implements PoolConstant, Elem
     public Type externalType(Types types) {
         Type t = erasure(types);
         if (name == name.table.names.init && owner.hasOuterInstance()) {
-            Type outerThisType = types.erasure(owner.type.getEnclosingType());
+            Type outerThisType = types.erasure(owner.innermostAccessibleEnclosingType());
             return new MethodType(t.getParameterTypes().prepend(outerThisType),
                                   t.getReturnType(),
                                   t.getThrownTypes(),
@@ -506,7 +506,17 @@ public abstract class Symbol extends AnnoConstruct implements PoolConstant, Elem
      */
     public boolean hasOuterInstance() {
         return
-            type.getEnclosingType().hasTag(CLASS) && (flags() & (INTERFACE | ENUM | RECORD | NOOUTERTHIS)) == 0;
+            type.getEnclosingType().hasTag(CLASS) && (flags() & (INTERFACE | ENUM | RECORD)) == 0 &&
+                    ((flags() & NOOUTERTHIS) == 0 || type.getEnclosingType().tsym.hasOuterInstance());
+    }
+
+    public Type innermostAccessibleEnclosingType() {
+        Assert.check(enclClass().hasOuterInstance());
+        Type current = enclClass().type;
+        while ((current.tsym.flags() & NOOUTERTHIS) != 0) {
+            current = current.getEnclosingType();
+        }
+        return current.getEnclosingType();
     }
 
     /** The closest enclosing class of this symbol's declaration.
