@@ -368,7 +368,6 @@ public class Lower extends TreeTranslator {
                     VarSymbol v = (VarSymbol) _sym;
                     if (v.getConstValue() == null) {
                         addFreeVar(v);
-                        return;
                     }
                 }
             }
