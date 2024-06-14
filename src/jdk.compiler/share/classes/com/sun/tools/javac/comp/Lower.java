@@ -1546,7 +1546,7 @@ public class Lower extends TreeTranslator {
     }
 
     private VarSymbol makeOuterThisVarSymbol(Symbol owner, long flags) {
-        Type target = types.erasure(owner.innermostAccessibleEnclosingType());
+        Type target = owner.innermostAccessibleEnclosingClass().erasure(types);
         // Set NOOUTERTHIS for all synthetic outer instance variables, and unset
         // it when the variable is accessed. If the variable is never accessed,
         // we skip creating an outer instance field and saving the constructor
@@ -3057,7 +3057,7 @@ public class Lower extends TreeTranslator {
                 thisArg.type = tree.encl.type;
             } else if (c.isDirectlyOrIndirectlyLocal()) {
                 // local class
-                thisArg = makeThis(tree.pos(), c.innermostAccessibleEnclosingType().tsym);
+                thisArg = makeThis(tree.pos(), c.innermostAccessibleEnclosingClass());
             } else {
                 // nested class
                 thisArg = makeOwnerThis(tree.pos(), c, false);
@@ -3263,7 +3263,7 @@ public class Lower extends TreeTranslator {
                     ((JCIdent) tree.meth).name = methName;
                 } else if (c.isDirectlyOrIndirectlyLocal() || methName == names._this){
                     // local class or this() call
-                    thisArg = makeThis(tree.meth.pos(), c.innermostAccessibleEnclosingType().tsym);
+                    thisArg = makeThis(tree.meth.pos(), c.innermostAccessibleEnclosingClass());
                 } else if (currentClass.isStatic()) {
                     // super() call from static nested class - invalid
                     log.error(tree.pos(),
