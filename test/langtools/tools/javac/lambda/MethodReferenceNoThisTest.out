@@ -1,2 +1,2 @@
-MethodReferenceNoThisTest.java:22:15: compiler.err.cant.ref.before.ctor.called: this
+MethodReferenceNoThisTest.java:22:15: compiler.err.invalid.mref: kindname.constructor, (compiler.misc.cant.access.inner.cls.constr: V, , MethodReferenceNoThisTest)
 1 error

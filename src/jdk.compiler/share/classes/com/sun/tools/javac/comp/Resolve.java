@@ -3757,6 +3757,35 @@ public class Resolve {
         }
     }
 
+    Symbol findSelf(DiagnosticPosition pos,
+                       Env<AttrContext> env,
+                       TypeSymbol c,
+                       Name name,
+                       boolean exact) {
+        Assert.check(name == names._this || name == names._super);
+        Env<AttrContext> env1 = env;
+        boolean staticOnly = false;
+        while (env1.outer != null) {
+            if (isStatic(env1)) staticOnly = true;
+            boolean match = exact ?
+                    env1.enclClass.sym == c :
+                    env1.enclClass.sym.isSubClass(c, types);
+            if (match) {
+                Symbol sym = env1.info.scope.findFirst(name);
+                if (sym != null) {
+                    if (staticOnly)
+                        return new StaticError(sym);
+                    else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym))
+                        return new RefBeforeCtorCalledError(sym);
+                    return sym;
+                }
+            }
+            if ((env1.enclClass.sym.flags() & STATIC) != 0) staticOnly = true;
+            env1 = env1.outer;
+        }
+        return varNotFound;
+    }
+
     /**
      * Resolve `c.name' where name == this or name == super.
      * @param pos           The position to use for error reporting.
@@ -3769,24 +3798,6 @@ public class Resolve {
                        TypeSymbol c,
                        Name name) {
         Assert.check(name == names._this || name == names._super);
-        Env<AttrContext> env1 = env;
-        boolean staticOnly = false;
-        while (env1.outer != null) {
-            if (isStatic(env1)) staticOnly = true;
-            if (env1.enclClass.sym == c) {
-                Symbol sym = env1.info.scope.findFirst(name);
-                if (sym != null) {
-                    if (staticOnly)
-                        sym = new StaticError(sym);
-                    else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym))
-                        sym = new RefBeforeCtorCalledError(sym);
-                    return accessBase(sym, pos, env.enclClass.sym.type,
-                                  name, true);
-                }
-            }
-            if ((env1.enclClass.sym.flags() & STATIC) != 0) staticOnly = true;
-            env1 = env1.outer;
-        }
         if (c.isInterface() &&
             name == names._super && !isStatic(env) &&
             types.isDirectSuperInterface(c, env.enclClass.sym)) {
@@ -3810,6 +3821,12 @@ public class Resolve {
                 }
             }
             Assert.error();
+        } else {
+            Symbol sym = findSelf(pos, env, c, name, true);
+            if (sym.exists()) {
+                return accessBase(sym, pos, env.enclClass.sym.type,
+                        name, true);
+            }
         }
         log.error(pos, Errors.NotEnclClass(c));
         return syms.errSymbol;
@@ -3934,7 +3951,7 @@ public class Resolve {
 
     boolean enclosingInstanceMissing(Env<AttrContext> env, Type type) {
         if (type.hasTag(CLASS) && type.getEnclosingType().hasTag(CLASS)) {
-            Symbol encl = resolveSelfContainingInternal(env, type.tsym, false);
+            Symbol encl = findSelf(env.tree, env, type.getEnclosingType().tsym, names._this, false);
             return encl == null || encl.kind.isResolutionError();
         }
         return false;
@@ -3973,13 +3990,16 @@ public class Resolve {
     }
 
     Type resolveImplicitThis(DiagnosticPosition pos, Env<AttrContext> env, Type t, boolean isSuperCall) {
-        Type thisType = (t.tsym.owner.kind.matches(KindSelector.VAL_MTH)
-                         ? resolveSelf(pos, env, t.getEnclosingType().tsym, names._this)
-                         : resolveSelfContaining(pos, env, t.tsym, isSuperCall)).type;
-        if (env.info.ctorPrologue && thisType.tsym == env.enclClass.sym) {
-            log.error(pos, Errors.CantRefBeforeCtorCalled(names._this));
+        Env<AttrContext> localEnv = isSuperCall ? env.outer : env;
+        boolean isLocal = t.tsym.owner.kind.matches(KindSelector.VAL_MTH);
+        Symbol thisSym = findSelf(pos, localEnv, t.getEnclosingType().tsym, names._this, isLocal);
+        if (thisSym.exists()) {
+            thisSym = accessBase(thisSym, pos, env.enclClass.sym.type, names._this, true);
+        } else {
+            log.error(pos, Errors.EnclClassRequired(t.tsym));
+            thisSym = varNotFound;
         }
-        return thisType;
+        return thisSym.type;
     }
 
 /* ***************************************************************************
