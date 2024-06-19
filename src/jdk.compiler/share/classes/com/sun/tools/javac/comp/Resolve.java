@@ -3929,58 +3929,6 @@ public class Resolve {
     }
 
     /**
-     * Resolve `c.this' for an enclosing class c that contains the
-     * named member.
-     * @param pos           The position to use for error reporting.
-     * @param env           The environment current at the expression.
-     * @param member        The member that must be contained in the result.
-     */
-    Symbol resolveSelfContaining(DiagnosticPosition pos,
-                                 Env<AttrContext> env,
-                                 Symbol member,
-                                 boolean isSuperCall) {
-        Symbol sym = resolveSelfContainingInternal(env, member, isSuperCall);
-        if (sym == null) {
-            log.error(pos, Errors.EnclClassRequired(member));
-            return syms.errSymbol;
-        } else {
-            return accessBase(sym, pos, env.enclClass.sym.type, sym.name, true);
-        }
-    }
-
-    boolean enclosingInstanceMissing(Env<AttrContext> env, Type type) {
-        if (type.hasTag(CLASS) && type.getEnclosingType().hasTag(CLASS)) {
-            Symbol encl = findSelf(env.tree, env, type.getEnclosingType().tsym, names._this, false);
-            return encl == null || encl.kind.isResolutionError();
-        }
-        return false;
-    }
-
-    private Symbol resolveSelfContainingInternal(Env<AttrContext> env,
-                                 Symbol member,
-                                 boolean isSuperCall) {
-        Name name = names._this;
-        Env<AttrContext> env1 = isSuperCall ? env.outer : env;
-        boolean staticOnly = false;
-        if (env1 != null) {
-            while (env1 != null && env1.outer != null) {
-                if (isStatic(env1)) staticOnly = true;
-                if (env1.enclClass.sym.isSubClass(member.owner.enclClass(), types)) {
-                    Symbol sym = env1.info.scope.findFirst(name);
-                    if (sym != null) {
-                        if (staticOnly) sym = new StaticError(sym);
-                        return sym;
-                    }
-                }
-                if ((env1.enclClass.sym.flags() & STATIC) != 0)
-                    staticOnly = true;
-                env1 = env1.outer;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Resolve an appropriate implicit this instance for t's container.
      * JLS 8.8.5.1 and 15.9.2
      */
