@@ -3673,7 +3673,6 @@ public class Attr extends JCTree.Visitor {
                 boolean targetError;
                 switch (refSym.kind) {
                     case ABSENT_MTH:
-                    case MISSING_ENCL:
                         targetError = false;
                         break;
                     case WRONG_MTH:

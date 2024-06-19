@@ -3708,11 +3708,10 @@ public class Resolve {
 
         @Override
         protected Symbol lookup(Env<AttrContext> env, MethodResolutionPhase phase) {
-            Symbol sym = needsInference ?
+            return needsInference ?
                 findDiamond(env, site, argtypes, typeargtypes, phase.isBoxingRequired(), phase.isVarargsRequired()) :
                 findMethod(env, site, name, argtypes, typeargtypes,
                         phase.isBoxingRequired(), phase.isVarargsRequired());
-            return enclosingInstanceMissing(env, site) ? new BadConstructorReferenceError(sym) : sym;
         }
 
         @Override
@@ -4881,23 +4880,6 @@ public class Resolve {
             return sym.kind.isResolutionError() ?
                     ((ResolveError)sym).getDiagnostic(dkind, pos, location, site, name, argtypes, typeargtypes) :
                     diags.create(dkind, log.currentSource(), pos, key, Kinds.kindName(sym), sym);
-        }
-    }
-
-    /**
-     * BadConstructorReferenceError error class indicating that a constructor reference symbol has been found,
-     * but pointing to a class for which an enclosing instance is not available.
-     */
-    class BadConstructorReferenceError extends InvalidSymbolError {
-
-        public BadConstructorReferenceError(Symbol sym) {
-            super(MISSING_ENCL, sym, "BadConstructorReferenceError");
-        }
-
-        @Override
-        JCDiagnostic getDiagnostic(DiagnosticType dkind, DiagnosticPosition pos, Symbol location, Type site, Name name, List<Type> argtypes, List<Type> typeargtypes) {
-           return diags.create(dkind, log.currentSource(), pos,
-                "cant.access.inner.cls.constr", site.tsym.name, argtypes, site.getEnclosingType());
         }
     }
 
