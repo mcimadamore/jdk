@@ -50,8 +50,6 @@ import com.sun.tools.javac.comp.ArgumentAttr.LocalCacheContext;
 import com.sun.tools.javac.comp.Check.CheckContext;
 import com.sun.tools.javac.comp.DeferredAttr.AttrMode;
 import com.sun.tools.javac.comp.MatchBindingsComputer.MatchBindings;
-import com.sun.tools.javac.comp.Resolve.InvalidSymbolError;
-import com.sun.tools.javac.comp.Resolve.RefBeforeCtorCalledError;
 import com.sun.tools.javac.jvm.*;
 
 import static com.sun.tools.javac.resources.CompilerProperties.Fragments.Diamond;

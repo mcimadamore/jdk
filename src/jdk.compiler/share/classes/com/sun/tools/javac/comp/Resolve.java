@@ -3840,15 +3840,15 @@ public class Resolve {
                     else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym))
                         sym = new RefBeforeCtorCalledError(sym);
                     return accessBase(sym, pos, env.enclClass.sym.type,
-                            name, true);
+                                  name, true);
                 }
             }
             if ((env1.enclClass.sym.flags() & STATIC) != 0) staticOnly = true;
             env1 = env1.outer;
         }
         if (c.isInterface() &&
-                name == names._super && !isStatic(env) &&
-                types.isDirectSuperInterface(c, env.enclClass.sym)) {
+            name == names._super && !isStatic(env) &&
+            types.isDirectSuperInterface(c, env.enclClass.sym)) {
             //this might be a default super call if one of the superinterfaces is 'c'
             for (Type t : pruneInterfaces(env.enclClass.type)) {
                 if (t.tsym == c) {
@@ -3863,8 +3863,8 @@ public class Resolve {
             for (Type i : types.directSupertypes(env.enclClass.type)) {
                 if (i.tsym.isSubClass(c, types) && i.tsym != c) {
                     log.error(pos,
-                            Errors.IllegalDefaultSuperCall(c,
-                                    Fragments.RedundantSupertype(c, i)));
+                              Errors.IllegalDefaultSuperCall(c,
+                                                             Fragments.RedundantSupertype(c, i)));
                     return syms.errSymbol;
                 }
             }
