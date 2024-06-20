@@ -3756,33 +3756,64 @@ public class Resolve {
         }
     }
 
-    Symbol findSelf(DiagnosticPosition pos,
-                       Env<AttrContext> env,
-                       TypeSymbol c,
-                       Name name,
-                       boolean exact) {
-        Assert.check(name == names._this || name == names._super);
+    /**
+     * Find a suitable reference to an enclosing 'A.this' such that A is a subclass of the provided class symbol.
+     * Note that this method can match multiple times during the traversal, as multiple enclosing classes can
+     * be a subclasses of the provided class. Therefore, if this method finds a matching 'A.this' that cannot be accessed
+     * (e.g. because the corresponding env is in the pre-construction context for 'A') it will keep searching.
+     */
+    Symbol findSelfContaining(DiagnosticPosition pos,
+                    Env<AttrContext> env,
+                    TypeSymbol c,
+                    Name name) {
+        Assert.check(name == names._this);
         Env<AttrContext> env1 = env;
         boolean staticOnly = false;
+        Symbol bestSoFar = varNotFound;
         while (env1.outer != null) {
             if (isStatic(env1)) staticOnly = true;
-            boolean match = exact ?
-                    env1.enclClass.sym == c :
-                    env1.enclClass.sym.isSubClass(c, types);
-            if (match) {
+            if (env1.enclClass.sym.isSubClass(c, types)) {
                 Symbol sym = env1.info.scope.findFirst(name);
                 if (sym != null) {
-                    if (staticOnly)
-                        return new StaticError(sym);
-                    else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym))
-                        return new RefBeforeCtorCalledError(sym);
-                    return sym;
+                    if (staticOnly) {
+                        // static error, stop search
+                        return bestSoFar.exists() ? bestSoFar : new StaticError(sym);
+                    } else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym)) {
+                        // early construction context, keep searching
+                        bestSoFar = bestSoFar.exists() ? bestSoFar : new RefBeforeCtorCalledError(sym);
+                    } else {
+                        // found it
+                        return sym;
+                    }
                 }
             }
             if ((env1.enclClass.sym.flags() & STATIC) != 0) staticOnly = true;
             env1 = env1.outer;
         }
-        return varNotFound;
+        return bestSoFar;
+    }
+
+    /**
+     * Resolve the (method) owner of a local class. This can fail if the local class
+     * is referenced from a static context nested inside the local class. Effectively,
+     * this lookup succeeds if we can access a local variable declared inside the owner
+     * method from the provided env.
+     */
+    Symbol findLocalClassOwner(Env<AttrContext> env, TypeSymbol c) {
+        Symbol owner = c.owner;
+        Assert.check(owner.kind == MTH);
+        Env<AttrContext> env1 = env;
+        boolean staticOnly = false;
+        while (env1.outer != null) {
+            if (env1.info.scope.owner == owner) {
+                return (staticOnly) ?
+                    new StaticError(owner) :
+                    owner;
+            }
+            if (isStatic(env1)) staticOnly = true;
+            env1 = env1.outer;
+        }
+        return methodNotFound;
     }
 
     /**
@@ -3797,9 +3828,27 @@ public class Resolve {
                        TypeSymbol c,
                        Name name) {
         Assert.check(name == names._this || name == names._super);
+        Env<AttrContext> env1 = env;
+        boolean staticOnly = false;
+        while (env1.outer != null) {
+            if (isStatic(env1)) staticOnly = true;
+            if (env1.enclClass.sym == c) {
+                Symbol sym = env1.info.scope.findFirst(name);
+                if (sym != null) {
+                    if (staticOnly)
+                        sym = new StaticError(sym);
+                    else if (env1.info.ctorPrologue && !isAllowedEarlyReference(pos, env1, (VarSymbol)sym))
+                        sym = new RefBeforeCtorCalledError(sym);
+                    return accessBase(sym, pos, env.enclClass.sym.type,
+                            name, true);
+                }
+            }
+            if ((env1.enclClass.sym.flags() & STATIC) != 0) staticOnly = true;
+            env1 = env1.outer;
+        }
         if (c.isInterface() &&
-            name == names._super && !isStatic(env) &&
-            types.isDirectSuperInterface(c, env.enclClass.sym)) {
+                name == names._super && !isStatic(env) &&
+                types.isDirectSuperInterface(c, env.enclClass.sym)) {
             //this might be a default super call if one of the superinterfaces is 'c'
             for (Type t : pruneInterfaces(env.enclClass.type)) {
                 if (t.tsym == c) {
@@ -3814,18 +3863,12 @@ public class Resolve {
             for (Type i : types.directSupertypes(env.enclClass.type)) {
                 if (i.tsym.isSubClass(c, types) && i.tsym != c) {
                     log.error(pos,
-                              Errors.IllegalDefaultSuperCall(c,
-                                                             Fragments.RedundantSupertype(c, i)));
+                            Errors.IllegalDefaultSuperCall(c,
+                                    Fragments.RedundantSupertype(c, i)));
                     return syms.errSymbol;
                 }
             }
             Assert.error();
-        } else {
-            Symbol sym = findSelf(pos, env, c, name, true);
-            if (sym.exists()) {
-                return accessBase(sym, pos, env.enclClass.sym.type,
-                        name, true);
-            }
         }
         log.error(pos, Errors.NotEnclClass(c));
         return syms.errSymbol;
@@ -3926,27 +3969,6 @@ public class Resolve {
             v.owner.kind == TYP &&
             types.isSubtype(env.enclClass.type, v.owner.type) &&
             (base == null || TreeInfo.isExplicitThisReference(types, (ClassType)env.enclClass.type, base));
-    }
-
-    /**
-     * Resolve an appropriate implicit this instance for t's container.
-     * JLS 8.8.5.1 and 15.9.2
-     */
-    Type resolveImplicitThis(DiagnosticPosition pos, Env<AttrContext> env, Type t) {
-        return resolveImplicitThis(pos, env, t, false);
-    }
-
-    Type resolveImplicitThis(DiagnosticPosition pos, Env<AttrContext> env, Type t, boolean isSuperCall) {
-        Env<AttrContext> localEnv = isSuperCall ? env.outer : env;
-        boolean isLocal = t.tsym.owner.kind.matches(KindSelector.VAL_MTH);
-        Symbol thisSym = findSelf(pos, localEnv, t.getEnclosingType().tsym, names._this, isLocal);
-        if (thisSym.exists()) {
-            thisSym = accessBase(thisSym, pos, env.enclClass.sym.type, names._this, true);
-        } else {
-            log.error(pos, Errors.EnclClassRequired(t.tsym));
-            thisSym = varNotFound;
-        }
-        return thisSym.type;
     }
 
 /* ***************************************************************************
