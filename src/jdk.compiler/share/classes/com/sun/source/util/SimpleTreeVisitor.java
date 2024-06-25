@@ -300,6 +300,8 @@ public class SimpleTreeVisitor <R,P> implements TreeVisitor<R,P> {
      * @param node {@inheritDoc}
      * @param p {@inheritDoc}
      * @return  the result of {@code defaultAction}
+     *
+     * @since 14
      */
     @Override
     public R visitSwitchExpression(SwitchExpressionTree node, P p) {
@@ -1062,6 +1064,8 @@ public class SimpleTreeVisitor <R,P> implements TreeVisitor<R,P> {
      * @param node {@inheritDoc}
      * @param p {@inheritDoc}
      * @return  the result of {@code defaultAction}
+     *
+     * @since 14
      */
     @Override
     public R visitYield(YieldTree node, P p) {

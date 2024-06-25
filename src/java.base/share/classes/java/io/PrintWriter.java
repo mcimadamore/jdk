@@ -1499,7 +1499,8 @@ public class PrintWriter extends Writer {
      * Appends the specified character sequence to this writer.
      *
      * <p> An invocation of this method of the form {@code out.append(csq)}
-     * behaves in exactly the same way as the invocation
+     * when {@code csq} is not {@code null}, behaves in exactly the same way
+     * as the invocation
      *
      * {@snippet lang=java :
      *     out.write(csq.toString())

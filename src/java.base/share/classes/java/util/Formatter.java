@@ -2299,6 +2299,8 @@ public final class Formatter implements Closeable, Flushable {
      *
      * @throws NullPointerException
      *         if {@code fileName} or {@code charset} is {@code null}.
+     *
+     * @since 10
      */
     public Formatter(String fileName, Charset charset, Locale l) throws IOException {
         this(Objects.requireNonNull(charset, "charset"), l, new File(fileName));
@@ -2443,6 +2445,8 @@ public final class Formatter implements Closeable, Flushable {
      *
      * @throws NullPointerException
      *         if {@code file} or {@code charset} is {@code null}.
+     *
+     * @since 10
      */
     public Formatter(File file, Charset charset, Locale l) throws IOException {
         this(Objects.requireNonNull(charset, "charset"), l, file);
@@ -2560,6 +2564,8 @@ public final class Formatter implements Closeable, Flushable {
      *
      * @throws NullPointerException
      *         if {@code os} or {@code charset} is {@code null}.
+     *
+     * @since 10
      */
     public Formatter(OutputStream os, Charset charset, Locale l) {
         this(l, new BufferedWriter(new OutputStreamWriter(os, charset)));
@@ -2835,7 +2841,7 @@ public final class Formatter implements Closeable, Flushable {
      *
      * @since  23
      */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+    @PreviewFeature(feature= PreviewFeature.Feature.STRING_TEMPLATES)
     public Formatter format(StringTemplate st) {
         return format(l, st);
     }

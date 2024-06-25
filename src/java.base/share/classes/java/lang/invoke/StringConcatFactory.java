@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,15 +28,12 @@ package java.lang.invoke;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.misc.VM;
 import jdk.internal.util.FormatConcatItem;
 import jdk.internal.vm.annotation.Stable;
 import sun.invoke.util.Wrapper;
 
-import java.lang.invoke.MethodHandles.Lookup;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static java.lang.invoke.MethodType.methodType;
 
@@ -98,6 +95,13 @@ import static java.lang.invoke.MethodType.methodType;
  * @since 9
  */
 public final class StringConcatFactory {
+
+    private static final int HIGH_ARITY_THRESHOLD;
+
+    static {
+        String highArity = VM.getSavedProperty("java.lang.invoke.StringConcat.highArityThreshold");
+        HIGH_ARITY_THRESHOLD = highArity != null ? Integer.parseInt(highArity) : 20;
+    }
 
     /**
      * Tag used to demarcate an ordinary argument.
@@ -1100,7 +1104,7 @@ public final class StringConcatFactory {
             boolean isSpecialized = ptype.isPrimitive();
             boolean isFormatConcatItem = FormatConcatItem.class.isAssignableFrom(ptype);
             Class<?> ttype = isSpecialized ? promoteToIntType(ptype) :
-                             isFormatConcatItem ? FormatConcatItem.class : Object.class;
+                    isFormatConcatItem ? FormatConcatItem.class : Object.class;
             MethodHandle filter = isFormatConcatItem ? null : stringifierFor(ttype);
 
             if (filter != null) {

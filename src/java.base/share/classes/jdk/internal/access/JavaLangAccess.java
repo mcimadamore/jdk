@@ -26,6 +26,7 @@
 package jdk.internal.access;
 
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
@@ -402,6 +403,11 @@ public interface JavaLangAccess {
     InputStream initialSystemIn();
 
     /**
+     * Returns the initial value of System.err.
+     */
+    PrintStream initialSystemErr();
+
+    /**
      * Encodes ASCII codepoints as possible from the source array into
      * the destination byte array, assuming that the encoding is ASCII
      * compatible
@@ -623,4 +629,10 @@ public interface JavaLangAccess {
      * Are the string bytes compatible with the given charset?
      */
     boolean bytesCompatible(String string, Charset charset);
+
+    /**
+     * Is a security manager already set or allowed to be set
+     * (using -Djava.security.manager=allow)?
+     */
+    boolean allowSecurityManager();
 }
