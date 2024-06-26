@@ -59,7 +59,7 @@ import jdk.internal.vm.annotation.Stable;
  * <p>
  * {@link StringTemplate} is primarily used in conjunction with APIs
  * to produce a string or other meaningful value. Evaluation of a template expression
- * produces an instance of {@link StringTemplate}, with fragements and the values
+ * produces an instance of {@link StringTemplate}, with fragments and the values
  * of embedded expressions evaluated from left to right.
  * <p>
  * For example, the following code contains a template expression, which simply yields
@@ -912,56 +912,4 @@ public final class StringTemplate extends Carriers.CarrierObject  {
             return new ConstantCallSite(mh);
         }
     }
-
-    /**
-     * This class provides runtime support for string templates. The methods within
-     * are intended for internal use only.
-     *
-     * @since 21
-     *
-     * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
-     *          Do not rely on its availability.
-     */
-    private static final class Support implements JavaTemplateAccess {
-
-        /**
-         * Private constructor.
-         */
-        private Support() {
-        }
-
-        static {
-            SharedSecrets.setJavaTemplateAccess(new Support());
-        }
-
-        @Override
-        public List<Class<?>> getTypes(StringTemplate st) {
-            Objects.requireNonNull(st, "st must not be null");
-            return st.sharedData.type().parameterList();
-        }
-
-        @Override
-        public <T> T getMetaData(StringTemplate st, Object owner, Supplier<T> supplier) {
-            Objects.requireNonNull(st, "st must not be null");
-            Objects.requireNonNull(owner, "owner must not be null");
-            Objects.requireNonNull(st, "supplier must not be null");
-            return st.sharedData.getMetaData(owner, supplier);
-        }
-
-        @Override
-        public MethodHandle bindTo(StringTemplate st, MethodHandle mh) {
-            Objects.requireNonNull(st, "st must not be null");
-            Objects.requireNonNull(mh, "mh must not be null");
-            MethodHandle[] components = Carriers.componentsRaw(st.sharedData.type()).toArray(MethodHandle[]::new);
-            int[] permute = new int[components.length];
-            mh = MethodHandles.filterArguments(mh, 0, components);
-            MethodType mt = MethodType.methodType(mh.type()
-                .returnType(), Carriers.CarrierObject.class);
-            mh = MethodHandles.permuteArguments(mh, mt, permute);
-            mt = mt.changeParameterType(0, StringTemplate.class);
-            return mh.asType(mt);
-        }
-
-    }
-
 }
