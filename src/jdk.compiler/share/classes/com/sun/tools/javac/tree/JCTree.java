@@ -2017,6 +2017,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCTree body;
         public boolean canCompleteNormally = true;
         public ParameterKind paramKind;
+        public boolean wasMethodReference;
 
         public JCLambda(List<JCVariableDecl> params,
                         JCTree body) {
