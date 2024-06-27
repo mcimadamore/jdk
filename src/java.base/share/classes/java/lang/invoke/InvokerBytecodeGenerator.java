@@ -25,10 +25,13 @@
 
 package java.lang.invoke;
 
+import jdk.internal.misc.VM;
 import sun.invoke.util.VerifyAccess;
 import sun.invoke.util.VerifyType;
 import sun.invoke.util.Wrapper;
 
+import java.lang.StackWalker.StackFrame;
+import java.lang.StringTemplate.Runtime;
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.SourceFileAttribute;
@@ -46,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import jdk.internal.constant.MethodTypeDescImpl;
 import jdk.internal.constant.ReferenceClassDescImpl;
@@ -136,11 +140,22 @@ class InvokerBytecodeGenerator {
             name = invokerName.substring(0, p);
             invokerName = invokerName.substring(p + 1);
         }
+        String SITE = "";
         if (dumper().isEnabled()) {
+            if (VM.isBooted()) {
+                for (StackTraceElement ste : new Throwable().getStackTrace()) {
+                    if (!ste.getClassName().contains("java.lang.invoke") || ste.getMethodName().equals("makeConcatWithTemplate")) {
+                        SITE = "_" +
+                                ste.getClassName().replace('.', '_').replace('$', '_') + "_" +
+                                ste.getMethodName().replace('.', '_') + "$";
+                        break;
+                    }
+                }
+            }
             name = makeDumpableClassName(name);
         }
         this.name = name;
-        this.className = CLASS_PREFIX + name;
+        this.className = CLASS_PREFIX + SITE + name;
         this.classDesc = ClassDesc.ofInternalName(className);
         this.lambdaForm = lambdaForm;
         this.invokerName = invokerName;

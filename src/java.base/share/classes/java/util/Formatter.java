@@ -2900,18 +2900,41 @@ public final class Formatter implements Closeable, Flushable {
      *
      * @return true if the specification is found and needed
      *
-     * @throws UnknownFormatConversionException if cannot parse
+     * @throws MissingFormatArgumentException if not at end or found and not needed
      */
-    private static boolean findFormat(String fragment, int expected) {
-        List<FormatString> fs = parse(fragment);
-        long count = fs.stream()
-            .filter(f -> isValidSpecifier(f))
-            .count();
-        if (expected < count) {
-            throw new UnknownFormatConversionException("too many specifiers \"" + fragment + "\"");
+    private static boolean findFormat(String fragment, boolean needed) {
+        int max = fragment.length();
+        for (int i = 0; i < max;) {
+            int n = fragment.indexOf('%', i);
+            if (n < 0) {
+                return false;
+            }
+
+            i = n + 1;
+            if (i >= max) {
+                return false;
+            }
+
+            char c = fragment.charAt(i);
+            if (c == '%' || c == 'n') {
+                i++;
+                continue;
+            }
+            int off = new Formatter.FormatSpecifierParser(null, c, i, fragment, max)
+                    .parse();
+            if (off == 0) {
+                return false;
+            }
+            if (i + off == max && needed) {
+                return true;
+            }
+            throw new MissingFormatArgumentException(
+                    fragment.substring(i - 1, i + off)
+                            + " is not immediately followed by an embedded expression");
         }
-        return count == 1 && isValidSpecifier(fs.getLast());
+        return false;
     }
+
 
     /**
      * {@return true of a valid specifier at the end}
@@ -2940,7 +2963,7 @@ public final class Formatter implements Closeable, Flushable {
         String last = fragments.get(lastIndex);
 
         for (String format : formats) {
-            if (findFormat(format, 1)) {
+            if (findFormat(format, true)) {
                 sb.append(format);
             } else {
                 sb.append(format);
@@ -2948,7 +2971,7 @@ public final class Formatter implements Closeable, Flushable {
             }
         }
 
-        findFormat(last, 0);
+        findFormat(last, false);
         sb.append(last);
 
         return sb.toString();

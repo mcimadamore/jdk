@@ -43,6 +43,8 @@ import javax.tools.SimpleJavaFileObject;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
 import javax.tools.ToolProvider;
 
+import static java.lang.StringTemplate.str;
+
 public class StringTemplateTest {
     enum Category{GENERAL, CHARACTER, INTEGRAL, BIG_INT, FLOATING, BIG_FLOAT, DATE};
 
@@ -223,13 +225,13 @@ public class StringTemplateTest {
             var format = randomFormat(c);
             var value = randomValue(c);
             var qValue = value.replace("\\", "\\\\").replace("\"", "\\\"");
-            fragments.add("test(String.format(Locale.US,\"\{format}\\{\{value}}\"), \"\{format}\", \"\{qValue}\", \{value}, log);".join());
+            fragments.add(str("test(String.format(Locale.US,\"\{format}\\{\{value}}\"), \"\{format}\", \"\{qValue}\", \{value}, log);"));
         }
         return String.join("\n        ", fragments);
     }
 
     String genSource() {
-        return """
+        return str("""
             import java.util.Locale;
 
             public class StringTemplateTest$ {
@@ -288,7 +290,7 @@ public class StringTemplateTest {
                     }
                 }
             }
-            """.join();
+            """);
     }
 
     public static void main(String... args) throws Exception {
@@ -296,7 +298,7 @@ public class StringTemplateTest {
         new StringTemplateTest().compile().getMethod("run", List.class).invoke(null, log);
         if (!log.isEmpty()) {
             log.forEach(System.out::println);
-            throw new AssertionError("failed \{log.size()} tests".join());
+            throw new AssertionError(str("failed \{log.size()} tests"));
         }
     }
 }

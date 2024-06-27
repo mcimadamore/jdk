@@ -513,7 +513,7 @@ public final class StringConcatFactory {
         // to convert the incoming arguments into the arguments we can process (e.g. Objects -> Strings).
         // The filtered argument type list is used all over in the combinators below.
 
-        Class<?>[] ptypes = mt.erase().parameterArray();
+        Class<?>[] ptypes = eraseConcatArgs(mt).parameterArray();
         MethodHandle[] objFilters = null;
         MethodHandle[] floatFilters = null;
         MethodHandle[] doubleFilters = null;
@@ -622,6 +622,18 @@ public final class StringConcatFactory {
         }
 
         return mh;
+    }
+
+    static MethodType eraseConcatArgs(MethodType mtype) {
+        MethodType erased = mtype.erase();
+        // erase everything, but keep subclasses of FormatConcatItem in place
+        for (int i = 0 ; i < mtype.parameterCount() ; i++) {
+            Class<?> p = mtype.parameterType(i);
+            if (FormatConcatItem.class.isAssignableFrom(p)) {
+                erased = erased.changeParameterType(i, p);
+            }
+        }
+        return erased;
     }
 
     // We need one prepender per argument, but also need to fold in constants. We do so by greedily
@@ -1097,100 +1109,8 @@ public final class StringConcatFactory {
         Objects.requireNonNull(fragments, "fragments is null");
         Objects.requireNonNull(ptypes, "ptypes is null");
         ptypes = List.copyOf(ptypes);
-
-        if (fragments.size() != ptypes.size() + 1) {
-            throw new IllegalArgumentException("fragments size not equal ptypes size plus one");
-        }
-
-        if (ptypes.isEmpty()) {
-            return MethodHandles.constant(String.class, fragments.get(0));
-        }
-
-        Class<?>[] ttypes = new Class<?>[ptypes.size()];
-        MethodHandle[] filters = new MethodHandle[ptypes.size()];
-        int slots = 0;
-
-        int pos = 0;
-        for (Class<?> ptype : ptypes) {
-            slots += ptype == long.class || ptype == double.class ? 2 : 1;
-
-            if (MAX_INDY_CONCAT_ARG_SLOTS < slots) {
-                throw new StringConcatException("Too many concat argument slots: " +
-                        slots + ", can only accept " + MAX_INDY_CONCAT_ARG_SLOTS);
-            }
-
-            boolean isSpecialized = ptype.isPrimitive();
-            boolean isFormatConcatItem = FormatConcatItem.class.isAssignableFrom(ptype);
-            Class<?> ttype = isSpecialized ? promoteToIntType(ptype) :
-                    isFormatConcatItem ? FormatConcatItem.class : Object.class;
-            MethodHandle filter = isFormatConcatItem ? null : stringifierFor(ttype);
-
-            if (filter != null) {
-                filters[pos] = filter;
-                ttype = String.class;
-            }
-
-            ttypes[pos++] = ttype;
-        }
-
-        MethodHandle mh = MethodHandles.dropArguments(newString(), 2, ttypes);
-
-        long initialLengthCoder = INITIAL_CODER;
-        pos = 0;
-        for (String fragment : fragments) {
-            initialLengthCoder = JLA.stringConcatMix(initialLengthCoder, fragment);
-
-            if (ttypes.length <= pos) {
-                break;
-            }
-
-            Class<?> ttype = ttypes[pos];
-            // (long,byte[],ttype) -> long
-            MethodHandle prepender = prepender(fragment, ttype);
-            // (byte[],long,ttypes...) -> String (unchanged)
-            mh = MethodHandles.filterArgumentsWithCombiner(mh, 1, prepender,1, 0, 2 + pos);
-
-            pos++;
-        }
-
-        String lastFragment = fragments.getLast();
-        initialLengthCoder -= lastFragment.length();
-        MethodHandle newArrayCombinator = lastFragment.isEmpty() ? newArray() :
-                newArrayWithSuffix(lastFragment);
-        // (long,ttypes...) -> String
-        mh = MethodHandles.foldArgumentsWithCombiner(mh, 0, newArrayCombinator,
-                1 // index
-        );
-
-        pos = 0;
-        for (Class<?> ttype : ttypes) {
-            // (long,ttype) -> long
-            MethodHandle mix = mixer(ttypes[pos]);
-            boolean lastPType = pos == ttypes.length - 1;
-
-            if (lastPType) {
-                // (ttype) -> long
-                mix = MethodHandles.insertArguments(mix, 0, initialLengthCoder);
-                // (ttypes...) -> String
-                mh = MethodHandles.foldArgumentsWithCombiner(mh, 0, mix,
-                        1 + pos // selected argument
-                );
-            } else {
-                // (long,ttypes...) -> String
-                mh = MethodHandles.filterArgumentsWithCombiner(mh, 0, mix,
-                        0, // old-index
-                        1 + pos // selected argument
-                );
-            }
-
-            pos++;
-        }
-
-        mh = MethodHandles.filterArguments(mh, 0, filters);
-        MethodType mt = MethodType.methodType(String.class, ptypes);
-        mh = mh.viewAsType(mt, true);
-
-        return mh;
+        MethodHandle handle = generateMHInlineCopy(MethodType.methodType(void.class, ptypes), fragments.toArray(new String[0]));
+        return handle.asType(MethodType.methodType(String.class, ptypes));
     }
 
     /**
