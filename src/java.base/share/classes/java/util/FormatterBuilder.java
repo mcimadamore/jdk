@@ -48,7 +48,6 @@ import java.util.Formatter.FormatString;
 
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.template.StringTemplateImpl;
-import jdk.internal.template.StringTemplateMetaData;
 import jdk.internal.util.FormatConcatItem;
 
 import sun.util.locale.provider.LocaleProviderAdapter;
@@ -606,10 +605,14 @@ public final class FormatterBuilder {
      * @return the formatted string or null if no cached {@link MethodHandle}
      */
     public static String format(Locale l, StringTemplate st) {
-        FormatterBuilderMetaData metaData = FormatterBuilderMetaData.getMetaData(st, FormatterBuilderMetaData.class,
-            () -> new FormatterBuilderMetaData(st, l));
+        FormatterBuilderMetaData metaData = ((StringTemplateImpl)st).getMetaData(FormatterBuilderMetaData.class,
+                () -> new FormatterBuilderMetaData(l, st));
         if (metaData != null && metaData.l == l) {
-            return metaData.invoke(st);
+            try {
+                return (String)metaData.mh.invokeExact(st);
+            } catch (Throwable ex) {
+                throw new InternalError(ex);
+            }
         }
         return null;
     }
@@ -617,26 +620,10 @@ public final class FormatterBuilder {
     /**
      * Metadata for {@link FormatterBuilder}.
      */
-    private static class FormatterBuilderMetaData extends StringTemplateMetaData {
-        /**
-         * Locale use for {@link MethodHandle}.
-         */
-        private final Locale l;
-
-        /**
-         * Constructor.
-         * @param st  associated {@link StringTemplate}
-         * @param l   Locale
-         */
-        FormatterBuilderMetaData(StringTemplate st, Locale l) {
-            super();
-            this.l = l != null ? l : Locale.getDefault();
-
-        }
-
-        @Override
-        public MethodHandle createMethodHandle(StringTemplate st) {
-            return FormatterBuilder.create(st, l);
+    private record FormatterBuilderMetaData(Locale l, MethodHandle mh) {
+        FormatterBuilderMetaData(Locale l, StringTemplate st) {
+            this(l != null ? l : Locale.getDefault(),
+                 FormatterBuilder.create(st, l));
         }
     }
 
