@@ -27,13 +27,10 @@ package jdk.internal.template;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.StringConcatException;
-import java.lang.invoke.StringConcatFactory;
 import java.lang.invoke.VarHandle;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import jdk.internal.vm.annotation.Stable;
 
@@ -114,12 +111,16 @@ public final class StringTemplateImpl implements StringTemplate {
     }
 
     public String str() {
-        try {
-            return (String)sharedData.joinMH().invokeExact((StringTemplate)this);
-        } catch (RuntimeException | Error ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            throw new RuntimeException("string template join failure", ex);
+        MethodHandle joinMH = getMetaData(StringTemplateJoiner.class,
+                () -> StringTemplateJoiner.makeJoinMH(sharedData.type, sharedData.fragments));
+        if (joinMH != null) {
+            try {
+                return (String)joinMH.invokeExact((StringTemplate)this);
+            } catch (Throwable ex) {
+                throw new InternalError(ex);
+            }
+        } else {
+            return StringTemplateJoiner.join(this);
         }
     }
 
@@ -256,10 +257,17 @@ public final class StringTemplateImpl implements StringTemplate {
          */
         private static final VarHandle OWNER_VH;
 
+        /**
+         * StringTemplate factory.
+         */
+        private static final MethodHandle FACTORY;
+
         static {
             try {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 OWNER_VH = lookup.findVarHandle(SharedData.class, "owner", Object.class);
+                FACTORY = lookup.findVirtual(SharedData.class, "makeStringTemplateFromValues",
+                        MethodType.methodType(StringTemplate.class, Object[].class));
             } catch (ReflectiveOperationException ex) {
                 throw new InternalError(ex);
             }
@@ -279,14 +287,6 @@ public final class StringTemplateImpl implements StringTemplate {
         private final MethodType type;
 
         /**
-         * Specialized {@link MethodHandle} used to implement the {@link StringTemplate StringTemplate's}
-         * {@code join} method. This {@link MethodHandle} is shared by all instances created at the
-         * {@link java.lang.invoke.CallSite CallSite}.
-         */
-        @Stable
-        private final MethodHandle joinMH;
-
-        /**
          * Owner of metadata. Metadata is used to cache information at a
          * {@link java.lang.invoke.CallSite CallSite} by a processor. Only one
          * cache is available, first processor to attempt wins. This is under the assumption
@@ -302,40 +302,6 @@ public final class StringTemplateImpl implements StringTemplate {
         @Stable
         private Object metaData;
 
-        /*
-         * Frequently used method types.
-         */
-        private static final MethodType JOIN_MT = MethodType.methodType(String.class, StringTemplate.class);
-
-        private static final MethodHandle FACTORY;
-
-        /**
-         * Object to string, special casing {@link StringTemplate};
-         */
-        private static final MethodHandle OBJECT_TO_STRING;
-
-        /**
-         * {@link StringTemplate} to string using interpolation.
-         */
-        private static final MethodHandle TEMPLATE_TO_STRING;
-
-        static {
-            try {
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-                MethodType mt = MethodType.methodType(String.class, Object.class);
-                OBJECT_TO_STRING = lookup.findStatic(SharedData.class, "objectToString", mt);
-
-                mt = MethodType.methodType(String.class, StringTemplate.class);
-                TEMPLATE_TO_STRING = lookup.findStatic(SharedData.class, "templateToString", mt);
-
-                mt = MethodType.methodType(StringTemplate.class, Object[].class);
-                FACTORY = lookup.findVirtual(SharedData.class, "makeStringTemplateFromValues", mt);
-            } catch(ReflectiveOperationException ex) {
-                throw new AssertionError("carrier static init fail", ex);
-            }
-        }
-
         /**
          * Constructor. Contents are bound to the {@link java.lang.invoke.CallSite CallSite}.
          * @param fragments       list of string fragments
@@ -344,28 +310,8 @@ public final class StringTemplateImpl implements StringTemplate {
         public SharedData(List<String> fragments, MethodType type) {
             this.fragments = fragments;
             this.type = type;
-            this.joinMH = makeJoinMH(type, fragments);
             this.owner = null;
             this.metaData = null;
-        }
-
-        static MethodHandle makeJoinMH(MethodType type, List<String> fragments) {
-            List<MethodHandle> getters = new ArrayList<>();
-            for (int i = 0 ; i < type.parameterCount() ; i++) {
-                getters.add(StringTemplateImpl.getter(i, type.parameterType(i)));
-            }
-            List<Class<?>> ptypes = returnTypes(getters);
-            int[] permute = new int[ptypes.size()];
-            List<MethodHandle> filters = filterGetters(getters);
-            List<Class<?>> ftypes = returnTypes(filters);
-            try {
-                MethodHandle joinMH = StringConcatFactory.makeConcatWithTemplate(fragments, ftypes);
-                joinMH = MethodHandles.filterArguments(joinMH, 0, filters.toArray(MethodHandle[]::new));
-                joinMH = MethodHandles.permuteArguments(joinMH, JOIN_MT, permute);
-                return joinMH;
-            } catch (StringConcatException ex) {
-                throw new InternalError("constructing internal string template", ex);
-            }
         }
 
         private StringTemplate makeStringTemplateFromValues(Object... args) {
@@ -376,65 +322,6 @@ public final class StringTemplateImpl implements StringTemplate {
             return FACTORY.bindTo(this)
                     .asCollector(Object[].class, type.parameterCount())
                     .asType(type);
-        }
-
-
-
-        /**
-         * Glean the return types from a list of {@link MethodHandle}.
-         *
-         * @param mhs  list of {@link MethodHandle}
-         * @return list of return types
-         */
-        private static List<Class<?>> returnTypes(List<MethodHandle> mhs) {
-            return mhs.stream()
-                    .map(mh -> mh.type().returnType())
-                    .collect(Collectors.toList());
-        }
-
-        /**
-         * Interpolate nested {@link StringTemplate StringTemplates}.
-         * @param getters {@link Carriers} component getters
-         * @return getters filtered to translate {@link StringTemplate StringTemplates} to strings
-         */
-        private static List<MethodHandle> filterGetters(List<MethodHandle> getters) {
-            List<MethodHandle> filters = new ArrayList<>();
-            for (MethodHandle getter : getters) {
-                Class<?> type = getter.type().returnType();
-                if (type == StringTemplate.class) {
-                    getter = MethodHandles.filterArguments(TEMPLATE_TO_STRING, 0, getter);
-                } else if (type == Object.class) {
-                    getter = MethodHandles.filterArguments(OBJECT_TO_STRING, 0, getter);
-                }
-                filters.add(getter);
-            }
-            return filters;
-        }
-
-        /**
-         * Filter object for {@link StringTemplate} and convert to string, {@link String#valueOf(Object)} otherwise.
-         * @param object object to filter
-         * @return {@link StringTemplate} interpolation otherwise result of {@link String#valueOf(Object)}.
-         */
-        private static String objectToString(Object object) {
-            if (object instanceof StringTemplate st) {
-                return ((StringTemplateImpl)st).str();
-            } else {
-                return String.valueOf(object);
-            }
-        }
-
-        /**
-         * Filter {@link StringTemplate} to strings.
-         * @param st {@link StringTemplate} to filter
-         * @return {@link StringTemplate} interpolation otherwise "null"
-         */
-        private static String templateToString(StringTemplate st) {
-            if (st != null) {
-                return ((StringTemplateImpl)st).str();
-            } else {
-                return "null";
-            }
         }
 
         /**
@@ -449,13 +336,6 @@ public final class StringTemplateImpl implements StringTemplate {
          */
         MethodType type() {
             return type;
-        }
-
-        /**
-         * {@return MethodHandle to return string interpolation }
-         */
-        MethodHandle joinMH() {
-            return joinMH;
         }
 
         /**
