@@ -26,7 +26,6 @@
 package java.lang;
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.javac.PreviewFeature;
 import jdk.internal.util.FormatConcatItem;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -135,7 +134,6 @@ final class StringConcatHelper {
      * @return            new length and coder
      * @since 21
      */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
     static long mix(long lengthCoder, FormatConcatItem value) {
         lengthCoder = value.mix(lengthCoder);
         return checkOverflow(lengthCoder);
@@ -355,7 +353,6 @@ final class StringConcatHelper {
      * @return           updated index (coder value retained)
      * @since 21
      */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
     static long prepend(long indexCoder, byte[] buf, FormatConcatItem value) {
         try {
             return value.prepend(indexCoder, buf);
@@ -378,7 +375,6 @@ final class StringConcatHelper {
      * @return           updated index (coder value retained)
      * @since 21
      */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
     static long prepend(long indexCoder, byte[] buf,
                         FormatConcatItem value, String prefix) {
         indexCoder = prepend(indexCoder, buf, value);
@@ -518,33 +514,8 @@ final class StringConcatHelper {
     }
 
     @ForceInline
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    static char getCharLatin1(byte[] buffer, int index) {
-        return (char)buffer[index];
-    }
-
-    @ForceInline
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
     static boolean isLatin1(long indexCoder) {
         return indexCoder < UTF16;
-    }
-
-    @ForceInline
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    static char getCharUTF16(byte[] buffer, int index) {
-        return StringUTF16.getChar(buffer, index);
-    }
-
-    @ForceInline
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    static void putCharLatin1(byte[] buffer, int index, int ch) {
-        buffer[index] = (byte)ch;
-    }
-
-    @ForceInline
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    static void putCharUTF16(byte[] buffer, int index, int ch) {
-        StringUTF16.putChar(buffer, index, ch);
     }
 
     static MethodHandle lookupStatic(String name, MethodType methodType) {

@@ -101,7 +101,7 @@ public class StringTemplateHelper {
      */
     private static String objectToString(Object object) {
         if (object instanceof StringTemplate st) {
-            return ((StringTemplateImpl)st).join();
+            return join(st);
         } else {
             return String.valueOf(object);
         }
@@ -114,7 +114,7 @@ public class StringTemplateHelper {
      */
     private static String templateToString(StringTemplate st) {
         if (st != null) {
-            return ((StringTemplateImpl)st).join();
+            return join(st);
         } else {
             return "null";
         }
@@ -132,18 +132,18 @@ public class StringTemplateHelper {
         return buf.toString();
     }
 
-    public String join(StringTemplate st) {
+    public static String join(StringTemplate st) {
         StringTemplateImpl.SharedData sharedData = ((StringTemplateImpl)st).sharedData;
         MethodHandle joinMH = sharedData.getMetaData(StringTemplateHelper.class,
                 () -> StringTemplateHelper.makeJoinMH(sharedData.type(), sharedData.fragments()));
         if (joinMH != null) {
             try {
-                return (String)joinMH.invokeExact((StringTemplate)this);
+                return (String)joinMH.invokeExact(st);
             } catch (Throwable ex) {
                 throw new InternalError(ex);
             }
         } else {
-            return joinSlow(this);
+            return joinSlow(st);
         }
     }
 
@@ -158,7 +158,7 @@ public class StringTemplateHelper {
         List<String> fragments = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         for (StringTemplate st : sts) {
-            type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type.parameterArray());
+            type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type().parameterArray());
             if (flatten) {
                 for (int i = 0 ; i < type.parameterCount() ; i++) {
                     if (StringTemplate.class.isAssignableFrom(type.parameterType(i))) {
@@ -172,7 +172,8 @@ public class StringTemplateHelper {
         if (200 < values.size()) {
             throw new RuntimeException("string template combine too many expressions");
         }
-        return new SharedData(fragments, type).makeStringTemplateFromValues(values.toArray());
+        return new SharedData(fragments, type)
+                .makeStringTemplateFromValues(values.toArray());
     }
 
     public static void flattenST(boolean flatten, StringTemplate st,
