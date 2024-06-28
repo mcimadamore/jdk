@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.template.StringTemplateHelper;
 import jdk.internal.template.StringTemplateImpl;
 import jdk.internal.template.StringTemplateImpl.SharedData;
 
@@ -145,7 +146,7 @@ public interface StringTemplate {
      */
     static String str(StringTemplate stringTemplate) {
         Objects.requireNonNull(stringTemplate, "stringTemplate should not be null");
-        return ((StringTemplateImpl)stringTemplate).str();
+        return StringTemplateHelper.join(stringTemplate);
     }
 
     /**
@@ -209,7 +210,7 @@ public interface StringTemplate {
      * then it is returned unchanged.
      */
     static StringTemplate combine(boolean flatten, StringTemplate... stringTemplates) {
-        return StringTemplateImpl.combineST(flatten, stringTemplates);
+        return StringTemplateHelper.combineST(flatten, stringTemplates);
     }
 
     /**
@@ -262,7 +263,7 @@ public interface StringTemplate {
      * then the first element of the list is returned unchanged.
      */
     static StringTemplate combine(boolean flatten, List<StringTemplate> stringTemplates) {
-        return StringTemplateImpl.combineST(flatten, stringTemplates.toArray(StringTemplate[]::new));
+        return StringTemplateHelper.combineST(flatten, stringTemplates.toArray(StringTemplate[]::new));
     }
 
     /**

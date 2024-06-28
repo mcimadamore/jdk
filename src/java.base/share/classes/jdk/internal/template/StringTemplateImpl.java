@@ -35,11 +35,9 @@ import java.util.function.Supplier;
 import jdk.internal.vm.annotation.Stable;
 
 public final class StringTemplateImpl implements StringTemplate {
-    /**
-     * StringTemplate shared data.
-     */
-    private final SharedData sharedData;
-    private final Object[] values;
+
+    final SharedData sharedData;
+    final Object[] values;
 
     static MethodHandle GET_VALUE;
 
@@ -57,71 +55,15 @@ public final class StringTemplateImpl implements StringTemplate {
         this.values = values;
     }
 
-    static MethodHandle getter(int index, Class<?> ptype) {
-        return MethodHandles.insertArguments(GET_VALUE, 1, index)
-                .asType(MethodType.methodType(ptype, StringTemplate.class));
-    }
-
-    static Object getValue(StringTemplate st, int index) {
-        return ((StringTemplateImpl)st).values[index];
-    }
-
-    /**
-     * Returns a list of fragment literals for this {@link StringTemplate}.
-     * The fragment literals are the character sequences preceding each of the embedded
-     * expressions in source code, plus the character sequence following the last
-     * embedded expression. Such character sequences may be zero-length if an embedded
-     * expression appears at the beginning or end of a template, or if two embedded
-     * expressions are directly adjacent in a template.
-     * In the example: {@snippet lang=java :
-     * String student = "Mary";
-     * String teacher = "Johnson";
-     * StringTemplate st = "The student \{student} is in \{teacher}'s classroom.";
-     * List<String> fragments = st.fragments(); // @highlight substring="fragments()"
-     * }
-     * {@code fragments} will be equivalent to
-     * {@code List.of("The student ", " is in ", "'s classroom.")}
-     *
-     * @return list of string fragments
-     *
-     * @implSpec the list returned is immutable
-     */
+    @Override
     public List<String> fragments() {
         return sharedData.fragments();
     }
 
-    /**
-     * Returns a list of embedded expression results for this {@link StringTemplate}.
-     * In the example:
-     * {@snippet lang=java :
-     * String student = "Mary";
-     * String teacher = "Johnson";
-     * StringTemplate st = "The student \{student} is in \{teacher}'s classroom.";
-     * List<Object> values = st.values(); // @highlight substring="values()"
-     * }
-     * {@code values} will be equivalent to {@code List.of(student, teacher)}
-     *
-     * @return list of expression values
-     *
-     * @implSpec the list returned is immutable
-     */
+    @Override
     public List<Object> values() {
         // some values might be null, so can't use List::of
         return Arrays.asList(values);
-    }
-
-    public String str() {
-        MethodHandle joinMH = getMetaData(StringTemplateJoiner.class,
-                () -> StringTemplateJoiner.makeJoinMH(sharedData.type, sharedData.fragments));
-        if (joinMH != null) {
-            try {
-                return (String)joinMH.invokeExact((StringTemplate)this);
-            } catch (Throwable ex) {
-                throw new InternalError(ex);
-            }
-        } else {
-            return StringTemplateJoiner.join(this);
-        }
     }
 
     @Override
@@ -131,64 +73,6 @@ public final class StringTemplateImpl implements StringTemplate {
                 "\" ], values = " +
                 values() +
                 " }";
-    }
-
-    public static StringTemplate combineST(boolean flatten, StringTemplate... sts) {
-        Objects.requireNonNull(sts, "sts must not be null");
-        if (sts.length == 0) {
-            return new SharedData(List.of(""), MethodType.methodType(StringTemplate.class)).makeStringTemplateFromValues();
-        } else if (sts.length == 1 && !flatten) {
-            return Objects.requireNonNull(sts[0], "string templates should not be null");
-        }
-        MethodType type = MethodType.methodType(StringTemplate.class);
-        List<String> fragments = new ArrayList<>();
-        List<Object> values = new ArrayList<>();
-        for (StringTemplate st : sts) {
-            type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type.parameterArray());
-            if (flatten) {
-                for (int i = 0 ; i < type.parameterCount() ; i++) {
-                    if (StringTemplate.class.isAssignableFrom(type.parameterType(i))) {
-                        type = type.changeParameterType(i, String.class);
-                    }
-                }
-            }
-            Objects.requireNonNull(st, "string templates should not be null");
-            flattenST(flatten, st, fragments, values);
-        }
-        if (200 < values.size()) {
-            throw new RuntimeException("string template combine too many expressions");
-        }
-        return new SharedData(fragments, type).makeStringTemplateFromValues(values.toArray());
-    }
-
-    /**
-     * Recursively combining the specified {@link StringTemplate} to the mix.
-     *
-     * @param flatten     if true will flatten nested {@link StringTemplate StringTemplates} into the
-     *                    combination
-     * @param st          specified {@link StringTemplate}
-     * @param fragments   accumulation of fragments
-     */
-    public static void flattenST(boolean flatten, StringTemplate st,
-                                  List<String> fragments, List<Object> values) {
-        Iterator<String> fragmentsIter = st.fragments().iterator();
-        if (fragments.isEmpty()) {
-            fragments.add(fragmentsIter.next());
-        } else {
-            int last = fragments.size() - 1;
-            fragments.set(last, fragments.get(last) + fragmentsIter.next());
-        }
-        MethodType type = ((StringTemplateImpl)st).sharedData.type();
-        for(Object value : st.values()) {
-            if (flatten && value instanceof StringTemplate nested) {
-                flattenST(true, nested, fragments, values);
-                int last = fragments.size() - 1;
-                fragments.set(last, fragments.get(last) + fragmentsIter.next());
-            } else {
-                values.add(value);
-                fragments.add(fragmentsIter.next());
-            }
-        }
     }
 
     @Override
@@ -210,18 +94,21 @@ public final class StringTemplateImpl implements StringTemplate {
         return false;
     }
 
-    /**
-     * Return a hashCode that derived from this {@link StringTemplate StringTemplate's}
-     * fragments and values.
-     *
-     * @return a hash code for a sequences of fragments and values
-     */
     @Override
     public int hashCode() {
         return 31 * fragments().hashCode() + values().hashCode();
     }
 
     // support
+
+    static MethodHandle getter(int index, Class<?> ptype) {
+        return MethodHandles.insertArguments(GET_VALUE, 1, index)
+                .asType(MethodType.methodType(ptype, StringTemplate.class));
+    }
+
+    static Object getValue(StringTemplate st, int index) {
+        return ((StringTemplateImpl)st).values[index];
+    }
 
     public List<Class<?>> getTypes() {
         return sharedData.type().parameterList();

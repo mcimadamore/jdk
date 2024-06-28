@@ -1,18 +1,22 @@
 package jdk.internal.template;
 
+import jdk.internal.template.StringTemplateImpl.SharedData;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.StringConcatException;
 import java.lang.invoke.StringConcatFactory;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class StringTemplateJoiner {
+public class StringTemplateHelper {
 
-    /*
-     * Frequently used method types.
+    /**
+     * Method type for StringTemplate join MH
      */
     private static final MethodType JOIN_MT = MethodType.methodType(String.class, StringTemplate.class);
 
@@ -31,10 +35,10 @@ public class StringTemplateJoiner {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
             MethodType mt = MethodType.methodType(String.class, Object.class);
-            OBJECT_TO_STRING = lookup.findStatic(StringTemplateJoiner.class, "objectToString", mt);
+            OBJECT_TO_STRING = lookup.findStatic(StringTemplateHelper.class, "objectToString", mt);
 
             mt = MethodType.methodType(String.class, StringTemplate.class);
-            TEMPLATE_TO_STRING = lookup.findStatic(StringTemplateJoiner.class, "templateToString", mt);
+            TEMPLATE_TO_STRING = lookup.findStatic(StringTemplateHelper.class, "templateToString", mt);
         } catch(ReflectiveOperationException ex) {
             throw new AssertionError("carrier static init fail", ex);
         }
@@ -97,7 +101,7 @@ public class StringTemplateJoiner {
      */
     private static String objectToString(Object object) {
         if (object instanceof StringTemplate st) {
-            return ((StringTemplateImpl)st).str();
+            return ((StringTemplateImpl)st).join();
         } else {
             return String.valueOf(object);
         }
@@ -110,13 +114,13 @@ public class StringTemplateJoiner {
      */
     private static String templateToString(StringTemplate st) {
         if (st != null) {
-            return ((StringTemplateImpl)st).str();
+            return ((StringTemplateImpl)st).join();
         } else {
             return "null";
         }
     }
 
-    public static String join(StringTemplate st) {
+    private static String joinSlow(StringTemplate st) {
         StringBuilder buf = new StringBuilder();
         List<String> fragments = st.fragments();
         List<Object> values = st.values();
@@ -126,5 +130,69 @@ public class StringTemplateJoiner {
             buf.append(fragments.get(i + 1));
         }
         return buf.toString();
+    }
+
+    public String join(StringTemplate st) {
+        StringTemplateImpl.SharedData sharedData = ((StringTemplateImpl)st).sharedData;
+        MethodHandle joinMH = sharedData.getMetaData(StringTemplateHelper.class,
+                () -> StringTemplateHelper.makeJoinMH(sharedData.type(), sharedData.fragments()));
+        if (joinMH != null) {
+            try {
+                return (String)joinMH.invokeExact((StringTemplate)this);
+            } catch (Throwable ex) {
+                throw new InternalError(ex);
+            }
+        } else {
+            return joinSlow(this);
+        }
+    }
+
+    public static StringTemplate combineST(boolean flatten, StringTemplate... sts) {
+        Objects.requireNonNull(sts, "sts must not be null");
+        if (sts.length == 0) {
+            return new SharedData(List.of(""), MethodType.methodType(StringTemplate.class)).makeStringTemplateFromValues();
+        } else if (sts.length == 1 && !flatten) {
+            return Objects.requireNonNull(sts[0], "string templates should not be null");
+        }
+        MethodType type = MethodType.methodType(StringTemplate.class);
+        List<String> fragments = new ArrayList<>();
+        List<Object> values = new ArrayList<>();
+        for (StringTemplate st : sts) {
+            type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type.parameterArray());
+            if (flatten) {
+                for (int i = 0 ; i < type.parameterCount() ; i++) {
+                    if (StringTemplate.class.isAssignableFrom(type.parameterType(i))) {
+                        type = type.changeParameterType(i, String.class);
+                    }
+                }
+            }
+            Objects.requireNonNull(st, "string templates should not be null");
+            flattenST(flatten, st, fragments, values);
+        }
+        if (200 < values.size()) {
+            throw new RuntimeException("string template combine too many expressions");
+        }
+        return new SharedData(fragments, type).makeStringTemplateFromValues(values.toArray());
+    }
+
+    public static void flattenST(boolean flatten, StringTemplate st,
+                                 List<String> fragments, List<Object> values) {
+        Iterator<String> fragmentsIter = st.fragments().iterator();
+        if (fragments.isEmpty()) {
+            fragments.add(fragmentsIter.next());
+        } else {
+            int last = fragments.size() - 1;
+            fragments.set(last, fragments.get(last) + fragmentsIter.next());
+        }
+        for(Object value : st.values()) {
+            if (flatten && value instanceof StringTemplate nested) {
+                flattenST(true, nested, fragments, values);
+                int last = fragments.size() - 1;
+                fragments.set(last, fragments.get(last) + fragmentsIter.next());
+            } else {
+                values.add(value);
+                fragments.add(fragmentsIter.next());
+            }
+        }
     }
 }
