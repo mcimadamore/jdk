@@ -25,8 +25,6 @@
 
 package jdk.internal.template;
 
-import jdk.internal.access.JavaTemplateAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandle;
@@ -42,7 +40,6 @@ import java.util.function.Supplier;
  * StringTemplate.
  */
 public class StringTemplateMetaData {
-    private static final JavaTemplateAccess JTA = SharedSecrets.getJavaTemplateAccess();
 
     /**
      * Per {@link StringTemplate} {@link MethodHandle}.
@@ -81,7 +78,7 @@ public class StringTemplateMetaData {
     public MethodHandle createMethodHandle(StringTemplate st) {
         Objects.requireNonNull(st, "st must not be null");
         List<String> fragments = filterFragments(st.fragments());
-        List<Class<?>> ptypes = JTA.getTypes(st);
+        List<Class<?>> ptypes = ((StringTemplateImpl)st).getTypes();
         MethodHandle[] filters = createValueFilters(ptypes);
         List<Class<?>> fTypes = new ArrayList<>();
         for (int i = 0; i < filters.length; i++) {
@@ -92,7 +89,7 @@ public class StringTemplateMetaData {
             }
         }
         MethodHandle mh = createConcat(fragments, fTypes);
-        mh = JTA.bindTo(st, mh);
+        mh = ((StringTemplateImpl)st).bindTo(mh);
         return mh;
     }
 
@@ -176,7 +173,7 @@ public class StringTemplateMetaData {
         Objects.requireNonNull(st, "st must not be null");
         Objects.requireNonNull(owner, "owner must not be null");
         Objects.requireNonNull(supplier, "supplier must not be null");
-        M metaData = JTA.getMetaData(st, owner, () -> {
+        M metaData = ((StringTemplateImpl)st).getMetaData(owner, () -> {
             M md = supplier.get();
             md.setMethodHandle(md.createMethodHandle(st));
             return md;

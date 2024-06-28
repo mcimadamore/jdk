@@ -46,9 +46,8 @@ import java.util.FormatItem.FormatItemString;
 import java.util.Formatter.FormatSpecifier;
 import java.util.Formatter.FormatString;
 
-import jdk.internal.access.JavaTemplateAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.javac.PreviewFeature;
+import jdk.internal.template.StringTemplateImpl;
 import jdk.internal.template.StringTemplateMetaData;
 import jdk.internal.util.FormatConcatItem;
 
@@ -140,8 +139,6 @@ public final class FormatterBuilder {
         return new FormatterBuilder(format, Locale.getDefault(), ptypes).build();
     }
 
-    private final static JavaTemplateAccess JTA = SharedSecrets.getJavaTemplateAccess();
-
     /**
      * Create a specialized {@link MethodHandle} that will format a specific
      * set of data types, based on a {@link StringTemplate} and locale.
@@ -156,9 +153,9 @@ public final class FormatterBuilder {
         Objects.requireNonNull(st, "st must not be null");
         Objects.requireNonNull(locale, "locale must not be null");
         String format = Formatter.stringTemplateFormat(st.fragments());
-        Class<?>[] ptypes = JTA.getTypes(st).toArray(new Class<?>[0]);
+        Class<?>[] ptypes = ((StringTemplateImpl)st).getTypes().toArray(new Class<?>[0]);
         MethodHandle mh = FormatterBuilder.create(format, locale, ptypes);
-        return JTA.bindTo(st, mh);
+        return ((StringTemplateImpl)st).bindTo(mh);
     }
 
     /**
