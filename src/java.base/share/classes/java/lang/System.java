@@ -81,6 +81,7 @@ import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.logger.LoggerFinderLoader;
 import jdk.internal.logger.LazyLoggers;
 import jdk.internal.logger.LocalizedLoggerWrapper;
@@ -2615,6 +2616,10 @@ public final class System {
                 return StringConcatHelper.prepend(indexCoder, buf, value);
             }
 
+            public boolean stringConcatHelpeIsLatin1(long lengthCoder) {
+                return StringConcatHelper.isLatin1(lengthCoder);
+            }
+
             public long stringConcatInitialCoder() {
                 return StringConcatHelper.initialCoder();
             }
@@ -2625,6 +2630,23 @@ public final class System {
 
             public long stringConcatMix(long lengthCoder, char value) {
                 return StringConcatHelper.mix(lengthCoder, value);
+            }
+
+            @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+            public long stringConcatCoder(char value) {
+                return StringConcatHelper.coder(value);
+            }
+
+            @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+            public long stringBuilderConcatMix(long lengthCoder,
+                                               StringBuilder sb) {
+                return sb.mix(lengthCoder);
+            }
+
+            @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+            public long stringBuilderConcatPrepend(long lengthCoder, byte[] buf,
+                                                   StringBuilder sb) {
+                return sb.prepend(lengthCoder, buf);
             }
 
             public int stringSize(long i) {

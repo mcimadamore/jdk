@@ -29,11 +29,13 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.internal.vm.annotation.Stable;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.ReferencedKeyMap;
 
@@ -85,7 +87,7 @@ import static java.lang.invoke.MethodType.methodType;
  * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
  *          Do not rely on its availability.
  */
-final class Carriers {
+public final class Carriers {
     /**
      * Maximum number of components in a carrier (based on the maximum
      * number of args to a constructor.)
@@ -95,7 +97,7 @@ final class Carriers {
     /**
      * Number of integer slots used by a long.
      */
-    static final int LONG_SLOTS = Long.SIZE / Integer.SIZE;
+    private static final int LONG_SLOTS = Long.SIZE / Integer.SIZE;
 
     /*
      * Initialize {@link MethodHandle} constants.
@@ -133,8 +135,8 @@ final class Carriers {
      *
      * @return constructor with arguments recasted and reordered
      */
-    static MethodHandle reshapeInitializer(CarrierShape carrierShape,
-                                           MethodHandle initializer) {
+    private static MethodHandle reshapeInitializer(CarrierShape carrierShape,
+                                                   MethodHandle initializer) {
         int count = carrierShape.count();
         Class<?>[] ptypes = carrierShape.ptypes();
         int objectIndex = carrierShape.objectOffset() + 1;
@@ -199,8 +201,8 @@ final class Carriers {
      *
      * @return list of components reshaped
      */
-    static List<MethodHandle> reshapeComponents(CarrierShape carrierShape,
-                                                MethodHandle[] components) {
+    private static List<MethodHandle> reshapeComponents(CarrierShape carrierShape,
+                                                        MethodHandle[] components) {
         int count = carrierShape.count();
         Class<?>[] ptypes = carrierShape.ptypes();
         MethodHandle[] reorder = new MethodHandle[count];
@@ -237,7 +239,7 @@ final class Carriers {
     /**
      * Factory for carriers that are backed by long[] and Object[].
      */
-    static final class CarrierObjectFactory {
+    private static final class CarrierObjectFactory {
         /**
          * Unsafe access.
          */
@@ -284,7 +286,7 @@ final class Carriers {
          *
          * @return {@link MethodHandle} to generic carrier constructor.
          */
-        MethodHandle constructor(CarrierShape carrierShape) {
+        private MethodHandle constructor(CarrierShape carrierShape) {
             int objectCount = carrierShape.objectCount();
             int primitiveCount = carrierShape.primitiveCount();
 
@@ -301,7 +303,7 @@ final class Carriers {
          *
          * @return {@link MethodHandle} to specific carrier constructor.
          */
-        MethodHandle initializer(CarrierShape carrierShape) {
+        private MethodHandle initializer(CarrierShape carrierShape) {
             int longCount = carrierShape.longCount();
             int intCount = carrierShape.intCount();
             int objectCount = carrierShape.objectCount();
@@ -336,7 +338,7 @@ final class Carriers {
          *
          * @return array of carrier accessors
          */
-        MethodHandle[] createComponents(CarrierShape carrierShape) {
+        private MethodHandle[] createComponents(CarrierShape carrierShape) {
             int longCount = carrierShape.longCount();
             int intCount = carrierShape.intCount();
             int objectCount = carrierShape.objectCount();
@@ -377,7 +379,7 @@ final class Carriers {
          *
          * @return {@link CarrierElements} instance
          */
-        CarrierElements carrier(CarrierShape carrierShape) {
+        private CarrierElements carrier(CarrierShape carrierShape) {
             return methodTypeCache.computeIfAbsent(carrierShape.methodType, (mt) -> {
                 MethodHandle constructor = constructor(carrierShape);
                 MethodHandle initializer = initializer(carrierShape);
@@ -400,19 +402,21 @@ final class Carriers {
      * primitives array using normal indices. Integers follow using int[] indices offset beyond
      * the longs using unsafe getInt/putInt.
      */
-    static class CarrierObject {
+    public static class CarrierObject {
         /**
          * Carrier for primitive values.
          */
+        @Stable
         private final long[] primitives;
 
         /**
          * Carrier for objects;
          */
+        @Stable
         private final Object[] objects;
 
         /**
-         * Constructor.
+         * Constructor from types.
          *
          * @param primitiveCount  slot count required for primitives
          * @param objectCount     slot count required for objects
@@ -420,6 +424,16 @@ final class Carriers {
         protected CarrierObject(int primitiveCount, int objectCount) {
             this.primitives = createPrimitivesArray(primitiveCount);
             this.objects = createObjectsArray(objectCount);
+        }
+
+        /**
+         * Constructor from values.
+         *
+         * @param objects list of objects.
+         */
+        protected CarrierObject(List<Object> objects) {
+            this.primitives = null;
+            this.objects = objects.toArray(Object[]::new);
         }
 
         /**
@@ -548,6 +562,22 @@ final class Carriers {
 
             return this;
         }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (other instanceof CarrierObject that) {
+                return Arrays.equals(primitives, that.primitives) && Arrays.equals(objects, that.objects);
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(primitives) + 31 * Arrays.hashCode(objects);
+        }
     }
 
     /**
@@ -565,7 +595,7 @@ final class Carriers {
          *
          * @return a {@link CarrierCounts} instance containing counts
          */
-        static CarrierCounts tally(Class<?>[] ptypes) {
+        private static CarrierCounts tally(Class<?>[] ptypes) {
             return tally(ptypes, ptypes.length);
         }
 
@@ -642,7 +672,7 @@ final class Carriers {
          * @param methodType  {@link MethodType} providing types for the
          *                    carrier's components
          */
-        public CarrierShape(MethodType methodType) {
+        private CarrierShape(MethodType methodType) {
             this.methodType = methodType;
             this.counts = CarrierCounts.tally(methodType.parameterArray());
         }
@@ -650,70 +680,70 @@ final class Carriers {
         /**
          * {@return number of long fields needed}
          */
-        int longCount() {
+        private int longCount() {
             return counts.longCount();
         }
 
         /**
          * {@return number of int fields needed}
          */
-        int intCount() {
+        private int intCount() {
             return counts.intCount();
         }
 
         /**
          * {@return number of object fields needed}
          */
-        int objectCount() {
+        private int objectCount() {
             return counts.objectCount();
         }
 
         /**
          * {@return slot count required for primitives}
          */
-        int primitiveCount() {
+        private int primitiveCount() {
             return counts.longCount() * LONG_SLOTS + counts.intCount();
         }
 
         /**
          * {@return array of parameter types}
          */
-        Class<?>[] ptypes() {
+        private Class<?>[] ptypes() {
             return methodType.parameterArray();
         }
 
         /**
          * {@return number of components}
          */
-        int count() {
+        private int count() {
             return counts.count();
         }
 
         /**
          * {@return number of slots used}
          */
-        int slotCount() {
+        private int slotCount() {
             return counts.slotCount();
         }
 
         /**
          * {@return index of first long component}
          */
-        int longOffset() {
+        private int longOffset() {
             return 0;
         }
 
         /**
          * {@return index of first int component}
          */
-        int intOffset() {
+        private int intOffset() {
             return longCount();
         }
 
         /**
          * {@return index of first object component}
          */
-        int objectOffset() {
+        private int objectOffset() {
             return longCount() + intCount();
         }
     }
@@ -727,7 +757,7 @@ final class Carriers {
      * is, a {@linkplain MethodType method type} whose parameter types describe the types of
      * the carrier component values, or by providing the parameter types directly.
      */
-    static final class CarrierFactory {
+    private static final class CarrierFactory {
         /**
          * Constructor
          */
@@ -749,7 +779,7 @@ final class Carriers {
          * @throws NullPointerException is methodType is null
          * @throws IllegalArgumentException if number of component slots exceeds maximum
          */
-        static CarrierElements of(MethodType methodType) {
+        private static CarrierElements of(MethodType methodType) {
             Objects.requireNonNull(methodType, "methodType must not be null");
             MethodType constructorMT = methodType.changeReturnType(Object.class);
             CarrierShape carrierShape = new CarrierShape(constructorMT);
@@ -773,7 +803,7 @@ final class Carriers {
          * @throws NullPointerException is ptypes is null
          * @throws IllegalArgumentException if number of component slots exceeds maximum
          */
-        static CarrierElements of(Class<?>...ptypes) {
+        private static CarrierElements of(Class<?>...ptypes) {
             Objects.requireNonNull(ptypes, "ptypes must not be null");
             return of(methodType(Object.class, ptypes));
         }
@@ -785,7 +815,7 @@ final class Carriers {
      * gleaned from the parameter types of the constructor {@link MethodHandle} or by the
      * return types of the components' {@link MethodHandle MethodHandles}.
      */
-    static final class CarrierElements {
+    private static final class CarrierElements {
         /**
          * Slot count required for objects.
          */
@@ -826,11 +856,11 @@ final class Carriers {
         /**
          * Constructor
          */
-        CarrierElements(CarrierShape carrierShape,
-                        Class<?> carrierClass,
-                        MethodHandle constructor,
-                        MethodHandle initializer,
-                        List<MethodHandle> components) {
+        private CarrierElements(CarrierShape carrierShape,
+                                Class<?> carrierClass,
+                                MethodHandle constructor,
+                                MethodHandle initializer,
+                                List<MethodHandle> components) {
             this.objectCount = carrierShape.objectCount();
             this.primitiveCount = carrierShape.primitiveCount();
             this.carrierClass = carrierClass;
@@ -842,21 +872,21 @@ final class Carriers {
         /**
          * {@return slot count required for objects}
          */
-        int objectCount() {
+        private int objectCount() {
             return objectCount;
         }
 
         /**
          * {@return slot count required for primitives}
          */
-        int primitiveCount() {
+        private int primitiveCount() {
             return primitiveCount;
         }
 
         /**
          * {@return the underlying carrier class}
          */
-        Class<?> carrierClass() {
+        private Class<?> carrierClass() {
             return carrierClass;
         }
 
@@ -864,14 +894,14 @@ final class Carriers {
          * {@return the constructor {@link MethodHandle} for the carrier. The
          * carrier constructor will always have a return type of {@link Object} }
          */
-        MethodHandle constructor() {
+        private MethodHandle constructor() {
             return constructor;
         }
 
         /**
          * {@return the initializer {@link MethodHandle} for the carrier}
          */
-        MethodHandle initializer() {
+        private MethodHandle initializer() {
             return initializer;
         }
 
@@ -880,7 +910,7 @@ final class Carriers {
          * The {@link MethodHandle} will always have a return type of {@link Object}.
          * @return the constructor plus initializer {@link MethodHandle}
          */
-        MethodHandle initializingConstructor() {
+        private MethodHandle initializingConstructor() {
             return MethodHandles.foldArguments(initializer, 0, constructor);
         }
 
@@ -889,7 +919,7 @@ final class Carriers {
          * for all the carrier's components. The receiver type of the accessors
          * will always be {@link Object} }
          */
-        List<MethodHandle> components() {
+        private List<MethodHandle> components() {
             return components;
         }
 
@@ -901,7 +931,7 @@ final class Carriers {
          *
          * @throws IllegalArgumentException if {@code i} is out of bounds
          */
-        MethodHandle component(int i) {
+        private MethodHandle component(int i) {
             if (i < 0 || components.size() <= i) {
                 throw new IllegalArgumentException("i is out of bounds " + i +
                         " of " + components.size());
@@ -917,12 +947,32 @@ final class Carriers {
     }
 
     /**
+     * {@return slot count required for objects}
+     *
+     * @param methodType  {@link MethodType} whose parameter types supply the shape of the
+     *                    carrier's components
+     */
+    public static int objectCount(MethodType methodType) {
+        return CarrierFactory.of(methodType).objectCount();
+    }
+
+    /**
+     * {@return slot count required for primitives}
+     *
+     * @param methodType  {@link MethodType} whose parameter types supply the shape of the
+     *                    carrier's components
+     */
+    public static int primitiveCount(MethodType methodType) {
+        return CarrierFactory.of(methodType).primitiveCount();
+    }
+
+    /**
      * {@return the underlying carrier class of the carrier representing {@code methodType} }
      *
      * @param methodType  {@link MethodType} whose parameter types supply the shape of the
      *                    carrier's components
      */
-    static Class<?> carrierClass(MethodType methodType) {
+    public static Class<?> carrierClass(MethodType methodType) {
         return CarrierFactory.of(methodType).carrierClass();
     }
 
@@ -933,10 +983,22 @@ final class Carriers {
      * @param methodType  {@link MethodType} whose parameter types supply the shape of the
      *                    carrier's components
      */
-    static MethodHandle constructor(MethodType methodType) {
+    public static MethodHandle constructor(MethodType methodType) {
         MethodHandle constructor = CarrierFactory.of(methodType).constructor();
         constructor = constructor.asType(constructor.type().changeReturnType(Object.class));
         return constructor;
+    }
+
+    /**
+     * {@return the initializer {@link MethodHandle} for the carrier representing {@code
+     * methodType}}.
+     *
+     * @param methodType  {@link MethodType} whose parameter types supply the shape of the
+     *                    carrier's components
+     */
+    public static MethodHandle initializerRaw(MethodType methodType) {
+        MethodHandle initializer = CarrierFactory.of(methodType).initializer();
+        return initializer;
     }
 
     /**
@@ -947,7 +1009,7 @@ final class Carriers {
      * @param methodType  {@link MethodType} whose parameter types supply the shape of the
      *                    carrier's components
      */
-    static MethodHandle initializer(MethodType methodType) {
+    public static MethodHandle initializer(MethodType methodType) {
         MethodHandle initializer = CarrierFactory.of(methodType).initializer();
         initializer = initializer.asType(initializer.type()
                 .changeReturnType(Object.class).changeParameterType(0, Object.class));
@@ -962,10 +1024,21 @@ final class Carriers {
      * @param methodType  {@link MethodType} whose parameter types supply the shape of the
      *                    carrier's components
      */
-    static MethodHandle initializingConstructor(MethodType methodType) {
+    public static MethodHandle initializingConstructor(MethodType methodType) {
         MethodHandle constructor = CarrierFactory.of(methodType).initializingConstructor();
         constructor = constructor.asType(constructor.type().changeReturnType(Object.class));
         return constructor;
+    }
+
+    /**
+     * {@return immutable list of component accessor {@link MethodHandle MethodHandles} for
+     * all the components of the carrier representing {@code methodType}. }
+     *
+     * @param methodType  {@link MethodType} whose parameter types supply the shape of the
+     *                    carrier's components
+     */
+    public static List<MethodHandle> componentsRaw(MethodType methodType) {
+        return CarrierFactory.of(methodType).components();
     }
 
     /**
@@ -976,7 +1049,7 @@ final class Carriers {
      * @param methodType  {@link MethodType} whose parameter types supply the shape of the
      *                    carrier's components
      */
-    static List<MethodHandle> components(MethodType methodType) {
+    public static List<MethodHandle> components(MethodType methodType) {
         return CarrierFactory
                 .of(methodType)
                 .components()
@@ -996,7 +1069,7 @@ final class Carriers {
      *
      * @throws IllegalArgumentException if {@code i} is out of bounds
      */
-    static MethodHandle component(MethodType methodType, int i) {
+    public static MethodHandle component(MethodType methodType, int i) {
         MethodHandle component = CarrierFactory.of(methodType).component(i);
         component = component.asType(component.type().changeParameterType(0, Object.class));
         return component;

@@ -227,6 +227,11 @@ public class Names {
     public final Name enumSwitch;
     public final Name enumConstant;
 
+    // templated string
+    public final Name process;
+    public final Name newStringTemplate;
+    public final Name newLargeStringTemplate;
+
     public final Name.Table table;
 
     @SuppressWarnings("this-escape")
@@ -405,6 +410,10 @@ public class Names {
         permits = fromString("permits");
         sealed = fromString("sealed");
 
+        // templated string
+        process = fromString("process");
+        newStringTemplate = fromString("newStringTemplate");
+        newLargeStringTemplate = fromString("newLargeStringTemplate");
 
         // pattern switches
         typeSwitch = fromString("typeSwitch");

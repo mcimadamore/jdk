@@ -5015,6 +5015,19 @@ public class Attr extends JCTree.Visitor {
         return (tag == CLASS) ? syms.stringType : syms.typeOfTag[tag.ordinal()];
     }
 
+    public void visitStringTemplate(JCStringTemplate tree) {
+        Type stringTemplateType = syms.stringTemplateType;
+        Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
+
+        for (JCExpression arg : tree.expressions) {
+            chk.checkNonVoid(arg.pos(), attribExpr(arg, localEnv));
+        }
+
+        tree.type = stringTemplateType;
+        result = stringTemplateType;
+        check(tree, stringTemplateType, KindSelector.VAL, resultInfo);
+    }
+
     public void visitTypeIdent(JCPrimitiveTypeTree tree) {
         result = check(tree, syms.typeOfTag[tree.typetag.ordinal()], KindSelector.TYP, resultInfo);
     }

@@ -1777,6 +1777,11 @@ public class Flow {
             }
         }
 
+        @Override
+        public void visitStringTemplate(JCStringTemplate tree) {
+            scan(tree.expressions);
+        }
+
         void checkCaughtType(DiagnosticPosition pos, Type exc, List<Type> thrownInTry, List<Type> caughtInTry) {
             if (chk.subset(exc, caughtInTry)) {
                 log.error(pos, Errors.ExceptAlreadyCaught(exc));

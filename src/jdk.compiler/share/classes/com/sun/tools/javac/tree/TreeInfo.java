@@ -418,6 +418,7 @@ public class TreeInfo {
             case PLUS_ASG: case MINUS_ASG:
             case MUL_ASG: case DIV_ASG: case MOD_ASG:
             case APPLY: case NEWCLASS:
+            case STRING_TEMPLATE:
             case ERRONEOUS:
                 return true;
             default:
@@ -625,6 +626,10 @@ public class TreeInfo {
             case BINDINGPATTERN: {
                 JCBindingPattern node = (JCBindingPattern)tree;
                 return getStartPos(node.var);
+            }
+            case STRING_TEMPLATE: {
+                JCStringTemplate node = (JCStringTemplate) tree;
+                return node.pos;
             }
             case ERRONEOUS: {
                 JCErroneous node = (JCErroneous)tree;

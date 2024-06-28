@@ -433,6 +433,11 @@ public interface JavaLangAccess {
     MethodHandle stringConcatHelper(String name, MethodType methodType);
 
     /**
+     * Returns {@code true} if lengthCoder is Latin1
+     */
+    boolean stringConcatHelpeIsLatin1(long lengthCoder);
+
+    /**
      * Prepends constant and the stringly representation of value into buffer,
      * given the coder and final index. Index is measured in chars, not in bytes!
      */
@@ -452,6 +457,21 @@ public interface JavaLangAccess {
      * Mix value length and coder into current length and coder.
      */
     long stringConcatMix(long lengthCoder, char value);
+
+   /**
+    * Get the coder for the supplied character.
+    */
+   long stringConcatCoder(char value);
+
+   /**
+    * Update lengthCoder for StringBuilder.
+    */
+   long stringBuilderConcatMix(long lengthCoder, StringBuilder sb);
+
+    /**
+     * Prepend StringBuilder content.
+    */
+   long stringBuilderConcatPrepend(long lengthCoder, byte[] buf, StringBuilder sb);
 
     /**
      * Join strings

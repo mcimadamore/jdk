@@ -244,6 +244,10 @@ public class Symtab {
     public final Type objectInputType;
     public final Type objectOutputType;
 
+    // For string templates
+    public final Type stringTemplateType;
+    public final Type templateRuntimeType;
+
     /** The symbol representing the length field of an array.
      */
     public final VarSymbol lengthVar;
@@ -638,6 +642,10 @@ public class Symtab {
         synthesizeBoxTypeIfMissing(doubleType);
         synthesizeBoxTypeIfMissing(floatType);
         synthesizeBoxTypeIfMissing(voidType);
+
+        // For string templates
+        stringTemplateType = enterClass("java.lang.StringTemplate");
+        templateRuntimeType = enterClass("java.lang.StringTemplate$Runtime");
 
         // Enter a synthetic class that is used to mark internal
         // proprietary classes in ct.sym.  This class does not have a

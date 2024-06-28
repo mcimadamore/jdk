@@ -324,7 +324,10 @@ public class CompletionSuggestionTest extends KullaTesting {
                 "String(char[], int, int)");
         assertSignature("String.format(|",
                 "String String.format(String, Object...)",
-                "String String.format(java.util.Locale, String, Object...)");
+                "String String.format(java.util.Locale, String, Object...)",
+                "String String.format(StringTemplate)",
+                "String String.format(java.util.Locale, StringTemplate)"
+                );
         assertSignature("\"\".getBytes(\"\"|", "void String.getBytes(int, int, byte[], int)",
                                                     "byte[] String.getBytes(String) throws java.io.UnsupportedEncodingException",
                                                     "byte[] String.getBytes(java.nio.charset.Charset)");
@@ -353,6 +356,7 @@ public class CompletionSuggestionTest extends KullaTesting {
                 "void java.io.PrintStream.println(float)",
                 "void java.io.PrintStream.println(double)",
                 "void java.io.PrintStream.println(char[])",
+                "void java.io.PrintStream.println(StringTemplate)",
                 "void java.io.PrintStream.println(String)",
                 "void java.io.PrintStream.println(Object)");
     }

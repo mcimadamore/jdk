@@ -803,6 +803,56 @@ public class JavacParser implements Parser {
         return t;
     }
 
+    /**
+     * StringTemplate =
+     *    [STRINGFRAGMENT] [EmbeddedExpression]
+     *  | STRINGLITERAL
+     *
+     * EmbeddedExpression =
+     *  LBRACE term RBRACE
+     */
+    JCExpression stringTemplate() {
+        int oldmode = mode;
+        selectExprMode();
+        Token stringToken = token;
+        int pos = stringToken.pos;
+        int endPos = stringToken.endPos;
+        TokenKind kind = stringToken.kind;
+        String string = token.stringVal();
+        List<String> fragments = List.of(string);
+        List<JCExpression> expressions = List.nil();
+        nextToken();
+        if (kind != STRINGLITERAL) {
+            while (token.kind == STRINGFRAGMENT) {
+                stringToken = token;
+                endPos = stringToken.endPos;
+                string = stringToken.stringVal();
+                fragments = fragments.append(string);
+                nextToken();
+            }
+            while (token.pos < endPos && token.kind != DEFAULT && token.kind != ERROR) {
+                accept(LBRACE);
+                JCExpression expression = token.kind == RBRACE ? F.at(pos).Literal(TypeTag.BOT, null)
+                    : term(EXPR);
+                expressions = expressions.append(expression);
+                if (token.kind != ERROR) {
+                    accept(RBRACE);
+                }
+            }
+            // clean up remaining expression tokens if error
+            while (token.pos < endPos && token.kind != DEFAULT) {
+                nextToken();
+            }
+            S.setPrevToken(stringToken);
+        }
+        if (200 < expressions.size()) { // StringConcatFactory.MAX_INDY_CONCAT_ARG_SLOTS
+            log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.TooManyEmbeddedExpressions);
+        }
+        JCExpression t = toP(F.at(pos).StringTemplate(fragments, expressions));
+        setMode(oldmode);
+        return t;
+    }
+
     JCExpression literal(Name prefix) {
         return literal(prefix, token.pos);
     }
@@ -1480,6 +1530,14 @@ public class JavacParser implements Parser {
                 t = literal(names.empty);
             } else return illegal();
             break;
+         case STRINGFRAGMENT:
+             if (typeArgs == null && isMode(EXPR)) {
+                 selectExprMode();
+                 t = stringTemplate();
+             } else {
+                 return illegal();
+             }
+             break;
         case NEW:
             if (typeArgs != null) return illegal();
             if (isMode(EXPR)) {

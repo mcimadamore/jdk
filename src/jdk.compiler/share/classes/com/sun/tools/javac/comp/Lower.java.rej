@@ -1,0 +1,9 @@
+diff a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Lower.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/Lower.java	(rejected hunks)
+@@ -368,7 +368,6 @@ void visitSymbol(Symbol sym) {
+                     VarSymbol v = (VarSymbol) _sym;
+                     if (v.getConstValue() == null) {
+                         addFreeVar(v);
+-                        return;
+                     }
+                 }
+             }

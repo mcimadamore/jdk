@@ -61,6 +61,7 @@ import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
 import java.time.temporal.UnsupportedTemporalTypeException;
 
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.math.DoubleConsts;
 import jdk.internal.math.FormattedFPDecimal;
 import sun.util.locale.provider.LocaleProviderAdapter;
@@ -2812,6 +2813,168 @@ public final class Formatter implements Closeable, Flushable {
             }
         }
         return this;
+    }
+
+    /**
+     * Writes a formatted string to this object's destination using the
+     * specified format embedded in (@code st}.  The locale used is the one
+     * defined during the construction of this formatter.
+     *
+     * @param  st
+     *         A formatting {@link StringTemplate} combining the
+     *         format as described in <a href="#syntax">Format string
+     *         syntax</a> and the expressions immediately following specifiers.
+     *
+     * @throws  IllegalFormatException
+     *          If a format {@link StringTemplate} contains an illegal syntax, a format
+     *          specifier that is incompatible with the given arguments,
+     *          insufficient arguments given the format string, or other
+     *          illegal conditions.  For specification of all possible
+     *          formatting errors, see the <a href="#detail">Details</a>
+     *          section of the formatter class specification.
+     *
+     * @throws  FormatterClosedException
+     *          If this formatter has been closed by invoking its {@link
+     *          #close()} method
+     *
+     * @return  This formatter
+     *
+     * @since  23
+     */
+    @PreviewFeature(feature= PreviewFeature.Feature.STRING_TEMPLATES)
+    public Formatter format(StringTemplate st) {
+        return format(l, st);
+    }
+
+    /**
+     * Writes a formatted string to this object's destination using the
+     * specified format and values embedded in (@code st}. Locale is specified
+     * with {@code l}.
+     *
+     * @param  l
+     *         The {@linkplain java.util.Locale locale} to apply during
+     *         formatting.  If {@code l} is {@code null} then no localization
+     *         is applied.  This does not change this object's locale that was
+     *         set during construction.
+     * @param  st
+     *         A formatting {@link StringTemplate} combining the
+     *         format as described in <a href="#syntax">Format string
+     *         syntax</a> and the expressions immediately following specifiers.
+     *
+     * @throws  IllegalFormatException
+     *          If a format {@link StringTemplate} contains an illegal syntax, a format
+     *          specifier that is incompatible with the given arguments,
+     *          insufficient arguments given the format string, or other
+     *          illegal conditions.  For specification of all possible
+     *          formatting errors, see the <a href="#detail">Details</a>
+     *          section of the formatter class specification.
+     *
+     * @throws  FormatterClosedException
+     *          If this formatter has been closed by invoking its {@link
+     *          #close()} method
+     *
+     * @return  This formatter
+     *
+     * @since  23
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+    public Formatter format(Locale l, StringTemplate st) {
+        ensureOpen();
+        String result = FormatterBuilder.format(l, st);
+        if (result != null) {
+            try {
+                a.append(result);
+            } catch (IOException ioe) {
+                lastException = ioe;
+            }
+            return this;
+        }
+        return format(l, stringTemplateFormat(st.fragments()), st.values().toArray(Object[]::new));
+    }
+
+    /**
+     * Find a format specification at the end of a fragment.
+     *
+     * @param fragment  fragment to check
+     * @param needed    if the specification is needed
+     *
+     * @return true if the specification is found and needed
+     *
+     * @throws MissingFormatArgumentException if not at end or found and not needed
+     */
+    private static boolean findFormat(String fragment, boolean needed) {
+        int max = fragment.length();
+        for (int i = 0; i < max;) {
+            int n = fragment.indexOf('%', i);
+            if (n < 0) {
+                return false;
+            }
+
+            i = n + 1;
+            if (i >= max) {
+                return false;
+            }
+
+            char c = fragment.charAt(i);
+            if (c == '%' || c == 'n') {
+                i++;
+                continue;
+            }
+            int off = new Formatter.FormatSpecifierParser(null, c, i, fragment, max)
+                    .parse();
+            if (off == 0) {
+                return false;
+            }
+            if (i + off == max && needed) {
+                return true;
+            }
+            throw new MissingFormatArgumentException(
+                    fragment.substring(i - 1, i + off)
+                            + " is not immediately followed by an embedded expression");
+        }
+        return false;
+    }
+
+
+    /**
+     * {@return true of a valid specifier at the end}
+     * @param formatString
+     */
+    private static boolean isValidSpecifier(FormatString formatString) {
+        return formatString instanceof FormatSpecifier fs && fs.c != 'n' && fs.c != '%';
+    }
+
+    /**
+     * Convert {@link StringTemplate} fragments, containing format specifications,
+     * to a form that can be passed on to {@link Formatter}. The method scans each fragment,
+     * matching up formatter specifications with the following expression value. If no
+     * specification is found, this method inserts "%s".
+     *
+     * @param fragments  string template fragments
+     *
+     * @return  format string
+     *
+     * @throws UnknownFormatConversionException if cannot parse
+     */
+    static String stringTemplateFormat(List<String> fragments) {
+        StringBuilder sb = new StringBuilder();
+        int lastIndex = fragments.size() - 1;
+        List<String> formats = fragments.subList(0, lastIndex);
+        String last = fragments.get(lastIndex);
+
+        for (String format : formats) {
+            if (findFormat(format, true)) {
+                sb.append(format);
+            } else {
+                sb.append(format);
+                sb.append("%s");
+            }
+        }
+
+        findFormat(last, false);
+        sb.append(last);
+
+        return sb.toString();
     }
 
     /**

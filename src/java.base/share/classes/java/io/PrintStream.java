@@ -32,6 +32,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import jdk.internal.access.JavaIOPrintStreamAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.javac.PreviewFeature;
 import jdk.internal.misc.InternalLock;
 
 /**
@@ -990,6 +991,24 @@ public class PrintStream extends FilterOutputStream
     }
 
     /**
+     * Prints a {@link StringTemplate}. If the argument is {@code null} then the string
+     * {@code "null"} is printed.  Otherwise, the {@link StringTemplate StringTemplate's}
+     * join results are converted into bytes according to the character encoding given
+     * to the constructor, or the default charset if none
+     * specified. These bytes are written in exactly the manner of the
+     * {@link #write(int)} method.
+     *
+     * @param      st   The {@link StringTemplate} to be printed
+     * @see Charset#defaultCharset()
+     *
+     * @since  23
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+    public void print(StringTemplate st) {
+        write(st == null ? "null" : StringTemplate.str(st));
+    }
+
+    /**
      * Prints a string.  If the argument is {@code null} then the string
      * {@code "null"} is printed.  Otherwise, the string's characters are
      * converted into bytes according to the character encoding given to the
@@ -1157,6 +1176,29 @@ public class PrintStream extends FilterOutputStream
             }
         }
     }
+
+    /**
+     * Prints a {@link StringTemplate} and then terminates the line.  This method behaves as
+     * though it invokes {@link #print(StringTemplate)} and then
+     * {@link #println()}.
+     *
+     * @param st  The {@code String} to be printed.
+     *
+     * @since  23
+     */
+    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
+    public void println(StringTemplate st) {
+        if (getClass() == PrintStream.class) {
+            print(st);
+            newLine();
+        } else {
+            synchronized (this) {
+                print(st);
+                newLine();
+            }
+        }
+    }
+
 
     /**
      * Prints a String and then terminates the line.  This method behaves as
@@ -1436,6 +1478,124 @@ public class PrintStream extends FilterOutputStream
         if ((formatter == null) || (formatter.locale() != l))
             formatter = new Formatter(this, l);
         formatter.format(l, format, args);
+    }
+
+    /**
+     * Writes a {@link StringTemplate} to this output stream using the specified
+     * format and values.
+     *
+     * <p> The locale always used is the one returned by {@link
+     * java.util.Locale#getDefault(Locale.Category)} with
+     * {@link java.util.Locale.Category#FORMAT FORMAT} category specified,
+     * regardless of any previous invocations of other formatting methods on
+     * this object.
+     *
+     * @param  st {@link StringTemplate} containing
+     *         a format string as described in <a
+     *         href="../util/Formatter.html#syntax">Format string syntax</a>
+     *
+     *
+     * @throws  java.util.IllegalFormatException
+     *          If a format string contains an illegal syntax, a format
+     *          specifier that is incompatible with the given arguments,
+     *          insufficient arguments given the format string, or other
+     *          illegal conditions.  For specification of all possible
+     *          formatting errors, see the <a
+     *          href="../util/Formatter.html#detail">Details</a> section of the
+     *          formatter class specification.
+     *
+     * @throws  NullPointerException
+     *          If the {@code format} is {@code null}
+     *
+     * @return  This output stream
+     *
+     * @since  23
+     */
+    public PrintStream format(StringTemplate st) {
+        try {
+            if (lock != null) {
+                lock.lock();
+                try {
+                    implFormat(st);
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                synchronized (this) {
+                    implFormat(st);
+                }
+            }
+        } catch (InterruptedIOException x) {
+            Thread.currentThread().interrupt();
+        } catch (IOException x) {
+            trouble = true;
+        }
+        return this;
+    }
+
+    private void implFormat(StringTemplate st) throws IOException {
+        ensureOpen();
+        if ((formatter == null) || (formatter.locale() != Locale.getDefault(Locale.Category.FORMAT)))
+            formatter = new Formatter((Appendable) this);
+        formatter.format(Locale.getDefault(Locale.Category.FORMAT), st);
+    }
+
+    /**
+     * Writes a {@link StringTemplate} to this output stream using the specified
+     * format and values.
+     *
+     * @param  l
+     *         The {@linkplain java.util.Locale locale} to apply during
+     *         formatting.  If {@code l} is {@code null} then no localization
+     *         is applied.
+     *
+     * @param  st {@link StringTemplate} containing
+     *         a format string as described in <a
+     *         href="../util/Formatter.html#syntax">Format string syntax</a>
+     *
+     * @throws  java.util.IllegalFormatException
+     *          If a format string contains an illegal syntax, a format
+     *          specifier that is incompatible with the given arguments,
+     *          insufficient arguments given the format string, or other
+     *          illegal conditions.  For specification of all possible
+     *          formatting errors, see the <a
+     *          href="../util/Formatter.html#detail">Details</a> section of the
+     *          formatter class specification.
+     *
+     * @throws  NullPointerException
+     *          If the {@code format} is {@code null}
+     *
+     * @return  This output stream
+     *
+     * @since  23
+     */
+    public PrintStream format(Locale l, StringTemplate st) {
+        try {
+            if (lock != null) {
+                lock.lock();
+                try {
+                    implFormat(l, st);
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                synchronized (this) {
+                    implFormat(l, st);
+                }
+            }
+        } catch (InterruptedIOException x) {
+            Thread.currentThread().interrupt();
+        } catch (IOException x) {
+            trouble = true;
+        }
+        return this;
+    }
+
+    private void implFormat(Locale l, StringTemplate st) throws IOException {
+        ensureOpen();
+        if ((formatter == null) || (formatter.locale() != l))
+            formatter = new Formatter(this, l);
+        formatter.format(l, st);
     }
 
     /**
