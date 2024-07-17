@@ -26,10 +26,12 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.StructuredSession;
 import jdk.internal.ref.CleanerFactory;
 
 import java.lang.foreign.MemorySegment.Scope;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * An arena controls the lifecycle of native memory segments, providing both flexible
@@ -261,9 +263,12 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * {@return a new structured arena} Segments allocated with the structured arena can be
      * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread that is forked from a structured task
      * scope that is nested inside the structured arena.
+     * @param arenaFunction the arena operation.
+     * @param <Z> the return type of the arena operation.
      */
-    static Arena ofStructured() {
-        return MemorySessionImpl.createStructured(Thread.currentThread()).asArena();
+    static <Z> Z ofStructured(Function<Arena, Z> arenaFunction) {
+        StructuredSession structuredSession = MemorySessionImpl.createStructured(Thread.currentThread());
+        return structuredSession.call(arenaFunction);
     }
 
     /**

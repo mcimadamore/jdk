@@ -136,7 +136,7 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
-    public static MemorySessionImpl createStructured(Thread thread) {
+    public static StructuredSession createStructured(Thread thread) {
         return new StructuredSession(thread);
     }
 

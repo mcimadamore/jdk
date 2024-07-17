@@ -43,7 +43,7 @@ public class ScopedValueContainer extends StackableScope {
         Unsafe.getUnsafe().ensureClassInitialized(StructureViolationException.class);
     }
 
-    public ScopedValueContainer() {
+    private ScopedValueContainer() {
     }
 
     /**

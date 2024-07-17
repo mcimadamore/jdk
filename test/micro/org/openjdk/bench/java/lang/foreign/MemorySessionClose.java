@@ -110,9 +110,7 @@ public class MemorySessionClose {
 
     @Benchmark
     public MemorySegment structured_close() {
-        try (Arena arena = Arena.ofStructured()) {
-            return arena.allocate(ALLOC_SIZE, 4);
-        }
+        return Arena.ofStructured(arena -> arena.allocate(ALLOC_SIZE, 4));
     }
 
     @Benchmark

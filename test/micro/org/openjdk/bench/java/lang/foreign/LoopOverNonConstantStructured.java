@@ -56,59 +56,43 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
     static final int CARRIER_SIZE = (int)JAVA_INT.byteSize();
     static final int ALLOC_SIZE = ELEM_SIZE * CARRIER_SIZE;
 
-    Arena arena_confined, arena_structured;
-    MemorySegment segment_confined, segment_structured;
-    long unsafe_addr;
-
-    @Setup
-    public void setup() {
-        unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            unsafe.putInt(unsafe_addr + (i * CARRIER_SIZE) , i);
-        }
-        arena_confined = Arena.ofConfined();
-        arena_structured = Arena.ofStructured();
-        segment_confined = arena_confined.allocate(ALLOC_SIZE, 1);
-        segment_structured = arena_structured.allocate(ALLOC_SIZE, 1);
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            VH_INT.set(segment_confined, (long) i, i);
-            VH_INT.set(segment_structured, (long) i, i);
-        }
-    }
-
-    @TearDown
-    public void tearDown() {
-        arena_confined.close();
-        arena_structured.close();
-        unsafe.freeMemory(unsafe_addr);
-    }
-
     @Benchmark
     public int unsafe_loop() {
-        int res = 0;
-        for (int i = 0; i < ELEM_SIZE; i ++) {
-            res += unsafe.getInt(unsafe_addr + (i * CARRIER_SIZE));
+        long unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
+        try {
+            int res = 0;
+            for (int i = 0; i < ELEM_SIZE; i++) {
+                res += unsafe.getInt(unsafe_addr + (i * CARRIER_SIZE));
+            }
+            return res;
+        } finally {
+            unsafe.freeMemory(unsafe_addr);
         }
-        return res;
     }
 
     @Benchmark
     public int segment_confined_loop() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            sum += segment_confined.get(JAVA_INT, i * CARRIER_SIZE);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment segment = arena.allocate(ALLOC_SIZE);
+            int sum = 0;
+            for (int i = 0; i < ELEM_SIZE; i++) {
+                sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
 
+            }
+            return sum;
         }
-        return sum;
     }
 
     @Benchmark
     public int segment_structured_loop() {
-        int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) {
-            sum += segment_structured.get(JAVA_INT, i * CARRIER_SIZE);
+        return Arena.ofStructured(arena -> {
+            MemorySegment segment = arena.allocate(ALLOC_SIZE);
+            int sum = 0;
+            for (int i = 0; i < ELEM_SIZE; i++) {
+                sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
 
-        }
-        return sum;
+            }
+            return sum;
+        });
     }
 }
