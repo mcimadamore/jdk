@@ -5,12 +5,12 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.Arena;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public final class StructuredSession extends MemorySessionImpl {
 
-    private final ScopedValue<Object> scopedValue = ScopedValue.newInstance();
+    private static final ScopedValue<Object> KEY = ScopedValue.newInstance();
+    private final Object sentinel = new Object();
 
     public StructuredSession(Thread owner) {
         super(owner, new SharedResourceList());
@@ -18,7 +18,7 @@ public final class StructuredSession extends MemorySessionImpl {
 
     public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return scopedValue.isBound();
+        return KEY.get() == sentinel;
     }
 
     @Override
@@ -37,7 +37,7 @@ public final class StructuredSession extends MemorySessionImpl {
     @Override
     @ForceInline
     void checkThreadRaw() {
-        if (!scopedValue.isBound()) {
+        if (KEY.get() != sentinel) {
             throw WRONG_THREAD;
         }
     }
@@ -47,7 +47,7 @@ public final class StructuredSession extends MemorySessionImpl {
     }
 
     public final <Z> Z call(Function<Arena, Z> arenaFunction) {
-        return ScopedValue.where(scopedValue, new Object())
-                .call(() -> arenaFunction.apply(asArena()));
+        return ScopedValue.callWhere(KEY, sentinel,
+                () -> arenaFunction.apply(asArena()));
     }
 }
