@@ -22,6 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import org.openjdk.bench.java.lang.runtime.SwitchSanity.A;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -39,6 +40,7 @@ import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
@@ -70,9 +72,15 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
         }
     }
 
+    static <Z> Z runConfined(Function<Arena, Z> arenaFunction) {
+        try (Arena arena = Arena.ofConfined()) {
+            return arenaFunction.apply(arena);
+        }
+    }
+
     @Benchmark
     public int segment_confined_loop() {
-        try (Arena arena = Arena.ofConfined()) {
+        return runConfined(arena -> {
             MemorySegment segment = arena.allocate(ALLOC_SIZE);
             int sum = 0;
             for (int i = 0; i < ELEM_SIZE; i++) {
@@ -80,7 +88,7 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
 
             }
             return sum;
-        }
+        });
     }
 
     @Benchmark
