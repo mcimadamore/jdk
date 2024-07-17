@@ -109,6 +109,13 @@ public class MemorySessionClose {
     }
 
     @Benchmark
+    public MemorySegment structured_close() {
+        try (Arena arena = Arena.ofStructured()) {
+            return arena.allocate(ALLOC_SIZE, 4);
+        }
+    }
+
+    @Benchmark
     public MemorySegment shared_close() {
         try (Arena arena = Arena.ofShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
