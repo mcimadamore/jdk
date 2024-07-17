@@ -38,6 +38,8 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
@@ -47,7 +49,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(org.openjdk.jmh.annotations.Scope.Thread)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Fork(3)
+@Fork(value = 3, jvmArgsAppend = { "--enable-preview" })
 public class LoopOverNonConstantStructured extends JavaLayouts {
 
     static final Unsafe unsafe = Utils.unsafe;
@@ -97,7 +99,6 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
             sum += segment_confined.get(JAVA_INT, i * CARRIER_SIZE);
-
         }
         return sum;
     }
@@ -107,8 +108,43 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
             sum += segment_structured.get(JAVA_INT, i * CARRIER_SIZE);
-
         }
         return sum;
+    }
+
+    @Benchmark
+    public int segment_structured_loop_scope_other() throws Throwable {
+        try (Arena arena = Arena.ofStructured()) {
+            try (var scope = new StructuredTaskScope<>()) {
+                MemorySegment segment = arena.allocate(ALLOC_SIZE);
+                Subtask<Integer> task = scope.fork(() -> {
+                    int sum = 0;
+                    for (int i = 0; i < ELEM_SIZE; i++) {
+                        sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
+                    }
+                    return sum;
+                });
+                scope.join();
+                return task.get();
+            }
+        }
+    }
+
+    @Benchmark
+    public int segment_structured_loop_scope_same() throws Throwable {
+        try (var scope = new StructuredTaskScope<>()) {
+            Subtask<Integer> task = scope.fork(() -> {
+                try (Arena arena = Arena.ofStructured()) {
+                    MemorySegment segment = arena.allocate(ALLOC_SIZE);
+                    int sum = 0;
+                    for (int i = 0; i < ELEM_SIZE; i++) {
+                        sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
+                    }
+                    return sum;
+                }
+            });
+            scope.join();
+            return task.get();
+        }
     }
 }

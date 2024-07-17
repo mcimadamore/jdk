@@ -1,6 +1,7 @@
 package jdk.internal.foreign;
 
 import jdk.internal.foreign.SharedSession.SharedResourceList;
+import jdk.internal.misc.ThreadFlock;
 import jdk.internal.vm.ScopedValueContainer;
 import jdk.internal.vm.StackableScope;
 import jdk.internal.vm.annotation.ForceInline;
@@ -9,16 +10,15 @@ import java.util.Objects;
 
 public final class StructuredSession extends MemorySessionImpl {
 
-    private final ScopedValueContainer scopedValueContainer = new ScopedValueContainer();
+    private final ThreadFlock flock = ThreadFlock.open("Arena$" + this.hashCode());
 
     public StructuredSession(Thread owner) {
         super(owner, new SharedResourceList());
-        scopedValueContainer.push();
     }
 
     public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return StackableScope.contains(scopedValueContainer);
+        return thread == owner || flock.containsThread(thread);
     }
 
     @Override
@@ -37,7 +37,8 @@ public final class StructuredSession extends MemorySessionImpl {
     @Override
     @ForceInline
     void checkThreadRaw() {
-        if (!StackableScope.contains(scopedValueContainer)) {
+        Thread current = Thread.currentThread();
+        if (current != owner && !flock.containsThread(current)) {
             throw WRONG_THREAD;
         }
     }
@@ -47,9 +48,9 @@ public final class StructuredSession extends MemorySessionImpl {
         if (Thread.currentThread() != ownerThread()) {
             throw wrongThread();
         }
-        if (ScopedValueContainer.latest() != scopedValueContainer) {
+        if (flock.threads().findAny().isPresent()) {
             throw new IllegalStateException("Cannot close");
         }
-        scopedValueContainer.popForcefully();
+        flock.close();
     }
 }
