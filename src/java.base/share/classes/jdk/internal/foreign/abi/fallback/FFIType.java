@@ -25,6 +25,7 @@
 package jdk.internal.foreign.abi.fallback;
 
 import jdk.internal.foreign.Utils;
+import jdk.internal.foreign.layout.ValueLayouts;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.GroupLayout;
@@ -47,6 +48,7 @@ import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 import static java.lang.foreign.ValueLayout.JAVA_SHORT;
+import static jdk.internal.foreign.layout.ValueLayouts.asUnsigned;
 
 /**
  * typedef struct _ffi_type
@@ -59,8 +61,8 @@ import static java.lang.foreign.ValueLayout.JAVA_SHORT;
  */
 class FFIType {
 
-    static final ValueLayout SIZE_T = layoutFor((int)ADDRESS.byteSize());
-    private static final ValueLayout UNSIGNED_SHORT = JAVA_SHORT;
+    static final ValueLayout SIZE_T = asUnsigned(layoutFor((int)ADDRESS.byteSize()));
+    private static final ValueLayout UNSIGNED_SHORT = asUnsigned(JAVA_SHORT);
     private static final StructLayout LAYOUT = Utils.computePaddedStructLayout(
             SIZE_T, UNSIGNED_SHORT, UNSIGNED_SHORT.withName("type"), ADDRESS.withName("elements"));
 
