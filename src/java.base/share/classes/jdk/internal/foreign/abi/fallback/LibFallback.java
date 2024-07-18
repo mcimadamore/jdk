@@ -62,21 +62,13 @@ final class LibFallback {
     static MemorySegment uint16Type() { return NativeConstants.UINT16_TYPE; }
     static MemorySegment sint16Type() { return NativeConstants.SINT16_TYPE; }
     static MemorySegment sint32Type() { return NativeConstants.SINT32_TYPE; }
+    static MemorySegment uint32Type() { return NativeConstants.UINT32_TYPE; }
     static MemorySegment sint64Type() { return NativeConstants.SINT64_TYPE; }
+    static MemorySegment uint64Type() { return NativeConstants.UINT64_TYPE; }
     static MemorySegment floatType() { return NativeConstants.FLOAT_TYPE; }
     static MemorySegment doubleType() { return NativeConstants.DOUBLE_TYPE; }
     static MemorySegment pointerType() { return NativeConstants.POINTER_TYPE; }
     static MemorySegment voidType() { return NativeConstants.VOID_TYPE; }
-
-    // platform-dependent types
-    static int shortSize() { return NativeConstants.SIZEOF_SHORT; }
-    static int intSize() { return NativeConstants.SIZEOF_INT; }
-    static int longSize() {return NativeConstants.SIZEOF_LONG; }
-    static int wcharSize() {return NativeConstants.SIZEOF_WCHAR; }
-    static boolean wcharSign() {return NativeConstants.SIGNOF_WCHAR; }
-    static boolean charSign() {return NativeConstants.SIGNOF_CHAR; }
-    static int longLongAlign() { return NativeConstants.ALIGNOF_LONG_LONG; }
-    static int doubleAlign() { return NativeConstants.ALIGNOF_DOUBLE; }
 
     static short structTag() { return NativeConstants.STRUCT_TAG; }
 
@@ -241,15 +233,6 @@ final class LibFallback {
     private static native long ffi_type_float();
     private static native long ffi_type_double();
     private static native long ffi_type_pointer();
-    private static native int ffi_sizeof_short();
-    private static native int ffi_sizeof_int();
-    private static native int ffi_sizeof_long();
-    private static native int ffi_sizeof_wchar();
-    private static native boolean ffi_signof_wchar();
-    private static native boolean ffi_signof_char();
-
-    private static native int alignof_long_long();
-    private static native int alignof_double();
 
     // put these in a separate class to avoid an UnsatisfiedLinkError
     // when LibFallback is initialized but the library is not present
@@ -263,19 +246,12 @@ final class LibFallback {
         static final MemorySegment UINT16_TYPE = MemorySegment.ofAddress(ffi_type_uint16());
         static final MemorySegment SINT16_TYPE = MemorySegment.ofAddress(ffi_type_sint16());
         static final MemorySegment SINT32_TYPE = MemorySegment.ofAddress(ffi_type_sint32());
+        static final MemorySegment UINT32_TYPE = MemorySegment.ofAddress(ffi_type_uint32());
         static final MemorySegment SINT64_TYPE = MemorySegment.ofAddress(ffi_type_sint64());
+        static final MemorySegment UINT64_TYPE = MemorySegment.ofAddress(ffi_type_uint64());
         static final MemorySegment FLOAT_TYPE = MemorySegment.ofAddress(ffi_type_float());
         static final MemorySegment DOUBLE_TYPE = MemorySegment.ofAddress(ffi_type_double());
         static final MemorySegment POINTER_TYPE = MemorySegment.ofAddress(ffi_type_pointer());
-        static final int SIZEOF_SHORT = ffi_sizeof_short();
-        static final int SIZEOF_INT = ffi_sizeof_int();
-        static final int SIZEOF_LONG = ffi_sizeof_long();
-        static final int SIZEOF_WCHAR = ffi_sizeof_wchar();
-        static final boolean SIGNOF_WCHAR = ffi_signof_wchar();
-        static final boolean SIGNOF_CHAR = ffi_signof_char();
-
-        static final int ALIGNOF_LONG_LONG = alignof_long_long();
-        static final int ALIGNOF_DOUBLE = alignof_double();
 
         static final MemorySegment VOID_TYPE = MemorySegment.ofAddress(ffi_type_void());
         static final short STRUCT_TAG = ffi_type_struct();

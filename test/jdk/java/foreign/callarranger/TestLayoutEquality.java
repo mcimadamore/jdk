@@ -48,7 +48,7 @@ public class TestLayoutEquality {
 
     @Test(dataProvider = "layoutConstants")
     public void testReconstructedEquality(ValueLayout layout) {
-        ValueLayout newLayout = ValueLayouts.valueLayout(layout.carrier(), layout.order(), layout.isSigned());
+        ValueLayout newLayout = ValueLayouts.valueLayout(layout.carrier(), layout.order(), ValueLayouts.isSigned(layout));
         newLayout = newLayout.withByteAlignment(layout.byteAlignment());
         if (layout instanceof AddressLayout addressLayout && addressLayout.targetLayout().isPresent()) {
             newLayout = ((AddressLayout)newLayout).withTargetLayout(addressLayout.targetLayout().get());

@@ -160,6 +160,17 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBSYSLOOKUP, \
 
 TARGETS += $(BUILD_LIBSYSLOOKUP)
 
+################################################################################
+## Build nativeTypeInfo
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBNATIVETYPEINFO, \
+    NAME := nativeTypeInfo, \
+))
+
+TARGETS += $(BUILD_LIBNATIVETYPEINFO)
+
+
 ifeq ($(ENABLE_FALLBACK_LINKER), true)
   ##############################################################################
   ## Build libfallbackLinker
