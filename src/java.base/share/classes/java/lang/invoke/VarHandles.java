@@ -25,8 +25,11 @@
 
 package java.lang.invoke;
 
+import jdk.internal.foreign.Utils;
 import sun.invoke.util.Wrapper;
 
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,6 +38,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandleStatics.UNSAFE;
@@ -305,14 +309,16 @@ final class VarHandles {
      * @return the created VarHandle.
      */
     static VarHandle memorySegmentViewHandle(Class<?> carrier, long alignmentMask,
-                                             ByteOrder byteOrder) {
-        if (!carrier.isPrimitive() || carrier == void.class || carrier == boolean.class) {
+                                             ByteOrder byteOrder, Optional<MemoryLayout> dereferenceLayout) {
+        if ((!carrier.isPrimitive() && carrier != MemorySegment.class) || carrier == void.class) {
             throw new IllegalArgumentException("Invalid carrier: " + carrier.getName());
         }
         boolean be = byteOrder == ByteOrder.BIG_ENDIAN;
         boolean exact = VAR_HANDLE_SEGMENT_FORCE_EXACT;
 
-        if (carrier == byte.class) {
+        if (carrier == boolean.class) {
+            return maybeAdapt(new VarHandleSegmentAsBooleans(be, alignmentMask, exact));
+        } else if (carrier == byte.class) {
             return maybeAdapt(new VarHandleSegmentAsBytes(be, alignmentMask, exact));
         } else if (carrier == char.class) {
             return maybeAdapt(new VarHandleSegmentAsChars(be, alignmentMask, exact));
@@ -326,6 +332,10 @@ final class VarHandles {
             return maybeAdapt(new VarHandleSegmentAsLongs(be, alignmentMask, exact));
         } else if (carrier == double.class) {
             return maybeAdapt(new VarHandleSegmentAsDoubles(be, alignmentMask, exact));
+        } else if (carrier == MemorySegment.class) {
+            return maybeAdapt(new VarHandleSegmentAsSegments(be, alignmentMask, exact,
+                    dereferenceLayout.map(MemoryLayout::byteSize).orElse(0L),
+                    dereferenceLayout.map(MemoryLayout::byteAlignment).orElse(1L)));
         } else {
             throw new IllegalStateException("Cannot get here");
         }

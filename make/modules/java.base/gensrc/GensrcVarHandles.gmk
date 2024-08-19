@@ -169,20 +169,39 @@ define GenerateVarHandleMemorySegment
 
   $1_FILENAME := $(VARHANDLES_GENSRC_DIR)/VarHandleSegmentAs$$($1_Type)s.java
 
+  ifeq ($$($1_Type), Boolean)
+    $1_type := boolean
+    $1_BoxType := $$($1_Type)
+
+    $1_rawCoordType := boolean
+
+    $1_rawType := byte
+    $1_RawType := Byte
+    $1_RawBoxType := Byte
+
+    $1_ARGS += -Kboolean
+    $1_ARGS += -Kunaligned
+  endif
+
   ifeq ($$($1_Type), Byte)
     $1_type := byte
     $1_BoxType := $$($1_Type)
+
+    $1_rawCoordType := byte
 
     $1_rawType := $$($1_type)
     $1_RawType := $$($1_Type)
     $1_RawBoxType := $$($1_BoxType)
 
     $1_ARGS += -Kbyte
+    $1_ARGS += -Kunaligned
   endif
 
   ifeq ($$($1_Type), Short)
     $1_type := short
     $1_BoxType := $$($1_Type)
+
+    $1_rawCoordType := short
 
     $1_rawType := $$($1_type)
     $1_RawType := $$($1_Type)
@@ -192,6 +211,8 @@ define GenerateVarHandleMemorySegment
   ifeq ($$($1_Type), Char)
     $1_type := char
     $1_BoxType := Character
+
+    $1_rawCoordType := char
 
     $1_rawType := $$($1_type)
     $1_RawType := $$($1_Type)
@@ -206,6 +227,8 @@ define GenerateVarHandleMemorySegment
     $1_RawType := $$($1_Type)
     $1_RawBoxType := $$($1_BoxType)
 
+    $1_rawCoordType := int
+
     $1_ARGS += -KCAS
     $1_ARGS += -KAtomicAdd
     $1_ARGS += -KBitwise
@@ -219,6 +242,8 @@ define GenerateVarHandleMemorySegment
     $1_RawType := $$($1_Type)
     $1_RawBoxType := $$($1_BoxType)
 
+    $1_rawCoordType := long
+
     $1_ARGS += -KCAS
     $1_ARGS += -KAtomicAdd
     $1_ARGS += -KBitwise
@@ -227,6 +252,8 @@ define GenerateVarHandleMemorySegment
   ifeq ($$($1_Type), Float)
     $1_type := float
     $1_BoxType := $$($1_Type)
+
+    $1_rawCoordType := float
 
     $1_rawType := int
     $1_RawType := Int
@@ -240,6 +267,8 @@ define GenerateVarHandleMemorySegment
     $1_type := double
     $1_BoxType := $$($1_Type)
 
+    $1_rawCoordType := double
+
     $1_rawType := long
     $1_RawType := Long
     $1_RawBoxType := Long
@@ -248,12 +277,29 @@ define GenerateVarHandleMemorySegment
     $1_ARGS += -KfloatingPoint
   endif
 
+  ifeq ($$($1_Type), Segment)
+    $1_type := MemorySegment
+    $1_BoxType := MemorySegment
+
+    $1_rawCoordType := Object
+
+    $1_rawType := long
+    $1_RawType := Long
+    $1_RawBoxType := Long
+
+    $1_ARGS += -Kaddress
+    $1_ARGS += -KCAS
+    $1_ARGS += -KAtomicAdd
+    $1_ARGS += -KBitwise
+  endif
+
+
   $$($1_FILENAME): $(VARHANDLES_SRC_DIR)/X-VarHandleSegmentView.java.template $(BUILD_TOOLS_JDK)
 	$$(call MakeDir, $$(@D))
 	$(RM) $$@
 	$(TOOL_SPP) -nel -K$$($1_type) \
 	    -Dtype=$$($1_type) -DType=$$($1_Type) -DBoxType=$$($1_BoxType) \
-	    -DrawType=$$($1_rawType) -DRawType=$$($1_RawType) -DRawBoxType=$$($1_RawBoxType) \
+	    -DrawCoordType=$$($1_rawCoordType) -DrawType=$$($1_rawType) -DRawType=$$($1_RawType) -DRawBoxType=$$($1_RawBoxType) \
 	    $$($1_ARGS) -i$$< -o$$@
 
   GENSRC_VARHANDLES += $$($1_FILENAME)
@@ -272,7 +318,7 @@ $(foreach t, $(VARHANDLES_BYTE_ARRAY_TYPES), \
   $(eval $(call GenerateVarHandleByteArray,VAR_HANDLE_BYTE_ARRAY_$t,$t)))
 
 # List the types to generate source for, with capitalized first letter
-VARHANDLES_MEMORY_SEGMENT_TYPES := Byte Short Char Int Long Float Double
+VARHANDLES_MEMORY_SEGMENT_TYPES := Boolean Byte Short Char Int Long Float Double Segment
 $(foreach t, $(VARHANDLES_MEMORY_SEGMENT_TYPES), \
   $(eval $(call GenerateVarHandleMemorySegment,VAR_HANDLE_MEMORY_SEGMENT_$t,$t)))
 

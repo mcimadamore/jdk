@@ -32,6 +32,9 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
 
+import jdk.internal.foreign.abi.SharedUtils;
+import jdk.internal.foreign.Utils;
+
 import java.util.Objects;
 
 import static java.lang.invoke.MethodHandleStatics.UNSAFE;
@@ -44,17 +47,44 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
 
     static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
-    static final int NON_PLAIN_ACCESS_MIN_ALIGN_MASK = $BoxType$.BYTES - 1;
+    static final int NON_PLAIN_ACCESS_MIN_ALIGN_MASK = $RawBoxType$.BYTES - 1;
 
     static final VarForm FORM = new VarForm(VarHandleSegmentAs$Type$s.class, MemorySegment.class, $type$.class, MemoryLayout.class, long.class, long.class);
-
-    VarHandleSegmentAs$Type$s(boolean be, long alignmentMask, boolean exact) {
-        super(FORM, be, alignmentMask, exact);
-    }
 
     @Override
     final MethodType accessModeTypeUncached(VarHandle.AccessType accessType) {
         return accessType.accessModeType(MemorySegment.class, $type$.class, MemoryLayout.class, long.class, long.class);
+    }
+
+#if[address]
+    final long addressDereferenceSize;
+    final long addressDereferenceAlign;
+
+    VarHandleSegmentAs$Type$s(boolean be, long alignmentMask, boolean exact,
+                              long addressDereferenceSize, long addressDereferenceAlign) {
+        super(FORM, be, alignmentMask, exact);
+        this.addressDereferenceSize = addressDereferenceSize;
+        this.addressDereferenceAlign = addressDereferenceAlign;
+    }
+
+    @Override
+    public VarHandleSegmentAs$Type$s withInvokeExactBehavior() {
+        return hasInvokeExactBehavior() ?
+                this :
+                new VarHandleSegmentAs$Type$s(be, alignmentMask, true,
+                                              addressDereferenceSize, addressDereferenceAlign);
+    }
+
+    @Override
+    public VarHandleSegmentAs$Type$s withInvokeBehavior() {
+        return !hasInvokeExactBehavior() ?
+                this :
+                new VarHandleSegmentAs$Type$s(be, alignmentMask, false,
+                                              addressDereferenceSize, addressDereferenceAlign);
+    }
+#else[address]
+    VarHandleSegmentAs$Type$s(boolean be, long alignmentMask, boolean exact) {
+        super(FORM, be, alignmentMask, exact);
     }
 
     @Override
@@ -70,31 +100,96 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
                 this :
                 new VarHandleSegmentAs$Type$s(be, alignmentMask, false);
     }
+#end[address]
 
 #if[floatingPoint]
-    @ForceInline
-    static $rawType$ convEndian(boolean big, $type$ v) {
-        $rawType$ rv = $Type$.$type$ToRaw$RawType$Bits(v);
-        return big == BE ? rv : $RawBoxType$.reverseBytes(rv);
+    static $rawType$ convEndian(VarHandleSegmentViewBase handle, $type$ v) {
+        $rawType$ rv = toRaw(handle, v);
+        return handle.be == BE ? rv : $RawBoxType$.reverseBytes(rv);
     }
 
     @ForceInline
-    static $type$ convEndian(boolean big, $rawType$ rv) {
-        rv = big == BE ? rv : $RawBoxType$.reverseBytes(rv);
+    static $type$ convEndian(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        rv = handle.be == BE ? rv : $RawBoxType$.reverseBytes(rv);
+        return fromRaw(handle, rv);
+    }
+
+    @ForceInline
+    static $rawType$ toRaw(VarHandleSegmentViewBase handle, $type$ v) {
+        return $Type$.$type$ToRaw$RawType$Bits(v);
+    }
+
+    static $type$ fromRaw(VarHandleSegmentViewBase handle, $rawType$ rv) {
         return $Type$.$rawType$BitsTo$Type$(rv);
     }
 #else[floatingPoint]
+#if[boolean]
+    @ForceInline
+    static $rawType$ convEndian(VarHandleSegmentViewBase handle, $type$ v) {
+        return toRaw(handle, v);
+    }
+
+    @ForceInline
+    static $type$ convEndian(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        return fromRaw(handle, rv);
+    }
+
+    @ForceInline
+    static $rawType$ toRaw(VarHandleSegmentViewBase handle, $type$ v) {
+        return v ? ($rawType$)1 : ($rawType$)0;
+    }
+
+    @ForceInline
+    static $type$ fromRaw(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        return rv != 0;
+    }
+#else[boolean]
+#if[address]
+    @ForceInline
+    static $rawType$ convEndian(VarHandleSegmentViewBase handle, $rawCoordType$ v) {
+        $rawType$ rv = toRaw(handle, v);
+        return handle.be == BE ? rv : $RawBoxType$.reverseBytes(rv);
+    }
+
+    @ForceInline
+    static $type$ convEndian(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        rv = handle.be == BE ? rv : $RawBoxType$.reverseBytes(rv);
+        return fromRaw(handle, rv);
+    }
+
+    @ForceInline
+    static $rawType$ toRaw(VarHandleSegmentViewBase handle, $rawCoordType$ v) {
+        return SharedUtils.unboxSegment((MemorySegment)v);
+    }
+
+    @ForceInline
+    static $type$ fromRaw(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        VarHandleSegmentAsSegments handleSegments = (VarHandleSegmentAsSegments)handle;
+        return Utils.longToAddress(rv, handleSegments.addressDereferenceSize, handleSegments.addressDereferenceAlign);
+    }
+#else[address]
+    @ForceInline
+    static $rawType$ toRaw(VarHandleSegmentViewBase handle, $type$ v) {
+        return v;
+    }
+
+    @ForceInline
+    static $type$ fromRaw(VarHandleSegmentViewBase handle, $rawType$ rv) {
+        return rv;
+    }
 #if[byte]
     @ForceInline
-    static $type$ convEndian(boolean big, $type$ n) {
-        return n;
+    static $type$ convEndian(VarHandleSegmentViewBase handle, $type$ v) {
+        return v;
     }
 #else[byte]
     @ForceInline
-    static $type$ convEndian(boolean big, $type$ n) {
-        return big == BE ? n : $BoxType$.reverseBytes(n);
+    static $type$ convEndian(VarHandleSegmentViewBase handle, $type$ v) {
+        return handle.be == BE ? v : $RawBoxType$.reverseBytes(v);
     }
 #end[byte]
+#end[address]
+#end[boolean]
 #end[floatingPoint]
 
     @ForceInline
@@ -125,7 +220,7 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
     }
 
     @ForceInline
-    static $type$ get(VarHandle ob, Object obb, Object encl, long base, long offset) {
+    static $rawCoordType$ get(VarHandle ob, Object obb, Object encl, long base, long offset) {
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
 #if[floatingPoint]
@@ -135,21 +230,31 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
                 handle.be);
         return $Type$.$rawType$BitsTo$Type$(rawValue);
 #else[floatingPoint]
-#if[byte]
+#if[address]
+        $rawType$ rawValue = SCOPED_MEMORY_ACCESS.get$RawType$Unaligned(bb.sessionImpl(),
+                bb.unsafeGetBase(),
+                offsetPlain(bb, base, offset), BE);
+        return convEndian(handle, rawValue);
+#else[address]
+#if[unaligned]
         return SCOPED_MEMORY_ACCESS.get$Type$(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset));
-#else[byte]
+#else[unaligned]
         return SCOPED_MEMORY_ACCESS.get$Type$Unaligned(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset),
                 handle.be);
-#end[byte]
+#end[unaligned]
+#end[address]
 #end[floatingPoint]
     }
 
     @ForceInline
-    static void set(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static void set(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
 #if[floatingPoint]
@@ -159,245 +264,303 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
                 $Type$.$type$ToRaw$RawType$Bits(value),
                 handle.be);
 #else[floatingPoint]
-#if[byte]
+#if[address]
+        SCOPED_MEMORY_ACCESS.put$RawType$Unaligned(bb.sessionImpl(),
+                bb.unsafeGetBase(),
+                offsetPlain(bb, base, offset),
+                convEndian(handle, value), BE);
+#else[address]
+#if[unaligned]
         SCOPED_MEMORY_ACCESS.put$Type$(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset),
                 value);
-#else[byte]
+#else[unaligned]
         SCOPED_MEMORY_ACCESS.put$Type$Unaligned(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset),
                 value,
                 handle.be);
-#end[byte]
+#end[unaligned]
+#end[address]
 #end[floatingPoint]
     }
 
     @ForceInline
-    static $type$ getVolatile(VarHandle ob, Object obb, Object encl, long base, long offset) {
+    static $rawCoordType$ getVolatile(VarHandle ob, Object obb, Object encl, long base, long offset) {
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.get$RawType$Volatile(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask)));
     }
 
     @ForceInline
-    static void setVolatile(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static void setVolatile(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         SCOPED_MEMORY_ACCESS.put$RawType$Volatile(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, value));
+                convEndian(handle, value));
     }
 
     @ForceInline
-    static $type$ getAcquire(VarHandle ob, Object obb, Object encl, long base, long offset) {
+    static $rawCoordType$ getAcquire(VarHandle ob, Object obb, Object encl, long base, long offset) {
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.get$RawType$Acquire(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask)));
     }
 
     @ForceInline
-    static void setRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static void setRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         SCOPED_MEMORY_ACCESS.put$RawType$Release(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, value));
+                convEndian(handle, value));
     }
 
     @ForceInline
-    static $type$ getOpaque(VarHandle ob, Object obb, Object encl, long base, long offset) {
+    static $rawCoordType$ getOpaque(VarHandle ob, Object obb, Object encl, long base, long offset) {
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.get$RawType$Opaque(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask)));
     }
 
     @ForceInline
-    static void setOpaque(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static void setOpaque(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         SCOPED_MEMORY_ACCESS.put$RawType$Opaque(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, value));
+                convEndian(handle, value));
     }
 #if[CAS]
 
     @ForceInline
-    static boolean compareAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static boolean compareAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         return SCOPED_MEMORY_ACCESS.compareAndSet$RawType$(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, expected), convEndian(handle.be, value));
+                convEndian(handle, expected), convEndian(handle, value));
     }
 
     @ForceInline
-    static $type$ compareAndExchange(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static $rawCoordType$ compareAndExchange(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.compareAndExchange$RawType$(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, expected), convEndian(handle.be, value)));
+                                  convEndian(handle, expected), convEndian(handle, value)));
     }
 
     @ForceInline
-    static $type$ compareAndExchangeAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static $rawCoordType$ compareAndExchangeAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.compareAndExchange$RawType$Acquire(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, expected), convEndian(handle.be, value)));
+                                  convEndian(handle, expected), convEndian(handle, value)));
     }
 
     @ForceInline
-    static $type$ compareAndExchangeRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static $rawCoordType$ compareAndExchangeRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.compareAndExchange$RawType$Release(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, expected), convEndian(handle.be, value)));
+                                  convEndian(handle, expected), convEndian(handle, value)));
     }
 
     @ForceInline
-    static boolean weakCompareAndSetPlain(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static boolean weakCompareAndSetPlain(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         return SCOPED_MEMORY_ACCESS.weakCompareAndSet$RawType$Plain(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, expected), convEndian(handle.be, value));
+                convEndian(handle, expected), convEndian(handle, value));
     }
 
     @ForceInline
-    static boolean weakCompareAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static boolean weakCompareAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         return SCOPED_MEMORY_ACCESS.weakCompareAndSet$RawType$(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, expected), convEndian(handle.be, value));
+                convEndian(handle, expected), convEndian(handle, value));
     }
 
     @ForceInline
-    static boolean weakCompareAndSetAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static boolean weakCompareAndSetAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         return SCOPED_MEMORY_ACCESS.weakCompareAndSet$RawType$Acquire(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, expected), convEndian(handle.be, value));
+                convEndian(handle, expected), convEndian(handle, value));
     }
 
     @ForceInline
-    static boolean weakCompareAndSetRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ expected, $type$ value) {
+    static boolean weakCompareAndSetRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ expected, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         return SCOPED_MEMORY_ACCESS.weakCompareAndSet$RawType$Release(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                convEndian(handle.be, expected), convEndian(handle.be, value));
+                convEndian(handle, expected), convEndian(handle, value));
     }
 
     @ForceInline
-    static $type$ getAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndSet(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.getAndSet$RawType$(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, value)));
+                                  convEndian(handle, value)));
     }
 
     @ForceInline
-    static $type$ getAndSetAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndSetAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.getAndSet$RawType$Acquire(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, value)));
+                                  convEndian(handle, value)));
     }
 
     @ForceInline
-    static $type$ getAndSetRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndSetRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
-        return convEndian(handle.be,
+        return convEndian(handle,
                           SCOPED_MEMORY_ACCESS.getAndSet$RawType$Release(bb.sessionImpl(),
                                   bb.unsafeGetBase(),
                                   offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                                  convEndian(handle.be, value)));
+                                  convEndian(handle, value)));
     }
 #end[CAS]
 #if[AtomicAdd]
 
     @ForceInline
-    static $type$ getAndAdd(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ delta) {
+    static $rawCoordType$ getAndAdd(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ delta) {
+#if[address]
+        Objects.requireNonNull(delta);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndAdd$RawType$(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndAdd$RawType$(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    delta);
+                    toRaw(handle, delta)));
         } else {
-            return getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), delta);
+            return fromRaw(handle, getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, delta)));
         }
     }
 
     @ForceInline
-    static $type$ getAndAddAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ delta) {
+    static $rawCoordType$ getAndAddAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ delta) {
+#if[address]
+        Objects.requireNonNull(delta);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndAdd$RawType$Acquire(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndAdd$RawType$Acquire(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    delta);
+                    toRaw(handle, delta)));
         } else {
-            return getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), delta);
+            return fromRaw(handle, getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, delta)));
         }
     }
 
     @ForceInline
-    static $type$ getAndAddRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ delta) {
+    static $rawCoordType$ getAndAddRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ delta) {
+#if[address]
+        Objects.requireNonNull(delta);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndAdd$RawType$Release(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndAdd$RawType$Release(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    delta);
+                    toRaw(handle, delta)));
         } else {
-            return getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), delta);
+            return fromRaw(handle, getAndAddConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, delta)));
         }
     }
 
     @ForceInline
-    static $type$ getAndAddConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $type$ delta) {
-        $type$ nativeExpectedValue, expectedValue;
+    static $rawType$ getAndAddConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $rawType$ delta) {
+        $rawType$ nativeExpectedValue, expectedValue;
         Object base = bb.unsafeGetBase();
         do {
             nativeExpectedValue = SCOPED_MEMORY_ACCESS.get$RawType$Volatile(bb.sessionImpl(),base, offset);
@@ -410,50 +573,59 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
 #if[Bitwise]
 
     @ForceInline
-    static $type$ getAndBitwiseOr(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseOr(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseOrRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseOrRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$Release(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$Release(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseOrAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseOrAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$Acquire(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseOr$RawType$Acquire(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseOrConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseOrConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $type$ value) {
-        $type$ nativeExpectedValue, expectedValue;
+    static $rawType$ getAndBitwiseOrConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $rawType$ value) {
+        $rawType$ nativeExpectedValue, expectedValue;
         Object base = bb.unsafeGetBase();
         do {
             nativeExpectedValue = SCOPED_MEMORY_ACCESS.get$RawType$Volatile(bb.sessionImpl(),base, offset);
@@ -464,50 +636,59 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
     }
 
     @ForceInline
-    static $type$ getAndBitwiseAnd(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseAnd(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseAndRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseAndRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$Release(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$Release(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseAndAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseAndAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$Acquire(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseAnd$RawType$Acquire(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseAndConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseAndConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $type$ value) {
-        $type$ nativeExpectedValue, expectedValue;
+    static $rawType$ getAndBitwiseAndConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $rawType$ value) {
+        $rawType$ nativeExpectedValue, expectedValue;
         Object base = bb.unsafeGetBase();
         do {
             nativeExpectedValue = SCOPED_MEMORY_ACCESS.get$RawType$Volatile(bb.sessionImpl(),base, offset);
@@ -519,50 +700,59 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
 
 
     @ForceInline
-    static $type$ getAndBitwiseXor(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseXor(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseXorRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseXorRelease(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$Release(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$Release(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseXorAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $type$ value) {
+    static $rawCoordType$ getAndBitwiseXorAcquire(VarHandle ob, Object obb, Object encl, long base, long offset, $rawCoordType$ value) {
+#if[address]
+        Objects.requireNonNull(value);
+#end[address]
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
         AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, false);
         if (handle.be == BE) {
-            return SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$Acquire(bb.sessionImpl(),
+            return fromRaw(handle, SCOPED_MEMORY_ACCESS.getAndBitwiseXor$RawType$Acquire(bb.sessionImpl(),
                     bb.unsafeGetBase(),
                     offsetNonPlain(bb, base, offset, handle.alignmentMask),
-                    value);
+                    toRaw(handle, value)));
         } else {
-            return getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), value);
+            return fromRaw(handle, getAndBitwiseXorConvEndianWithCAS(bb, offsetNonPlain(bb, base, offset, handle.alignmentMask), toRaw(handle, value)));
         }
     }
 
     @ForceInline
-    static $type$ getAndBitwiseXorConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $type$ value) {
-        $type$ nativeExpectedValue, expectedValue;
+    static $rawType$ getAndBitwiseXorConvEndianWithCAS(AbstractMemorySegmentImpl  bb, long offset, $rawType$ value) {
+        $rawType$ nativeExpectedValue, expectedValue;
         Object base = bb.unsafeGetBase();
         do {
             nativeExpectedValue = SCOPED_MEMORY_ACCESS.get$RawType$Volatile(bb.sessionImpl(),base, offset);
