@@ -74,6 +74,12 @@ public class HeapMismatchManualLoopTest {
 
     @Benchmark
     @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public int array_bulk_mismatch() {
+        return Arrays.mismatch(srcArray, dstArray);
+    }
+
+    @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public long segment_mismatch() {
         for (long i = 0; i < srcSegment.byteSize() ; i++) {
             if (srcSegment.get(ValueLayout.JAVA_BYTE, i) != dstSegment.get(ValueLayout.JAVA_BYTE, i)) {
@@ -85,6 +91,12 @@ public class HeapMismatchManualLoopTest {
 
     @Benchmark
     @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public long segment_bulk_mismatch() {
+        return MemorySegment.mismatch(srcSegment, 0, srcSegment.byteSize(), dstSegment, 0, srcSegment.byteSize());
+    }
+
+    @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
     public int buffer_mismatch() {
         for (int i = 0; i < srcBuffer.capacity() ; i++) {
             if (srcBuffer.get(i) != dstBuffer.get(i)) {
@@ -92,5 +104,11 @@ public class HeapMismatchManualLoopTest {
             }
         }
         return -1;
+    }
+
+    @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public int buffer_bulk_mismatch() {
+        return srcBuffer.compareTo(dstBuffer);
     }
 }

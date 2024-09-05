@@ -26,9 +26,11 @@
 
 package jdk.internal.foreign;
 
+import java.lang.foreign.MemoryLayout;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
+import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -37,6 +39,8 @@ import jdk.internal.vm.annotation.ForceInline;
  * a native long address.
  */
 sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl permits MappedMemorySegmentImpl {
+
+    static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
     final long min;
 
@@ -95,5 +99,12 @@ sealed class NativeMemorySegmentImpl extends AbstractMemorySegmentImpl permits M
     @Override
     public long maxAlignMask() {
         return 0;
+    }
+
+    @Override
+    @ForceInline
+    public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+        checkEnclosingLayout(base, encl, true);
+        return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), null, unsafeGetOffset() + base + offset);
     }
 }

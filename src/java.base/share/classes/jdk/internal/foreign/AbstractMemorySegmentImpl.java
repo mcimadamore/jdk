@@ -618,13 +618,13 @@ public abstract sealed class AbstractMemorySegmentImpl
         long len = (long)size << scaleFactor;
         if (base != null) {
             return switch (base) {
-                case byte[]   _ -> new HeapMemorySegmentImpl.OfByte(off, base, len, readOnly, bufferScope);
-                case short[]  _ -> new HeapMemorySegmentImpl.OfShort(off, base, len, readOnly, bufferScope);
-                case char[]   _ -> new HeapMemorySegmentImpl.OfChar(off, base, len, readOnly, bufferScope);
-                case int[]    _ -> new HeapMemorySegmentImpl.OfInt(off, base, len, readOnly, bufferScope);
-                case float[]  _ -> new HeapMemorySegmentImpl.OfFloat(off, base, len, readOnly, bufferScope);
-                case long[]   _ -> new HeapMemorySegmentImpl.OfLong(off, base, len, readOnly, bufferScope);
-                case double[] _ -> new HeapMemorySegmentImpl.OfDouble(off, base, len, readOnly, bufferScope);
+                case byte[] barr -> new HeapMemorySegmentImpl.OfByte(off, barr, len, readOnly, bufferScope);
+                case short[] sarr -> new HeapMemorySegmentImpl.OfShort(off, sarr, len, readOnly, bufferScope);
+                case char[] carr -> new HeapMemorySegmentImpl.OfChar(off, carr, len, readOnly, bufferScope);
+                case int[] iarr -> new HeapMemorySegmentImpl.OfInt(off, iarr, len, readOnly, bufferScope);
+                case float[] farr -> new HeapMemorySegmentImpl.OfFloat(off, farr, len, readOnly, bufferScope);
+                case long[] larr -> new HeapMemorySegmentImpl.OfLong(off, larr, len, readOnly, bufferScope);
+                case double[] darr -> new HeapMemorySegmentImpl.OfDouble(off, darr, len, readOnly, bufferScope);
                 default         -> throw new AssertionError("Cannot get here");
             };
         } else if (unmapper == null) {
@@ -1035,4 +1035,6 @@ public abstract sealed class AbstractMemorySegmentImpl
         Objects.requireNonNull(str);
         StringSupport.write(this, offset, charset, str);
     }
+
+    public abstract byte unsafeGetByte(MemoryLayout encl, long base, long offset);
 }

@@ -26,6 +26,7 @@
 
 package jdk.internal.foreign;
 
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import java.util.Optional;
 
 import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
 /**
@@ -48,6 +50,8 @@ import jdk.internal.vm.annotation.ForceInline;
  */
 abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
+    static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
+
     // Constants defining the maximum alignment supported by various kinds of heap arrays.
 
     private static final long MAX_ALIGN_BYTE_ARRAY = ValueLayout.JAVA_BYTE.byteAlignment();
@@ -56,20 +60,18 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
     private static final long MAX_ALIGN_LONG_ARRAY = ValueLayout.JAVA_LONG.byteAlignment();
 
     final long offset;
-    final Object base;
 
     @Override
     public Optional<Object> heapBase() {
         return readOnly ?
                 Optional.empty() :
-                Optional.of(base);
+                Optional.of(unsafeGetBase());
     }
 
     @ForceInline
-    HeapMemorySegmentImpl(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
+    HeapMemorySegmentImpl(long offset, long length, boolean readOnly, MemorySessionImpl session) {
         super(length, readOnly, session);
         this.offset = offset;
-        this.base = base;
     }
 
     @Override
@@ -89,7 +91,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     @Override
     ByteBuffer makeByteBuffer() {
-        if (!(base instanceof byte[] baseByte)) {
+        if (!(unsafeGetBase() instanceof byte[] baseByte)) {
             throw new UnsupportedOperationException("Not an address to an heap-allocated byte array");
         }
         JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
@@ -100,8 +102,11 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
     public static final class OfByte extends HeapMemorySegmentImpl {
 
-        OfByte(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final byte[] base;
+
+        OfByte(long offset, byte[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -111,7 +116,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public byte[] unsafeGetBase() {
-            return (byte[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -123,12 +128,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.BYTE.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfChar extends HeapMemorySegmentImpl {
 
-        OfChar(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final char[] base;
+
+        OfChar(long offset, char[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -138,7 +153,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public char[] unsafeGetBase() {
-            return (char[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -150,12 +165,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.CHAR.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfShort extends HeapMemorySegmentImpl {
 
-        OfShort(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final short[] base;
+
+        OfShort(long offset, short[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -165,7 +190,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public short[] unsafeGetBase() {
-            return (short[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -177,12 +202,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.SHORT.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfInt extends HeapMemorySegmentImpl {
 
-        OfInt(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final int[] base;
+
+        OfInt(long offset, int[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -192,7 +227,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public int[] unsafeGetBase() {
-            return (int[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -204,12 +239,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.INT.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfLong extends HeapMemorySegmentImpl {
 
-        OfLong(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final long[] base;
+
+        OfLong(long offset, long[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -219,7 +264,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public long[] unsafeGetBase() {
-            return (long[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -231,12 +276,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.LONG.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfFloat extends HeapMemorySegmentImpl {
 
-        OfFloat(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final float[] base;
+
+        OfFloat(long offset, float[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -246,7 +301,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public float[] unsafeGetBase() {
-            return (float[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -258,12 +313,22 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         public long address() {
             return offset - Utils.BaseAndScale.FLOAT.base();
         }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
+        }
     }
 
     public static final class OfDouble extends HeapMemorySegmentImpl {
 
-        OfDouble(long offset, Object base, long length, boolean readOnly, MemorySessionImpl session) {
-            super(offset, base, length, readOnly, session);
+        final double[] base;
+
+        OfDouble(long offset, double[] base, long length, boolean readOnly, MemorySessionImpl session) {
+            super(offset, length, readOnly, session);
+            this.base = base;
         }
 
         @Override
@@ -273,7 +338,7 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
 
         @Override
         public double[] unsafeGetBase() {
-            return (double[])Objects.requireNonNull(base);
+            return base;
         }
 
         @Override
@@ -284,6 +349,13 @@ abstract sealed class HeapMemorySegmentImpl extends AbstractMemorySegmentImpl {
         @Override
         public long address() {
             return offset - Utils.BaseAndScale.DOUBLE.base();
+        }
+
+        @Override
+        @ForceInline
+        public byte unsafeGetByte(MemoryLayout encl, long base, long offset) {
+            checkEnclosingLayout(base, encl, true);
+            return SCOPED_MEMORY_ACCESS.getByte(sessionImpl(), this.base, unsafeGetOffset() + base + offset);
         }
     }
 

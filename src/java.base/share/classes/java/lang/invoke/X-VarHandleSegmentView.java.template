@@ -122,8 +122,8 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
     @ForceInline
     static $type$ get(VarHandle ob, Object obb, Object encl, long base, long offset) {
         VarHandleSegmentViewBase handle = (VarHandleSegmentViewBase)ob;
-        AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
 #if[floatingPoint]
+        AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
         $rawType$ rawValue = SCOPED_MEMORY_ACCESS.get$RawType$Unaligned(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset),
@@ -131,10 +131,9 @@ final class VarHandleSegmentAs$Type$s extends VarHandleSegmentViewBase {
         return $Type$.$rawType$BitsTo$Type$(rawValue);
 #else[floatingPoint]
 #if[byte]
-        return SCOPED_MEMORY_ACCESS.get$Type$(bb.sessionImpl(),
-                bb.unsafeGetBase(),
-                offsetPlain(bb, base, offset));
+        return ((AbstractMemorySegmentImpl)obb).unsafeGetByte((MemoryLayout)encl, base, offset);
 #else[byte]
+        AbstractMemorySegmentImpl bb = checkSegment(obb, encl, base, true);
         return SCOPED_MEMORY_ACCESS.get$Type$Unaligned(bb.sessionImpl(),
                 bb.unsafeGetBase(),
                 offsetPlain(bb, base, offset),
