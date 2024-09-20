@@ -84,6 +84,17 @@ import jdk.internal.template.StringTemplateImpl.SharedData;
 public interface StringTemplate {
 
     /**
+     * {@return a new string template with given fragments and values}
+     * @param fragments string template fragments
+     * @param values string template values
+     */
+    static StringTemplate of(List<String> fragments, List<Object> values) {
+        MethodType mt = MethodType.methodType(StringTemplate.class)
+                .appendParameterTypes(values.stream().map(Object::getClass).toArray(Class[]::new));
+        return new SharedData(fragments, mt).makeStringTemplateFromValues(values);
+    }
+
+    /**
      * Returns a list of fragment literals for this {@link StringTemplate}.
      * The fragment literals are the character sequences preceding each of the embedded
      * expressions in source code, plus the character sequence following the last

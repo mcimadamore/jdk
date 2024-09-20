@@ -1584,7 +1584,8 @@ public class Resolve {
                       boolean useVarargs) {
         if (sym.kind == ERR ||
                 (site.tsym != sym.owner && !sym.isInheritedIn(site.tsym, types)) ||
-                !notOverriddenIn(site, sym)) {
+                !notOverriddenIn(site, sym) ||
+                hasStringTemplatesInSignature(env, sym)) {
             return bestSoFar;
         } else if (useVarargs && (sym.flags() & VARARGS) == 0) {
             return bestSoFar.kind.isResolutionError() ?
@@ -1652,6 +1653,19 @@ public class Resolve {
         return (bestSoFar.kind.isResolutionError() && bestSoFar.kind != AMBIGUOUS)
             ? sym
             : mostSpecific(argtypes, sym, bestSoFar, env, site, useVarargs);
+    }
+
+    // Workaround: avoid picking up overload candidates featuring StringTemplates when preview features are disabled
+    private boolean hasStringTemplatesInSignature(Env<AttrContext> env, Symbol msym) {
+        if (!msym.isPreviewApi() || preview.isEnabled() || preview.participatesInPreview(syms, env.enclClass.sym, msym)) {
+            return false;
+        }
+        return msym.type.getParameterTypes().stream().anyMatch(this::isStringTemplate) ||
+                    isStringTemplate(msym.type.getReturnType());
+    }
+
+    private boolean isStringTemplate(Type t) {
+        return t.tsym == syms.stringTemplateType.tsym;
     }
 
     /* Return the most specific of the two methods for a call,

@@ -201,7 +201,7 @@ public final class StringTemplateImpl implements StringTemplate {
             this.metaData = null;
         }
 
-        StringTemplate makeStringTemplateFromValues(Object... args) {
+        public StringTemplate makeStringTemplateFromValues(Object... args) {
             return new StringTemplateImpl(this, args);
         }
 
