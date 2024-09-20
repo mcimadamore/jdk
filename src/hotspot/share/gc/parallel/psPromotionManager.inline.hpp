@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -249,10 +249,6 @@ inline oop PSPromotionManager::copy_unmarked_to_survivor_space(oop o,
   // Copy obj
   Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(o), cast_from_oop<HeapWord*>(new_obj), new_obj_size);
 
-  // Parallel GC claims with a release - so other threads might access this object
-  // after claiming and they should see the "completed" object.
-  ContinuationGCSupport::transform_stack_chunk(new_obj);
-
   // Now we have to CAS in the header.
   // Because the forwarding is done with memory_order_relaxed there is no
   // ordering with the above copy.  Clients that get the forwardee must not
@@ -271,6 +267,8 @@ inline oop PSPromotionManager::copy_unmarked_to_survivor_space(oop o,
       assert(young_space()->contains(new_obj), "Attempt to push non-promoted obj");
     }
 
+    ContinuationGCSupport::transform_stack_chunk(new_obj);
+
     // Do the size comparison first with new_obj_size, which we
     // already have. Hopefully, only a few objects are larger than
     // _min_array_size_for_chunking, and most of them will be arrays.
@@ -278,9 +276,7 @@ inline oop PSPromotionManager::copy_unmarked_to_survivor_space(oop o,
     if (new_obj_size > _min_array_size_for_chunking &&
         new_obj->is_objArray() &&
         PSChunkLargeArrays) {
-      // we'll chunk it
-      push_depth(ScannerTask(PartialArrayScanTask(o)));
-      TASKQUEUE_STATS_ONLY(++_arrays_chunked; ++_array_chunk_pushes);
+      push_objArray(o, new_obj);
     } else {
       // we'll just push its contents
       push_contents(new_obj);
@@ -324,9 +320,9 @@ inline void PSPromotionManager::copy_and_push_safe_barrier(T* p) {
 }
 
 inline void PSPromotionManager::process_popped_location_depth(ScannerTask task) {
-  if (task.is_partial_array_task()) {
+  if (task.is_partial_array_state()) {
     assert(PSChunkLargeArrays, "invariant");
-    process_array_chunk(task.to_partial_array_task());
+    process_array_chunk(task.to_partial_array_state());
   } else {
     if (task.is_narrow_oop_ptr()) {
       assert(UseCompressedOops, "Error");
@@ -343,7 +339,7 @@ inline bool PSPromotionManager::steal_depth(int queue_num, ScannerTask& t) {
 
 #if TASKQUEUE_STATS
 void PSPromotionManager::record_steal(ScannerTask task) {
-  if (task.is_partial_array_task()) {
+  if (task.is_partial_array_state()) {
     ++_array_chunk_steals;
   }
 }

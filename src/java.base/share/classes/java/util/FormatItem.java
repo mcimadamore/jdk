@@ -37,6 +37,7 @@ import java.util.Formatter.FormatSpecifier;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ByteArrayLittleEndian;
+import jdk.internal.util.DecimalDigits;
 import jdk.internal.util.FormatConcatItem;
 import jdk.internal.util.HexDigits;
 import jdk.internal.util.OctalDigits;
@@ -100,7 +101,7 @@ class FormatItem {
             this.zeroDigit = dfs.getZeroDigit();
             this.minusSign = dfs.getMinusSign();
             this.digitOffset = this.zeroDigit - '0';
-            int length = JLA.stringSize(value);
+            int length = DecimalDigits.stringSize(value);
             this.isNegative = value < 0L;
             this.length = this.isNegative ? length - 1 : length;
             this.width = width;
