@@ -2533,11 +2533,14 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
     public static class JCStringTemplate extends JCExpression implements StringTemplateTree {
         public List<String> fragments;
         public List<JCExpression> expressions;
+        public List<List<JCAnnotation>> annotations;
 
         protected JCStringTemplate(List<String> fragments,
-                                   List<JCExpression> expressions) {
+                                   List<JCExpression> expressions,
+                                   List<List<JCAnnotation>> annotations) {
             this.fragments = fragments;
             this.expressions = expressions;
+            this.annotations = annotations;
         }
 
         @Override
@@ -3551,7 +3554,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         JCIdent Ident(Name idname);
         JCLiteral Literal(TypeTag tag, Object value);
         JCStringTemplate StringTemplate(List<String> fragments,
-                                        List<JCExpression> expressions);
+                                        List<JCExpression> expressions,
+                                        List<List<JCAnnotation>> annotations);
         JCPrimitiveTypeTree TypeIdent(TypeTag typetag);
         JCArrayTypeTree TypeArray(JCExpression elemtype);
         JCTypeApply TypeApply(JCExpression clazz, List<JCExpression> arguments);

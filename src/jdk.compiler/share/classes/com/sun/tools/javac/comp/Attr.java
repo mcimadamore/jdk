@@ -5020,6 +5020,11 @@ public class Attr extends JCTree.Visitor {
         Type stringTemplateType = syms.stringTemplateType;
         Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
 
+        for (List<JCAnnotation> annotations : tree.annotations) {
+            annotate.annotateLater(annotations, env, syms.noSymbol, tree);
+        }
+        annotate.flush();
+
         for (JCExpression arg : tree.expressions) {
             chk.checkNonVoid(arg.pos(), attribExpr(arg, localEnv));
         }

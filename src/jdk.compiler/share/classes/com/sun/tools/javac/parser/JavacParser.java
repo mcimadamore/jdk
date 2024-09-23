@@ -830,6 +830,7 @@ public class JavacParser implements Parser {
         String string = token.stringVal();
         List<String> fragments = List.of(string);
         List<JCExpression> expressions = List.nil();
+        List<List<JCAnnotation>> annotations = List.nil();
         nextToken();
         if (kind != STRINGLITERAL) {
             while (token.kind == STRINGFRAGMENT) {
@@ -841,9 +842,11 @@ public class JavacParser implements Parser {
             }
             while (token.pos < endPos && token.kind != DEFAULT && token.kind != ERROR) {
                 accept(LBRACE);
+                List<JCAnnotation> argumentAnnotations = annotationsOpt(ANNOTATION);
                 JCExpression expression = token.kind == RBRACE ? F.at(pos).Literal(TypeTag.BOT, null)
                     : term(EXPR);
                 expressions = expressions.append(expression);
+                annotations = annotations.append(argumentAnnotations);
                 if (token.kind != ERROR) {
                     accept(RBRACE);
                 }
@@ -857,7 +860,7 @@ public class JavacParser implements Parser {
         if (200 < expressions.size()) { // StringConcatFactory.MAX_INDY_CONCAT_ARG_SLOTS
             log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.TooManyEmbeddedExpressions);
         }
-        JCExpression t = toP(F.at(pos).StringTemplate(fragments, expressions));
+        JCExpression t = toP(F.at(pos).StringTemplate(fragments, expressions, annotations));
         setMode(oldmode);
         return t;
     }

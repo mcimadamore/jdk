@@ -360,6 +360,9 @@ public class TreeScanner extends Visitor {
 
     public void visitStringTemplate(JCStringTemplate tree) {
         scan(tree.expressions);
+        for (List<JCAnnotation> annotations : tree.annotations) {
+            scan(annotations);
+        }
     }
 
     public void visitTypeIdent(JCPrimitiveTypeTree tree) {
