@@ -2534,6 +2534,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public List<String> fragments;
         public List<JCExpression> expressions;
         public List<List<JCAnnotation>> annotations;
+        public List<VarSymbol> annotationTargets;
 
         protected JCStringTemplate(List<String> fragments,
                                    List<JCExpression> expressions,

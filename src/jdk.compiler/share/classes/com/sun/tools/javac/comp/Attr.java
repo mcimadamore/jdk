@@ -5020,10 +5020,15 @@ public class Attr extends JCTree.Visitor {
         Type stringTemplateType = syms.stringTemplateType;
         Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
 
+        MethodSymbol fakeOwner = new MethodSymbol(0, names.empty, Type.noType, env.enclClass.sym);
+        ListBuffer<VarSymbol> annotationTargets = new ListBuffer<>();
         for (List<JCAnnotation> annotations : tree.annotations) {
-            annotate.annotateLater(annotations, env, syms.noSymbol, tree);
+            VarSymbol annotationTarget = new VarSymbol(0, names.empty, Type.noType, fakeOwner);
+            annotate.annotateLater(annotations, env, annotationTarget, tree);
+            annotationTargets.add(annotationTarget);
         }
         annotate.flush();
+        tree.annotationTargets = annotationTargets.toList();
 
         for (JCExpression arg : tree.expressions) {
             chk.checkNonVoid(arg.pos(), attribExpr(arg, localEnv));
