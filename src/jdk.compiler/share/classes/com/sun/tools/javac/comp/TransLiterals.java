@@ -25,6 +25,7 @@
 
 package com.sun.tools.javac.comp;
 
+import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
@@ -142,6 +143,7 @@ public final class TransLiterals extends TreeTranslator {
         final List<String> fragments;
         final List<JCExpression> expressions;
         final List<Type> expressionTypes;
+        final List<List<Attribute.Compound>> annotations;
 
         TransStringTemplate(JCStringTemplate tree) {
             this.tree = tree;
@@ -150,6 +152,7 @@ public final class TransLiterals extends TreeTranslator {
             this.expressionTypes = expressions.stream()
                     .map(arg -> arg.type == syms.botType ? syms.objectType : arg.type)
                     .collect(List.collector());
+            this.annotations = tree.annotationTargets.map(t -> t.getAnnotationMirrors());
             int slots = expressionTypes.stream()
                     .mapToInt(t -> types.isSameType(t, syms.longType) ||
                             types.isSameType(t, syms.doubleType) ? 2 : 1).sum();

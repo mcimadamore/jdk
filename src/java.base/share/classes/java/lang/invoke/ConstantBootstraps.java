@@ -26,6 +26,14 @@ package java.lang.invoke;
 
 import sun.invoke.util.Wrapper;
 import jdk.internal.constant.ConstantUtils;
+import sun.reflect.annotation.AnnotationParser;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static java.lang.invoke.MethodHandleNatives.mapLookupExceptionToError;
 import static java.util.Objects.requireNonNull;
@@ -428,5 +436,125 @@ public final class ConstantBootstraps {
         catch (ReflectiveOperationException ex) {
             throw mapLookupExceptionToError(ex);
         }
+    }
+
+    /**
+     * Returns a new annotation of the type specified by {@code annotationClass}
+     * with the attributes specified by {@code attributeNames} and {@code attributeValues}.
+     *
+     * @param lookup the lookup context describing the class performing the
+     * operation (normally stacked by the JVM)
+     * @param name unused
+     * @param annotationClass the {@code Class} object describing the annotation to be returned
+     * @param attributeNames a string encoding the names of the annotation attributes, separated by ';'
+     * @param attributeValues the values of the annotation attributes
+     * @param <A> The annotation type to be returned
+     * @return a new annotation of the specified annotation type with the given attribute values.
+     * @throws IllegalAccessError if the declaring class or the annotation is not
+     * accessible to the class performing the operation
+     * @throws NoSuchMethodError if an attribute name cannot be resolved in the provided annotation class.
+     * accessible to the class performing the operation
+     * @throws IllegalArgumentException if {@code annotationClass} is not an annotation type
+     * @throws IllegalArgumentException if the number of attribute names {@code attributeNames} and the number of
+     * attribute values in {@code attributeValues} do not match.
+     */
+    @SuppressWarnings("unchecked")
+    public static <A extends Annotation> A makeAnnotation(MethodHandles.Lookup lookup,
+                                            String name,
+                                            Class<A> annotationClass,
+                                            String attributeNames,
+                                            Object... attributeValues) {
+        requireNonNull(lookup);
+        requireNonNull(annotationClass);
+        requireNonNull(attributeNames);
+        requireNonNull(attributeValues);
+        validateClassAccess(lookup, annotationClass);
+        if (!annotationClass.isAnnotation()) {
+            throw new IllegalArgumentException(annotationClass.getSimpleName() + " is not an annotation");
+        }
+        List<String> attributeNameList = "".equals(attributeNames) ?
+                List.of() : List.of(attributeNames.split(";"));
+        if (attributeNameList.size() != attributeValues.length) {
+            throw new IllegalArgumentException("Attribute name/value mismatch");
+        }
+        Map<String, Object> attributes = new HashMap<>();
+        for (int i = 0 ; i < attributeValues.length ; i++) {
+            String attributeName = attributeNameList.get(i);
+            Object attributeValue = attributeValues[i];
+            try {
+                Method attributeMethod = annotationClass.getDeclaredMethod(attributeName);
+                Class<?> attributeType = attributeMethod.getReturnType();
+                attributes.put(attributeName, convertAttribute(attributeValue, attributeType));
+            } catch (ReflectiveOperationException ex) {
+                throw mapLookupExceptionToError(ex);
+            }
+        }
+        return (A)AnnotationParser.annotationForMap(annotationClass, attributes);
+    }
+
+    /**
+     * Convert an attribute value to the corresponding attribute type, according to JVMS 4.7.16.1.
+     */
+    private static Object convertAttribute(Object value, Class<?> pt) {
+        if (pt.equals(byte.class)) {
+            return ((Integer)value).byteValue();
+        } else if (pt.equals(char.class)) {
+            return (char)((int)value);
+        } else if (pt.equals(double.class)) {
+            return (double)value;
+        } else if (pt.equals(float.class)) {
+            return (float)value;
+        } else if (pt.equals(int.class)) {
+            return (int)value;
+        } else if (pt.equals(long.class)) {
+            return (long)value;
+        } else if (pt.equals(short.class)) {
+            return (short) value;
+        } else if (pt.equals(boolean.class)) {
+            return (int) value != 0;
+        } else if (Enum.class.isAssignableFrom(pt) ||
+                Annotation.class.isAssignableFrom(pt) ||
+                pt.isArray() ||
+                pt.equals(Class.class) ||
+                pt.equals(String.class)) {
+            return pt.cast(value);
+        } else {
+            throw new UnsupportedOperationException("Unsupported attribute type: " + pt.getSimpleName());
+        }
+    }
+
+    /**
+     * Returns a new array of the type specified by {@code arrayClass}
+     * with the elements specified by {@code elements}.
+     *
+     * @param lookup the lookup context describing the class performing the
+     * operation (normally stacked by the JVM)
+     * @param name unused
+     * @param arrayClass the {@code Class} object describing the array to be returned
+     * @param elements the array elements
+     * @return a new array of the specified array type with the given elements.
+     * @throws IllegalAccessError if the declaring class or the annotation is not
+     * accessible to the class performing the operation
+     * @throws NoSuchMethodError if an attribute name cannot be resolved in the provided annotation class.
+     * accessible to the class performing the operation
+     * @throws IllegalArgumentException if {@code arrayClass} is not an array type
+     * @throws IllegalArgumentException if one of the elements in {@code elements} is not compatible with the array type.
+     */
+    public static Object makeArray(MethodHandles.Lookup lookup,
+                                            String name,
+                                            Class<?> arrayClass,
+                                            Object... elements) {
+        requireNonNull(lookup);
+        requireNonNull(arrayClass);
+        requireNonNull(elements);
+        validateClassAccess(lookup, arrayClass);
+        if (!arrayClass.isArray()) {
+            throw new IllegalArgumentException(arrayClass.getSimpleName() + " is not an array");
+        }
+        Object array = Array.newInstance(arrayClass.componentType(), elements.length);
+        for (int i = 0 ; i < elements.length ; i++) {
+            Array.set(array, i, elements[i]);
+        }
+        return array;
     }
 }

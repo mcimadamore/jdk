@@ -2,6 +2,7 @@ package jdk.internal.template;
 
 import jdk.internal.template.StringTemplateImpl.SharedData;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -12,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StringTemplateHelper {
 
@@ -150,12 +152,13 @@ public class StringTemplateHelper {
     public static StringTemplate combineST(boolean flatten, StringTemplate... sts) {
         Objects.requireNonNull(sts, "sts must not be null");
         if (sts.length == 0) {
-            return new SharedData(List.of(""), MethodType.methodType(StringTemplate.class)).makeStringTemplateFromValues();
+            return new SharedData(List.of(""), List.of(), MethodType.methodType(StringTemplate.class)).makeStringTemplateFromValues();
         } else if (sts.length == 1 && !flatten) {
             return Objects.requireNonNull(sts[0], "string templates should not be null");
         }
         MethodType type = MethodType.methodType(StringTemplate.class);
         List<String> fragments = new ArrayList<>();
+        List<List<Annotation>> annotations = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         for (StringTemplate st : sts) {
             type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type().parameterArray());
@@ -167,33 +170,41 @@ public class StringTemplateHelper {
                 }
             }
             Objects.requireNonNull(st, "string templates should not be null");
-            flattenST(flatten, st, fragments, values);
+            flattenST(flatten, st, fragments, annotations, values);
         }
         if (200 < values.size()) {
             throw new RuntimeException("string template combine too many expressions");
         }
-        return new SharedData(fragments, type)
+        return new SharedData(fragments, annotations, type)
                 .makeStringTemplateFromValues(values.toArray());
     }
 
     public static void flattenST(boolean flatten, StringTemplate st,
-                                 List<String> fragments, List<Object> values) {
+                                 List<String> fragments, List<List<Annotation>> annotations, List<Object> values) {
         Iterator<String> fragmentsIter = st.fragments().iterator();
+        Iterator<List<Annotation>> annotationsIter = st.annotations().iterator();
         if (fragments.isEmpty()) {
             fragments.add(fragmentsIter.next());
         } else {
             int last = fragments.size() - 1;
             fragments.set(last, fragments.get(last) + fragmentsIter.next());
+            annotations.set(last, join(annotations.get(last), annotationsIter.next()));
         }
         for(Object value : st.values()) {
             if (flatten && value instanceof StringTemplate nested) {
-                flattenST(true, nested, fragments, values);
+                flattenST(true, nested, fragments, annotations, values);
                 int last = fragments.size() - 1;
                 fragments.set(last, fragments.get(last) + fragmentsIter.next());
+                annotations.set(last, join(annotations.get(last), annotationsIter.next()));
             } else {
                 values.add(value);
                 fragments.add(fragmentsIter.next());
+                annotations.add(annotationsIter.next());
             }
         }
+    }
+
+    private static <Z> List<Z> join(List<Z> one, List<Z> two) {
+        return Stream.concat(one.stream(), two.stream()).toList();
     }
 }

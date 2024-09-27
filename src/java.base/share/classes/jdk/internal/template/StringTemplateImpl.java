@@ -24,6 +24,7 @@
  */
 package jdk.internal.template;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -58,6 +59,11 @@ public final class StringTemplateImpl implements StringTemplate {
     @Override
     public List<String> fragments() {
         return sharedData.fragments();
+    }
+
+    @Override
+    public List<List<Annotation>> annotations() {
+        return sharedData.annotations();
     }
 
     @Override
@@ -167,6 +173,9 @@ public final class StringTemplateImpl implements StringTemplate {
         @Stable
         private final List<String> fragments;
 
+        @Stable
+        private final List<List<Annotation>> annotations;
+
         /**
          * {@link MethodType} at callsite
          */
@@ -194,8 +203,9 @@ public final class StringTemplateImpl implements StringTemplate {
          * @param fragments       list of string fragments
          * @param type            {@link MethodType} at callsite
          */
-        public SharedData(List<String> fragments, MethodType type) {
+        public SharedData(List<String> fragments, List<List<Annotation>> annotations, MethodType type) {
             this.fragments = fragments;
+            this.annotations = annotations;
             this.type = type;
             this.owner = null;
             this.metaData = null;
@@ -216,6 +226,13 @@ public final class StringTemplateImpl implements StringTemplate {
          */
         List<String> fragments() {
             return fragments;
+        }
+
+        /**
+         * {@return list of string fragments}
+         */
+        List<List<Annotation>> annotations() {
+            return annotations;
         }
 
         /**

@@ -25,6 +25,7 @@
 
 package java.lang;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -32,6 +33,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import jdk.internal.javac.PreviewFeature;
 import jdk.internal.template.StringTemplateHelper;
@@ -91,7 +93,7 @@ public interface StringTemplate {
     static StringTemplate of(List<String> fragments, List<Object> values) {
         MethodType mt = MethodType.methodType(StringTemplate.class)
                 .appendParameterTypes(values.stream().map(Object::getClass).toArray(Class[]::new));
-        return new SharedData(fragments, mt).makeStringTemplateFromValues(values);
+        return new SharedData(fragments, List.of(), mt).makeStringTemplateFromValues(values);
     }
 
     /**
@@ -115,6 +117,11 @@ public interface StringTemplate {
      * @implSpec the list returned is immutable
      */
     List<String> fragments();
+
+    /**
+     * {@return the annotations associated with the arguments in this string template}
+     */
+    List<List<Annotation>> annotations();
 
     /**
      * Returns a list of embedded expression results for this {@link StringTemplate}.
@@ -367,6 +374,7 @@ public interface StringTemplate {
         public static CallSite newStringTemplate(MethodHandles.Lookup lookup,
                                                  String name,
                                                  MethodType type,
+                                                 Annotation[][] annotations,
                                                  String... fragments) {
             Objects.requireNonNull(lookup, "lookup is null");
             Objects.requireNonNull(name, "name is null");
@@ -375,7 +383,10 @@ public interface StringTemplate {
             if (type.returnType() != StringTemplate.class) {
                 throw new IllegalArgumentException("type must be of type StringTemplate");
             }
-            MethodHandle mh = new SharedData(List.of(fragments), type).factoryHandle();
+            MethodHandle mh = new SharedData(
+                    List.of(fragments),
+                    Stream.of(annotations).map(List::of).toList(),
+                    type).factoryHandle();
             return new ConstantCallSite(mh);
         }
     }
