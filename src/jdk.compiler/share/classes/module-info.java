@@ -234,7 +234,8 @@ module jdk.compiler {
     exports com.sun.tools.javac.api to
         jdk.javadoc,
         jdk.jshell,
-        jdk.internal.md;
+        jdk.internal.md,
+        jdk.incubator.vector;
     exports com.sun.tools.javac.resources to
         jdk.jshell;
     exports com.sun.tools.javac.code to

@@ -32,5 +32,10 @@
  * @moduleGraph
  */
 module jdk.incubator.vector {
+    requires transitive jdk.compiler;
+
     exports jdk.incubator.vector;
+
+    provides com.sun.source.util.Plugin with
+            jdk.incubator.vector.VectorPlugin;
 }
