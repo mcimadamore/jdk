@@ -24,4 +24,9 @@ public class VectorPlugin implements Plugin {
     public void init(JavacTask task, String... args) {
         System.out.println("Hello from " + getName());
     }
+
+    @Override
+    public boolean autoStart() {
+        return false; //true;
+    }
 }
