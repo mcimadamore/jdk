@@ -180,7 +180,6 @@ public class List<A> extends AbstractCollection<A> implements java.util.List<A> 
      *  @param len    The number of elements in the list.
      *  @param init   The value of each element.
      */
-    @Deprecated
     public static <A> List<A> fill(int len, A init) {
         List<A> l = nil();
         for (int i = 0; i < len; i++) l = new List<>(init, l);

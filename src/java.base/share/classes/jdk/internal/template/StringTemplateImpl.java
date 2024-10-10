@@ -76,6 +76,8 @@ public final class StringTemplateImpl implements StringTemplate {
     public String toString() {
         return "StringTemplate{ fragments = [ \"" +
                 String.join("\", \"", fragments()) +
+                "\" ], annotations = " +
+                annotations() +
                 "\" ], values = " +
                 values() +
                 " }";

@@ -93,7 +93,7 @@ public interface StringTemplate {
     static StringTemplate of(List<String> fragments, List<Object> values) {
         MethodType mt = MethodType.methodType(StringTemplate.class)
                 .appendParameterTypes(values.stream().map(Object::getClass).toArray(Class[]::new));
-        return new SharedData(fragments, List.of(), mt).makeStringTemplateFromValues(values);
+        return new SharedData(fragments, List.of(), mt).makeStringTemplateFromValues(values.toArray());
     }
 
     /**
@@ -363,6 +363,7 @@ public interface StringTemplate {
          * @param lookup          method lookup from call site
          * @param name            method name - not used
          * @param type            method type
+         * @param annotations     string template value annotations
          *                        (ptypes...) -> StringTemplate
          * @param fragments       fragment array for string template
          *
