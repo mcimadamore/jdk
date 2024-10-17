@@ -62,8 +62,8 @@ public final class StringTemplateImpl implements StringTemplate {
     }
 
     @Override
-    public List<List<Annotation>> annotations() {
-        return sharedData.annotations();
+    public List<Parameter> parameters() {
+        return sharedData.parameters();
     }
 
     @Override
@@ -76,8 +76,8 @@ public final class StringTemplateImpl implements StringTemplate {
     public String toString() {
         return "StringTemplate{ fragments = [ \"" +
                 String.join("\", \"", fragments()) +
-                "\" ], annotations = " +
-                annotations() +
+                "\" ], parameters = " +
+                parameters() +
                 "\" ], values = " +
                 values() +
                 " }";
@@ -176,11 +176,8 @@ public final class StringTemplateImpl implements StringTemplate {
         private final List<String> fragments;
 
         @Stable
-        private final List<List<Annotation>> annotations;
+        private final List<Parameter> parameters;
 
-        /**
-         * {@link MethodType} at callsite
-         */
         @Stable
         private final MethodType type;
 
@@ -203,11 +200,12 @@ public final class StringTemplateImpl implements StringTemplate {
         /**
          * Constructor. Contents are bound to the {@link java.lang.invoke.CallSite CallSite}.
          * @param fragments       list of string fragments
+         * @param parameters      list of string template parameters
          * @param type            {@link MethodType} at callsite
          */
-        public SharedData(List<String> fragments, List<List<Annotation>> annotations, MethodType type) {
+        public SharedData(List<String> fragments, List<Parameter> parameters, MethodType type) {
             this.fragments = fragments;
-            this.annotations = annotations;
+            this.parameters = parameters;
             this.type = type;
             this.owner = null;
             this.metaData = null;
@@ -233,8 +231,8 @@ public final class StringTemplateImpl implements StringTemplate {
         /**
          * {@return list of string fragments}
          */
-        List<List<Annotation>> annotations() {
-            return annotations;
+        List<Parameter> parameters() {
+            return parameters;
         }
 
         /**
@@ -259,5 +257,25 @@ public final class StringTemplateImpl implements StringTemplate {
             return this.owner == owner ? (T)metaData : null;
         }
 
+    }
+
+    public record ParameterImpl(Class<?> type, List<Annotation> annotations) implements Parameter {
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+            return (T)annotations.stream()
+                    .filter(a -> a.annotationType().equals(annotationClass))
+                    .findFirst().orElse(null);
+        }
+
+        @Override
+        public Annotation[] getAnnotations() {
+            return annotations.toArray(Annotation[]::new);
+        }
+
+        @Override
+        public Annotation[] getDeclaredAnnotations() {
+            return annotations.toArray(Annotation[]::new);
+        }
     }
 }

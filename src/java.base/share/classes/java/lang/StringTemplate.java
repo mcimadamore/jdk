@@ -31,6 +31,7 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.AnnotatedElement;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -86,6 +87,17 @@ import jdk.internal.template.StringTemplateImpl.SharedData;
 public interface StringTemplate {
 
     /**
+     * A string template parameter. String template parameters
+     * have a type and an optional list of annotations.
+     */
+    interface Parameter extends AnnotatedElement {
+        /**
+         * {@return the type of the template parameter}
+         */
+        Class<?> type();
+    }
+
+    /**
      * {@return a new string template with given fragments and values}
      * @param fragments string template fragments
      * @param values string template values
@@ -119,11 +131,6 @@ public interface StringTemplate {
     List<String> fragments();
 
     /**
-     * {@return the annotations associated with the arguments in this string template}
-     */
-    List<List<Annotation>> annotations();
-
-    /**
      * Returns a list of embedded expression results for this {@link StringTemplate}.
      * In the example:
      * {@snippet lang=java :
@@ -139,6 +146,21 @@ public interface StringTemplate {
      * @implSpec the list returned is immutable
      */
     List<Object> values();
+
+    /**
+     * {@return the parameter list for this {@link StringTemplate}}
+     * In the example:
+     * {@snippet lang=java :
+     * String student = "Mary";
+     * String teacher = "Johnson";
+     * StringTemplate st = "The student \{@Name student} is in \{@Name teacher}'s classroom.";
+     * List<Parameter> parameters = st.parameters(); // @highlight substring="parameters()"
+     * }
+     * {@code parameters} will contain two template parameters. The {@linkplain Parameter#type() type} of the
+     * template parameters is {@code String}. Both template parameters are associated with the {@code Name}
+     * annotation.
+     */
+    List<Parameter> parameters();
 
     /**
      * Returns the string interpolation of the fragments and values for the specified
@@ -364,7 +386,6 @@ public interface StringTemplate {
          * @param name            method name - not used
          * @param type            method type
          * @param annotations     string template value annotations
-         *                        (ptypes...) -> StringTemplate
          * @param fragments       fragment array for string template
          *
          * @return {@link CallSite} to handle create string template
@@ -384,9 +405,23 @@ public interface StringTemplate {
             if (type.returnType() != StringTemplate.class) {
                 throw new IllegalArgumentException("type must be of type StringTemplate");
             }
+            if (annotations.length != type.parameterCount()) {
+                throw new IllegalArgumentException("Wrong annotations count: " + annotations.length);
+            }
+            if (fragments.length - 1 > type.parameterCount()) {
+                throw new IllegalArgumentException("Too many fragments");
+            } else if (fragments.length - 1 < type.parameterCount()) {
+                throw new IllegalArgumentException("Too few fragments");
+            }
+            List<Parameter> parameters = new ArrayList<>();
+            for (int i = 0 ; i < type.parameterCount() ; i++) {
+                parameters.add(
+                        new StringTemplateImpl.ParameterImpl(type.parameterType(i), List.of(annotations[i])));
+            }
+
             MethodHandle mh = new SharedData(
                     List.of(fragments),
-                    Stream.of(annotations).map(List::of).toList(),
+                    parameters,
                     type).factoryHandle();
             return new ConstantCallSite(mh);
         }

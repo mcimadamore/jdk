@@ -43,58 +43,58 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(value = 3, jvmArgsAppend = "--enable-preview")
+//@Fork(value = 3, jvmArgsAppend = "--enable-preview")
 public class StringTemplateFMT {
 
-    public String s = "str";
-    public int i = 17;
-
-    @Benchmark
-    public String stringFormat() {
-        return String.format("%s\{s}");
-    }
-
-    @Benchmark
-    public String stringFormat_baseline() {
-        return String.format("%s", s);
-    }
-
-    @Benchmark
-    public String stringIntFormat() {
-        return String.format("%s\{s} %d\{i}");
-    }
-
-    @Benchmark
-    public String stringIntFormat_baseline() {
-        return String.format("%s %d", s, i);
-    }
-
-    @Benchmark
-    public String widthStringFormat() {
-        return String.format("%3s\{s}");
-    }
-
-    public String widthStringFormat_baseline() {
-        return String.format("%3s", s);
-    }
-
-    @Benchmark
-    public String widthStringIntFormat() {
-        return String.format("%3s\{s} %d\{i}");
-    }
-
-    @Benchmark
-    public String widthStringIntFormat_baseline() {
-        return String.format("%3s %d", s, i);
-    }
-
-    @Benchmark
-    public String complexFormat() {
-        return String.format("%3s\{s} %10d\{i} %4S\{s} %04X\{i} %4S\{s} %04X\{i} %4S\{s} %04X\{i}");
-    }
-
-    @Benchmark
-    public String complexFormat_baseline() {
-        return String.format("%3s %10d %4S %04X %4S %04X %4S %04X", s, i, s, i, s, i, s, i);
-    }
+//    public String s = "str";
+//    public int i = 17;
+//
+//    @Benchmark
+//    public String stringFormat() {
+//        return String.format("%s\{s}");
+//    }
+//
+//    @Benchmark
+//    public String stringFormat_baseline() {
+//        return String.format("%s", s);
+//    }
+//
+//    @Benchmark
+//    public String stringIntFormat() {
+//        return String.format("%s\{s} %d\{i}");
+//    }
+//
+//    @Benchmark
+//    public String stringIntFormat_baseline() {
+//        return String.format("%s %d", s, i);
+//    }
+//
+//    @Benchmark
+//    public String widthStringFormat() {
+//        return String.format("%3s\{s}");
+//    }
+//
+//    public String widthStringFormat_baseline() {
+//        return String.format("%3s", s);
+//    }
+//
+//    @Benchmark
+//    public String widthStringIntFormat() {
+//        return String.format("%3s\{s} %d\{i}");
+//    }
+//
+//    @Benchmark
+//    public String widthStringIntFormat_baseline() {
+//        return String.format("%3s %d", s, i);
+//    }
+//
+//    @Benchmark
+//    public String complexFormat() {
+//        return String.format("%3s\{s} %10d\{i} %4S\{s} %04X\{i} %4S\{s} %04X\{i} %4S\{s} %04X\{i}");
+//    }
+//
+//    @Benchmark
+//    public String complexFormat_baseline() {
+//        return String.format("%3s %10d %4S %04X %4S %04X %4S %04X", s, i, s, i, s, i, s, i);
+//    }
 }

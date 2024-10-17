@@ -45,29 +45,29 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(value = 3, jvmArgsAppend = "--enable-preview")
+//@Fork(value = 3, jvmArgsAppend = "--enable-preview")
 public class StringTemplateJoin {
 
-    public String s = "str";
-    public int i = 17;
-
-    @Benchmark
-    public String simple() {
-        return str("\{s}\{s}");
-    }
-
-    @Benchmark
-    public String simple_baseline() {
-        return s + s;
-    }
-
-    @Benchmark
-    public String complex() {
-        return str("str\{s}int\{i}str\{s}int\{i}");
-    }
-
-    @Benchmark
-    public String complex_baseline() {
-        return "str" + s + "int" + i + "str" + s + "int" + i;
-    }
+//    public String s = "str";
+//    public int i = 17;
+//
+//    @Benchmark
+//    public String simple() {
+//        return str("\{s}\{s}");
+//    }
+//
+//    @Benchmark
+//    public String simple_baseline() {
+//        return s + s;
+//    }
+//
+//    @Benchmark
+//    public String complex() {
+//        return str("str\{s}int\{i}str\{s}int\{i}");
+//    }
+//
+//    @Benchmark
+//    public String complex_baseline() {
+//        return "str" + s + "int" + i + "str" + s + "int" + i;
+//    }
 }

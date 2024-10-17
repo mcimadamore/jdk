@@ -24,13 +24,20 @@
  */
 package java.lang.invoke;
 
+import jdk.internal.template.StringTemplateImpl;
 import sun.invoke.util.Wrapper;
 import jdk.internal.constant.ConstantUtils;
+import sun.reflect.annotation.AnnotatedTypeFactory;
 import sun.reflect.annotation.AnnotationParser;
+import sun.reflect.annotation.TypeAnnotation;
+import sun.reflect.annotation.TypeAnnotation.LocationInfo;
+import sun.reflect.annotation.TypeAnnotation.TypeAnnotationTarget;
+import sun.reflect.annotation.TypeAnnotation.TypeAnnotationTargetInfo;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

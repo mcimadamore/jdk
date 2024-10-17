@@ -158,7 +158,7 @@ public class StringTemplateHelper {
         }
         MethodType type = MethodType.methodType(StringTemplate.class);
         List<String> fragments = new ArrayList<>();
-        List<List<Annotation>> annotations = new ArrayList<>();
+        List<StringTemplate.Parameter> parameters = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         for (StringTemplate st : sts) {
             type = type.appendParameterTypes(((StringTemplateImpl)st).sharedData.type().parameterArray());
@@ -170,36 +170,35 @@ public class StringTemplateHelper {
                 }
             }
             Objects.requireNonNull(st, "string templates should not be null");
-            flattenST(flatten, st, fragments, annotations, values);
+            flattenST(flatten, st, fragments, parameters, values);
         }
         if (200 < values.size()) {
             throw new RuntimeException("string template combine too many expressions");
         }
-        return new SharedData(fragments, annotations, type)
+        return new SharedData(fragments, parameters, type)
                 .makeStringTemplateFromValues(values.toArray());
     }
 
     public static void flattenST(boolean flatten, StringTemplate st,
-                                 List<String> fragments, List<List<Annotation>> annotations, List<Object> values) {
+                                 List<String> fragments, List<StringTemplate.Parameter> parameters, List<Object> values) {
         Iterator<String> fragmentsIter = st.fragments().iterator();
-        Iterator<List<Annotation>> annotationsIter = st.annotations().iterator();
         if (fragments.isEmpty()) {
             fragments.add(fragmentsIter.next());
         } else {
             int last = fragments.size() - 1;
             fragments.set(last, fragments.get(last) + fragmentsIter.next());
-            annotations.set(last, join(annotations.get(last), annotationsIter.next()));
         }
-        for(Object value : st.values()) {
+        for (int i = 0 ; i < st.values().size() ; i++) {
+            Object value = st.values().get(i);
+            StringTemplate.Parameter parameter = st.parameters().get(i);
             if (flatten && value instanceof StringTemplate nested) {
-                flattenST(true, nested, fragments, annotations, values);
+                flattenST(true, nested, fragments, parameters, values);
                 int last = fragments.size() - 1;
                 fragments.set(last, fragments.get(last) + fragmentsIter.next());
-                annotations.set(last, join(annotations.get(last), annotationsIter.next()));
             } else {
                 values.add(value);
+                parameters.add(parameter);
                 fragments.add(fragmentsIter.next());
-                annotations.add(annotationsIter.next());
             }
         }
     }

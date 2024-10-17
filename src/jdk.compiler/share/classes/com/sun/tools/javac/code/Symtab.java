@@ -247,6 +247,7 @@ public class Symtab {
     // For string templates
     public final Type stringTemplateType;
     public final Type templateRuntimeType;
+    public final Type stringTemplateParameterType;
 
     /** The symbol representing the length field of an array.
      */
@@ -645,6 +646,7 @@ public class Symtab {
 
         // For string templates
         stringTemplateType = enterClass("java.lang.StringTemplate");
+        stringTemplateParameterType = enterClass("java.lang.StringTemplate$Parameter");
         templateRuntimeType = enterClass("java.lang.StringTemplate$Runtime");
 
         // Enter a synthetic class that is used to mark internal
