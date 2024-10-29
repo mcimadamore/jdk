@@ -28,7 +28,7 @@ package jdk.internal.foreign;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 
-public final class SlicingAllocator implements SegmentAllocator {
+public final class SlicingAllocator implements SegmentAllocator.OfRaw {
 
     private final MemorySegment segment;
 
@@ -47,7 +47,7 @@ public final class SlicingAllocator implements SegmentAllocator {
     }
 
     @Override
-    public MemorySegment allocate(long byteSize, long byteAlignment) {
+    public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         // try to slice from current segment first...
         return trySlice(byteSize, byteAlignment);

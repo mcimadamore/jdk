@@ -660,13 +660,6 @@ public interface SegmentAllocator {
     MemorySegment allocate(long byteSize, long byteAlignment);
 
     /**
-     * {@return a view of this allocator which does not initialize freshly allocated memory}
-     * Not all allocators support this. When not supported, an allocator is allowed
-     * to return itself.
-     */
-    default SegmentAllocator asUninitialized() { return this; }
-
-    /**
      * Returns a segment allocator that responds to allocation requests by returning
      * consecutive slices obtained from the provided segment. Each new allocation
      * request will return a new slice starting at the current offset (modulo additional
@@ -725,4 +718,31 @@ public interface SegmentAllocator {
             throw new IllegalArgumentException("read-only segment");
         }
     }
+
+    /**
+     * A segment allocator which exposes uninitialized allocation primitives.
+     */
+    interface OfRaw extends SegmentAllocator {
+        /**
+         * Allocate a memory segment w/o initialization.
+         * @param size size.
+         * @param align align.
+         * @return a new memory segment w/o initialization.
+         */
+        MemorySegment allocateRaw(long size, long align);
+        default MemorySegment allocate(long size, long align) {
+            return allocateRaw(size, align).fill((byte)0);
+        }
+    }
+
+    /**
+     * {@return a view of this allocator which does not initialize freshly allocated memory}
+     * Not all allocators support this. When not supported, an allocator is allowed
+     * to return itself.
+     */
+    private SegmentAllocator asUninitialized() {
+        return this instanceof OfRaw raw ?
+                raw::allocateRaw : this;
+    }
+
 }

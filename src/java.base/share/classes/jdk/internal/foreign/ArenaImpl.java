@@ -49,8 +49,7 @@ public final class ArenaImpl implements Arena {
 
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
-        return session.allocate(byteSize, byteAlignment)
-                      .fill((byte)0);
+        return session.allocate(byteSize, byteAlignment);
     }
 
     @Override
