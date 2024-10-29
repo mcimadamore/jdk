@@ -29,6 +29,7 @@ package jdk.internal.foreign;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment.Scope;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
@@ -53,7 +54,7 @@ import jdk.internal.vm.annotation.ForceInline;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements Scope
+        implements Scope, SegmentAllocator
         permits ConfinedSession, GlobalSession, SharedSession {
     static final int OPEN = 0;
     static final int CLOSED = -1;
@@ -216,6 +217,17 @@ public abstract sealed class MemorySessionImpl
 
     public boolean isCloseable() {
         return true;
+    }
+
+    @Override
+    public MemorySegment allocate(long byteSize, long byteAlignment) {
+        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+        boolean shouldReserve = shouldReserve();
+        return SegmentFactories.allocateSegment(byteSize, byteAlignment, this, shouldReserve);
+    }
+
+    public boolean shouldReserve() {
+        return false;
     }
 
     /**

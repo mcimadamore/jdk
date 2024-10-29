@@ -25,19 +25,16 @@
 
 package jdk.internal.foreign;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
+import java.lang.foreign.*;
 import java.lang.foreign.MemorySegment.Scope;
+import java.nio.charset.Charset;
 import java.util.Objects;
 
 public final class ArenaImpl implements Arena {
 
     private final MemorySessionImpl session;
-    private final boolean shouldReserveMemory;
     ArenaImpl(MemorySessionImpl session) {
         this.session = session;
-        shouldReserveMemory = session instanceof ImplicitSession;
     }
 
     @Override
@@ -50,14 +47,99 @@ public final class ArenaImpl implements Arena {
         session.close();
     }
 
-    public MemorySegment allocateNoInit(long byteSize, long byteAlignment) {
-        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-        return SegmentFactories.allocateSegment(byteSize, byteAlignment, session, shouldReserveMemory);
+    @Override
+    public MemorySegment allocate(long byteSize, long byteAlignment) {
+        return session.allocate(byteSize, byteAlignment)
+                      .fill((byte)0);
     }
 
     @Override
-    public MemorySegment allocate(long byteSize, long byteAlignment) {
-        MemorySegment segment = allocateNoInit(byteSize, byteAlignment);
-        return segment.fill((byte)0);
+    public MemorySegment allocateFrom(String str) {
+        return session.allocateFrom(str);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(String str, Charset charset) {
+        return session.allocateFrom(str, charset);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfByte layout, byte value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfChar layout, char value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfShort layout, short value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfInt layout, int value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfFloat layout, float value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfLong layout, long value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfDouble layout, double value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(AddressLayout layout, MemorySegment value) {
+        return session.allocateFrom(layout, value);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout elementLayout, MemorySegment source, ValueLayout sourceElementLayout, long sourceOffset, long elementCount) {
+        return session.allocateFrom(elementLayout, source, sourceElementLayout, sourceOffset, elementCount);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfByte elementLayout, byte... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfShort elementLayout, short... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfChar elementLayout, char... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfInt elementLayout, int... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfFloat elementLayout, float... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfLong elementLayout, long... elements) {
+        return session.allocateFrom(elementLayout, elements);
+    }
+
+    @Override
+    public MemorySegment allocateFrom(ValueLayout.OfDouble elementLayout, double... elements) {
+        return session.allocateFrom(elementLayout, elements);
     }
 }

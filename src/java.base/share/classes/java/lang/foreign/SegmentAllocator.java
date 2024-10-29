@@ -140,12 +140,12 @@ public interface SegmentAllocator {
         int length;
         if (StringSupport.bytesCompatible(str, charset)) {
             length = str.length();
-            segment = allocateNoInit((long) length + termCharSize);
+            segment = asUninitialized().allocate((long) length + termCharSize);
             StringSupport.copyToSegmentRaw(str, segment, 0);
         } else {
             byte[] bytes = str.getBytes(charset);
             length = bytes.length;
-            segment = allocateNoInit((long) bytes.length + termCharSize);
+            segment = asUninitialized().allocate((long) bytes.length + termCharSize);
             MemorySegment.copy(bytes, 0, segment, ValueLayout.JAVA_BYTE, 0, bytes.length);
         }
         for (int i = 0 ; i < termCharSize ; i++) {
@@ -174,7 +174,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfByte layout, byte value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -199,7 +199,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfChar layout, char value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -224,7 +224,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfShort layout, short value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -249,7 +249,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfInt layout, int value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -274,7 +274,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfFloat layout, float value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -299,7 +299,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfLong layout, long value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -324,7 +324,7 @@ public interface SegmentAllocator {
      */
     default MemorySegment allocateFrom(ValueLayout.OfDouble layout, double value) {
         Objects.requireNonNull(layout);
-        MemorySegment seg = allocateNoInit(layout);
+        MemorySegment seg = asUninitialized().allocate(layout);
         seg.set(layout, 0, value);
         return seg;
     }
@@ -357,7 +357,7 @@ public interface SegmentAllocator {
     default MemorySegment allocateFrom(AddressLayout layout, MemorySegment value) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(layout);
-        MemorySegment segment = allocateNoInit(layout);
+        MemorySegment segment = asUninitialized().allocate(layout);
         segment.set(layout, 0, value);
         return segment;
     }
@@ -405,7 +405,7 @@ public interface SegmentAllocator {
         Objects.requireNonNull(source);
         Objects.requireNonNull(sourceElementLayout);
         Objects.requireNonNull(elementLayout);
-        MemorySegment dest = allocateNoInit(elementLayout, elementCount);
+        MemorySegment dest = asUninitialized().allocate(elementLayout, elementCount);
         MemorySegment.copy(source, sourceElementLayout, sourceOffset, dest, elementLayout, 0, elementCount);
         return dest;
     }
@@ -660,6 +660,13 @@ public interface SegmentAllocator {
     MemorySegment allocate(long byteSize, long byteAlignment);
 
     /**
+     * {@return a view of this allocator which does not initialize freshly allocated memory}
+     * Not all allocators support this. When not supported, an allocator is allowed
+     * to return itself.
+     */
+    default SegmentAllocator asUninitialized() { return this; }
+
+    /**
      * Returns a segment allocator that responds to allocation requests by returning
      * consecutive slices obtained from the provided segment. Each new allocation
      * request will return a new slice starting at the current offset (modulo additional
@@ -717,26 +724,5 @@ public interface SegmentAllocator {
         if (segment.isReadOnly()) {
             throw new IllegalArgumentException("read-only segment");
         }
-    }
-
-    @ForceInline
-    private MemorySegment allocateNoInit(long byteSize) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(byteSize, 1) :
-                allocate(byteSize);
-    }
-
-    @ForceInline
-    private MemorySegment allocateNoInit(MemoryLayout layout) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment()) :
-                allocate(layout);
-    }
-
-    @ForceInline
-    private MemorySegment allocateNoInit(MemoryLayout layout, long size) {
-        return this instanceof ArenaImpl arenaImpl ?
-                arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment()) :
-                allocate(layout, size);
     }
 }
