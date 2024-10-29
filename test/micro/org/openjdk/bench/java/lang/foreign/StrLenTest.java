@@ -145,7 +145,7 @@ public class StrLenTest extends CLayouts {
         return lorem.substring(0, size);
     }
 
-    static class RingAllocator implements SegmentAllocator {
+    static class RingAllocator implements SegmentAllocator.OfRaw {
         final MemorySegment segment;
         SegmentAllocator current;
         long rem;
@@ -156,7 +156,7 @@ public class StrLenTest extends CLayouts {
         }
 
         @Override
-        public MemorySegment allocate(long byteSize, long byteAlignment) {
+        public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
             if (rem < byteSize) {
                 reset();
             }
@@ -184,14 +184,19 @@ public class StrLenTest extends CLayouts {
             return new SlicingPoolAllocator();
         }
 
-        class SlicingPoolAllocator implements Arena {
+        class SlicingPoolAllocator implements Arena, SegmentAllocator.OfRaw {
 
             final Arena arena = Arena.ofConfined();
             final SegmentAllocator slicing = SegmentAllocator.slicingAllocator(pool);
 
-            public MemorySegment allocate(long byteSize, long byteAlignment) {
+            public MemorySegment allocateRaw(long byteSize, long byteAlignment) {
                 return slicing.allocate(byteSize, byteAlignment)
                         .reinterpret(arena, null);
+            }
+
+            @Override
+            public MemorySegment allocate(long byteSize, long byteAlignment) {
+                return SegmentAllocator.OfRaw.super.allocate(byteSize, byteAlignment);
             }
 
             @Override

@@ -707,7 +707,7 @@ public interface SegmentAllocator {
      * @throws IllegalArgumentException if the {@code segment} is
      *         {@linkplain MemorySegment#isReadOnly() read-only}
      */
-    static SegmentAllocator prefixAllocator(MemorySegment segment) {
+    static SegmentAllocator.OfRaw prefixAllocator(MemorySegment segment) {
         assertWritable(segment);
         return (AbstractMemorySegmentImpl)segment;
     }
