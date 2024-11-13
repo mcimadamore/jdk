@@ -320,9 +320,8 @@ void WriteClosure::do_ptr(void** p) {
 void ReadClosure::do_ptr(void** p) {
   assert(*p == nullptr, "initializing previous initialized pointer.");
   intptr_t obj = nextPtr();
-  assert((intptr_t)obj >= 0 || (intptr_t)obj < -100,
-         "hit tag while initializing ptrs.");
-  *p = (void*)obj != nullptr ? (void*)(SharedBaseAddress + obj) : (void*)obj;
+  assert(obj >= 0, "sanity.");
+  *p = (obj != 0) ? (void*)(_base_address + obj) : (void*)obj;
 }
 
 void ReadClosure::do_u4(u4* p) {
@@ -369,3 +368,24 @@ void ArchiveUtils::log_to_classlist(BootstrapInfo* bootstrap_specifier, TRAPS) {
     }
   }
 }
+
+size_t HeapRootSegments::size_in_bytes(size_t seg_idx) {
+  assert(seg_idx < _count, "In range");
+  return objArrayOopDesc::object_size(size_in_elems(seg_idx)) * HeapWordSize;
+}
+
+int HeapRootSegments::size_in_elems(size_t seg_idx) {
+  assert(seg_idx < _count, "In range");
+  if (seg_idx != _count - 1) {
+    return _max_size_in_elems;
+  } else {
+    // Last slice, leftover
+    return _roots_count % _max_size_in_elems;
+  }
+}
+
+size_t HeapRootSegments::segment_offset(size_t seg_idx) {
+  assert(seg_idx < _count, "In range");
+  return _base_offset + seg_idx * _max_size_in_bytes;
+}
+

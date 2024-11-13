@@ -811,6 +811,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         /** list of target types inferred for this functional expression. */
         public Type target;
+        /** The owner of this functional expression. */
+        public Symbol owner;
 
         public Type getDescriptorType(Types types) {
             return target != null ? types.findDescriptorType(target) : types.createErrorType(null);
@@ -2274,6 +2276,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         /**{@code true} if this instanceof test should have
          * value {@code true} when the {@code expr} is {@code null}.*/
         public boolean allowNull;
+        public Type erasedExprOriginalType;
+
         protected JCInstanceOf(JCExpression expr, JCTree pattern) {
             this.expr = expr;
             this.pattern = pattern;

@@ -77,6 +77,7 @@
 #include "runtime/globals.hpp"
 #include "runtime/globals_extension.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/javaCalls.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/safepointVerifiers.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -300,6 +301,7 @@ void MetaspaceShared::post_initialize(TRAPS) {
         }
         ClassLoaderExt::init_paths_start_index(info->app_class_paths_start_index());
         ClassLoaderExt::init_app_module_paths_start_index(info->app_module_paths_start_index());
+        ClassLoaderExt::init_num_module_paths(info->header()->num_module_paths());
       }
     }
   }
@@ -357,8 +359,43 @@ void MetaspaceShared::read_extra_data(JavaThread* current, const char* filename)
   }
 }
 
-// Read/write a data stream for restoring/preserving metadata pointers and
-// miscellaneous data from/to the shared archive file.
+// About "serialize" --
+//
+// This is (probably a badly named) way to read/write a data stream of pointers and
+// miscellaneous data from/to the shared archive file. The usual code looks like this:
+//
+//     // These two global C++ variables are initialized during dump time.
+//     static int _archived_int;
+//     static MetaspaceObj* archived_ptr;
+//
+//     void MyClass::serialize(SerializeClosure* soc) {
+//         soc->do_int(&_archived_int);
+//         soc->do_int(&_archived_ptr);
+//     }
+//
+//     At dumptime, these two variables are stored into the CDS archive.
+//     At runtime, these two variables are loaded from the CDS archive.
+//     In addition, the pointer is relocated as necessary.
+//
+// Some of the xxx::serialize() functions may have side effects and assume that
+// the archive is already mapped. For example, SymbolTable::serialize_shared_table_header()
+// unconditionally makes the set of archived symbols available. Therefore, we put most
+// of these xxx::serialize() functions inside MetaspaceShared::serialize(), which
+// is called AFTER we made the decision to map the archive.
+//
+// However, some of the "serialized" data are used to decide whether an archive should
+// be mapped or not (e.g., for checking if the -Djdk.module.main property is compatible
+// with the archive). The xxx::serialize() functions for these data must be put inside
+// MetaspaceShared::early_serialize(). Such functions must not produce side effects that
+// assume we will always decides to map the archive.
+
+void MetaspaceShared::early_serialize(SerializeClosure* soc) {
+  int tag = 0;
+  soc->do_tag(--tag);
+  CDS_JAVA_HEAP_ONLY(Modules::serialize(soc);)
+  CDS_JAVA_HEAP_ONLY(Modules::serialize_addmods_names(soc);)
+  soc->do_tag(666);
+}
 
 void MetaspaceShared::serialize(SerializeClosure* soc) {
   int tag = 0;
@@ -400,7 +437,6 @@ void MetaspaceShared::serialize(SerializeClosure* soc) {
   SystemDictionaryShared::serialize_vm_classes(soc);
   soc->do_tag(--tag);
 
-  CDS_JAVA_HEAP_ONLY(Modules::serialize(soc);)
   CDS_JAVA_HEAP_ONLY(ClassLoaderDataShared::serialize(soc);)
 
   LambdaFormInvokers::serialize(soc);
@@ -452,6 +488,7 @@ private:
     log_info(cds)("Dumping symbol table ...");
     SymbolTable::write_to_archive(symbols);
   }
+  char* dump_early_read_only_tables();
   char* dump_read_only_tables();
 
 public:
@@ -491,6 +528,21 @@ public:
   }
 };
 
+char* VM_PopulateDumpSharedSpace::dump_early_read_only_tables() {
+  ArchiveBuilder::OtherROAllocMark mark;
+
+  // Write module name into archive
+  CDS_JAVA_HEAP_ONLY(Modules::dump_main_module_name();)
+  // Write module names from --add-modules into archive
+  CDS_JAVA_HEAP_ONLY(Modules::dump_addmods_names();)
+
+  DumpRegion* ro_region = ArchiveBuilder::current()->ro_region();
+  char* start = ro_region->top();
+  WriteClosure wc(ro_region);
+  MetaspaceShared::early_serialize(&wc);
+  return start;
+}
+
 char* VM_PopulateDumpSharedSpace::dump_read_only_tables() {
   ArchiveBuilder::OtherROAllocMark mark;
 
@@ -498,8 +550,7 @@ char* VM_PopulateDumpSharedSpace::dump_read_only_tables() {
 
   // Write lambform lines into archive
   LambdaFormInvokers::dump_static_archive_invokers();
-  // Write module name into archive
-  CDS_JAVA_HEAP_ONLY(Modules::dump_main_module_name();)
+
   // Write the other data to the output array.
   DumpRegion* ro_region = ArchiveBuilder::current()->ro_region();
   char* start = ro_region->top();
@@ -538,6 +589,7 @@ void VM_PopulateDumpSharedSpace::doit() {
   log_info(cds)("Make classes shareable");
   _builder.make_klasses_shareable();
 
+  char* early_serialized_data = dump_early_read_only_tables();
   char* serialized_data = dump_read_only_tables();
 
   SystemDictionaryShared::adjust_lambda_proxy_class_dictionary();
@@ -551,6 +603,7 @@ void VM_PopulateDumpSharedSpace::doit() {
   assert(static_archive != nullptr, "SharedArchiveFile not set?");
   _map_info = new FileMapInfo(static_archive, true);
   _map_info->populate_header(MetaspaceShared::core_region_alignment());
+  _map_info->set_early_serialized_data(early_serialized_data);
   _map_info->set_serialized_data(serialized_data);
   _map_info->set_cloned_vtables(CppVtables::vtables_serialized_base());
 }
@@ -749,12 +802,21 @@ void MetaspaceShared::preload_classes(TRAPS) {
     }
   }
 
-  // Exercise the manifest processing code to ensure classes used by CDS at runtime
-  // are always archived
+  // Some classes are used at CDS runtime but are not loaded, and therefore archived, at
+  // dumptime. We can perform dummmy calls to these classes at dumptime to ensure they
+  // are archived.
+  exercise_runtime_cds_code(CHECK);
+
+  log_info(cds)("Loading classes to share: done.");
+}
+
+void MetaspaceShared::exercise_runtime_cds_code(TRAPS) {
+  // Exercise the manifest processing code
   const char* dummy = "Manifest-Version: 1.0\n";
   CDSProtectionDomain::create_jar_manifest(dummy, strlen(dummy), CHECK);
 
-  log_info(cds)("Loading classes to share: done.");
+  // Exercise FileSystem and URL code
+  CDSProtectionDomain::to_file_URL("dummy.jar", Handle(), CHECK);
 }
 
 void MetaspaceShared::preload_and_dump_impl(StaticArchiveBuilder& builder, TRAPS) {
@@ -791,6 +853,9 @@ void MetaspaceShared::preload_and_dump_impl(StaticArchiveBuilder& builder, TRAPS
     // Do this at the very end, when no Java code will be executed. Otherwise
     // some new strings may be added to the intern table.
     StringTable::allocate_shared_strings_array(CHECK);
+  } else {
+    log_info(cds)("Not dumping heap, reset CDSConfig::_is_using_optimized_module_handling");
+    CDSConfig::stop_using_optimized_module_handling();
   }
 #endif
 
@@ -1299,7 +1364,7 @@ char* MetaspaceShared::reserve_address_space_for_archives(FileMapInfo* static_ma
       assert(base_address == nullptr ||
              (address)archive_space_rs.base() == base_address, "Sanity");
       // Register archive space with NMT.
-      MemTracker::record_virtual_memory_type(archive_space_rs.base(), mtClassShared);
+      MemTracker::record_virtual_memory_tag(archive_space_rs.base(), mtClassShared);
       return archive_space_rs.base();
     }
     return nullptr;
@@ -1361,8 +1426,8 @@ char* MetaspaceShared::reserve_address_space_for_archives(FileMapInfo* static_ma
       return nullptr;
     }
     // NMT: fix up the space tags
-    MemTracker::record_virtual_memory_type(archive_space_rs.base(), mtClassShared);
-    MemTracker::record_virtual_memory_type(class_space_rs.base(), mtClass);
+    MemTracker::record_virtual_memory_tag(archive_space_rs.base(), mtClassShared);
+    MemTracker::record_virtual_memory_tag(class_space_rs.base(), mtClass);
   } else {
     if (use_archive_base_addr && base_address != nullptr) {
       total_space_rs = ReservedSpace(total_range_size, base_address_alignment,
@@ -1456,6 +1521,14 @@ MapArchiveResult MetaspaceShared::map_archive(FileMapInfo* mapinfo, char* mapped
     return MAP_ARCHIVE_OTHER_FAILURE;
   }
 
+  if (mapinfo->is_static()) {
+    // Currently, only static archive uses early serialized data.
+    char* buffer = mapinfo->early_serialized_data();
+    intptr_t* array = (intptr_t*)buffer;
+    ReadClosure rc(&array, (intptr_t)mapped_base_address);
+    early_serialize(&rc);
+  }
+
   mapinfo->set_is_mapped(true);
   return MAP_ARCHIVE_SUCCESS;
 }
@@ -1492,7 +1565,7 @@ void MetaspaceShared::initialize_shared_spaces() {
   // shared string/symbol tables.
   char* buffer = static_mapinfo->serialized_data();
   intptr_t* array = (intptr_t*)buffer;
-  ReadClosure rc(&array);
+  ReadClosure rc(&array, (intptr_t)SharedBaseAddress);
   serialize(&rc);
 
   // Finish up archived heap initialization. These must be
@@ -1509,7 +1582,7 @@ void MetaspaceShared::initialize_shared_spaces() {
   FileMapInfo *dynamic_mapinfo = FileMapInfo::dynamic_info();
   if (dynamic_mapinfo != nullptr) {
     intptr_t* buffer = (intptr_t*)dynamic_mapinfo->serialized_data();
-    ReadClosure rc(&buffer);
+    ReadClosure rc(&buffer, (intptr_t)SharedBaseAddress);
     ArchiveBuilder::serialize_dynamic_archivable_items(&rc);
     DynamicArchive::setup_array_klasses();
     dynamic_mapinfo->close();
