@@ -196,10 +196,6 @@ public class PrintWriter extends Writer {
      *          created, or if some other error occurs while opening or
      *          creating the file
      *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(fileName)} denies write
-     *          access to the file
      * @see Charset#defaultCharset()
      *
      * @since  1.5
@@ -248,11 +244,6 @@ public class PrintWriter extends Writer {
      *          created, or if some other error occurs while opening or
      *          creating the file
      *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(fileName)} denies write
-     *          access to the file
-     *
      * @throws  UnsupportedEncodingException
      *          If the named charset is not supported
      *
@@ -283,11 +274,6 @@ public class PrintWriter extends Writer {
      * @throws  IOException
      *          if an I/O error occurs while opening or creating the file
      *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(fileName)} denies write
-     *          access to the file
-     *
      * @since  10
      */
     public PrintWriter(String fileName, Charset charset) throws IOException {
@@ -314,10 +300,6 @@ public class PrintWriter extends Writer {
      *          created, or if some other error occurs while opening or
      *          creating the file
      *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(file.getPath())}
-     *          denies write access to the file
      * @see Charset#defaultCharset()
      *
      * @since  1.5
@@ -349,11 +331,6 @@ public class PrintWriter extends Writer {
      *          created, or if some other error occurs while opening or
      *          creating the file
      *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(file.getPath())}
-     *          denies write access to the file
-     *
      * @throws  UnsupportedEncodingException
      *          If the named charset is not supported
      *
@@ -383,11 +360,6 @@ public class PrintWriter extends Writer {
      *
      * @throws  IOException
      *          if an I/O error occurs while opening or creating the file
-     *
-     * @throws  SecurityException
-     *          If a security manager is present and {@link
-     *          SecurityManager#checkWrite checkWrite(file.getPath())}
-     *          denies write access to the file
      *
      * @since  10
      */
