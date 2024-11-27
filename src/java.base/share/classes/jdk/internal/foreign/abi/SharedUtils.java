@@ -523,4 +523,20 @@ public final class SharedUtils {
                 Map.entry("jdouble", ValueLayout.JAVA_DOUBLE)
         );
     }
+
+    @ForceInline
+    public static MemorySegment wrapCaptureState(SegmentAllocator allocator, MemorySegment memorySegment) {
+        if (memorySegment.isNative()) {
+            return memorySegment;
+        } else {
+            return allocator.allocate(CapturableState.LAYOUT);
+        }
+    }
+
+    @ForceInline
+    public static void unwrapCaptureState(MemorySegment nativeCaptureState, MemorySegment target) {
+        if (nativeCaptureState != target) {
+            target.copyFrom(nativeCaptureState);
+        }
+    }
 }

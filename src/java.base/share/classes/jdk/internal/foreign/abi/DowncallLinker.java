@@ -152,6 +152,15 @@ public class DowncallLinker {
         try (unboxArena) {
             MemorySegment returnBuffer = null;
 
+            // wrap captured state if needed
+            int captureStateIndex = -1;
+            MemorySegment prevCapturedState = null;
+            if (callingSequence.hasCapturedState()) {
+                captureStateIndex = 1;
+                prevCapturedState = (MemorySegment)args[captureStateIndex];
+                args[captureStateIndex] = SharedUtils.wrapCaptureState(unboxArena, prevCapturedState);
+            }
+
             // do argument processing, get Object[] as result
             if (callingSequence.needsReturnBuffer()) {
                 // we supply the return buffer (argument array does not contain it)
@@ -160,6 +169,9 @@ public class DowncallLinker {
                 prefixedArgs[0] = returnBuffer;
                 System.arraycopy(args, 0, prefixedArgs, 1, args.length);
                 args = prefixedArgs;
+                if (callingSequence.hasCapturedState()) {
+                    captureStateIndex++;
+                }
             }
 
             Object[] leafArgs = new Object[invData.leaf.type().parameterCount()];
@@ -173,7 +185,9 @@ public class DowncallLinker {
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
                 if (callingSequence.functionDesc().argumentLayouts().get(i) instanceof AddressLayout) {
-                    MemorySessionImpl sessionImpl = ((AbstractMemorySegmentImpl) arg).sessionImpl();
+                    Object argToAcquire = i == captureStateIndex ?
+                            prevCapturedState : arg;
+                    MemorySessionImpl sessionImpl = ((AbstractMemorySegmentImpl) argToAcquire).sessionImpl();
                     if (!(callingSequence.needsReturnBuffer() && i == 0)) { // don't acquire unboxArena's scope
                         sessionImpl.acquire0();
                         // add this scope _after_ we acquire, so we only release scopes we actually acquired
@@ -188,6 +202,12 @@ public class DowncallLinker {
             Object o = invData.leaf.invokeWithArguments(leafArgs);
 
             // return value processing
+
+            // copy data out of temp capture state segment (if needed)
+            if (callingSequence.hasCapturedState()) {
+                SharedUtils.unwrapCaptureState((MemorySegment)args[captureStateIndex], prevCapturedState);
+            }
+
             if (o == null) {
                 if (!callingSequence.needsReturnBuffer()) {
                     return null;

@@ -124,6 +124,8 @@ public class BindingSpecializer {
     private static final MethodTypeDesc MTD_SHORT_TO_UNSIGNED_LONG = MethodTypeDesc.of(CD_long, CD_short);
     private static final MethodTypeDesc MTD_BYTE_TO_UNSIGNED_LONG = MethodTypeDesc.of(CD_long, CD_byte);
     private static final MethodTypeDesc MTD_BYTE_TO_BOOLEAN = MethodTypeDesc.of(CD_boolean, CD_byte);
+    private static final MethodTypeDesc MTD_WRAP_CAPTURE_STATE = MethodTypeDesc.of(CD_MemorySegment, CD_SegmentAllocator, CD_MemorySegment);
+    private static final MethodTypeDesc MTD_UNWRAP_CAPTURE_STATE = MethodTypeDesc.of(CD_void, CD_MemorySegment, CD_MemorySegment);
 
     private static final ConstantDesc CLASS_DATA_DESC = DynamicConstantDesc.of(BSM_CLASS_DATA);
 
@@ -144,6 +146,8 @@ public class BindingSpecializer {
     private int returnAllocatorIdx = -1;
     private int contextIdx = -1;
     private int returnBufferIdx = -1;
+    private int captureStateIndex = -1;
+    private int prevCapturedStateIdx = -1;
     private int retValIdx = -1;
     private Deque<Class<?>> typeStack;
     private List<Class<?>> leafArgTypes;
@@ -300,6 +304,17 @@ public class BindingSpecializer {
         contextIdx = cb.allocateLocal(REFERENCE);
         cb.astore(contextIdx);
 
+        if (callingSequence.hasCapturedState()) {
+            captureStateIndex = 2;
+            prevCapturedStateIdx = cb.allocateLocal(REFERENCE);
+            cb.aload(captureStateIndex)
+                    .astore(prevCapturedStateIdx);
+            emitLoadInternalAllocator();
+            cb.aload(captureStateIndex)
+                    .invokestatic(CD_SharedUtils, "wrapCaptureState", MTD_WRAP_CAPTURE_STATE)
+                    .astore(captureStateIndex);
+        }
+
         // in case the call needs a return buffer, allocate it here.
         // for upcalls the VM wrapper stub allocates the buffer.
         if (callingSequence.needsReturnBuffer() && callingSequence.forDowncall()) {
@@ -377,6 +392,13 @@ public class BindingSpecializer {
         }
         // for upcalls we leave the return value on the stack to be picked up
         // as an input of the return recipe.
+
+        // copy data out of temp capture state segment (if needed)
+        if (captureStateIndex != -1) {
+            cb.aload(captureStateIndex)
+                    .aload(prevCapturedStateIdx)
+                    .invokestatic(CD_SharedUtils, "unwrapCaptureState", MTD_UNWRAP_CAPTURE_STATE);
+        }
 
         // return value processing
         if (callingSequence.hasReturnBindings()) {
@@ -492,7 +514,11 @@ public class BindingSpecializer {
         cb.loadLocal(TypeKind.from(highLevelType), cb.parameterSlot(paramIndex));
 
         if (shouldAcquire(paramIndex)) {
-            cb.dup();
+            if (paramIndex == captureStateIndex) {
+                cb.aload(prevCapturedStateIdx);
+            } else {
+                cb.dup();
+            }
             emitAcquireScope();
         }
 

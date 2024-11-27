@@ -24,7 +24,8 @@
 /*
  * @test
  * @library ../ /test/lib
- * @run testng/othervm --enable-native-access=ALL-UNNAMED TestCaptureCallState
+ * @run testng/othervm --enable-native-access=ALL-UNNAMED -Djdk.internal.foreign.DowncallLinker.USE_SPEC=false TestCaptureCallState
+ * @run testng/othervm --enable-native-access=ALL-UNNAMED -Djdk.internal.foreign.DowncallLinker.USE_SPEC=true TestCaptureCallState
  */
 
 import org.testng.annotations.DataProvider;
@@ -78,6 +79,27 @@ public class TestCaptureCallState extends NativeTestHelper {
             Object result = needsAllocator
                 ? handle.invoke(arena, saveSeg, testValue)
                 : handle.invoke(saveSeg, testValue);
+            testCase.resultCheck().accept(result);
+            int savedErrno = (int) errnoHandle.get(saveSeg, 0L);
+            assertEquals(savedErrno, testValue);
+        }
+    }
+
+    @Test(dataProvider = "cases")
+    public void testSavedThreadLocalHeap(SaveValuesCase testCase) throws Throwable {
+        Linker.Option stl = Linker.Option.captureCallState(testCase.threadLocalName());
+        MethodHandle handle = downcallHandle(testCase.nativeTarget(), testCase.nativeDesc(), stl);
+
+        StructLayout capturedStateLayout = Linker.Option.captureStateLayout();
+        VarHandle errnoHandle = capturedStateLayout.varHandle(groupElement(testCase.threadLocalName()));
+
+        MemorySegment saveSeg = MemorySegment.ofArray(new int[(int)capturedStateLayout.byteSize() / 4]);
+        try (Arena arena = Arena.ofConfined()) {
+            int testValue = 42;
+            boolean needsAllocator = testCase.nativeDesc().returnLayout().map(StructLayout.class::isInstance).orElse(false);
+            Object result = needsAllocator
+                    ? handle.invoke(arena, saveSeg, testValue)
+                    : handle.invoke(saveSeg, testValue);
             testCase.resultCheck().accept(result);
             int savedErrno = (int) errnoHandle.get(saveSeg, 0L);
             assertEquals(savedErrno, testValue);

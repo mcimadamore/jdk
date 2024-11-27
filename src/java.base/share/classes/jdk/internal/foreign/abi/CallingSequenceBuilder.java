@@ -108,6 +108,7 @@ public class CallingSequenceBuilder {
         MethodType calleeMethodType;
         if (!forUpcall) {
             if (linkerOptions.hasCapturedCallState()) {
+                allocationSize += CapturableState.LAYOUT.byteSize(); // alignment?
                 addArgumentBinding(0, MemorySegment.class, ValueLayout.ADDRESS, List.of(
                         Binding.unboxAddress(),
                         Binding.vmStore(abi.capturedStateStorage(), long.class)));
