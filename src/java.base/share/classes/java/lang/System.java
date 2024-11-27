@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -59,6 +60,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.internal.foreign.Stack;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -2322,6 +2324,11 @@ public final class System {
             @Override
             public boolean bytesCompatible(String string, Charset charset) {
                 return string.bytesCompatible(charset);
+            }
+
+            @Override
+            public Arena newStackArena(Thread thread) {
+                return thread.newStackArena();
             }
         });
     }

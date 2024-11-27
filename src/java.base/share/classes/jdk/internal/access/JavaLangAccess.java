@@ -28,6 +28,7 @@ package jdk.internal.access;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
@@ -47,6 +48,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Stream;
 
+import jdk.internal.foreign.Stack;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.misc.CarrierThreadLocal;
 import jdk.internal.module.ServicesCatalog;
@@ -616,4 +618,6 @@ public interface JavaLangAccess {
      * Are the string bytes compatible with the given charset?
      */
     boolean bytesCompatible(String string, Charset charset);
+
+    Arena newStackArena(Thread thread);
 }

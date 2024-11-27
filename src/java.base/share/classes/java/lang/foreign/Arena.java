@@ -25,6 +25,8 @@
 
 package java.lang.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.ref.CleanerFactory;
 
@@ -266,6 +268,13 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      */
     static Arena ofShared() {
         return MemorySessionImpl.createShared().asArena();
+    }
+
+    /**
+     * {@return a new stack arena} Structured, using TLAB
+     */
+    static Arena ofStack() {
+        return SharedSecrets.getJavaLangAccess().newStackArena(Thread.currentThread());
     }
 
     /**

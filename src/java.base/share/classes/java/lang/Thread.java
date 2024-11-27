@@ -25,6 +25,7 @@
 
 package java.lang;
 
+import java.lang.foreign.Arena;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -35,6 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.StructureViolationException;
 import java.util.concurrent.locks.LockSupport;
 import jdk.internal.event.ThreadSleepEvent;
+import jdk.internal.foreign.Stack;
 import jdk.internal.misc.TerminatingThreadLocal;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
@@ -207,6 +209,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  */
 public class Thread implements Runnable {
     /* Make sure registerNatives is the first thing <clinit> does. */
+
     private static native void registerNatives();
     static {
         registerNatives();
@@ -237,13 +240,13 @@ public class Thread implements Runnable {
     // Additional fields for platform threads.
     // All fields, except task, are accessed directly by the VM.
     private static class FieldHolder {
+
         final ThreadGroup group;
         final Runnable task;
         final long stackSize;
         volatile int priority;
         volatile boolean daemon;
         volatile int threadStatus;
-
         FieldHolder(ThreadGroup group,
                     Runnable task,
                     long stackSize,
@@ -256,6 +259,7 @@ public class Thread implements Runnable {
             if (daemon)
                 this.daemon = true;
         }
+
     }
     private final FieldHolder holder;
 
@@ -275,6 +279,16 @@ public class Thread implements Runnable {
      * Scoped value bindings are maintained by the ScopedValue class.
      */
     private Object scopedValueBindings;
+
+    private Stack stack;
+
+    Arena newStackArena() {
+        if (stack == null) {
+            // FIXME leak
+            stack = Stack.newStack();
+        }
+        return stack.push();
+    }
 
     // Special value to indicate this is a newly-created Thread
     // Note that his must match the declaration in ScopedValue.
