@@ -240,13 +240,13 @@ public class Thread implements Runnable {
     // Additional fields for platform threads.
     // All fields, except task, are accessed directly by the VM.
     private static class FieldHolder {
-
         final ThreadGroup group;
         final Runnable task;
         final long stackSize;
         volatile int priority;
         volatile boolean daemon;
         volatile int threadStatus;
+
         FieldHolder(ThreadGroup group,
                     Runnable task,
                     long stackSize,
@@ -259,7 +259,6 @@ public class Thread implements Runnable {
             if (daemon)
                 this.daemon = true;
         }
-
     }
     private final FieldHolder holder;
 

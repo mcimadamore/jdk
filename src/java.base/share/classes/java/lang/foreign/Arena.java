@@ -25,7 +25,6 @@
 
 package java.lang.foreign;
 
-import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.ref.CleanerFactory;
