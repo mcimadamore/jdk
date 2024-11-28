@@ -26,12 +26,20 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
+import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.ScopedValueContainer;
+import jdk.internal.vm.ScopedValueContainer.BindingsSnapshot;
+import jdk.internal.vm.StackableScope;
 import jdk.internal.vm.annotation.ForceInline;
 
+import java.lang.ScopedValue.CallableOp;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.StructureViolationException;
 
 public class Stack {
 
@@ -139,7 +147,7 @@ public class Stack {
 
     class ArenaStack implements Arena {
 
-        final Arena arena = Arena.ofConfined();
+        final Arena arena = MemorySessionImpl.createStructured(Thread.currentThread()).asArena();
         final long startOffset;
         final long prevPendingStart;
 
