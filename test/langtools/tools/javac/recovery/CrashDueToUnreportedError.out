@@ -1,2 +1,2 @@
-CrashDueToUnreportedError.java:14:43: compiler.err.prob.found.req: (compiler.misc.infer.no.conforming.assignment.exists: E,compiler.misc.type.captureof: 1, ? extends CrashDueToUnreportedError.Entity<Root>,Root, (compiler.misc.inconvertible.types: java.util.List<compiler.misc.type.captureof: 2, ? extends CrashDueToUnreportedError.Entity<Root>>, java.util.List<? extends CrashDueToUnreportedError.Entity<java.lang.Object>>))
+CrashDueToUnreportedError.java:14:20: compiler.err.cant.apply.symbol: kindname.constructor, Builder, CrashDueToUnreportedError.Person,java.lang.String, CrashDueToUnreportedError.Person, kindname.class, CrashDueToUnreportedError.Builder, (compiler.misc.arg.length.mismatch)
 1 error

@@ -2004,11 +2004,11 @@ public abstract class Type extends AnnoConstruct implements TypeMirror, PoolCons
             bounds.put(InferenceBound.EQ, List.nil());
             for (Type t : declaredBounds.reverse()) {
                 //add bound works in reverse order
-                addBound(InferenceBound.UPPER, t, types, true);
+                addBound(InferenceBound.UPPER, t, types);
             }
             if (origin.isCaptured() && !origin.lower.hasTag(BOT)) {
                 //add lower bound if needed
-                addBound(InferenceBound.LOWER, origin.lower, types, true);
+                addBound(InferenceBound.LOWER, origin.lower, types);
             }
         }
 
@@ -2070,7 +2070,7 @@ public abstract class Type extends AnnoConstruct implements TypeMirror, PoolCons
             for (InferenceBound ib : InferenceBound.values()) {
                 uv2.bounds.put(ib, List.nil());
                 for (Type t : getBounds(ib)) {
-                    uv2.addBound(ib, t, types, true);
+                    uv2.addBound(ib, t, types);
                 }
             }
             uv2.inst = inst;
@@ -2130,31 +2130,15 @@ public abstract class Type extends AnnoConstruct implements TypeMirror, PoolCons
 
         /** add a bound of a given kind - this might trigger listener notification */
         public final void addBound(InferenceBound ib, Type bound, Types types) {
-            addBound(ib, bound, types, false);
-        }
-
-        @SuppressWarnings("fallthrough")
-        private void addBound(InferenceBound ib, Type bound, Types types, boolean update) {
-            if (kind == Kind.CAPTURED && !update) {
-                //Captured inference variables bounds must not be updated during incorporation,
-                //except when some inference variable (beta) has been instantiated in the
-                //right-hand-side of a 'C<alpha> = capture(C<? extends/super beta>) constraint.
-                if (bound.hasTag(UNDETVAR) && !((UndetVar)bound).isCaptured()) {
-                    //If the new incoming bound is itself a (regular) inference variable,
-                    //then we are allowed to propagate this inference variable bounds to it.
-                    ((UndetVar)bound).addBound(ib.complement(), this, types, false);
-                }
-            } else {
-                Type bound2 = bound.map(toTypeVarMap).baseType();
-                List<Type> prevBounds = bounds.get(ib);
-                if (bound == qtype) return;
-                for (Type b : prevBounds) {
-                    //check for redundancy - do not add same bound twice
-                    if (types.isSameType(b, bound2)) return;
-                }
-                bounds.put(ib, prevBounds.prepend(bound2));
-                notifyBoundChange(ib, bound2, false);
+            Type bound2 = bound.map(toTypeVarMap).baseType();
+            List<Type> prevBounds = bounds.get(ib);
+            if (bound == qtype) return;
+            for (Type b : prevBounds) {
+                //check for redundancy - do not add same bound twice
+                if (types.isSameType(b, bound2)) return;
             }
+            bounds.put(ib, prevBounds.prepend(bound2));
+            notifyBoundChange(ib, bound2, false);
         }
         //where
             TypeMapping<Void> toTypeVarMap = new StructuralTypeMapping<Void>() {
@@ -2191,7 +2175,7 @@ public abstract class Type extends AnnoConstruct implements TypeMirror, PoolCons
                     bounds.put(ib, newBounds.toList());
                     //step 3 - for each dependency, add new replaced bound
                     for (Type dep : deps) {
-                        addBound(ib, types.subst(dep, from, to), types, true);
+                        addBound(ib, types.subst(dep, from, to), types);
                     }
                 }
             } finally {

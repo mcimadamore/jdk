@@ -1104,7 +1104,6 @@ public class Infer {
 
         @Override
         public void varBoundChanged(UndetVar uv, InferenceBound ib, Type bound, boolean update) {
-            if (uv.isCaptured()) return;
             uv.incorporationActions.addAll(getIncorporationActions(uv, ib, bound, update));
         }
 
