@@ -25,16 +25,14 @@
 
 package java.io;
 
+import jdk.internal.javac.PreviewFeature;
+
 import java.util.Objects;
 import java.util.Formatter;
 import java.util.Locale;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
-import jdk.internal.access.JavaIOPrintWriterAccess;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.javac.PreviewFeature;
-import jdk.internal.misc.InternalLock;
 
 /**
  * Prints formatted representations of objects to a text-output stream.  This
@@ -378,27 +376,13 @@ public class PrintWriter extends Writer {
      * @see #checkError()
      */
     public void flush() {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implFlush();
-            } finally {
-                locker.unlock();
+                ensureOpen();
+                out.flush();
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implFlush();
-            }
-        }
-    }
-
-    private void implFlush() {
-        try {
-            ensureOpen();
-            out.flush();
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -409,29 +393,15 @@ public class PrintWriter extends Writer {
      * @see #checkError()
      */
     public void close() {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implClose();
-            } finally {
-                locker.unlock();
+                if (out != null) {
+                    out.close();
+                    out = null;
+                }
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implClose();
-            }
-        }
-    }
-
-    private void implClose() {
-        try {
-            if (out != null) {
-                out.close();
-                out = null;
-            }
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -488,29 +458,15 @@ public class PrintWriter extends Writer {
      * @param c int specifying a character to be written.
      */
     public void write(int c) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implWrite(c);
-            } finally {
-                locker.unlock();
+                ensureOpen();
+                out.write(c);
+            } catch (InterruptedIOException x) {
+                Thread.currentThread().interrupt();
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implWrite(c);
-            }
-        }
-    }
-
-    private void implWrite(int c) {
-        try {
-            ensureOpen();
-            out.write(c);
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -526,29 +482,15 @@ public class PrintWriter extends Writer {
      *          to throw an {@code IndexOutOfBoundsException}
      */
     public void write(char[] buf, int off, int len) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implWrite(buf, off, len);
-            } finally {
-                locker.unlock();
+                ensureOpen();
+                out.write(buf, off, len);
+            } catch (InterruptedIOException x) {
+                Thread.currentThread().interrupt();
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implWrite(buf, off, len);
-            }
-        }
-    }
-
-    private void implWrite(char[] buf, int off, int len) {
-        try {
-            ensureOpen();
-            out.write(buf, off, len);
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -573,29 +515,15 @@ public class PrintWriter extends Writer {
      *          to throw an {@code IndexOutOfBoundsException}
      */
     public void write(String s, int off, int len) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implWrite(s, off, len);
-            } finally {
-                locker.unlock();
+                ensureOpen();
+                out.write(s, off, len);
+            } catch (InterruptedIOException x) {
+                Thread.currentThread().interrupt();
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implWrite(s, off, len);
-            }
-        }
-    }
-
-    private void implWrite(String s, int off, int len) {
-        try {
-            ensureOpen();
-            out.write(s, off, len);
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -609,31 +537,17 @@ public class PrintWriter extends Writer {
     }
 
     private void newLine() {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
+        synchronized (lock) {
             try {
-                implNewLine();
-            } finally {
-                locker.unlock();
+                ensureOpen();
+                out.write(System.lineSeparator());
+                if (autoFlush)
+                    out.flush();
+            } catch (InterruptedIOException x) {
+                Thread.currentThread().interrupt();
+            } catch (IOException x) {
+                trouble = true;
             }
-        } else {
-            synchronized (lock) {
-                implNewLine();
-            }
-        }
-    }
-
-    private void implNewLine() {
-        try {
-            ensureOpen();
-            out.write(System.lineSeparator());
-            if (autoFlush)
-                out.flush();
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
         }
     }
 
@@ -806,20 +720,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code boolean} value to be printed
      */
     public void println(boolean x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -831,20 +734,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code char} value to be printed
      */
     public void println(char x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -856,20 +748,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code int} value to be printed
      */
     public void println(int x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -881,20 +762,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code long} value to be printed
      */
     public void println(long x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -906,20 +776,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code float} value to be printed
      */
     public void println(float x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -931,20 +790,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code double} value to be printed
      */
     public void println(double x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -956,48 +804,9 @@ public class PrintWriter extends Writer {
      * @param x the array of {@code char} values to be printed
      */
     public void println(char[] x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
-        }
-    }
-
-    /**
-     * Prints a {@link StringTemplate} and then terminates the line.  This method behaves as
-     * though it invokes {@link #print(StringTemplate)} and then
-     * {@link #println()}.
-     *
-     * @param st the {@code String} value to be printed
-     *
-     * @since  23
-     */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    public void println(StringTemplate st) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(st);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(st);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -1009,20 +818,9 @@ public class PrintWriter extends Writer {
      * @param x the {@code String} value to be printed
      */
     public void println(String x) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(x);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(x);
-                println();
-            }
+        synchronized (lock) {
+            print(x);
+            println();
         }
     }
 
@@ -1037,20 +835,9 @@ public class PrintWriter extends Writer {
      */
     public void println(Object x) {
         String s = String.valueOf(x);
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                print(s);
-                println();
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                print(s);
-                println();
-            }
+        synchronized (lock) {
+            print(s);
+            println();
         }
     }
 
@@ -1196,18 +983,8 @@ public class PrintWriter extends Writer {
      * @since  1.5
      */
     public PrintWriter format(String format, Object ... args) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                implFormat(format, args);
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                implFormat(format, args);
-            }
+        synchronized (lock) {
+            implFormat(format, args);
         }
         return this;
     }
@@ -1270,18 +1047,8 @@ public class PrintWriter extends Writer {
      * @since  1.5
      */
     public PrintWriter format(Locale l, String format, Object ... args) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                implFormat(l, format, args);
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                implFormat(l, format, args);
-            }
+        synchronized (lock) {
+            implFormat(l, format, args);
         }
         return this;
     }
@@ -1292,172 +1059,6 @@ public class PrintWriter extends Writer {
             if ((formatter == null) || (formatter.locale() != l))
                 formatter = new Formatter(this, l);
             formatter.format(l, format, args);
-            if (autoFlush)
-                out.flush();
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
-        }
-    }
-
-    /**
-     * A convenience method to write a {@link StringTemplate} to this writer using
-     * the specified format and values.  If automatic flushing is
-     * enabled, calls to this method will flush the output buffer.
-     *
-     * {@snippet lang=java :
-     *     out.format(l, st)
-     * }
-     *
-     * @param  l
-     *         The {@linkplain java.util.Locale locale} to apply during
-     *         formatting.  If {@code l} is {@code null} then no localization
-     *         is applied.
-     *
-     * @param  st
-     *         A {@link StringTemplate} containing a format as described in <a
-     *         href="../util/Formatter.html#syntax">Format string syntax</a>.
-     *
-     *
-     * @throws  java.util.IllegalFormatException
-     *          If a format string contains an illegal syntax, a format
-     *          specifier that is incompatible with the given arguments,
-     *          insufficient arguments given the format string, or other
-     *          illegal conditions.  For specification of all possible
-     *          formatting errors, see the <a
-     *          href="../util/Formatter.html#detail">Details</a> section of the
-     *          formatter class specification.
-     *
-     * @throws  NullPointerException
-     *          If the {@code format} is {@code null}
-     *
-     * @return  This writer
-     *
-     * @since  23
-     */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    public PrintWriter printf(Locale l, StringTemplate st) {
-        return format(l, st);
-    }
-
-    /**
-     * Writes a {@link StringTemplate} to this writer using the specified format
-     * and values.  If automatic flushing is enabled, calls to this
-     * method will flush the output buffer.
-     *
-     * <p> The locale always used is the one returned by {@link
-     * java.util.Locale#getDefault() Locale.getDefault()}, regardless of any
-     * previous invocations of other formatting methods on this object.
-     *
-     * @param  st
-     *         A {@link StringTemplate} containing a format as described in <a
-     *         href="../util/Formatter.html#syntax">Format string syntax</a>.
-     *
-     * @throws  java.util.IllegalFormatException
-     *          If a format string contains an illegal syntax, a format
-     *          specifier that is incompatible with the given arguments,
-     *          insufficient arguments given the format string, or other
-     *          illegal conditions.  For specification of all possible
-     *          formatting errors, see the <a
-     *          href="../util/Formatter.html#detail">Details</a> section of the
-     *          Formatter class specification.
-     *
-     * @throws  NullPointerException
-     *          If the {@code format} is {@code null}
-     *
-     * @return  This writer
-     *
-     * @since  23
-     */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    public PrintWriter format(StringTemplate st) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                implFormat(st);
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                implFormat(st);
-            }
-        }
-        return this;
-    }
-
-    private void implFormat(StringTemplate st) {
-        try {
-            ensureOpen();
-            if ((formatter == null)
-                    || (formatter.locale() != Locale.getDefault()))
-                formatter = new Formatter(this);
-            formatter.format(Locale.getDefault(), st);
-            if (autoFlush)
-                out.flush();
-        } catch (InterruptedIOException x) {
-            Thread.currentThread().interrupt();
-        } catch (IOException x) {
-            trouble = true;
-        }
-    }
-
-    /**
-     * Writes a {@link StringTemplate} to this writer using the specified format
-     * and values.  If automatic flushing is enabled, calls to this
-     * method will flush the output buffer.
-     *
-     * @param  l
-     *         The {@linkplain java.util.Locale locale} to apply during
-     *         formatting.  If {@code l} is {@code null} then no localization
-     *         is applied.
-     *
-     * @param  st
-     *         A {@link StringTemplate} containing a format as described in <a
-     *         href="../util/Formatter.html#syntax">Format string syntax</a>.
-     *
-     * @throws  java.util.IllegalFormatException
-     *          If a format string contains an illegal syntax, a format
-     *          specifier that is incompatible with the given arguments,
-     *          insufficient arguments given the format string, or other
-     *          illegal conditions.  For specification of all possible
-     *          formatting errors, see the <a
-     *          href="../util/Formatter.html#detail">Details</a> section of the
-     *          formatter class specification.
-     *
-     * @throws  NullPointerException
-     *          If the {@code format} is {@code null}
-     *
-     * @return  This writer
-     *
-     * @since  23
-     */
-    @PreviewFeature(feature=PreviewFeature.Feature.STRING_TEMPLATES)
-    public PrintWriter format(Locale l, StringTemplate st) {
-        Object lock = this.lock;
-        if (lock instanceof InternalLock locker) {
-            locker.lock();
-            try {
-                implFormat(l, st);
-            } finally {
-                locker.unlock();
-            }
-        } else {
-            synchronized (lock) {
-                implFormat(l, st);
-            }
-        }
-        return this;
-    }
-
-    private void implFormat(Locale l, StringTemplate st) {
-        try {
-            ensureOpen();
-            if ((formatter == null) || (formatter.locale() != l))
-                formatter = new Formatter(this, l);
-            formatter.format(l, st);
             if (autoFlush)
                 out.flush();
         } catch (InterruptedIOException x) {
@@ -1557,13 +1158,5 @@ public class PrintWriter extends Writer {
     public PrintWriter append(char c) {
         write(c);
         return this;
-    }
-
-    static {
-        SharedSecrets.setJavaIOCPrintWriterAccess(new JavaIOPrintWriterAccess() {
-            public Object lock(PrintWriter pw) {
-                return pw.lock;
-            }
-        });
     }
 }

@@ -33,9 +33,8 @@ import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.file.JavacFileManager;
 import com.sun.tools.javac.parser.Tokens.Comment.CommentStyle;
 import com.sun.tools.javac.resources.CompilerProperties.Errors;
-import com.sun.tools.javac.resources.CompilerProperties.Warnings;
+import com.sun.tools.javac.resources.CompilerProperties.LintWarnings;
 import com.sun.tools.javac.tree.EndPosTable;
-import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.*;
 import com.sun.tools.javac.util.JCDiagnostic.*;
 
@@ -244,13 +243,12 @@ public class JavaTokenizer extends UnicodeReader {
     /**
      * Report an error at the given position using the provided arguments.
      *
-     * @param lc     lint category.
      * @param pos    position in input buffer.
      * @param key    error key to report.
      */
-    protected void lexWarning(LintCategory lc, int pos, JCDiagnostic.Warning key) {
+    protected void lexWarning(int pos, JCDiagnostic.Warning key) {
         DiagnosticPosition dp = new SimpleDiagnosticPosition(pos) ;
-        log.warning(lc, dp, key);
+        log.warning(dp, key);
     }
 
     /**
@@ -1233,12 +1231,12 @@ public class JavaTokenizer extends UnicodeReader {
                         Set<TextBlockSupport.WhitespaceChecks> checks =
                                 TextBlockSupport.checkWhitespace(string);
                         if (checks.contains(TextBlockSupport.WhitespaceChecks.INCONSISTENT)) {
-                            lexWarning(LintCategory.TEXT_BLOCKS, pos,
-                                    Warnings.InconsistentWhiteSpaceIndentation);
+                            lexWarning(pos,
+                                    LintWarnings.InconsistentWhiteSpaceIndentation);
                         }
                         if (checks.contains(TextBlockSupport.WhitespaceChecks.TRAILING)) {
-                            lexWarning(LintCategory.TEXT_BLOCKS, pos,
-                                    Warnings.TrailingWhiteSpaceWillBeRemoved);
+                            lexWarning(pos,
+                                    LintWarnings.TrailingWhiteSpaceWillBeRemoved);
                         }
                     }
                     // Remove incidental indentation.
