@@ -61,7 +61,7 @@ public class StrLenTest extends CLayouts {
     record Allocation(MemorySegment segment, Arena arena) {
         Allocation() {
             Arena arena = Arena.ofConfined();
-            MemorySegment segment = arena.allocate(100);
+            MemorySegment segment = arena.allocate(101);
             this(segment, arena);
         }
 
@@ -70,8 +70,59 @@ public class StrLenTest extends CLayouts {
         }
     }
 
+    static class LinkerAllocator implements SegmentAllocator {
+        static final ThreadLocal<LinkerAllocator> CACHE = new ThreadLocal<>() {
+            @Override
+            protected LinkerAllocator initialValue() {
+                return new LinkerAllocator();
+            }
+
+            @Override
+            public LinkerAllocator get() {
+                return super.get();
+            }
+        };
+
+        final MemorySegment segment = Arena.ofAuto().allocate(1024); // size TBD
+        SegmentAllocator allocator = null;
+
+        @Override
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            if (allocator != null) {
+                try {
+                    return allocator.allocate(byteSize, byteAlignment);
+                } catch (IndexOutOfBoundsException ex) {
+                    allocator = null;
+                    // try again
+                    return allocate(byteSize, byteAlignment);
+                }
+            } else {
+                // fallback
+                return Arena.ofAuto().allocate(byteSize, byteAlignment);
+            }
+        }
+
+        void reset() {
+            allocator = SegmentAllocator.prefixAllocator(segment);
+        }
+
+        static LinkerAllocator get() {
+            LinkerAllocator allocator = CACHE.get();
+            allocator.reset();
+            return allocator;
+        }
+    }
+
     static final PlatformLocal<Allocation> PLATFORM_ALLOC =
             new PlatformLocal<>(Allocation::new, Allocation::close);
+
+    static final ThreadLocal<Allocation> TL_ALLOC =
+            new ThreadLocal<>() {
+                @Override
+                protected Allocation initialValue() {
+                    return new Allocation();
+                }
+            };
 
     @Param({"5", "20", "100"})
     public int size;
@@ -134,11 +185,21 @@ public class StrLenTest extends CLayouts {
     public int panama_strlen_platform_local() throws Throwable {
         return PLATFORM_ALLOC.runWith(alloc -> {
             try {
-                return (int) STRLEN.invokeExact(alloc.segment);
+                return (int) STRLEN.invokeExact(SegmentAllocator.prefixAllocator(TL_ALLOC.get().segment).allocateFrom(str));
             } catch (Throwable ex) {
                 return 0;
             }
         });
+    }
+
+    @Benchmark
+    public int panama_strlen_thread_local() throws Throwable {
+        return (int) STRLEN.invokeExact(SegmentAllocator.prefixAllocator(TL_ALLOC.get().segment).allocateFrom(str));
+    }
+
+    @Benchmark
+    public int panama_strlen_linker_alloc() throws Throwable {
+        return (int) STRLEN.invokeExact(LinkerAllocator.get().allocateFrom(str));
     }
 
     @Benchmark
