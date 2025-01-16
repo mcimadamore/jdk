@@ -39,6 +39,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
+import java.util.concurrent.PlatformLocal;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
@@ -56,6 +57,21 @@ public class StrLenTest extends CLayouts {
     SegmentAllocator segmentAllocator;
     SegmentAllocator arenaAllocator = new RingAllocator(arena);
     SlicingPool pool = new SlicingPool();
+
+    record Allocation(MemorySegment segment, Arena arena) {
+        Allocation() {
+            Arena arena = Arena.ofConfined();
+            MemorySegment segment = arena.allocate(100);
+            this(segment, arena);
+        }
+
+        void close() {
+            arena.close();
+        }
+    }
+
+    static final PlatformLocal<Allocation> PLATFORM_ALLOC =
+            new PlatformLocal<>(Allocation::new, Allocation::close);
 
     @Param({"5", "20", "100"})
     public int size;
@@ -112,6 +128,17 @@ public class StrLenTest extends CLayouts {
     @Benchmark
     public int panama_strlen_prefix() throws Throwable {
         return (int)STRLEN.invokeExact(segmentAllocator.allocateFrom(str));
+    }
+
+    @Benchmark
+    public int panama_strlen_platform_local() throws Throwable {
+        return PLATFORM_ALLOC.runWith(alloc -> {
+            try {
+                return (int) STRLEN.invokeExact(alloc.segment);
+            } catch (Throwable ex) {
+                return 0;
+            }
+        });
     }
 
     @Benchmark
