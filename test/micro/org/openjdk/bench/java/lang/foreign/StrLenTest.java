@@ -59,6 +59,8 @@ public class StrLenTest extends CLayouts {
 
     Stack stack = Stack.newStack();
 
+    static final StackPool STR_POOL = StackPool.of();
+
     @Param({"5", "20", "100"})
     public int size;
     public String str;
@@ -115,6 +117,13 @@ public class StrLenTest extends CLayouts {
     @Benchmark
     public int panama_strlen_stack() throws Throwable {
         try (Arena arena = stack.push()) {
+            return (int) STRLEN.invokeExact(arena.allocateFrom(str));
+        }
+    }
+
+    @Benchmark
+    public int panama_strlen_stack_pool() throws Throwable {
+        try (Arena arena = STR_POOL.get()) {
             return (int) STRLEN.invokeExact(arena.allocateFrom(str));
         }
     }
