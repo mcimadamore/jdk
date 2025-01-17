@@ -63,14 +63,8 @@ public final class StackPool {
         Stack stack = STACK_POOL.get();
         if (Thread.currentThread().isVirtual()) {
             Continuation.pin();
-            try {
-                return stack.push();
-            } finally {
-                Continuation.unpin();
-            }
-        } else {
-            return stack.push();
         }
+        return stack.push();
     }
 
     /**

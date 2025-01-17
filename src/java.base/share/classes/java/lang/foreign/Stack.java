@@ -27,6 +27,7 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
+import jdk.internal.vm.Continuation;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.MemorySegment.Scope;
@@ -224,6 +225,9 @@ public final class Stack implements AutoCloseable {
             arena.close();
             offset = startOffset;
             pendingStart = prevPendingStart;
+            if (Thread.currentThread().isVirtual()) {
+                Continuation.unpin();
+            }
         }
 
         private void checkTop() {
