@@ -193,6 +193,13 @@ public class StrLenTest extends CLayouts {
     }
 
     @Benchmark
+    public int panama_strlen_platform_local_no_lambda() throws Throwable {
+        try (PlatformLocal.Value<Allocation> alloc = PLATFORM_ALLOC.get()) {
+            return (int) STRLEN.invokeExact(SegmentAllocator.prefixAllocator(alloc.get().segment).allocateFrom(str));
+        }
+    }
+
+    @Benchmark
     public int panama_strlen_thread_local() throws Throwable {
         return (int) STRLEN.invokeExact(SegmentAllocator.prefixAllocator(TL_ALLOC.get().segment).allocateFrom(str));
     }

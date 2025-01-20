@@ -28,6 +28,11 @@ public class PlatformLocal<T> {
         protected void threadTerminated(Cache cache) {
             cache.close();
         }
+
+        @Override
+        protected Cache initialValue() {
+            return new Cache();
+        }
     };
 
     private final Supplier<T> valueSupplier;
@@ -87,6 +92,65 @@ public class PlatformLocal<T> {
         }
     }
 
+    /** Blah
+     *
+     * @param <T> blah
+     */
+    public sealed interface Value<T> extends AutoCloseable {
+        /**
+         * Blah
+         * @return blah
+         */
+        T get();
+
+        @Override
+        void close();
+    }
+
+    private final class OfCache implements Value<T> {
+        final T t;
+        final Cache cache;
+
+        OfCache(Cache cache) {
+            this.t = cache.acquire();
+            this.cache = cache;
+        }
+
+        @Override
+        public void close() {
+            cache.release(t);
+        }
+
+        @Override
+        public T get() {
+            return t;
+        }
+    }
+
+    private record OfSupplied<T>(T t) implements Value<T> {
+        @Override
+        public void close() {
+            // do nothing
+        }
+
+        @Override
+        public T get() {
+            return t;
+        }
+    }
+
+    /**
+     * Blah
+     * @return blah
+     */
+    public Value<T> get() {
+        Cache cache = TL_CACHE.get();
+        boolean needsAcquire = Thread.currentThread().isVirtual();
+        return needsAcquire ?
+                new OfCache(cache) :
+                new OfSupplied<>(cache.cachedValue);
+    }
+
     /**
      * Obtains the platform local value associated with the current thread and perform
      * an action on it.
@@ -95,12 +159,12 @@ public class PlatformLocal<T> {
     @ForceInline
     public void runWith(Consumer<T> valueConsumer) {
         Cache cache = TL_CACHE.get();
-        if (cache == null) {
-            TL_CACHE.set(cache = new Cache());
-        }
-        T t = cache.acquire();
+        boolean needsAcquire = Thread.currentThread().isVirtual();
+        T t = needsAcquire ? cache.acquire() : cache.cachedValue;
         valueConsumer.accept(t);
-        cache.release(t);
+        if (needsAcquire) {
+            cache.release(t);
+        }
     }
 
     /**
@@ -114,14 +178,14 @@ public class PlatformLocal<T> {
     @SuppressWarnings("overloads")
     public <R> R runWith(Function<T, R> valueFunction) {
         Cache cache = TL_CACHE.get();
-        if (cache == null) {
-            TL_CACHE.set(cache = new Cache());
-        }
-        T t = cache.acquire();
+        boolean needsAcquire = Thread.currentThread().isVirtual();
+        T t = needsAcquire ? cache.acquire() : cache.cachedValue;
         try {
             return valueFunction.apply(t);
         } finally {
-            cache.release(t);
+            if (needsAcquire) {
+                cache.release(t);
+            }
         }
     }
 }
