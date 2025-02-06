@@ -286,7 +286,7 @@ public final class FormatterBuilder {
             int.class);
 
     private static final MethodHandle ToString_MH =
-        findStaticMethod(String.class, "valueOf", String.class,
+        findStaticMethod(FormatterBuilder.class, "formatObject", String.class,
             Object.class);
 
     private static final MethodHandle HashCode_MH =
@@ -295,6 +295,12 @@ public final class FormatterBuilder {
 
     private static boolean nullCheck(Object object) {
         return object == null;
+    }
+
+    private static String formatObject(Object object) {
+        return (object instanceof StringTemplate st) ?
+            String.format(st) :
+            String.valueOf(object);
     }
 
     private static boolean formattableCheck(Object object) {
