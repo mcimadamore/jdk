@@ -28,6 +28,7 @@ package com.sun.tools.javac.code;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -76,21 +77,14 @@ public class DeferredLintHandler {
     private final Lint rootLint;
 
     /**
-     * Pending reports received during parsing. These wait here until parsing completes,
-     * at which time we will have all the declarations and can move these into "deferralMap".
+     * {@code SuppressWarnings}-supporting declarations (with lexical ranges) keyed by source file.
      */
-    private List<ParsingReport> parsingReports;
+    private final Map<JavaFileObject, List<DeclNode>> declNodesMap = new HashMap<>();
 
     /**
-     * The {@code SuppressWarnings}-bearing declarations (with lexical ranges) in each source file.
+     * Pending reports waiting for flush() keyed by source file.
      */
-    private final Map<JavaFileObject, List<DeclNode>> positionsMap = new HashMap<>();
-
-    /**
-     * {@link LintLogger}s awaiting a flush(), keyed either by innermost containing declaration
-     * (for warnings nested within a declaration) or {@link JavaFileObject} for "top level" warnings.
-     */
-    private final Map<Object, List<LintLogger>> deferralMap = new HashMap<>();
+    private final Map<JavaFileObject, List<PendingReport>> pendingReportsMap = new HashMap<>();
 
     @SuppressWarnings("this-escape")
     protected DeferredLintHandler(Context context) {
@@ -100,17 +94,6 @@ public class DeferredLintHandler {
     }
 
 // Parsing Stuff
-
-    /**
-     * Receive notification that file parsing has started.
-     */
-    public void startParsing() {
-        Assert.check(parsingReports == null);
-        parsingReports = new ArrayList<>();
-        JavaFileObject sourceFile = log.currentSourceFile();
-        Assert.check(!positionsMap.containsKey(sourceFile));
-        positionsMap.put(sourceFile, new ArrayList<>());
-    }
 
     /**
      * Report finishing parsing a declaration that supports {@code @SuppressWarnings}.
@@ -127,11 +110,10 @@ public class DeferredLintHandler {
                   || decl.getTag() == Tag.CLASSDEF
                   || decl.getTag() == Tag.METHODDEF
                   || decl.getTag() == Tag.VARDEF);
-        JavaFileObject sourceFile = log.currentSourceFile();
-        List<DeclNode> declNodes = positionsMap.get(sourceFile);
-        Assert.check(declNodes != null, () -> "no positions found for " + sourceFile);
 
-        // Create new declaration node
+        // Create a new declaration node
+        JavaFileObject sourceFile = log.currentSourceFile();
+        List<DeclNode> declNodes = declNodesMap.computeIfAbsent(sourceFile, s -> new ArrayList<>());
         DeclNode declNode = new DeclNode(decl, endPos);
 
         // Verify our assumptions about declarations:
@@ -143,23 +125,9 @@ public class DeferredLintHandler {
             Assert.check(declNode.startPos() >= prevNode.endPos() || declNode.startPos() <= prevNode.startPos());
         }
 
-        // Add new node
+        // Add the new node to the list associated with the current source file
         declNodes.add(declNode);
         return decl;
-    }
-
-    /**
-     * Receive notification that file parsing has completed.
-     */
-    public void finishParsing() {
-        Assert.check(parsingReports != null);
-        JavaFileObject sourceFile = log.currentSourceFile();
-        Assert.check(positionsMap.containsKey(sourceFile));
-
-        // Now we can actually report the parsing reports
-        List<ParsingReport> readyReports = parsingReports;
-        parsingReports = null;
-        readyReports.forEach(p -> report(p.pos(), p.logger()));
     }
 
 // Reporting API
@@ -195,30 +163,9 @@ public class DeferredLintHandler {
      * @param logger logging callback
      */
     public void report(DiagnosticPosition pos, LintLogger logger) {
-
-        // If we're parsing, just hang on to it for now
-        if (parsingReports != null) {
-            parsingReports.add(new ParsingReport(pos, logger));
-            return;
-        }
-
-        // Get the declarations list for the current source file
         JavaFileObject sourceFile = log.currentSourceFile();
-        List<DeclNode> declNodes = positionsMap.get(sourceFile);
-        Assert.check(declNodes != null);
-
-        // Map the source file position to the innermost containing declaration - TODO - make this faster
-        DeclNode bestMatch = null;
-        int locus = pos.getStartPosition();
-        for (DeclNode declNode : declNodes) {
-            if (declNode.contains(locus) && (bestMatch == null || declNode.isContainedBy(bestMatch))) {
-                bestMatch = declNode;
-            }
-        }
-
-        // Add logger to the appropriate list
-        Object listKey = bestMatch != null ? bestMatch.decl() : sourceFile;
-        deferralMap.computeIfAbsent(listKey, d -> new ArrayList<>()).add(logger);
+        Assert.check(sourceFile != null);
+        pendingReportsMap.computeIfAbsent(sourceFile, s -> new ArrayList<>()).add(new PendingReport(pos, logger));
     }
 
 // Warning Flush
@@ -230,7 +177,8 @@ public class DeferredLintHandler {
      * @param lint lint configuration corresponding to {@code decl}
      */
     public void flush(JCTree decl, Lint lint) {
-        flush((Object)decl, lint);
+        JavaFileObject sourceFile = log.currentSourceFile();
+        flush(sourceFile, decl, lint);
     }
 
     /**
@@ -239,22 +187,50 @@ public class DeferredLintHandler {
      * @param sourceFile source file
      */
     public void flush(JavaFileObject sourceFile) {
-        //positionsMap.remove(sourceFile);
-        flush(sourceFile, rootLint);
+        flush(sourceFile, null, rootLint);
+
+        // Install land mines: there should be no more activity relating to this source file
+        declNodesMap.put(sourceFile, null);
+        pendingReportsMap.put(sourceFile, null);
     }
 
-    private void flush(Object listKey, Lint lint) {
-        Optional.of(listKey)
-          .map(deferralMap::remove)
-          .stream()
-          .flatMap(List::stream)
-          .forEach(logger -> logger.report(lint));
+    private void flush(JavaFileObject sourceFile, JCTree flushDecl, Lint lint) {
+
+        // Get the DeclNodes and pending reports for this source file
+        List<DeclNode> declNodes = declNodesMap.get(sourceFile);
+        List<PendingReport> pendingReports = pendingReportsMap.get(sourceFile);
+        Assert.check(sourceFile != null);
+        Assert.check(declNodes != null);
+
+        // Any reports to flush?
+        if (pendingReports == null)
+            return;
+
+        // Flush matching reports
+        for (Iterator<PendingReport> i = pendingReports.iterator(); i.hasNext(); ) {
+            PendingReport pendingReport = i.next();
+            if (findTree(declNodes, pendingReport.pos().getStartPosition()) == flushDecl) {
+                pendingReport.logger().report(lint);
+                i.remove();
+            }
+        }
     }
 
-// ParsingReport
+    // Map the source file position to the innermost containing declaration - TODO - make this faster
+    private JCTree findTree(List<DeclNode> declNodes, int pos) {
+        DeclNode bestMatch = null;
+        for (DeclNode declNode : declNodes) {
+            if (declNode.contains(pos) && (bestMatch == null || declNode.isContainedBy(bestMatch))) {
+                bestMatch = declNode;
+            }
+        }
+        return bestMatch != null ? bestMatch.decl() : null;
+    }
 
-    // A report received during parsing that is waiting for parsing to complete
-    private record ParsingReport(DiagnosticPosition pos, LintLogger logger) { }
+// PendingReport
+
+    // A warning report that is waiting to be flushed
+    private record PendingReport(DiagnosticPosition pos, LintLogger logger) { }
 
 // DeclNode
 
