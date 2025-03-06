@@ -390,6 +390,7 @@ public class JavacTrees extends DocTrees {
         }
         Log.DeferredDiagnosticHandler deferredDiagnosticHandler =
                 new Log.DeferredDiagnosticHandler(log);
+        JavaFileObject prev = log.useSource(env.toplevel.sourcefile);
         try {
             final TypeSymbol tsym;
             final Name memberName;
@@ -511,6 +512,7 @@ public class JavacTrees extends DocTrees {
         } catch (Abort e) { // may be thrown by Check.completionError in case of bad class file
             return null;
         } finally {
+            log.useSource(prev);
             log.popDiagnosticHandler(deferredDiagnosticHandler);
         }
     }
