@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Queue;
 
+import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.Position.LineMap;
 import static com.sun.tools.javac.parser.Tokens.*;
 
@@ -148,6 +151,16 @@ public class Scanner implements Lexer {
     @Override
     public Queue<Comment> getDocComments() {
         return docComments;
+    }
+
+    @Override
+    public <T extends JCTree> T endDecl(T decl, int endPos) {
+        return tokenizer.deferredLintHandler.endDecl(decl, endPos);
+    }
+
+    @Override
+    public void report(DiagnosticPosition pos, LintLogger logger) {
+        tokenizer.deferredLintHandler.report(pos, logger);
     }
 
     public int errPos() {

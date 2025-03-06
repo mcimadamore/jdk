@@ -640,9 +640,7 @@ public class Check {
                 && types.isSameType(tree.expr.type, tree.clazz.type)
                 && !(ignoreAnnotatedCasts && TreeInfo.containsTypeAnnotation(tree.clazz))
                 && !is292targetTypeCast(tree)) {
-            deferredLintHandler.report(_l -> {
-                lint.logIfEnabled(tree.pos(), LintWarnings.RedundantCast(tree.clazz.type));
-            });
+            deferredLintHandler.report(tree.pos(), LintWarnings.RedundantCast(tree.clazz.type));
         }
     }
     //where
@@ -1314,12 +1312,7 @@ public class Check {
     }
 
     private void warnOnExplicitStrictfp(JCTree tree) {
-        deferredLintHandler.push(tree);
-        try {
-            deferredLintHandler.report(_ -> lint.logIfEnabled(tree.pos(), LintWarnings.Strictfp));
-        } finally {
-            deferredLintHandler.pop();
-        }
+        deferredLintHandler.report(tree.pos(), LintWarnings.Strictfp);
     }
 
 
@@ -1875,7 +1868,7 @@ public class Check {
         if (!isDeprecatedOverrideIgnorable(other, origin)) {
             Lint prevLint = setLint(lint.augment(m));
             try {
-                checkDeprecated(() -> TreeInfo.diagnosticPositionFor(m, tree), m, other);
+                checkDeprecated(TreeInfo.diagnosticPositionFor(m, tree), m, other);
             } finally {
                 setLint(prevLint);
             }
@@ -3769,21 +3762,17 @@ public class Check {
     }
 
     void checkDeprecated(final DiagnosticPosition pos, final Symbol other, final Symbol s) {
-        checkDeprecated(() -> pos, other, s);
-    }
-
-    void checkDeprecated(Supplier<DiagnosticPosition> pos, final Symbol other, final Symbol s) {
         if ( (s.isDeprecatedForRemoval()
                 || s.isDeprecated() && !other.isDeprecated())
                 && (s.outermostClass() != other.outermostClass() || s.outermostClass() == null)
                 && s.kind != Kind.PCK) {
-            deferredLintHandler.report(_l -> warnDeprecated(pos.get(), s));
+            deferredLintHandler.report(pos, _l -> warnDeprecated(pos, s));
         }
     }
 
     void checkSunAPI(final DiagnosticPosition pos, final Symbol s) {
         if ((s.flags() & PROPRIETARY) != 0) {
-            deferredLintHandler.report(_l -> {
+            deferredLintHandler.report(pos, _l -> {
                 log.mandatoryWarning(pos, Warnings.SunProprietary(s));
             });
         }
@@ -3823,10 +3812,10 @@ public class Check {
                     log.error(pos, Errors.IsPreview(s));
                 } else {
                     preview.markUsesPreview(pos);
-                    deferredLintHandler.report(_l -> warnPreviewAPI(pos, LintWarnings.IsPreview(s)));
+                    deferredLintHandler.report(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreview(s)));
                 }
             } else {
-                    deferredLintHandler.report(_l -> warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s)));
+                    deferredLintHandler.report(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s)));
             }
         }
         if (preview.declaredUsingPreviewFeature(s)) {
@@ -3835,14 +3824,14 @@ public class Check {
                 //If "s" is compiled from source, then there was an error for it already;
                 //if "s" is from classfile, there already was an error for the classfile.
                 preview.markUsesPreview(pos);
-                deferredLintHandler.report(_l -> warnDeclaredUsingPreview(pos, s));
+                deferredLintHandler.report(pos, _l -> warnDeclaredUsingPreview(pos, s));
             }
         }
     }
 
     void checkRestricted(DiagnosticPosition pos, Symbol s) {
         if (s.kind == MTH && (s.flags() & RESTRICTED) != 0) {
-            deferredLintHandler.report(_l -> warnRestrictedAPI(pos, s));
+            deferredLintHandler.report(pos, _l -> warnRestrictedAPI(pos, s));
         }
     }
 
@@ -4114,7 +4103,7 @@ public class Check {
             int opc = ((OperatorSymbol)operator).opcode;
             if (opc == ByteCodes.idiv || opc == ByteCodes.imod
                 || opc == ByteCodes.ldiv || opc == ByteCodes.lmod) {
-                deferredLintHandler.report(_ -> lint.logIfEnabled(pos, LintWarnings.DivZero));
+                deferredLintHandler.report(pos, LintWarnings.DivZero);
             }
         }
     }
@@ -4127,8 +4116,7 @@ public class Check {
      */
     void checkLossOfPrecision(final DiagnosticPosition pos, Type found, Type req) {
         if (found.isNumeric() && req.isNumeric() && !types.isAssignable(found, req)) {
-            deferredLintHandler.report(_ ->
-                lint.logIfEnabled(pos, LintWarnings.PossibleLossOfPrecision(found, req)));
+            deferredLintHandler.report(pos, LintWarnings.PossibleLossOfPrecision(found, req));
         }
     }
 
@@ -4327,8 +4315,7 @@ public class Check {
                             // Warning may be suppressed by
                             // annotations; check again for being
                             // enabled in the deferred context.
-                            deferredLintHandler.report(_ ->
-                                lint.logIfEnabled(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle)));
+                            deferredLintHandler.report(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle));
                         } else {
                             return;
                         }
@@ -4662,22 +4649,20 @@ public class Check {
 
     void checkModuleExists(final DiagnosticPosition pos, ModuleSymbol msym) {
         if (msym.kind != MDL) {
-            deferredLintHandler.report(_ ->
-                lint.logIfEnabled(pos, LintWarnings.ModuleNotFound(msym)));
+            deferredLintHandler.report(pos, LintWarnings.ModuleNotFound(msym));
         }
     }
 
     void checkPackageExistsForOpens(final DiagnosticPosition pos, PackageSymbol packge) {
         if (packge.members().isEmpty() &&
             ((packge.flags() & Flags.HAS_RESOURCE) == 0)) {
-            deferredLintHandler.report(_ ->
-                lint.logIfEnabled(pos, LintWarnings.PackageEmptyOrNotFound(packge)));
+            deferredLintHandler.report(pos, LintWarnings.PackageEmptyOrNotFound(packge));
         }
     }
 
     void checkModuleRequires(final DiagnosticPosition pos, final RequiresDirective rd) {
         if ((rd.module.flags() & Flags.AUTOMATIC_MODULE) != 0) {
-            deferredLintHandler.report(_ -> {
+            deferredLintHandler.report(pos, _ -> {
                 if (rd.isTransitive() && lint.isEnabled(LintCategory.REQUIRES_TRANSITIVE_AUTOMATIC)) {
                     log.warning(pos, LintWarnings.RequiresTransitiveAutomatic);
                 } else {

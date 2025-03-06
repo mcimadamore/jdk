@@ -854,7 +854,6 @@ public class Attr extends JCTree.Visitor {
                                       Env<AttrContext> enclosingEnv,
                                       JCVariableDecl variable,
                                       Type type) {
-        deferredLintHandler.push(variable);
         final JavaFileObject prevSource = log.useSource(env.toplevel.sourcefile);
         try {
             doQueueScanTreeAndTypeAnnotateForVarInit(variable, enclosingEnv);
@@ -870,7 +869,6 @@ public class Attr extends JCTree.Visitor {
             }
         } finally {
             log.useSource(prevSource);
-            deferredLintHandler.pop();
         }
     }
 
@@ -1232,7 +1230,7 @@ public class Attr extends JCTree.Visitor {
                 }
 
                 // Attribute all type annotations in the body
-                annotate.queueScanTreeAndTypeAnnotate(tree.body, localEnv, m, null);
+                annotate.queueScanTreeAndTypeAnnotate(tree.body, localEnv, m);
                 annotate.flush();
 
                 // Start of constructor prologue
@@ -1340,7 +1338,7 @@ public class Attr extends JCTree.Visitor {
             env.info.scope.owner.kind != MTH && env.info.scope.owner.kind != VAR) {
             tree.mods.flags |= Flags.FIELD_INIT_TYPE_ANNOTATIONS_QUEUED;
             // Field initializer expression need to be entered.
-            annotate.queueScanTreeAndTypeAnnotate(tree.init, env, tree.sym, tree);
+            annotate.queueScanTreeAndTypeAnnotate(tree.init, env, tree.sym);
             annotate.flush();
         }
     }
@@ -1437,7 +1435,7 @@ public class Attr extends JCTree.Visitor {
 
             if ((tree.flags & STATIC) != 0) localEnv.info.staticLevel++;
             // Attribute all type annotations in the block
-            annotate.queueScanTreeAndTypeAnnotate(tree, localEnv, localEnv.info.scope.owner, null);
+            annotate.queueScanTreeAndTypeAnnotate(tree, localEnv, localEnv.info.scope.owner);
             annotate.flush();
             attribStats(tree.stats, localEnv);
 
@@ -4214,9 +4212,9 @@ public class Attr extends JCTree.Visitor {
             setSyntheticVariableType(tree.var, type == Type.noType ? syms.errType
                                                                    : type);
         }
-        annotate.annotateLater(tree.var.mods.annotations, env, v, tree.var);
+        annotate.annotateLater(tree.var.mods.annotations, env, v);
         if (!tree.var.isImplicitlyTyped()) {
-            annotate.queueScanTreeAndTypeAnnotate(tree.var.vartype, env, v, tree.var);
+            annotate.queueScanTreeAndTypeAnnotate(tree.var.vartype, env, v);
         }
         annotate.flush();
         result = tree.type;
@@ -5287,6 +5285,7 @@ public class Attr extends JCTree.Visitor {
         }
 
         annotate.flush();
+        deferredLintHandler.flush(env.toplevel.sourcefile);
     }
 
     public void attribPackage(DiagnosticPosition pos, PackageSymbol p) {

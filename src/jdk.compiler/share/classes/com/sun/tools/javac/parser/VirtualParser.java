@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package com.sun.tools.javac.parser;
 
+import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.parser.Tokens.Token;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCErroneous;
@@ -167,10 +168,15 @@ public class VirtualParser extends JavacParser {
             return S.getLineMap();
         }
 
-        public void commit() {
-            for (int i = 0 ; i < offset ; i++) {
-                S.nextToken(); // advance underlying lexer until position matches
-            }
+        @Override
+        public <T extends JCTree> T endDecl(T decl, int endPos) {
+           // ignore
+           return decl;
+        }
+
+        @Override
+        public void report(DiagnosticPosition pos, LintLogger logger) {
+           // ignore
         }
     }
 

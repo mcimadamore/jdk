@@ -52,7 +52,6 @@ import javax.tools.JavaFileObject.Kind;
 import javax.tools.StandardLocation;
 
 import com.sun.source.tree.ModuleTree.ModuleKind;
-import com.sun.tools.javac.code.DeferredLintHandler;
 import com.sun.tools.javac.code.Directive;
 import com.sun.tools.javac.code.Directive.ExportsDirective;
 import com.sun.tools.javac.code.Directive.ExportsFlag;
@@ -141,7 +140,6 @@ public class Modules extends JCTree.Visitor {
     private final Attr attr;
     private final Check chk;
     private final Preview preview;
-    private final DeferredLintHandler deferredLintHandler;
     private final TypeEnvs typeEnvs;
     private final Types types;
     private final JavaFileManager fileManager;
@@ -193,7 +191,6 @@ public class Modules extends JCTree.Visitor {
         attr = Attr.instance(context);
         chk = Check.instance(context);
         preview = Preview.instance(context);
-        deferredLintHandler = DeferredLintHandler.instance(context);
         typeEnvs = TypeEnvs.instance(context);
         moduleFinder = ModuleFinder.instance(context);
         types = Types.instance(context);
@@ -746,7 +743,6 @@ public class Modules extends JCTree.Visitor {
                 ModuleVisitor v = new ModuleVisitor();
                 JavaFileObject prev = log.useSource(tree.sourcefile);
                 JCModuleDecl moduleDecl = tree.getModuleDecl();
-                deferredLintHandler.push(moduleDecl);
 
                 try {
                     moduleDecl.accept(v);
@@ -754,7 +750,6 @@ public class Modules extends JCTree.Visitor {
                     checkCyclicDependencies(moduleDecl);
                 } finally {
                     log.useSource(prev);
-                    deferredLintHandler.pop();
                     msym.flags_field &= ~UNATTRIBUTED;
                 }
             }
@@ -991,13 +986,11 @@ public class Modules extends JCTree.Visitor {
             UsesProvidesVisitor v = new UsesProvidesVisitor(msym, env);
             JavaFileObject prev = log.useSource(env.toplevel.sourcefile);
             JCModuleDecl decl = env.toplevel.getModuleDecl();
-            deferredLintHandler.push(decl);
 
             try {
                 decl.accept(v);
             } finally {
                 log.useSource(prev);
-                deferredLintHandler.pop();
             }
         };
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,11 @@ package com.sun.tools.javac.parser;
 
 import java.util.Queue;
 
+import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.parser.Tokens.*;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
+import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
 import com.sun.tools.javac.util.Position.LineMap;
 
 /**
@@ -103,4 +107,44 @@ public interface Lexer {
      * token.
      */
     Queue<Comment> getDocComments();
+
+    /**
+     * Report finishing parsing a declaration that supports {@code @SuppressWarnings}.
+     *
+     * @param decl the newly parsed declaration
+     * @param endPos the ending position of {@code decl} (exclusive)
+     * @return the given {@code decl} (for fluent chaining)
+     */
+    public <T extends JCTree> T endDecl(T decl, int endPos);
+
+    /**
+     * Report finishing parsing a declaration that supports {@code @SuppressWarnings}.
+     *
+     * <p>
+     * This is a convenience method for when the ending position equals {@code prevToken().endPos}.
+     *
+     * @param decl the newly parsed declaration
+     * @return the given {@code decl} (for fluent chaining)
+     */
+    default <T extends JCTree> T endDecl(T decl) {
+        return endDecl(decl, prevToken().endPos);
+    }
+
+    /**
+     * Report a lexical warning subject to possible suppression by {@code @SuppressWarnings}.
+     *
+     * @param pos the lexical position at which the warning occurs
+     * @param logger the warning callback
+     */
+    void report(DiagnosticPosition pos, LintLogger logger);
+
+    /**
+     * Report a lexical warning subject to possible suppression by {@code @SuppressWarnings}.
+     *
+     * @param pos the lexical position at which the warning occurs
+     * @param key the warning to report
+     */
+    default void report(DiagnosticPosition pos, LintWarning key) {
+        report(pos, lint -> lint.logIfEnabled(pos, key));
+    }
 }

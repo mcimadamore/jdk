@@ -28,31 +28,26 @@ package com.sun.tools.javac.code;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import javax.tools.JavaFileObject;
+
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.Tag;
+import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.util.Assert;
 import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
+import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
+import com.sun.tools.javac.util.Log;
 
 /**
  * Holds pending {@link Lint} warnings until the {@lint Lint} instance associated with the containing
- * module, package, class, method, or variable declaration is known so that {@link @SupressWarnings}
+ * module, package, class, method, or variable declaration is known, so that {@link @SupressWarnings}
  * suppressions may be applied.
- *
- * <p>
- * Warnings are regsistered at any time prior to attribution via {@link #report}. The warning will be
- * associated with the declaration placed in context by the most recent invocation of {@link #push push()}
- * not yet {@link #pop}'d. Warnings are actually emitted later, during attribution, via {@link #flush}.
- *
- * <p>
- * There is also an "immediate" mode, where warnings are emitted synchronously; see {@link #pushImmediate}.
- *
- * <p>
- * Deferred warnings are grouped by the innermost containing module, package, class, method, or variable
- * declaration (represented by {@link JCTree} nodes), so that the corresponding {@link Lint} configuration
- * can be applied when the warning is eventually generated.
  *
  * <p><b>This is NOT part of any supported API.
  * If you write code that depends on this, you do so at your own risk.
@@ -71,27 +66,103 @@ public class DeferredLintHandler {
     }
 
     /**
-     * Registered {@link LintLogger}s grouped by the innermost containing module, package, class,
-     * method, or variable declaration.
+     * The {@link Log} singleton.
      */
-    private final HashMap<JCTree, ArrayList<LintLogger>> deferralMap = new HashMap<>();
+    private final Log log;
 
     /**
-     * The current "reporter" stack, reflecting calls to {@link #push} and {@link #pop}.
-     *
-     * <p>
-     * The top of the stack determines how calls to {@link #report} are handled.
+     * The root {@link Lint} singleton.
      */
-    private final ArrayDeque<Consumer<LintLogger>> reporterStack = new ArrayDeque<>();
+    private final Lint rootLint;
+
+    /**
+     * Pending reports received during parsing. These wait here until parsing completes,
+     * at which time we will have all the declarations and can move these into "deferralMap".
+     */
+    private List<ParsingReport> parsingReports;
+
+    /**
+     * The {@code SuppressWarnings}-bearing declarations (with lexical ranges) in each source file.
+     */
+    private final Map<JavaFileObject, List<DeclNode>> positionsMap = new HashMap<>();
+
+    /**
+     * {@link LintLogger}s awaiting a flush(), keyed either by innermost containing declaration
+     * (for warnings nested within a declaration) or {@link JavaFileObject} for "top level" warnings.
+     */
+    private final Map<Object, List<LintLogger>> deferralMap = new HashMap<>();
 
     @SuppressWarnings("this-escape")
     protected DeferredLintHandler(Context context) {
         context.put(deferredLintHandlerKey, this);
-        Lint rootLint = Lint.instance(context);
-        pushImmediate(rootLint);            // default to "immediate" mode
+        log = Log.instance(context);
+        rootLint = Lint.instance(context);
     }
 
-// LintLogger
+// Parsing Stuff
+
+    /**
+     * Receive notification that file parsing has started.
+     */
+    public void startParsing() {
+        Assert.check(parsingReports == null);
+        parsingReports = new ArrayList<>();
+        JavaFileObject sourceFile = log.currentSourceFile();
+        Assert.check(!positionsMap.containsKey(sourceFile));
+        positionsMap.put(sourceFile, new ArrayList<>());
+    }
+
+    /**
+     * Report finishing parsing a declaration that supports {@code @SuppressWarnings}.
+     *
+     * @param decl the newly parsed declaration
+     * @param endPos the ending position of {@code decl} (exclusive)
+     * @return the given {@code decl} (for fluent chaining)
+     */
+    public <T extends JCTree> T endDecl(T decl, int endPos) {
+
+        // Basic sanity checks
+        Assert.check(decl.getTag() == Tag.MODULEDEF
+                  || decl.getTag() == Tag.PACKAGEDEF
+                  || decl.getTag() == Tag.CLASSDEF
+                  || decl.getTag() == Tag.METHODDEF
+                  || decl.getTag() == Tag.VARDEF);
+        JavaFileObject sourceFile = log.currentSourceFile();
+        List<DeclNode> declNodes = positionsMap.get(sourceFile);
+        Assert.check(declNodes != null, () -> "no positions found for " + sourceFile);
+
+        // Create new declaration node
+        DeclNode declNode = new DeclNode(decl, endPos);
+
+        // Verify our assumptions about declarations:
+        //  1. If two declarations overlap, then one of them must nest within the other
+        //  2. endDecl() is invoked in order of increasing declaration ending position
+        if (!declNodes.isEmpty()) {
+            DeclNode prevNode = declNodes.get(declNodes.size() - 1);
+            Assert.check(declNode.endPos() >= prevNode.endPos());
+            Assert.check(declNode.startPos() >= prevNode.endPos() || declNode.startPos() <= prevNode.startPos());
+        }
+
+        // Add new node
+        declNodes.add(declNode);
+        return decl;
+    }
+
+    /**
+     * Receive notification that file parsing has completed.
+     */
+    public void finishParsing() {
+        Assert.check(parsingReports != null);
+        JavaFileObject sourceFile = log.currentSourceFile();
+        Assert.check(positionsMap.containsKey(sourceFile));
+
+        // Now we can actually report the parsing reports
+        List<ParsingReport> readyReports = parsingReports;
+        parsingReports = null;
+        readyReports.forEach(p -> report(p.pos(), p.logger()));
+    }
+
+// Reporting API
 
     /**An interface for deferred lint reporting - loggers passed to
      * {@link #report(LintLogger) } will be called when
@@ -107,55 +178,47 @@ public class DeferredLintHandler {
         void report(Lint lint);
     }
 
-// Reporter Stack
-
     /**
-     * Defer {@link #report}ed warnings until the given declaration is flushed.
+     * Report a warning subject to possible suppression by {@code @SuppressWarnings}.
      *
-     * @param decl module, package, class, method, or variable declaration
-     * @see #pop
+     * @param pos warning position
+     * @param key warning key
      */
-    public void push(JCTree decl) {
-        Assert.check(decl.getTag() == Tag.MODULEDEF
-                  || decl.getTag() == Tag.PACKAGEDEF
-                  || decl.getTag() == Tag.CLASSDEF
-                  || decl.getTag() == Tag.METHODDEF
-                  || decl.getTag() == Tag.VARDEF);
-        reporterStack.push(logger -> deferralMap
-                                        .computeIfAbsent(decl, s -> new ArrayList<>())
-                                        .add(logger));
+    public void report(DiagnosticPosition pos, LintWarning key) {
+        this.report(pos, lint -> lint.logIfEnabled(pos, key));
     }
 
     /**
-     * Enter "immediate" mode so that {@link #report}ed warnings are emitted synchonously.
+     * Report a warning subject to possible suppression by {@code @SuppressWarnings}.
      *
-     * @param lint lint configuration to use for reported warnings
+     * @param pos warning position
+     * @param logger logging callback
      */
-    public void pushImmediate(Lint lint) {
-        reporterStack.push(logger -> logger.report(lint));
-    }
+    public void report(DiagnosticPosition pos, LintLogger logger) {
 
-    /**
-     * Revert to the previous configuration in effect prior to the most recent invocation
-     * of {@link #push} or {@link #pushImmediate}.
-     *
-     * @see #pop
-     */
-    public void pop() {
-        Assert.check(reporterStack.size() > 1);     // the bottom stack entry should never be popped
-        reporterStack.pop();
-    }
+        // If we're parsing, just hang on to it for now
+        if (parsingReports != null) {
+            parsingReports.add(new ParsingReport(pos, logger));
+            return;
+        }
 
-    /**
-     * Report a warning.
-     *
-     * <p>
-     * In immediate mode, the warning is emitted synchronously. Otherwise, the warning is emitted later
-     * when the current declaration is flushed.
-     */
-    public void report(LintLogger logger) {
-        Assert.check(!reporterStack.isEmpty());
-        reporterStack.peek().accept(logger);
+        // Get the declarations list for the current source file
+        JavaFileObject sourceFile = log.currentSourceFile();
+        List<DeclNode> declNodes = positionsMap.get(sourceFile);
+        Assert.check(declNodes != null);
+
+        // Map the source file position to the innermost containing declaration - TODO - make this faster
+        DeclNode bestMatch = null;
+        int locus = pos.getStartPosition();
+        for (DeclNode declNode : declNodes) {
+            if (declNode.contains(locus) && (bestMatch == null || declNode.isContainedBy(bestMatch))) {
+                bestMatch = declNode;
+            }
+        }
+
+        // Add logger to the appropriate list
+        Object listKey = bestMatch != null ? bestMatch.decl() : sourceFile;
+        deferralMap.computeIfAbsent(listKey, d -> new ArrayList<>()).add(logger);
     }
 
 // Warning Flush
@@ -167,10 +230,47 @@ public class DeferredLintHandler {
      * @param lint lint configuration corresponding to {@code decl}
      */
     public void flush(JCTree decl, Lint lint) {
-        Optional.of(decl)
+        flush((Object)decl, lint);
+    }
+
+    /**
+     * Emit "top level" deferred warnings not encompassed by any declarations.
+     *
+     * @param sourceFile source file
+     */
+    public void flush(JavaFileObject sourceFile) {
+        //positionsMap.remove(sourceFile);
+        flush(sourceFile, rootLint);
+    }
+
+    private void flush(Object listKey, Lint lint) {
+        Optional.of(listKey)
           .map(deferralMap::remove)
           .stream()
-          .flatMap(ArrayList::stream)
+          .flatMap(List::stream)
           .forEach(logger -> logger.report(lint));
+    }
+
+// ParsingReport
+
+    // A report received during parsing that is waiting for parsing to complete
+    private record ParsingReport(DiagnosticPosition pos, LintLogger logger) { }
+
+// DeclNode
+
+    // A declaration with starting (inclusive) and ending (exclusive) positions
+    private record DeclNode(JCTree decl, int startPos, int endPos) {
+
+        DeclNode(JCTree decl, int endPos) {
+            this(decl, TreeInfo.getStartPos(decl), endPos);
+        }
+
+        boolean contains(int pos) {
+            return pos == startPos() || (pos > startPos() && pos < endPos());
+        }
+
+        boolean isContainedBy(DeclNode that) {
+            return that.startPos() <= this.startPos() && that.endPos() >= this.endPos();
+        }
     }
 }

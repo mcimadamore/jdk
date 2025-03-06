@@ -290,6 +290,10 @@ public class JavaCompiler {
      */
     protected Names names;
 
+    /** The deferred lint handler.
+     */
+    protected DeferredLintHandler deferredLintHandler;
+
     /** The attributor.
      */
     protected Attr attr;
@@ -397,6 +401,7 @@ public class JavaCompiler {
         names = Names.instance(context);
         log = Log.instance(context);
         diagFactory = JCDiagnostic.Factory.instance(context);
+        deferredLintHandler = DeferredLintHandler.instance(context);
         finder = ClassFinder.instance(context);
         reader = ClassReader.instance(context);
         make = TreeMaker.instance(context);
@@ -693,11 +698,13 @@ public class JavaCompiler {
     public JCTree.JCCompilationUnit parse(JavaFileObject filename) {
         JavaFileObject prev = log.useSource(filename);
         try {
+            deferredLintHandler.startParsing();
             JCTree.JCCompilationUnit t = parse(filename, readSource(filename));
             if (t.endPositions != null)
                 log.setEndPosTable(filename, t.endPositions);
             return t;
         } finally {
+            deferredLintHandler.finishParsing();
             log.useSource(prev);
         }
     }
