@@ -636,6 +636,8 @@ public class JavaCompiler {
         return parse(filename, content, false);
     }
 
+static int depth;
+
     /** Parse contents of input stream.
      *  @param filename     The name of the file from which input stream comes.
      *  @param content      The characters to be parsed.
@@ -656,7 +658,12 @@ public class JavaCompiler {
             }
             Parser parser = parserFactory.newParser(content, keepComments(), genEndPos,
                                 lineDebugInfo, filename.isNameCompatible("module-info", Kind.SOURCE));
+System.err.println(String.format("[%d] START PARSING: %s", depth++, log.currentSourceFile()));
+try {
             tree = parser.parseCompilationUnit();
+} finally {
+System.err.println(String.format("[%d] FINISH PARSING: %s", --depth, log.currentSourceFile()));
+}
             if (verbose) {
                 log.printVerbose("parsing.done", Long.toString(elapsed(msec)));
             }
@@ -2013,6 +2020,7 @@ public class JavaCompiler {
     }
 
     public void newRound() {
+System.err.println(String.format("%s[0x%08x] *** NEW ROUND ***", this.getClass().getSimpleName(), System.identityHashCode(this)));
         inputFiles.clear();
         todo.clear();
     }

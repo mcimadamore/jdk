@@ -117,7 +117,7 @@ public class Attr extends JCTree.Visitor {
     final Preview preview;
     final JCDiagnostic.Factory diags;
     final TypeAnnotations typeAnnotations;
-    final DeferredLintHandler deferredLintHandler;
+    final Lint rootLint;
     final TypeEnvs typeEnvs;
     final Dependencies dependencies;
     final Annotate annotate;
@@ -157,7 +157,7 @@ public class Attr extends JCTree.Visitor {
         diags = JCDiagnostic.Factory.instance(context);
         annotate = Annotate.instance(context);
         typeAnnotations = TypeAnnotations.instance(context);
-        deferredLintHandler = DeferredLintHandler.instance(context);
+        rootLint = Lint.instance(context);
         typeEnvs = TypeEnvs.instance(context);
         dependencies = Dependencies.instance(context);
         argumentAttr = ArgumentAttr.instance(context);
@@ -997,7 +997,7 @@ public class Attr extends JCTree.Visitor {
         Assert.check(!env.info.ctorPrologue);
         MethodSymbol prevMethod = chk.setMethod(m);
         try {
-            deferredLintHandler.flush(tree, lint);
+            log.setLintFor(tree, lint);
             chk.checkDeprecatedAnnotation(tree.pos(), m);
 
 
@@ -1294,7 +1294,7 @@ public class Attr extends JCTree.Visitor {
 
         try {
             v.getConstValue(); // ensure compile-time constant initializer is evaluated
-            deferredLintHandler.flush(tree, lint);
+            log.setLintFor(tree, lint);
             chk.checkDeprecatedAnnotation(tree.pos(), v);
 
             if (tree.init != null) {
@@ -5285,7 +5285,8 @@ public class Attr extends JCTree.Visitor {
         }
 
         annotate.flush();
-        deferredLintHandler.flush(env.toplevel.sourcefile);
+
+        log.setLintFor(env.toplevel, rootLint);
     }
 
     public void attribPackage(DiagnosticPosition pos, PackageSymbol p) {
@@ -5328,7 +5329,7 @@ public class Attr extends JCTree.Visitor {
         JavaFileObject prev = log.useSource(env.toplevel.sourcefile);
 
         try {
-            deferredLintHandler.flush(env.tree, lint);
+            log.setLintFor(env.tree, lint);
             attrib.accept(env);
         } finally {
             log.useSource(prev);
@@ -5507,7 +5508,7 @@ public class Attr extends JCTree.Visitor {
                     }
                 }
 
-                deferredLintHandler.flush(env.tree, env.info.lint);
+                log.setLintFor(env.tree, env.info.lint);
                 env.info.returnResult = null;
                 // java.lang.Enum may not be subclassed by a non-enum
                 if (st.tsym == syms.enumSym &&
@@ -5557,7 +5558,7 @@ public class Attr extends JCTree.Visitor {
         chk.checkDeprecatedAnnotation(tree, msym);
 
         try {
-            deferredLintHandler.flush(tree, lint);
+            log.setLintFor(tree, lint);
         } finally {
             chk.setLint(prevLint);
         }

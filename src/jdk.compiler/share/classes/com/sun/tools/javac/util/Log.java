@@ -26,28 +26,42 @@
 package com.sun.tools.javac.util;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 
 import com.sun.tools.javac.api.DiagnosticFormatter;
+import com.sun.tools.javac.code.Lint;
 import com.sun.tools.javac.main.Main;
 import com.sun.tools.javac.main.Option;
 import com.sun.tools.javac.tree.EndPosTable;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticInfo;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticType;
+import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
 
 import static com.sun.tools.javac.main.Option.*;
+import static com.sun.tools.javac.tree.JCTree.Tag.*;
 
 /** A class for error logs. Reports errors and warnings, and
  *  keeps track of error numbers and positions.
@@ -97,6 +111,11 @@ public class Log extends AbstractLog {
         protected DiagnosticHandler prev;
 
         /**
+         * Pending actions waiting for an applicable {@link Lint} instance.
+         */
+        protected Map<JavaFileObject, List<PendingAction>> pendingActionMap = new HashMap<>();
+
+        /**
          * Install this diagnostic handler as the current one,
          * recording the previous one.
          */
@@ -109,6 +128,69 @@ public class Log extends AbstractLog {
          * Handle a diagnostic.
          */
         public abstract void report(JCDiagnostic diag);
+
+        /**
+         * Defer some action until the {@link Lint} configuration for the given position is known.
+         *
+         * @param sourceFile source file
+         * @param action an action to perform once the applicable {@link Lint} is known
+         */
+        public void deferPendingAction(JavaFileObject sourceFile, PendingAction pendingAction) {
+            pendingActionMap.computeIfAbsent(sourceFile, s -> new LinkedList<>()).add(pendingAction);
+        }
+
+        /**
+         * Perform the actions previously deferred via {@link #deferPendingAction} for which
+         * {@code decl} is the innermost containing declaration for the action's position.
+         *
+         * @param sourceInfo source file info
+         * @param decl the declaration whose {@link Lint} configuration is now known
+         */
+        public void flushPendingActions(SourceInfo sourceInfo, Decl decl) {
+
+            // Get pending action list for this source file
+            JavaFileObject sourceFile = sourceInfo.sourceFile();
+            List<PendingAction> pendingActions = pendingActionMap.get(sourceFile);
+            if (pendingActions != null) {
+
+                // Find and perform all pending actions matching this declaration
+                List<PendingAction> matches = new ArrayList<>();    // avoid potential concurrent modification
+                for (Iterator<PendingAction> i = pendingActions.iterator(); i.hasNext(); ) {
+                    PendingAction pa = i.next();
+                    if (sourceInfo.findDecl(pa.pos(), pa.where()) == decl) {
+                        Assert.check(pa.sourceFile().equals(sourceFile),
+                          () -> "flushPendingActions(): source file mismatch:"
+                                +"\n  sourceFile="+sourceFile
+                                +"\n  pa.sourceFile()="+pa.sourceFile()
+                                +"\n  decl="+decl
+                                );
+                        matches.add(pa);
+                        i.remove();
+                    }
+                }
+                Lint lint = decl.lint().get();
+                matches.forEach(pa -> pa.action().accept(lint));
+
+                // After the final top level declaration is flushed, there should be nothing left
+                Assert.check(decl.tree().getTag() != TOPLEVEL || pendingActions.isEmpty(),
+                  () -> "flushPendingActions(): not all declarations flushed"
+                        +"\n  sourceFile="+sourceFile
+                        +"\n  pendingActions="+pendingActions
+                        );
+                        //pendingActions.iterator().next().where().printStackTrace(System.err);
+            } else {
+                Assert.check(!pendingActionMap.containsKey(sourceFile)
+                  ,() -> "flushPendingActions(): flushing completed source file"
+                        +"\n  sourceFile="+sourceFile
+                        );
+            }
+
+            // After the final top level declaration is flushed, ensure list can't be used again
+            if (decl.tree().getTag() == TOPLEVEL) {
+new Throwable("FLUSH DONE: " + sourceFile).printStackTrace(System.err);
+                pendingActionMap.put(sourceFile, null);
+            }
+        }
     }
 
     /**
@@ -122,6 +204,12 @@ public class Log extends AbstractLog {
 
         @Override
         public void report(JCDiagnostic diag) { }
+
+        @Override
+        public void deferPendingAction(JavaFileObject sourceFile, PendingAction pendingAction) { }
+
+        @Override
+        public void flushPendingActions(SourceInfo sourceInfo, Decl decl) { }
     }
 
     /**
@@ -132,7 +220,7 @@ public class Log extends AbstractLog {
      * active diagnostic handler.
      */
     public static class DeferredDiagnosticHandler extends DiagnosticHandler {
-        private Queue<JCDiagnostic> deferred = new ListBuffer<>();
+        private List<JCDiagnostic> deferred = new ArrayList<>();
         private final Predicate<JCDiagnostic> filter;
         private final boolean passOnNonDeferrable;
 
@@ -163,7 +251,15 @@ public class Log extends AbstractLog {
             }
         }
 
-        public Queue<JCDiagnostic> getDiagnostics() {
+        @Override
+        public void flushPendingActions(SourceInfo sourceInfo, Decl decl) {
+            if (prev != null) {
+                prev.flushPendingActions(sourceInfo, decl);
+            }
+            super.flushPendingActions(sourceInfo, decl);
+        }
+
+        public List<JCDiagnostic> getDiagnostics() {
             return deferred;
         }
 
@@ -174,22 +270,24 @@ public class Log extends AbstractLog {
 
         /** Report selected deferred diagnostics. */
         public void reportDeferredDiagnostics(Predicate<JCDiagnostic> accepter) {
-            JCDiagnostic d;
-            while ((d = deferred.poll()) != null) {
-                if (accepter.test(d))
-                    prev.report(d);
-            }
+
+            // Flush reports to the previous handler
+            deferred.stream()
+              .filter(accepter)
+              .forEach(prev::report);
             deferred = null; // prevent accidental ongoing use
+
+            // Flush pending actions to the previous handler
+            pendingActionMap.forEach(
+              (sourceFile, pendingActions) -> pendingActions.forEach(
+                pendingAction -> prev.deferPendingAction(sourceFile, pendingAction)));
+            pendingActionMap = null; // prevent accidental ongoing use
         }
 
-        /** Report selected deferred diagnostics. */
+        /** Report all deferred diagnostics in the specified order. */
         public void reportDeferredDiagnostics(Comparator<JCDiagnostic> order) {
-            JCDiagnostic[] diags = deferred.toArray(s -> new JCDiagnostic[s]);
-            Arrays.sort(diags, order);
-            for (JCDiagnostic d : diags) {
-                prev.report(d);
-            }
-            deferred = null; // prevent accidental ongoing use
+            deferred.sort(order);
+            reportDeferredDiagnostics();
         }
     }
 
@@ -680,6 +778,16 @@ public class Log extends AbstractLog {
         nwarnings++;
     }
 
+    /** Report a warning if the lint category is enabled at the position.
+     *  Warnings will be deferred if the lint configuration is not known yet.
+     *
+     *  @param pos    The source position at which to report the warning.
+     *  @param key    The key for the localized warning message.
+     */
+    public void warnIfEnabled(DiagnosticPosition pos, LintWarning key) {
+        withLintAt(pos, lint -> lint.logIfEnabled(pos, key));
+    }
+
     /**
      * Primary method to report a diagnostic.
      * @param diagnostic
@@ -689,12 +797,274 @@ public class Log extends AbstractLog {
         diagnosticHandler.report(diagnostic);
      }
 
+// Deferred Lint Warnings
+
+    protected final Map<JavaFileObject, SourceInfo> sourceInfoMap = new HashMap<>();
+
+    public void newRound() {
+        sourceInfoMap.clear();
+    }
+
+    /**
+     * Report finishing parsing a tree node that relates to lint warning suppression.
+     *
+     * <p>
+     * This is invoked during parsing to inform us of the ending positions of import, module,
+     * package, class, method, variable, and compilation unit declarations.
+     *
+     * @param tree the newly parsed tree
+     * @param endPos the ending position of {@code tree} (exclusive)
+     * @return the given {@code tree} (for fluent chaining)
+     */
+    public <T extends JCTree> T endDecl(T tree, int endPos) {
+
+        // Do we care?
+        if (!shouldTrack(tree))
+            return tree;
+
+        // Get source file info
+        JavaFileObject sourceFile = currentSourceFile();
+tree.sourceFile = sourceFile;
+        SourceInfo sourceInfo = sourceInfoMap.computeIfAbsent(sourceFile, SourceInfo::new);
+
+        // Already parsed? TODO: why does this happen??
+        if (sourceInfo.isParsed()) {
+            throw new AssertionError("ALREADY PARSED: " + sourceFile);
+            //System.err.println("ALREADY PARSED: " + sourceFile);
+            //return tree;
+        }
+
+        // Add a new declaration node
+        Decl decl = new Decl(tree, endPos);
+        sourceInfo.decls().add(decl);
+
+        // Verify our assumptions:
+        //  1. If two declarations overlap, then one of them must nest within the other
+        //  2. endDecl() is invoked in order of increasing declaration ending position
+        sourceInfo.lastDecl().ifPresent(prev -> {
+            Assert.check(decl.endPos() >= prev.endPos());
+            Assert.check(decl.startPos() >= prev.endPos() || decl.startPos() <= prev.startPos());
+        });
+
+        // Done
+        return tree;
+    }
+
+    /**
+     * Invoke the given callback once the {@link Lint} configuration for the given position is known.
+     *
+     * <p>
+     * That might be right now, or it might be later if {@code @SuppressWarnings} annotations
+     * have not been attributed yet.
+     *
+     * @param pos source code position, or null for unscoped
+     * @param action what to do with the {@link Lint} that applies at {@code pos}
+     */
+    public void withLintAt(DiagnosticPosition pos, Consumer<? super Lint> action) {
+
+        // If the source file is not completely parsed yet, we must defer
+        JavaFileObject sourceFile = currentSourceFile();
+        SourceInfo sourceInfo = sourceInfoMap.computeIfAbsent(sourceFile, SourceInfo::new);
+        if (!sourceInfo.isParsed()) {
+            diagnosticHandler.deferPendingAction(sourceFile, new PendingAction(sourceFile, pos, action));
+            return;
+        }
+
+        // If the applicable lint configuration is not yet known, we must defer
+        Lint lint = sourceInfo.findDecl(pos, new Throwable()).lint().get();
+        if (lint == null) {
+            diagnosticHandler.deferPendingAction(sourceFile, new PendingAction(sourceFile, pos, action));
+            return;
+        }
+        // TODO: add decl() property to PendingAction so we don't have to find it again
+        // this will require a step to fill these in after parsing completes
+
+        // Proceed
+        action.accept(lint);
+    }
+
+    /**
+     * Notification of the {@link Lint} instance that applies to the given tree node.
+     *
+     * @param decl import, module, package, class, method, or variable, or top level declaration
+     * @param lint lint configuration corresponding to {@code decl}
+     */
+    public void setLintFor(JCTree tree, Lint lint) {
+
+        // Do we care?
+        if (!shouldTrack(tree))
+            return;
+
+        // Find the Decl matching this tree node
+        JavaFileObject sourceFile = currentSourceFile();
+
+Assert.check(sourceFile.equals(tree.sourceFile),
+  () -> "wrong source file for tree:"
+        +"\n    currentSource="+sourceFile
+        +"\n  tree.sourceFile="+tree.sourceFile
+        );
+
+        SourceInfo sourceInfo = sourceInfoMap.get(sourceFile);
+        Assert.check(sourceInfo != null);
+        Assert.check(sourceInfo.isParsed());
+        Decl decl = sourceInfo.findDecl(tree);
+
+        // Update its lint config
+        Assert.check(decl.lint().get() == null);
+        decl.lint().set(lint);
+
+        // Now that the Lint configuration is known, flush the affected pending actions
+        diagnosticHandler.flushPendingActions(sourceInfo, decl);
+    }
+
+    // Determine if we need to track the given tree
+    private boolean shouldTrack(JCTree tree) {
+        Assert.check(tree != null);
+        JCModifiers mods;
+        switch (tree.getTag()) {
+        case MODULEDEF:
+            JCModuleDecl mod = (JCModuleDecl)tree;
+            return mod.mods != null && mod.mods.annotations != null && !mod.mods.annotations.isEmpty();
+        case PACKAGEDEF:
+            JCPackageDecl p = (JCPackageDecl)tree;
+            return p.annotations != null && !p.annotations.isEmpty();
+        case CLASSDEF:
+            JCClassDecl c = (JCClassDecl)tree;
+            return c.mods != null && c.mods.annotations != null && !c.mods.annotations.isEmpty();
+        case METHODDEF:
+            JCMethodDecl m = (JCMethodDecl)tree;
+            return m.mods != null && m.mods.annotations != null && !m.mods.annotations.isEmpty();
+        case VARDEF:
+            JCVariableDecl v = (JCVariableDecl)tree;
+            return v.mods != null && v.mods.annotations != null && !v.mods.annotations.isEmpty();
+        case IMPORT:
+            return true;    // XXX
+        case TOPLEVEL:
+            return true;
+        default:
+            throw new AssertionError("unexpected " + tree.getTag());
+        }
+    }
+
+// SourceInfo
+
+    /**
+     * The information we track on a per-source file basis to facilitate {@code @SuppressWarnings}.
+     *
+     * @param sourceFile the source file (for debug only)
+     * @param decls all {@code @SuppressWarnings}-supporting declarations in the file
+     */
+    private record SourceInfo(JavaFileObject sourceFile, List<Decl> decls) {
+
+        SourceInfo(JavaFileObject sourceFile) {
+            this(sourceFile, new ArrayList<>());
+        }
+
+        // Has the source file been completely parsed?
+        boolean isParsed() {
+            return lastDecl()
+              .map(decl -> decl.tree().getTag() == TOPLEVEL)
+              .orElse(false);
+        }
+
+        // Get the most recently added declaration
+        Optional<Decl> lastDecl() {
+            return Optional.of(decls)
+              .filter(list -> !list.isEmpty())
+              .map(list -> list.get(list.size() - 1));
+        }
+
+        // Find the Decl for the given tree node
+        Decl findDecl(JCTree tree) {
+            return decls.stream()
+              .filter(decl -> tree.equals(decl.tree()))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError(
+                "decl not found: " + tree
+                 + "\n  sourceFile="+sourceFile
+                 + "\n  tree.sourceFile="+tree.sourceFile
+                 + "\n  decls="+decls
+
+                 ));
+        }
+
+        // Find the Decl for the innermost tree node containing the position
+        Decl findDecl(DiagnosticPosition dp, Throwable where) {
+            int pos = dp.getStartPosition();
+            Decl best = null;
+            for (Decl decl : decls) {
+                if (decl.contains(pos) && (best == null || best.contains(decl))) {
+                    best = decl;
+                }
+            }
+
+if (best == null) {
+    System.err.println("************ findDecl() failed ****************"
+    +"\n  sourceFile="+sourceFile
+    +"\n  pos="+pos
+    +"\n  decls="+decls
+    );
+    where.printStackTrace(System.err);
+}
+
+
+            Assert.check(best != null);
+            return best;
+        }
+    }
+
+// Decl
+
+    /**
+     * An import, module, package, class, method, or variable,
+     * or top level declaration and its lexical range.
+     *
+     * @param tree tree node
+     * @param startPos starting position (inclusive)
+     * @param endPos ending position (exclusive)
+     * @param lint the {@link Lint} configuration that applies to {@code tree}, if known
+     */
+    private record Decl(JCTree tree, int startPos, int endPos, AtomicReference<Lint> lint) {
+
+        Decl(JCTree tree, int endPos) {
+            this(tree, tree.getTag() == TOPLEVEL ? 0 : TreeInfo.getStartPos(tree), endPos, new AtomicReference<>());
+        }
+
+        boolean contains(int pos) {
+            return pos == startPos || (pos > startPos && pos < endPos);
+        }
+
+        boolean contains(Decl that) {
+            return this.startPos <= that.startPos && this.endPos >= that.endPos;
+        }
+    }
+
+// PendingAction
+
+    /**
+     * An action waiting for the applicable {@lint Lint} configuration to be determined.
+     *
+     * @param sourceFile the source file (for debug only)
+     * @param pos the relevant source file position
+     * @param action action to be taken
+     */
+    private record PendingAction(JavaFileObject sourceFile,
+        DiagnosticPosition pos, Consumer<? super Lint> action, Throwable where) {
+
+        PendingAction(JavaFileObject sourceFile, DiagnosticPosition pos, Consumer<? super Lint> action) {
+            this(sourceFile, pos, action, new Throwable("allocated here"));
+        }
+    }
+
+// DefaultDiagnosticHandler
+
     /**
      * Common diagnostic handling.
      * The diagnostic is counted, and depending on the options and how many diagnostics have been
      * reported so far, the diagnostic may be handed off to writeDiagnostic.
      */
     private class DefaultDiagnosticHandler extends DiagnosticHandler {
+
         @Override
         public void report(JCDiagnostic diagnostic) {
             if (expectDiagKeys != null)
@@ -888,5 +1258,4 @@ public class Log extends AbstractLog {
     public static String format(String fmt, Object... args) {
         return String.format((java.util.Locale)null, fmt, args);
     }
-
 }

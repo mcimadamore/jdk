@@ -37,7 +37,6 @@ import com.sun.source.tree.MemberReferenceTree.ReferenceMode;
 import com.sun.source.tree.ModuleTree.ModuleKind;
 
 import com.sun.tools.javac.code.*;
-import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.file.PathFileObject;
 import com.sun.tools.javac.parser.Tokens.*;
@@ -114,9 +113,6 @@ public class JavacParser implements Parser {
     /** End position mappings container */
     protected final AbstractEndPosTable endPosTable;
 
-    /** Handler for deferred diagnostics. */
-    protected final DeferredLintHandler deferredLintHandler;
-
     // Because of javac's limited lookahead, some contexts are ambiguous in
     // the presence of type annotations even though they are not ambiguous
     // in the absence of type annotations.  Consider this code:
@@ -187,7 +183,6 @@ public class JavacParser implements Parser {
         this.names = fac.names;
         this.source = fac.source;
         this.preview = fac.preview;
-        this.deferredLintHandler = fac.deferredLintHandler;
         this.allowStringFolding = fac.options.getBoolean("allowStringFolding", true);
         this.keepDocComments = keepDocComments;
         this.parseModuleInfo = parseModuleInfo;
@@ -212,7 +207,6 @@ public class JavacParser implements Parser {
         this.names = parser.names;
         this.source = parser.source;
         this.preview = parser.preview;
-        this.deferredLintHandler = parser.deferredLintHandler;
         this.allowStringFolding = parser.allowStringFolding;
         this.keepDocComments = parser.keepDocComments;
         this.parseModuleInfo = false;
@@ -631,7 +625,7 @@ public class JavacParser implements Parser {
     void reportDanglingDocComment(Comment c) {
         var pos = c.getPos();
         if (pos != null && !shebang(c, pos)) {
-            S.report(pos, LintWarnings.DanglingDocComment);
+            S.warnIfEnabled(pos, LintWarnings.DanglingDocComment);
         }
     }
 
@@ -4097,7 +4091,7 @@ public class JavacParser implements Parser {
             toplevel.lineMap = S.getLineMap();
         this.endPosTable.setParser(null); // remove reference to parser
         toplevel.endPositions = this.endPosTable;
-        return toplevel;
+        return S.endDecl(toplevel);
     }
 
     // Restructure top level to be an implicitly declared class.
@@ -4267,7 +4261,7 @@ public class JavacParser implements Parser {
             }
         } while (token.kind == DOT);
         accept(SEMI);
-        return toP(F.at(pos).Import((JCFieldAccess)pid, importStatic));
+        return S.endDecl(toP(F.at(pos).Import((JCFieldAccess)pid, importStatic)));
     }
 
     /** TypeDeclaration = ClassOrInterfaceOrEnumDeclaration

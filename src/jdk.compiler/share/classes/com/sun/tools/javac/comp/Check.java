@@ -174,8 +174,6 @@ public class Check {
         uncheckedHandler = new MandatoryWarningHandler(log, null, verboseUnchecked,
                 enforceMandatoryWarnings, LintCategory.UNCHECKED);
 
-        deferredLintHandler = DeferredLintHandler.instance(context);
-
         allowModules = Feature.MODULES.allowedInSource(source);
         allowRecords = Feature.RECORDS.allowedInSource(source);
         allowSealed = Feature.SEALED_CLASSES.allowedInSource(source);
@@ -201,10 +199,6 @@ public class Check {
     /** A handler for messages about unchecked or unsafe usage.
      */
     private MandatoryWarningHandler uncheckedHandler;
-
-    /** A handler for deferred lint warnings.
-     */
-    private DeferredLintHandler deferredLintHandler;
 
     /** Are modules allowed
      */
@@ -640,7 +634,7 @@ public class Check {
                 && types.isSameType(tree.expr.type, tree.clazz.type)
                 && !(ignoreAnnotatedCasts && TreeInfo.containsTypeAnnotation(tree.clazz))
                 && !is292targetTypeCast(tree)) {
-            deferredLintHandler.report(tree.pos(), LintWarnings.RedundantCast(tree.clazz.type));
+            log.warnIfEnabled(tree.pos(), LintWarnings.RedundantCast(tree.clazz.type));
         }
     }
     //where
@@ -1203,7 +1197,7 @@ public class Check {
                 mask = MethodFlags;
             }
             if ((flags & STRICTFP) != 0) {
-                warnOnExplicitStrictfp(tree);
+                log.warnIfEnabled(tree.pos(), LintWarnings.Strictfp);
             }
             // Imply STRICTFP if owner has STRICTFP set.
             if (((flags|implicit) & Flags.ABSTRACT) == 0 ||
@@ -1247,7 +1241,7 @@ public class Check {
                 implicit |= FINAL;
             }
             if ((flags & STRICTFP) != 0) {
-                warnOnExplicitStrictfp(tree);
+                log.warnIfEnabled(tree.pos(), LintWarnings.Strictfp);
             }
             // Imply STRICTFP if owner has STRICTFP set.
             implicit |= sym.owner.flags_field & STRICTFP;
@@ -1310,11 +1304,6 @@ public class Check {
         }
         return flags & (mask | ~ExtendedStandardFlags) | implicit;
     }
-
-    private void warnOnExplicitStrictfp(JCTree tree) {
-        deferredLintHandler.report(tree.pos(), LintWarnings.Strictfp);
-    }
-
 
     /** Determine if this enum should be implicitly final.
      *
@@ -3766,13 +3755,13 @@ public class Check {
                 || s.isDeprecated() && !other.isDeprecated())
                 && (s.outermostClass() != other.outermostClass() || s.outermostClass() == null)
                 && s.kind != Kind.PCK) {
-            deferredLintHandler.report(pos, _l -> warnDeprecated(pos, s));
+            log.withLintAt(pos, _l -> warnDeprecated(pos, s));
         }
     }
 
     void checkSunAPI(final DiagnosticPosition pos, final Symbol s) {
         if ((s.flags() & PROPRIETARY) != 0) {
-            deferredLintHandler.report(pos, _l -> {
+            log.withLintAt(pos, _l -> {
                 log.mandatoryWarning(pos, Warnings.SunProprietary(s));
             });
         }
@@ -3812,10 +3801,10 @@ public class Check {
                     log.error(pos, Errors.IsPreview(s));
                 } else {
                     preview.markUsesPreview(pos);
-                    deferredLintHandler.report(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreview(s)));
+                    log.withLintAt(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreview(s)));
                 }
             } else {
-                    deferredLintHandler.report(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s)));
+                    log.withLintAt(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s)));
             }
         }
         if (preview.declaredUsingPreviewFeature(s)) {
@@ -3824,14 +3813,14 @@ public class Check {
                 //If "s" is compiled from source, then there was an error for it already;
                 //if "s" is from classfile, there already was an error for the classfile.
                 preview.markUsesPreview(pos);
-                deferredLintHandler.report(pos, _l -> warnDeclaredUsingPreview(pos, s));
+                log.withLintAt(pos, _l -> warnDeclaredUsingPreview(pos, s));
             }
         }
     }
 
     void checkRestricted(DiagnosticPosition pos, Symbol s) {
         if (s.kind == MTH && (s.flags() & RESTRICTED) != 0) {
-            deferredLintHandler.report(pos, _l -> warnRestrictedAPI(pos, s));
+            log.withLintAt(pos, _l -> warnRestrictedAPI(pos, s));
         }
     }
 
@@ -4103,7 +4092,7 @@ public class Check {
             int opc = ((OperatorSymbol)operator).opcode;
             if (opc == ByteCodes.idiv || opc == ByteCodes.imod
                 || opc == ByteCodes.ldiv || opc == ByteCodes.lmod) {
-                deferredLintHandler.report(pos, LintWarnings.DivZero);
+                log.withLintAt(pos, _ -> lint.logIfEnabled(pos, LintWarnings.DivZero));
             }
         }
     }
@@ -4116,7 +4105,8 @@ public class Check {
      */
     void checkLossOfPrecision(final DiagnosticPosition pos, Type found, Type req) {
         if (found.isNumeric() && req.isNumeric() && !types.isAssignable(found, req)) {
-            deferredLintHandler.report(pos, LintWarnings.PossibleLossOfPrecision(found, req));
+            log.withLintAt(pos, _ ->
+                lint.logIfEnabled(pos, LintWarnings.PossibleLossOfPrecision(found, req)));
         }
     }
 
@@ -4315,7 +4305,8 @@ public class Check {
                             // Warning may be suppressed by
                             // annotations; check again for being
                             // enabled in the deferred context.
-                            deferredLintHandler.report(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle));
+                            log.withLintAt(pos, _ ->
+                                lint.logIfEnabled(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle)));
                         } else {
                             return;
                         }
@@ -4649,20 +4640,22 @@ public class Check {
 
     void checkModuleExists(final DiagnosticPosition pos, ModuleSymbol msym) {
         if (msym.kind != MDL) {
-            deferredLintHandler.report(pos, LintWarnings.ModuleNotFound(msym));
+            log.withLintAt(pos, _ ->
+                lint.logIfEnabled(pos, LintWarnings.ModuleNotFound(msym)));
         }
     }
 
     void checkPackageExistsForOpens(final DiagnosticPosition pos, PackageSymbol packge) {
         if (packge.members().isEmpty() &&
             ((packge.flags() & Flags.HAS_RESOURCE) == 0)) {
-            deferredLintHandler.report(pos, LintWarnings.PackageEmptyOrNotFound(packge));
+            log.withLintAt(pos, _ ->
+                lint.logIfEnabled(pos, LintWarnings.PackageEmptyOrNotFound(packge)));
         }
     }
 
     void checkModuleRequires(final DiagnosticPosition pos, final RequiresDirective rd) {
         if ((rd.module.flags() & Flags.AUTOMATIC_MODULE) != 0) {
-            deferredLintHandler.report(pos, _ -> {
+            log.withLintAt(pos, _ -> {
                 if (rd.isTransitive() && lint.isEnabled(LintCategory.REQUIRES_TRANSITIVE_AUTOMATIC)) {
                     log.warning(pos, LintWarnings.RequiresTransitiveAutomatic);
                 } else {

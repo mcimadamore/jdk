@@ -90,7 +90,6 @@ public class Annotate {
     private final Check chk;
     private final ConstFold cfolder;
     private final Enter enter;
-    private final Lint lint;
     private final Log log;
     private final Names names;
     private final Resolve resolve;
@@ -111,7 +110,6 @@ public class Annotate {
         cfolder = ConstFold.instance(context);
         enter = Enter.instance(context);
         log = Log.instance(context);
-        lint = Lint.instance(context);
         make = TreeMaker.instance(context);
         names = Names.instance(context);
         resolve = Resolve.instance(context);

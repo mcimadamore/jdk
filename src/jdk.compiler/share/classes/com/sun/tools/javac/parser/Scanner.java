@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Queue;
 
-import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
+import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
 import com.sun.tools.javac.util.Position.LineMap;
 import static com.sun.tools.javac.parser.Tokens.*;
 
@@ -155,12 +155,12 @@ public class Scanner implements Lexer {
 
     @Override
     public <T extends JCTree> T endDecl(T decl, int endPos) {
-        return tokenizer.deferredLintHandler.endDecl(decl, endPos);
+        return tokenizer.log.endDecl(decl, endPos);
     }
 
     @Override
-    public void report(DiagnosticPosition pos, LintLogger logger) {
-        tokenizer.deferredLintHandler.report(pos, logger);
+    public void warnIfEnabled(DiagnosticPosition pos, LintWarning key) {
+        tokenizer.log.warnIfEnabled(pos, key);
     }
 
     public int errPos() {

@@ -398,6 +398,7 @@ public class JavacTaskPool {
             void clear() {
                 recorded.clear();
                 sourceMap.clear();
+                sourceInfoMap.clear();
                 nerrors = 0;
                 nwarnings = 0;
                 //Set a fake listener that will lazily lookup the context for the 'real' listener. Since

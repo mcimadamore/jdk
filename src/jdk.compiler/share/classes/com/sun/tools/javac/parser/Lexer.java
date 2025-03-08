@@ -27,7 +27,6 @@ package com.sun.tools.javac.parser;
 
 import java.util.Queue;
 
-import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.parser.Tokens.*;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
@@ -131,20 +130,10 @@ public interface Lexer {
     }
 
     /**
-     * Report a lexical warning subject to possible suppression by {@code @SuppressWarnings}.
-     *
-     * @param pos the lexical position at which the warning occurs
-     * @param logger the warning callback
-     */
-    void report(DiagnosticPosition pos, LintLogger logger);
-
-    /**
-     * Report a lexical warning subject to possible suppression by {@code @SuppressWarnings}.
+     * Report a warning that is subject to possible suppression by {@code @SuppressWarnings}.
      *
      * @param pos the lexical position at which the warning occurs
      * @param key the warning to report
      */
-    default void report(DiagnosticPosition pos, LintWarning key) {
-        report(pos, lint -> lint.logIfEnabled(pos, key));
-    }
+    void warnIfEnabled(DiagnosticPosition pos, LintWarning key);
 }

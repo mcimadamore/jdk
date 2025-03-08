@@ -25,12 +25,12 @@
 
 package com.sun.tools.javac.parser;
 
-import com.sun.tools.javac.code.DeferredLintHandler.LintLogger;
 import com.sun.tools.javac.parser.Tokens.Token;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCErroneous;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.JCDiagnostic.Error;
+import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Position.LineMap;
 
@@ -175,7 +175,7 @@ public class VirtualParser extends JavacParser {
         }
 
         @Override
-        public void report(DiagnosticPosition pos, LintLogger logger) {
+        public void warnIfEnabled(DiagnosticPosition pos, LintWarning key) {
            // ignore
         }
     }
