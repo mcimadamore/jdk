@@ -187,7 +187,7 @@ public class Log extends AbstractLog {
 
             // After the final top level declaration is flushed, ensure list can't be used again
             if (decl.tree().getTag() == TOPLEVEL) {
-new Throwable("FLUSH DONE: " + sourceFile).printStackTrace(System.err);
+//new Throwable("FLUSH DONE: " + sourceFile).printStackTrace(System.err);
                 pendingActionMap.put(sourceFile, null);
             }
         }
@@ -899,7 +899,7 @@ tree.sourceFile = sourceFile;
         JavaFileObject sourceFile = currentSourceFile();
 
 Assert.check(sourceFile.equals(tree.sourceFile),
-  () -> "wrong source file for tree:"
+  () -> "setLintFor(): wrong source file for tree:"
         +"\n    currentSource="+sourceFile
         +"\n  tree.sourceFile="+tree.sourceFile
         );
@@ -909,8 +909,17 @@ Assert.check(sourceFile.equals(tree.sourceFile),
         Assert.check(sourceInfo.isParsed());
         Decl decl = sourceInfo.findDecl(tree);
 
+if (tree.getTag() == TOPLEVEL) {
+    new Throwable("setLintFor(): TOPLEVEL " + sourceFile).printStackTrace(System.err);
+}
+
         // Update its lint config
-        Assert.check(decl.lint().get() == null);
+        Assert.check(decl.lint().get() == null
+             ,() -> "setLintFor(): lint already set:"
+                    +"\n    sourceFile="+sourceFile
+                    +"\n    decl="+decl
+            );
+
         decl.lint().set(lint);
 
         // Now that the Lint configuration is known, flush the affected pending actions

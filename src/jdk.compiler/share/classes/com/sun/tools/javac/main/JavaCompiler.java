@@ -636,7 +636,7 @@ public class JavaCompiler {
         return parse(filename, content, false);
     }
 
-static int depth;
+    private final Map<JavaFileObject, JCCompilationUnit> alreadyParsed = new HashMap<>();
 
     /** Parse contents of input stream.
      *  @param filename     The name of the file from which input stream comes.
@@ -645,7 +645,11 @@ static int depth;
      */
     private JCCompilationUnit parse(JavaFileObject filename, CharSequence content, boolean silent) {
         long msec = now();
-        JCCompilationUnit tree = make.TopLevel(List.nil());
+        JCCompilationUnit tree = alreadyParsed.get(filename);
+        if (tree != null) {
+            return tree;
+        }
+        tree = make.TopLevel(List.nil());
         if (content != null) {
             if (verbose) {
                 log.printVerbose("parsing.started", filename);
@@ -658,18 +662,14 @@ static int depth;
             }
             Parser parser = parserFactory.newParser(content, keepComments(), genEndPos,
                                 lineDebugInfo, filename.isNameCompatible("module-info", Kind.SOURCE));
-System.err.println(String.format("[%d] START PARSING: %s", depth++, log.currentSourceFile()));
-try {
             tree = parser.parseCompilationUnit();
-} finally {
-System.err.println(String.format("[%d] FINISH PARSING: %s", --depth, log.currentSourceFile()));
-}
             if (verbose) {
                 log.printVerbose("parsing.done", Long.toString(elapsed(msec)));
             }
         }
 
         tree.sourcefile = filename;
+        alreadyParsed.put(filename, tree);
 
         if (content != null && !taskListener.isEmpty() && !silent) {
             TaskEvent e = new TaskEvent(TaskEvent.Kind.PARSE, tree);
@@ -1955,6 +1955,7 @@ System.err.println(String.format("[%d] FINISH PARSING: %s", --depth, log.current
         types = null;
 
         log.flush();
+        alreadyParsed.clear();
         try {
             fileManager.flush();
         } catch (IOException e) {
@@ -2021,6 +2022,7 @@ System.err.println(String.format("[%d] FINISH PARSING: %s", --depth, log.current
 
     public void newRound() {
 System.err.println(String.format("%s[0x%08x] *** NEW ROUND ***", this.getClass().getSimpleName(), System.identityHashCode(this)));
+        alreadyParsed.clear();
         inputFiles.clear();
         todo.clear();
     }
