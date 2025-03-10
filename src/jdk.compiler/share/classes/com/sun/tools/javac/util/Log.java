@@ -159,7 +159,7 @@ public class Log extends AbstractLog {
                 List<PendingAction> matches = new ArrayList<>();    // avoid potential concurrent modification
                 for (Iterator<PendingAction> i = pendingActions.iterator(); i.hasNext(); ) {
                     PendingAction pa = i.next();
-                    if (sourceInfo.findDecl(pa.pos(), pa.where()) == decl) {
+                    if (sourceInfo.findDecl(pa.pos()) == decl) {
                         Assert.check(pa.sourceFile().equals(sourceFile));
                         matches.add(pa);
                         i.remove();
@@ -857,7 +857,7 @@ public class Log extends AbstractLog {
         }
 
         // If the applicable lint configuration is not yet known, we must defer
-        Lint lint = sourceInfo.findDecl(pos, new Throwable()).lint().get();
+        Lint lint = sourceInfo.findDecl(pos).lint().get();
         if (lint == null) {
             diagnosticHandler.deferPendingAction(sourceFile, new PendingAction(sourceFile, pos, action));
             return;
@@ -963,7 +963,7 @@ public class Log extends AbstractLog {
         }
 
         // Find the Decl for the innermost tree node containing the position
-        Decl findDecl(DiagnosticPosition dp, Throwable where) {
+        Decl findDecl(DiagnosticPosition dp) {
             int pos = dp.getStartPosition();
             Decl best = null;
             for (Decl decl : decls) {
@@ -1021,13 +1021,7 @@ public class Log extends AbstractLog {
      * @param pos the relevant source file position
      * @param action action to be taken
      */
-    private record PendingAction(JavaFileObject sourceFile,
-        DiagnosticPosition pos, Consumer<? super Lint> action, Throwable where) {
-
-        PendingAction(JavaFileObject sourceFile, DiagnosticPosition pos, Consumer<? super Lint> action) {
-            this(sourceFile, pos, action, new Throwable("allocated here"));
-        }
-    }
+    private record PendingAction(JavaFileObject sourceFile, DiagnosticPosition pos, Consumer<? super Lint> action) { }
 
 // DefaultDiagnosticHandler
 
