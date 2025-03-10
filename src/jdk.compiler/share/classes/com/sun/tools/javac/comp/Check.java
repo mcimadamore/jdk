@@ -212,10 +212,11 @@ public class Check {
      */
     private final boolean allowSealed;
 
-    /** Whether extra suppression of deprecation &amp; preview warnings is enabled.
-     *  This happens when attributing import statements.
+    /** Whether to force suppression of deprecation and preview warnings.
+     *  This happens when attributing import statements for JDK 9+.
+     *  @see Feature#DEPRECATION_ON_IMPORT
      */
-    private boolean extraSuppression;
+    private boolean importSuppression;
 
 /* *************************************************************************
  * Errors and Warnings
@@ -227,9 +228,9 @@ public class Check {
         return prev;
     }
 
-    boolean setExtraSuppression(boolean newExtraSuppression) {
-        boolean prev = extraSuppression;
-        extraSuppression = newExtraSuppression;
+    boolean setImportSuppression(boolean newImportSuppression) {
+        boolean prev = importSuppression;
+        importSuppression = newImportSuppression;
         return prev;
     }
 
@@ -266,14 +267,8 @@ public class Check {
      *  @param msg        A Warning describing the problem.
      */
     public void warnPreviewAPI(DiagnosticPosition pos, LintWarning warnKey) {
-        Lint prevLint = setLint(extraSuppression ?
-          lint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW) : lint);
-        try {
-            if (!lint.isSuppressed(LintCategory.PREVIEW))
-                preview.reportPreviewWarning(pos, warnKey);
-        } finally {
-            setLint(prevLint);
-        }
+        if (!lint.isSuppressed(LintCategory.PREVIEW))
+            preview.reportPreviewWarning(pos, warnKey);
     }
 
     /** Log a preview warning.
@@ -281,15 +276,8 @@ public class Check {
      *  @param msg        A Warning describing the problem.
      */
     public void warnDeclaredUsingPreview(DiagnosticPosition pos, Symbol sym) {
-        warnPreviewAPI(pos, LintWarnings.DeclaredUsingPreview(kindName(sym), sym));
-    }
-
-    /** Log a preview warning.
-     *  @param pos        Position to be used for error reporting.
-     *  @param msg        A Warning describing the problem.
-     */
-    public void warnRestrictedAPI(DiagnosticPosition pos, Symbol sym) {
-        lint.logIfEnabled(pos, LintWarnings.RestrictedMethod(sym.enclClass(), sym));
+        if (!lint.isSuppressed(LintCategory.PREVIEW))
+            preview.reportPreviewWarning(pos, LintWarnings.DeclaredUsingPreview(kindName(sym), sym));
     }
 
     /** Warn about unchecked operation.
@@ -3771,15 +3759,13 @@ public class Check {
     }
 
     void checkDeprecated(Supplier<DiagnosticPosition> posSup, final Symbol other, final Symbol s) {
-        if ( (s.isDeprecatedForRemoval()
-                || s.isDeprecated() && !other.isDeprecated())
+        if (!importSuppression
+                && (s.isDeprecatedForRemoval() || s.isDeprecated() && !other.isDeprecated())
                 && (s.outermostClass() != other.outermostClass() || s.outermostClass() == null)
                 && s.kind != Kind.PCK) {
             DiagnosticPosition pos = posSup.get();
-            boolean extraSuppression2 = extraSuppression;
             log.withLintAt(pos, newLint -> {
-                Lint prevLint = setLint(extraSuppression2 ?
-                  newLint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW) : newLint);
+                Lint prevLint = setLint(newLint);
                 try {
                     warnDeprecated(pos, s);
                 } finally {
@@ -3791,9 +3777,7 @@ public class Check {
 
     void checkSunAPI(final DiagnosticPosition pos, final Symbol s) {
         if ((s.flags() & PROPRIETARY) != 0) {
-            log.withLintAt(pos, _l -> {
-                log.mandatoryWarning(pos, Warnings.SunProprietary(s));
-            });
+            log.mandatoryWarning(pos, Warnings.SunProprietary(s));
         }
     }
 
@@ -3831,26 +3815,14 @@ public class Check {
                     log.error(pos, Errors.IsPreview(s));
                 } else {
                     preview.markUsesPreview(pos);
-                    boolean extraSuppression2 = extraSuppression;
-                    log.withLintAt(pos, _l -> {
-                        boolean prevExtraSuppression = setExtraSuppression(extraSuppression2);
-                        try {
-                            warnPreviewAPI(pos, LintWarnings.IsPreview(s));
-                        } finally {
-                            setExtraSuppression(prevExtraSuppression);
-                        }
-                    });
+                    if (!importSuppression) {
+                        warnPreviewAPI(pos, LintWarnings.IsPreview(s));
+                    }
                 }
             } else {
-                boolean extraSuppression2 = extraSuppression;
-                log.withLintAt(pos, _l -> {
-                    boolean prevExtraSuppression = setExtraSuppression(extraSuppression2);
-                    try {
-                        warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s));
-                    } finally {
-                        setExtraSuppression(prevExtraSuppression);
-                    }
-                });
+                if (!importSuppression) {
+                    warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s));
+                }
             }
         }
         if (preview.declaredUsingPreviewFeature(s)) {
@@ -3859,14 +3831,16 @@ public class Check {
                 //If "s" is compiled from source, then there was an error for it already;
                 //if "s" is from classfile, there already was an error for the classfile.
                 preview.markUsesPreview(pos);
-                log.withLintAt(pos, _l -> warnDeclaredUsingPreview(pos, s));
+                if (!importSuppression) {
+                    warnDeclaredUsingPreview(pos, s);
+                }
             }
         }
     }
 
     void checkRestricted(DiagnosticPosition pos, Symbol s) {
         if (s.kind == MTH && (s.flags() & RESTRICTED) != 0) {
-            log.withLintAt(pos, _l -> warnRestrictedAPI(pos, s));
+            log.warnIfEnabled(pos, LintWarnings.RestrictedMethod(s.enclClass(), s));
         }
     }
 
@@ -4138,7 +4112,7 @@ public class Check {
             int opc = ((OperatorSymbol)operator).opcode;
             if (opc == ByteCodes.idiv || opc == ByteCodes.imod
                 || opc == ByteCodes.ldiv || opc == ByteCodes.lmod) {
-                log.withLintAt(pos, _ -> lint.logIfEnabled(pos, LintWarnings.DivZero));
+                log.warnIfEnabled(pos, LintWarnings.DivZero);
             }
         }
     }
@@ -4151,8 +4125,7 @@ public class Check {
      */
     void checkLossOfPrecision(final DiagnosticPosition pos, Type found, Type req) {
         if (found.isNumeric() && req.isNumeric() && !types.isAssignable(found, req)) {
-            log.withLintAt(pos, _ ->
-                lint.logIfEnabled(pos, LintWarnings.PossibleLossOfPrecision(found, req)));
+            log.warnIfEnabled(pos, LintWarnings.PossibleLossOfPrecision(found, req));
         }
     }
 
@@ -4351,8 +4324,7 @@ public class Check {
                             // Warning may be suppressed by
                             // annotations; check again for being
                             // enabled in the deferred context.
-                            log.withLintAt(pos, _ ->
-                                lint.logIfEnabled(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle)));
+                            log.warnIfEnabled(pos, LintWarnings.MissingExplicitCtor(c, pkg, modle));
                         } else {
                             return;
                         }

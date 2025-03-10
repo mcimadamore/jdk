@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -587,12 +587,12 @@ public class PreviewTest extends TestRunner {
                         "Test.java:19:11: compiler.err.is.preview: test()",
                         "Test.java:20:11: compiler.err.is.preview: test()",
                         "Test.java:21:11: compiler.err.is.preview: test()",
+                        "Test.java:24:11: compiler.warn.is.preview.reflective: test()",
                         "Test.java:29:16: compiler.err.is.preview: preview.api.Preview",
                         "Test.java:32:21: compiler.err.is.preview: test()",
                         "Test.java:36:21: compiler.err.is.preview: test()",
                         "Test.java:40:13: compiler.err.is.preview: test()",
                         "Test.java:41:21: compiler.err.is.preview: FIELD",
-                        "Test.java:24:11: compiler.warn.is.preview.reflective: test()",
                         "17 errors",
                         "1 warning");
 

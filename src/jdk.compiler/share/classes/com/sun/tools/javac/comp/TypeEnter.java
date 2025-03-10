@@ -516,7 +516,7 @@ public class TypeEnter implements Completer {
 
         Type attribImportType(JCTree tree, Env<AttrContext> env) {
             Assert.check(completionEnabled);
-            boolean prevExtraSuppression = chk.setExtraSuppression(!allowDeprecationOnImport);
+            boolean prevImportSuppression = chk.setImportSuppression(!allowDeprecationOnImport);
             try {
                 // To prevent deep recursion, suppress completion of some
                 // types.
@@ -524,7 +524,7 @@ public class TypeEnter implements Completer {
                 return attr.attribType(tree, env);
             } finally {
                 completionEnabled = true;
-                chk.setExtraSuppression(prevExtraSuppression);
+                chk.setImportSuppression(prevImportSuppression);
             }
         }
 

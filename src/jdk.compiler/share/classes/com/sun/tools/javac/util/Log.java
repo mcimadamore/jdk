@@ -799,7 +799,7 @@ public class Log extends AbstractLog {
      * Report finishing parsing a tree node that relates to lint warning suppression.
      *
      * <p>
-     * This is invoked during parsing to inform us of the ending positions of import, module,
+     * This is invoked during parsing to inform us of the ending positions of module,
      * package, class, method, variable, and compilation unit declarations.
      *
      * @param tree the newly parsed tree
@@ -870,7 +870,7 @@ public class Log extends AbstractLog {
     /**
      * Notification of the {@link Lint} instance that applies to the given tree node.
      *
-     * @param decl import, module, package, class, method, or variable, or top level declaration
+     * @param decl module, package, class, method, or variable, or top level declaration
      * @param lint lint configuration corresponding to {@code decl}
      */
     public void setLintFor(JCTree tree, Lint lint) {
@@ -881,14 +881,12 @@ public class Log extends AbstractLog {
 
         // Find the Decl matching this tree node
         JavaFileObject sourceFile = currentSourceFile();
-
         SourceInfo sourceInfo = sourceInfoMap.get(sourceFile);
         Assert.check(sourceInfo != null);
-        if (!sourceInfo.isParsed()) // TODO: why does this happen? might be only when processing annotations
+        if (!sourceInfo.isParsed())     // TODO: why does this happen?
             return;
-        Decl decl = sourceInfo.findDecl(tree)
-          .orElse(null);
-        if (decl == null)       // TODO: why does this happen?
+        Decl decl = sourceInfo.findDecl(tree).orElse(null);
+        if (decl == null)               // TODO: why does this happen?
             return;
 
         // Update its lint config; tolerate duplicate updates which sometimes happen
@@ -919,17 +917,14 @@ public class Log extends AbstractLog {
         case VARDEF:
             mods = ((JCVariableDecl)tree).mods;
             break;
-        case IMPORT:
-            return false;
         case TOPLEVEL:
             return true;
         default:
             throw new AssertionError("unexpected " + tree.getTag());
         }
-        if (mods == null)
-            return false;
-        return (mods.flags & Flags.DEPRECATED) != 0 ||
-               (mods.annotations != null && !mods.annotations.isEmpty());
+        return mods != null &&
+               ((mods.flags & Flags.DEPRECATED) != 0 ||
+                (mods.annotations != null && !mods.annotations.isEmpty()));
     }
 
 // SourceInfo
@@ -949,8 +944,8 @@ public class Log extends AbstractLog {
         // Has the source file been completely parsed?
         boolean isParsed() {
             return lastDecl()
-              .map(decl -> decl.tree().getTag() == TOPLEVEL)
-              .orElse(false);
+              .filter(decl -> decl.tree().getTag() == TOPLEVEL)
+              .isPresent();
         }
 
         // Get the most recently added declaration
@@ -984,8 +979,7 @@ public class Log extends AbstractLog {
 // Decl
 
     /**
-     * An import, module, package, class, method, or variable,
-     * or top level declaration and its lexical range.
+     * A module, package, class, method, variable, or top level declaration and its lexical range.
      *
      * @param tree tree node
      * @param startPos starting position (inclusive)
