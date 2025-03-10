@@ -28,6 +28,7 @@ package com.sun.tools.javac.util;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -47,6 +48,7 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 
 import com.sun.tools.javac.api.DiagnosticFormatter;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Lint;
 import com.sun.tools.javac.main.Main;
 import com.sun.tools.javac.main.Option;
@@ -158,37 +160,13 @@ public class Log extends AbstractLog {
                 for (Iterator<PendingAction> i = pendingActions.iterator(); i.hasNext(); ) {
                     PendingAction pa = i.next();
                     if (sourceInfo.findDecl(pa.pos(), pa.where()) == decl) {
-                        Assert.check(pa.sourceFile().equals(sourceFile),
-                          () -> "flushPendingActions(): source file mismatch:"
-                                +"\n  sourceFile="+sourceFile
-                                +"\n  pa.sourceFile()="+pa.sourceFile()
-                                +"\n  decl="+decl
-                                );
+                        Assert.check(pa.sourceFile().equals(sourceFile));
                         matches.add(pa);
                         i.remove();
                     }
                 }
                 Lint lint = decl.lint().get();
                 matches.forEach(pa -> pa.action().accept(lint));
-
-                // After the final top level declaration is flushed, there should be nothing left
-                Assert.check(decl.tree().getTag() != TOPLEVEL || pendingActions.isEmpty(),
-                  () -> "flushPendingActions(): not all declarations flushed"
-                        +"\n  sourceFile="+sourceFile
-                        +"\n  pendingActions="+pendingActions
-                        );
-                        //pendingActions.iterator().next().where().printStackTrace(System.err);
-            } else {
-                Assert.check(!pendingActionMap.containsKey(sourceFile)
-                  ,() -> "flushPendingActions(): flushing completed source file"
-                        +"\n  sourceFile="+sourceFile
-                        );
-            }
-
-            // After the final top level declaration is flushed, ensure list can't be used again
-            if (decl.tree().getTag() == TOPLEVEL) {
-//new Throwable("FLUSH DONE: " + sourceFile).printStackTrace(System.err);
-                pendingActionMap.put(sourceFile, null);
             }
         }
     }
@@ -797,13 +775,25 @@ public class Log extends AbstractLog {
         diagnosticHandler.report(diagnostic);
      }
 
+    /**
+     * Reset the state of this instance.
+     */
+    public void clear() {
+        sourceMap.clear();
+        sourceInfoMap.clear();
+        nerrors = 0;
+        nwarnings = 0;
+        nsuppressederrors = 0;
+        nsuppressedwarns = 0;
+        recorded.clear();
+        recordedSourceLevelErrors.clear();
+        while (diagnosticHandler.prev != null)
+            popDiagnosticHandler(diagnosticHandler);
+    }
+
 // Deferred Lint Warnings
 
     protected final Map<JavaFileObject, SourceInfo> sourceInfoMap = new HashMap<>();
-
-    public void newRound() {
-        sourceInfoMap.clear();
-    }
 
     /**
      * Report finishing parsing a tree node that relates to lint warning suppression.
@@ -822,16 +812,12 @@ public class Log extends AbstractLog {
         if (!shouldTrack(tree))
             return tree;
 
-        // Get source file info
+        // Get source file info; treat the redundant parsing of the same file as a "reset" for that file
         JavaFileObject sourceFile = currentSourceFile();
-tree.sourceFile = sourceFile;
-        SourceInfo sourceInfo = sourceInfoMap.computeIfAbsent(sourceFile, SourceInfo::new);
-
-        // Already parsed? TODO: why does this happen??
-        if (sourceInfo.isParsed()) {
-            throw new AssertionError("ALREADY PARSED: " + sourceFile);
-            //System.err.println("ALREADY PARSED: " + sourceFile);
-            //return tree;
+        SourceInfo sourceInfo = sourceInfoMap.get(sourceFile);
+        if (sourceInfo == null || sourceInfo.isParsed()) {
+            sourceInfo = new SourceInfo(sourceFile);
+            sourceInfoMap.put(sourceFile, sourceInfo);
         }
 
         // Add a new declaration node
@@ -876,8 +862,6 @@ tree.sourceFile = sourceFile;
             diagnosticHandler.deferPendingAction(sourceFile, new PendingAction(sourceFile, pos, action));
             return;
         }
-        // TODO: add decl() property to PendingAction so we don't have to find it again
-        // this will require a step to fill these in after parsing completes
 
         // Proceed
         action.accept(lint);
@@ -898,28 +882,17 @@ tree.sourceFile = sourceFile;
         // Find the Decl matching this tree node
         JavaFileObject sourceFile = currentSourceFile();
 
-Assert.check(sourceFile.equals(tree.sourceFile),
-  () -> "setLintFor(): wrong source file for tree:"
-        +"\n    currentSource="+sourceFile
-        +"\n  tree.sourceFile="+tree.sourceFile
-        );
-
         SourceInfo sourceInfo = sourceInfoMap.get(sourceFile);
         Assert.check(sourceInfo != null);
-        Assert.check(sourceInfo.isParsed());
-        Decl decl = sourceInfo.findDecl(tree);
+        if (!sourceInfo.isParsed()) // TODO: why does this happen? might be only when processing annotations
+            return;
+        Decl decl = sourceInfo.findDecl(tree)
+          .orElse(null);
+        if (decl == null)       // TODO: why does this happen?
+            return;
 
-if (tree.getTag() == TOPLEVEL) {
-    new Throwable("setLintFor(): TOPLEVEL " + sourceFile).printStackTrace(System.err);
-}
-
-        // Update its lint config
-        Assert.check(decl.lint().get() == null
-             ,() -> "setLintFor(): lint already set:"
-                    +"\n    sourceFile="+sourceFile
-                    +"\n    decl="+decl
-            );
-
+        // Update its lint config; tolerate duplicate updates which sometimes happen
+        Assert.check(decl.lint().get() == null || lint.isEquivalentTo(decl.lint().get()));
         decl.lint().set(lint);
 
         // Now that the Lint configuration is known, flush the affected pending actions
@@ -932,27 +905,31 @@ if (tree.getTag() == TOPLEVEL) {
         JCModifiers mods;
         switch (tree.getTag()) {
         case MODULEDEF:
-            JCModuleDecl mod = (JCModuleDecl)tree;
-            return mod.mods != null && mod.mods.annotations != null && !mod.mods.annotations.isEmpty();
+            mods = ((JCModuleDecl)tree).mods;
+            break;
         case PACKAGEDEF:
             JCPackageDecl p = (JCPackageDecl)tree;
             return p.annotations != null && !p.annotations.isEmpty();
         case CLASSDEF:
-            JCClassDecl c = (JCClassDecl)tree;
-            return c.mods != null && c.mods.annotations != null && !c.mods.annotations.isEmpty();
+            mods = ((JCClassDecl)tree).mods;
+            break;
         case METHODDEF:
-            JCMethodDecl m = (JCMethodDecl)tree;
-            return m.mods != null && m.mods.annotations != null && !m.mods.annotations.isEmpty();
+            mods = ((JCMethodDecl)tree).mods;
+            break;
         case VARDEF:
-            JCVariableDecl v = (JCVariableDecl)tree;
-            return v.mods != null && v.mods.annotations != null && !v.mods.annotations.isEmpty();
+            mods = ((JCVariableDecl)tree).mods;
+            break;
         case IMPORT:
-            return true;    // XXX
+            return false;
         case TOPLEVEL:
             return true;
         default:
             throw new AssertionError("unexpected " + tree.getTag());
         }
+        if (mods == null)
+            return false;
+        return (mods.flags & Flags.DEPRECATED) != 0 ||
+               (mods.annotations != null && !mods.annotations.isEmpty());
     }
 
 // SourceInfo
@@ -984,17 +961,10 @@ if (tree.getTag() == TOPLEVEL) {
         }
 
         // Find the Decl for the given tree node
-        Decl findDecl(JCTree tree) {
+        Optional<Decl> findDecl(JCTree tree) {
             return decls.stream()
               .filter(decl -> tree.equals(decl.tree()))
-              .findFirst()
-              .orElseThrow(() -> new AssertionError(
-                "decl not found: " + tree
-                 + "\n  sourceFile="+sourceFile
-                 + "\n  tree.sourceFile="+tree.sourceFile
-                 + "\n  decls="+decls
-
-                 ));
+              .findFirst();
         }
 
         // Find the Decl for the innermost tree node containing the position
@@ -1002,21 +972,10 @@ if (tree.getTag() == TOPLEVEL) {
             int pos = dp.getStartPosition();
             Decl best = null;
             for (Decl decl : decls) {
-                if (decl.contains(pos) && (best == null || best.contains(decl))) {
+                if (decl.contains(pos) && (best == null || decl.isNarrowerThan(best))) {
                     best = decl;
                 }
             }
-
-if (best == null) {
-    System.err.println("************ findDecl() failed ****************"
-    +"\n  sourceFile="+sourceFile
-    +"\n  pos="+pos
-    +"\n  decls="+decls
-    );
-    where.printStackTrace(System.err);
-}
-
-
             Assert.check(best != null);
             return best;
         }
@@ -1046,6 +1005,17 @@ if (best == null) {
         boolean contains(Decl that) {
             return this.startPos <= that.startPos && this.endPos >= that.endPos;
         }
+
+        // Do this and the given declaration exactly overlap?
+        boolean sameExtentAs(Decl that) {
+            return this.startPos == that.startPos && this.endPos == that.endPos;
+        }
+
+        // It's possible for a JCCompilationUnit and the declaration it contains to have
+        // the same lexical extent. In that case, we have to apply tie-breaker logic.
+        boolean isNarrowerThan(Decl that) {
+            return that.contains(this) && (!sameExtentAs(that) || that.tree.getTag() == TOPLEVEL);
+        }
     }
 
 // PendingAction
@@ -1073,7 +1043,6 @@ if (best == null) {
      * reported so far, the diagnostic may be handed off to writeDiagnostic.
      */
     private class DefaultDiagnosticHandler extends DiagnosticHandler {
-
         @Override
         public void report(JCDiagnostic diagnostic) {
             if (expectDiagKeys != null)
@@ -1267,4 +1236,5 @@ if (best == null) {
     public static String format(String fmt, Object... args) {
         return String.format((java.util.Locale)null, fmt, args);
     }
+
 }

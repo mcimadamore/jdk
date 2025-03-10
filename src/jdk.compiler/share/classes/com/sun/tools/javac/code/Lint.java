@@ -141,6 +141,13 @@ public class Lint {
         this.suppressedValues = other.suppressedValues.clone();
     }
 
+    /**
+     * Determine if this and the given instance enable and suppress the same categories.
+     */
+    public boolean isEquivalentTo(Lint that) {
+        return this.values.equals(that.values) && this.suppressedValues.equals(that.suppressedValues);
+    }
+
     // Process command line options on demand to allow use of root Lint early during startup
     private void initializeRootIfNeeded() {
 

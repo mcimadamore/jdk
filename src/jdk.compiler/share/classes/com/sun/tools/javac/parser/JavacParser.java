@@ -575,7 +575,7 @@ public class JavacParser implements Parser {
      *  3. At the end of the "signature" of the declaration
      *     (that is, before any initialization or body for the
      *     declaration) any other "recent" comments are
-     *     reported to the {@link LexicalLintHandler}.
+     *     reported to the log as warnings.
      *
      *  @param dc the primary documentation comment
      */
@@ -616,7 +616,7 @@ public class JavacParser implements Parser {
     }
 
     /**
-     * Reports an individual dangling comment using the {@link LexicalLintHandler}.
+     * Reports an individual dangling comment as a warning to the log.
      * The comment may or not may generate an actual diagnostic, depending on
      * the settings for {@code -Xlint} and/or {@code @SuppressWarnings}.
      *

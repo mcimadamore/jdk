@@ -170,8 +170,7 @@ public class VirtualParser extends JavacParser {
 
         @Override
         public <T extends JCTree> T endDecl(T decl, int endPos) {
-           // ignore
-           return decl;
+           return S.endDecl(decl, endPos);
         }
 
         @Override

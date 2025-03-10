@@ -212,6 +212,11 @@ public class Check {
      */
     private final boolean allowSealed;
 
+    /** Whether extra suppression of deprecation &amp; preview warnings is enabled.
+     *  This happens when attributing import statements.
+     */
+    private boolean extraSuppression;
+
 /* *************************************************************************
  * Errors and Warnings
  **************************************************************************/
@@ -219,6 +224,12 @@ public class Check {
     Lint setLint(Lint newLint) {
         Lint prev = lint;
         lint = newLint;
+        return prev;
+    }
+
+    boolean setExtraSuppression(boolean newExtraSuppression) {
+        boolean prev = extraSuppression;
+        extraSuppression = newExtraSuppression;
         return prev;
     }
 
@@ -255,8 +266,14 @@ public class Check {
      *  @param msg        A Warning describing the problem.
      */
     public void warnPreviewAPI(DiagnosticPosition pos, LintWarning warnKey) {
-        if (!lint.isSuppressed(LintCategory.PREVIEW))
-            preview.reportPreviewWarning(pos, warnKey);
+        Lint prevLint = setLint(extraSuppression ?
+          lint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW) : lint);
+        try {
+            if (!lint.isSuppressed(LintCategory.PREVIEW))
+                preview.reportPreviewWarning(pos, warnKey);
+        } finally {
+            setLint(prevLint);
+        }
     }
 
     /** Log a preview warning.
@@ -264,8 +281,7 @@ public class Check {
      *  @param msg        A Warning describing the problem.
      */
     public void warnDeclaredUsingPreview(DiagnosticPosition pos, Symbol sym) {
-        if (!lint.isSuppressed(LintCategory.PREVIEW))
-            preview.reportPreviewWarning(pos, LintWarnings.DeclaredUsingPreview(kindName(sym), sym));
+        warnPreviewAPI(pos, LintWarnings.DeclaredUsingPreview(kindName(sym), sym));
     }
 
     /** Log a preview warning.
@@ -1857,7 +1873,7 @@ public class Check {
         if (!isDeprecatedOverrideIgnorable(other, origin)) {
             Lint prevLint = setLint(lint.augment(m));
             try {
-                checkDeprecated(TreeInfo.diagnosticPositionFor(m, tree), m, other);
+                checkDeprecated(() -> TreeInfo.diagnosticPositionFor(m, tree), m, other);
             } finally {
                 setLint(prevLint);
             }
@@ -3751,11 +3767,25 @@ public class Check {
     }
 
     void checkDeprecated(final DiagnosticPosition pos, final Symbol other, final Symbol s) {
+        checkDeprecated(() -> pos, other, s);
+    }
+
+    void checkDeprecated(Supplier<DiagnosticPosition> posSup, final Symbol other, final Symbol s) {
         if ( (s.isDeprecatedForRemoval()
                 || s.isDeprecated() && !other.isDeprecated())
                 && (s.outermostClass() != other.outermostClass() || s.outermostClass() == null)
                 && s.kind != Kind.PCK) {
-            log.withLintAt(pos, _l -> warnDeprecated(pos, s));
+            DiagnosticPosition pos = posSup.get();
+            boolean extraSuppression2 = extraSuppression;
+            log.withLintAt(pos, newLint -> {
+                Lint prevLint = setLint(extraSuppression2 ?
+                  newLint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW) : newLint);
+                try {
+                    warnDeprecated(pos, s);
+                } finally {
+                    setLint(prevLint);
+                }
+            });
         }
     }
 
@@ -3801,10 +3831,26 @@ public class Check {
                     log.error(pos, Errors.IsPreview(s));
                 } else {
                     preview.markUsesPreview(pos);
-                    log.withLintAt(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreview(s)));
+                    boolean extraSuppression2 = extraSuppression;
+                    log.withLintAt(pos, _l -> {
+                        boolean prevExtraSuppression = setExtraSuppression(extraSuppression2);
+                        try {
+                            warnPreviewAPI(pos, LintWarnings.IsPreview(s));
+                        } finally {
+                            setExtraSuppression(prevExtraSuppression);
+                        }
+                    });
                 }
             } else {
-                    log.withLintAt(pos, _l -> warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s)));
+                boolean extraSuppression2 = extraSuppression;
+                log.withLintAt(pos, _l -> {
+                    boolean prevExtraSuppression = setExtraSuppression(extraSuppression2);
+                    try {
+                        warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s));
+                    } finally {
+                        setExtraSuppression(prevExtraSuppression);
+                    }
+                });
             }
         }
         if (preview.declaredUsingPreviewFeature(s)) {
@@ -4640,28 +4686,24 @@ public class Check {
 
     void checkModuleExists(final DiagnosticPosition pos, ModuleSymbol msym) {
         if (msym.kind != MDL) {
-            log.withLintAt(pos, _ ->
-                lint.logIfEnabled(pos, LintWarnings.ModuleNotFound(msym)));
+            log.warnIfEnabled(pos, LintWarnings.ModuleNotFound(msym));
         }
     }
 
     void checkPackageExistsForOpens(final DiagnosticPosition pos, PackageSymbol packge) {
         if (packge.members().isEmpty() &&
             ((packge.flags() & Flags.HAS_RESOURCE) == 0)) {
-            log.withLintAt(pos, _ ->
-                lint.logIfEnabled(pos, LintWarnings.PackageEmptyOrNotFound(packge)));
+            log.warnIfEnabled(pos, LintWarnings.PackageEmptyOrNotFound(packge));
         }
     }
 
     void checkModuleRequires(final DiagnosticPosition pos, final RequiresDirective rd) {
         if ((rd.module.flags() & Flags.AUTOMATIC_MODULE) != 0) {
-            log.withLintAt(pos, _ -> {
-                if (rd.isTransitive() && lint.isEnabled(LintCategory.REQUIRES_TRANSITIVE_AUTOMATIC)) {
-                    log.warning(pos, LintWarnings.RequiresTransitiveAutomatic);
-                } else {
-                    lint.logIfEnabled(pos, LintWarnings.RequiresAutomatic);
-                }
-            });
+            if (rd.isTransitive() && lint.isEnabled(LintCategory.REQUIRES_TRANSITIVE_AUTOMATIC)) {
+                log.warning(pos, LintWarnings.RequiresTransitiveAutomatic);
+            } else {
+                lint.logIfEnabled(pos, LintWarnings.RequiresAutomatic);
+            }
         }
     }
 

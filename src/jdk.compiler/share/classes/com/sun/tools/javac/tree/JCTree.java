@@ -427,8 +427,6 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         }
     }
 
-    public JavaFileObject sourceFile;
-
     /* The (encoded) position in the source file. @see util.Position.
      */
     public int pos;

@@ -1236,7 +1236,6 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
             for (JCCompilationUnit node : treesToClean) {
                 treeCleaner.scan(node);
             }
-            log.newRound();
             chk.newRound();
             enter.newRound();
             filer.newRound();

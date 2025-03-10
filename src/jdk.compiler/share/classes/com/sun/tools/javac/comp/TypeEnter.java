@@ -385,7 +385,7 @@ public class TypeEnter implements Completer {
                 handleImports(tree.getImports());
 
                 if (decl != null) {
-                    //check @Deprecated:
+                    //check for @Deprecated annotations
                     markDeprecated(decl.sym, decl.mods.annotations, env);
                     // process module annotations
                     annotate.annotateLater(decl.mods.annotations, env, env.toplevel.modle);
@@ -454,7 +454,7 @@ public class TypeEnter implements Completer {
                     chk.checkCanonical(imp.selected);
                 } else {
                     Assert.check(!fromModuleImport);
-                    Type importedType = attribImportType(tree, localEnv);
+                    Type importedType = attribImportType(imp, localEnv);
                     Type originalType = importedType.getOriginalType();
                     TypeSymbol c = originalType.hasTag(CLASS) ? originalType.tsym : importedType.tsym;
                     chk.checkCanonical(imp);
@@ -514,20 +514,17 @@ public class TypeEnter implements Completer {
             }
         }
 
-        Type attribImportType(JCImport tree, Env<AttrContext> env) {
+        Type attribImportType(JCTree tree, Env<AttrContext> env) {
             Assert.check(completionEnabled);
-            Lint prevLint = chk.setLint(allowDeprecationOnImport ?
-                    lint : lint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW));
-            log.setLintFor(tree, allowDeprecationOnImport ?
-                lint : lint.suppress(LintCategory.DEPRECATION, LintCategory.REMOVAL, LintCategory.PREVIEW));
+            boolean prevExtraSuppression = chk.setExtraSuppression(!allowDeprecationOnImport);
             try {
                 // To prevent deep recursion, suppress completion of some
                 // types.
                 completionEnabled = false;
-                return attr.attribType(tree.qualid, env);
+                return attr.attribType(tree, env);
             } finally {
                 completionEnabled = true;
-                chk.setLint(prevLint);
+                chk.setExtraSuppression(prevExtraSuppression);
             }
         }
 

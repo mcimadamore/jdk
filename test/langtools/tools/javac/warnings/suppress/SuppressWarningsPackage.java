@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,12 +123,12 @@ public class SuppressWarningsPackage extends TestRunner {
         Path classes = Files.createDirectories(base.resolve("classes"));
         TestCase[] testCases = new TestCase[] {
             new TestCase("",
-                         "module-info.java:3:12: compiler.warn.has.been.deprecated: test.DeprecatedClass, test",
                          "module-info.java:4:2: compiler.warn.has.been.deprecated: test.DeprecatedAnn, test",
                          "module-info.java:4:16: compiler.warn.has.been.deprecated: test.DeprecatedClass, test",
                          "module-info.java:7:14: compiler.warn.has.been.deprecated: test.Service, test",
                          "module-info.java:8:18: compiler.warn.has.been.deprecated: test.Service, test",
                          "module-info.java:8:36: compiler.warn.has.been.deprecated: test.ServiceImpl, test",
+                         "module-info.java:3:12: compiler.warn.has.been.deprecated: test.DeprecatedClass, test",
                          "package-info.java:1:2: compiler.warn.has.been.deprecated: test.DeprecatedAnn, test",
                          "package-info.java:1:16: compiler.warn.has.been.deprecated: test.DeprecatedClass, test",
                          "Use.java:2:2: compiler.warn.has.been.deprecated: test.DeprecatedAnn, test",

@@ -636,8 +636,6 @@ public class JavaCompiler {
         return parse(filename, content, false);
     }
 
-    private final Map<JavaFileObject, JCCompilationUnit> alreadyParsed = new HashMap<>();
-
     /** Parse contents of input stream.
      *  @param filename     The name of the file from which input stream comes.
      *  @param content      The characters to be parsed.
@@ -645,11 +643,7 @@ public class JavaCompiler {
      */
     private JCCompilationUnit parse(JavaFileObject filename, CharSequence content, boolean silent) {
         long msec = now();
-        JCCompilationUnit tree = alreadyParsed.get(filename);
-        if (tree != null) {
-            return tree;
-        }
-        tree = make.TopLevel(List.nil());
+        JCCompilationUnit tree = make.TopLevel(List.nil());
         if (content != null) {
             if (verbose) {
                 log.printVerbose("parsing.started", filename);
@@ -669,7 +663,6 @@ public class JavaCompiler {
         }
 
         tree.sourcefile = filename;
-        alreadyParsed.put(filename, tree);
 
         if (content != null && !taskListener.isEmpty() && !silent) {
             TaskEvent e = new TaskEvent(TaskEvent.Kind.PARSE, tree);
@@ -1955,7 +1948,6 @@ public class JavaCompiler {
         types = null;
 
         log.flush();
-        alreadyParsed.clear();
         try {
             fileManager.flush();
         } catch (IOException e) {
@@ -2021,8 +2013,6 @@ public class JavaCompiler {
     }
 
     public void newRound() {
-System.err.println(String.format("%s[0x%08x] *** NEW ROUND ***", this.getClass().getSimpleName(), System.identityHashCode(this)));
-        alreadyParsed.clear();
         inputFiles.clear();
         todo.clear();
     }
