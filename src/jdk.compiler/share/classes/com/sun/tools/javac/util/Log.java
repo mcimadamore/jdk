@@ -883,10 +883,9 @@ public class Log extends AbstractLog {
         JavaFileObject sourceFile = currentSourceFile();
         SourceInfo sourceInfo = sourceInfoMap.get(sourceFile);
         Assert.check(sourceInfo != null);
-        if (!sourceInfo.isParsed())     // TODO: why does this happen?
-            return;
+        Assert.check(sourceInfo.isParsed());
         Decl decl = sourceInfo.findDecl(tree).orElse(null);
-        if (decl == null)               // TODO: why does this happen?
+        if (decl == null)               // this can happen with synthetic declarations (e.g. record constructors)
             return;
 
         // Update declaration's lint config; we ignore duplicate updates which can happen during speculative compliation
