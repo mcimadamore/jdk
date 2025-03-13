@@ -151,7 +151,7 @@ public class Log extends AbstractLog {
         public void flushPendingActions(SourceInfo sourceInfo, Decl decl) {
 
             // Get pending action list for this source file
-            JavaFileObject sourceFile = sourceInfo.sourceFile();
+            JavaFileObject sourceFile = sourceInfo.sourceFile;
             List<PendingAction> pendingActions = pendingActionMap.get(sourceFile);
             if (pendingActions != null) {
 
@@ -159,14 +159,14 @@ public class Log extends AbstractLog {
                 List<PendingAction> matches = new ArrayList<>();    // avoid potential concurrent modification
                 for (Iterator<PendingAction> i = pendingActions.iterator(); i.hasNext(); ) {
                     PendingAction pa = i.next();
-                    if (sourceInfo.findDecl(pa.pos()) == decl) {
-                        Assert.check(pa.sourceFile().equals(sourceFile));
+                    if (sourceInfo.findDecl(pa.pos) == decl) {
+                        Assert.check(pa.sourceFile.equals(sourceFile));
                         matches.add(pa);
                         i.remove();
                     }
                 }
-                Lint lint = decl.lint().get();
-                matches.forEach(pa -> pa.action().accept(lint));
+                Lint lint = decl.lint.get();
+                matches.forEach(pa -> pa.action.accept(lint));
             }
         }
     }
@@ -822,14 +822,14 @@ public class Log extends AbstractLog {
 
         // Add a new declaration node
         Decl decl = new Decl(tree, endPos);
-        sourceInfo.decls().add(decl);
+        sourceInfo.decls.add(decl);
 
         // Verify our assumptions:
         //  1. If two declarations overlap, then one of them must nest within the other
         //  2. endDecl() is invoked in order of increasing declaration ending position
         sourceInfo.lastDecl().ifPresent(prev -> {
-            Assert.check(decl.endPos() >= prev.endPos());
-            Assert.check(decl.startPos() >= prev.endPos() || decl.startPos() <= prev.startPos());
+            Assert.check(decl.endPos >= prev.endPos);
+            Assert.check(decl.startPos >= prev.endPos || decl.startPos <= prev.startPos);
         });
 
         // Done
@@ -857,7 +857,7 @@ public class Log extends AbstractLog {
         }
 
         // If the applicable lint configuration is not yet known, we must defer
-        Lint lint = sourceInfo.findDecl(pos).lint().get();
+        Lint lint = sourceInfo.findDecl(pos).lint.get();
         if (lint == null) {
             diagnosticHandler.deferPendingAction(sourceFile, new PendingAction(sourceFile, pos, action));
             return;
@@ -889,7 +889,7 @@ public class Log extends AbstractLog {
             return;
 
         // Update declaration's lint config; we ignore duplicate updates which can happen during speculative compliation
-        decl.lint().compareAndSet(null, lint);
+        decl.lint.compareAndSet(null, lint);
 
         // Now that the Lint configuration is known, flush the affected pending actions
         diagnosticHandler.flushPendingActions(sourceInfo, decl);
@@ -942,7 +942,7 @@ public class Log extends AbstractLog {
         // Has the source file been completely parsed?
         boolean isParsed() {
             return lastDecl()
-              .filter(decl -> decl.tag() == TOPLEVEL)
+              .filter(decl -> decl.tag == TOPLEVEL)
               .isPresent();
         }
 
