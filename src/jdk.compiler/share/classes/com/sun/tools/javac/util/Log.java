@@ -201,6 +201,7 @@ public class Log extends AbstractLog {
         private List<JCDiagnostic> deferred = new ArrayList<>();
         private final Predicate<JCDiagnostic> filter;
         private final boolean passOnNonDeferrable;
+        private final Log log;
 
         public DeferredDiagnosticHandler(Log log) {
             this(log, null);
@@ -212,6 +213,7 @@ public class Log extends AbstractLog {
 
         @SuppressWarnings("this-escape")
         public DeferredDiagnosticHandler(Log log, Predicate<JCDiagnostic> filter, boolean passOnNonDeferrable) {
+            this.log = log;
             this.filter = filter;
             this.passOnNonDeferrable = passOnNonDeferrable;
             install(log);
@@ -257,8 +259,9 @@ public class Log extends AbstractLog {
 
             // Flush pending actions to the previous handler
             pendingActionMap.forEach(
-              (sourceFile, pendingActions) -> pendingActions.forEach(
-                pendingAction -> prev.deferPendingAction(sourceFile, pendingAction)));
+              (sourceFile, pendingActions) -> pendingActions.stream()
+                .map(pa -> applyFilter(pa, accepter))
+                .forEach(pa -> prev.deferPendingAction(sourceFile, pa)));
             pendingActionMap = null; // prevent accidental ongoing use
         }
 
@@ -266,6 +269,26 @@ public class Log extends AbstractLog {
         public void reportDeferredDiagnostics(Comparator<JCDiagnostic> order) {
             deferred.sort(order);
             reportDeferredDiagnostics();
+        }
+
+        private PendingAction applyFilter(PendingAction pa, Predicate<JCDiagnostic> filter) {
+            return new PendingAction(pa.sourceFile, pa.pos,
+              lint -> log.withReportFilter(filter, () -> pa.action.accept(lint)));
+        }
+    }
+
+    // Used by DeferredDiagnosticHandler
+    private Predicate<JCDiagnostic> reportFilter;
+
+    private void withReportFilter(Predicate<JCDiagnostic> filter, Runnable action) {
+        Predicate<JCDiagnostic> oldFilter = reportFilter;
+        if (oldFilter != null)
+            filter = filter.and(oldFilter);
+        reportFilter = filter;
+        try {
+            action.run();
+        } finally {
+            reportFilter = oldFilter;
         }
     }
 
@@ -772,7 +795,9 @@ public class Log extends AbstractLog {
      */
     @Override
     public void report(JCDiagnostic diagnostic) {
-        diagnosticHandler.report(diagnostic);
+        if (reportFilter == null || reportFilter.test(diagnostic)) {
+            diagnosticHandler.report(diagnostic);
+        }
      }
 
     /**
