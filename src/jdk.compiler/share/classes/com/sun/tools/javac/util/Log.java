@@ -889,15 +889,14 @@ public class Log extends AbstractLog {
         if (decl == null)               // TODO: why does this happen?
             return;
 
-        // Update its lint config; tolerate duplicate updates which sometimes happen
-        Assert.check(decl.lint().get() == null || lint.isEquivalentTo(decl.lint().get()));
-        decl.lint().set(lint);
+        // Update declaration's lint config; we ignore duplicate updates which can happen during speculative compliation
+        decl.lint().compareAndSet(null, lint);
 
         // Now that the Lint configuration is known, flush the affected pending actions
         diagnosticHandler.flushPendingActions(sourceInfo, decl);
     }
 
-    // Determine if we need to track the given tree
+    // Determine if we need to track the given tree (because it might have @SuppressWarnings)
     private boolean shouldTrack(JCTree tree) {
         Assert.check(tree != null);
         JCModifiers mods;
@@ -944,7 +943,7 @@ public class Log extends AbstractLog {
         // Has the source file been completely parsed?
         boolean isParsed() {
             return lastDecl()
-              .filter(decl -> decl.tree().getTag() == TOPLEVEL)
+              .filter(decl -> decl.tag() == TOPLEVEL)
               .isPresent();
         }
 
@@ -958,7 +957,7 @@ public class Log extends AbstractLog {
         // Find the Decl for the given tree node
         Optional<Decl> findDecl(JCTree tree) {
             return decls.stream()
-              .filter(decl -> tree.equals(decl.tree()))
+              .filter(decl -> decl.matches(tree))
               .findFirst();
         }
 
@@ -981,21 +980,23 @@ public class Log extends AbstractLog {
     /**
      * A module, package, class, method, variable, or top level declaration and its lexical range.
      *
-     * @param tree tree node
+     * @param tag tree node type
      * @param startPos starting position (inclusive)
      * @param endPos ending position (exclusive)
      * @param lint the {@link Lint} configuration that applies to {@code tree}, if known
      */
-    private record Decl(JCTree tree, int startPos, int endPos, AtomicReference<Lint> lint) {
+    private record Decl(Tag tag, int startPos, int endPos, AtomicReference<Lint> lint) {
 
         Decl(JCTree tree, int endPos) {
-            this(tree, tree.getTag() == TOPLEVEL ? 0 : TreeInfo.getStartPos(tree), endPos, new AtomicReference<>());
+            this(tree.getTag(), Decl.startPos(tree), endPos, new AtomicReference<>());
         }
 
+        // Does this declaration contain the given source position?
         boolean contains(int pos) {
             return pos == startPos || (pos > startPos && pos < endPos);
         }
 
+        // Does this declaration contain the given declaration?
         boolean contains(Decl that) {
             return this.startPos <= that.startPos && this.endPos >= that.endPos;
         }
@@ -1008,7 +1009,16 @@ public class Log extends AbstractLog {
         // It's possible for a JCCompilationUnit and the declaration it contains to have
         // the same lexical extent. In that case, we have to apply tie-breaker logic.
         boolean isNarrowerThan(Decl that) {
-            return that.contains(this) && (!sameExtentAs(that) || that.tree.getTag() == TOPLEVEL);
+            return that.contains(this) && (!sameExtentAs(that) || that.tag == TOPLEVEL);
+        }
+
+        // Did this instance derive from the given tree node?
+        boolean matches(JCTree tree) {
+            return tree.getTag() == tag && Decl.startPos(tree) == startPos;
+        }
+
+        private static int startPos(JCTree tree) {
+            return tree.getTag() == TOPLEVEL ? 0 : TreeInfo.getStartPos(tree);
         }
     }
 
