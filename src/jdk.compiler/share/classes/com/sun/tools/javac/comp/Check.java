@@ -162,18 +162,6 @@ public class Check {
         profile = Profile.instance(context);
         preview = Preview.instance(context);
 
-        boolean verboseDeprecated = lint.isEnabled(LintCategory.DEPRECATION);
-        boolean verboseRemoval = lint.isEnabled(LintCategory.REMOVAL);
-        boolean verboseUnchecked = lint.isEnabled(LintCategory.UNCHECKED);
-        boolean enforceMandatoryWarnings = true;
-
-        deprecationHandler = new MandatoryWarningHandler(log, null, verboseDeprecated,
-                enforceMandatoryWarnings, LintCategory.DEPRECATION, "deprecated");
-        removalHandler = new MandatoryWarningHandler(log, null, verboseRemoval,
-                enforceMandatoryWarnings, LintCategory.REMOVAL);
-        uncheckedHandler = new MandatoryWarningHandler(log, null, verboseUnchecked,
-                enforceMandatoryWarnings, LintCategory.UNCHECKED);
-
         allowModules = Feature.MODULES.allowedInSource(source);
         allowRecords = Feature.RECORDS.allowedInSource(source);
         allowSealed = Feature.SEALED_CLASSES.allowedInSource(source);
@@ -187,18 +175,6 @@ public class Check {
      *  to their symbols; maintained from outside.
      */
     private Map<Pair<ModuleSymbol, Name>,ClassSymbol> compiled = new HashMap<>();
-
-    /** A handler for messages about deprecated usage.
-     */
-    private MandatoryWarningHandler deprecationHandler;
-
-    /** A handler for messages about deprecated-for-removal usage.
-     */
-    private MandatoryWarningHandler removalHandler;
-
-    /** A handler for messages about unchecked or unsafe usage.
-     */
-    private MandatoryWarningHandler uncheckedHandler;
 
     /** Are modules allowed
      */
@@ -245,19 +221,18 @@ public class Check {
      *  @param sym        The deprecated symbol.
      */
     void warnDeprecated(DiagnosticPosition pos, Symbol sym) {
+        Assert.check(!importSuppression);
         if (sym.isDeprecatedForRemoval()) {
-            if (!lint.isSuppressed(LintCategory.REMOVAL)) {
-                if (sym.kind == MDL) {
-                    removalHandler.report(pos, LintWarnings.HasBeenDeprecatedForRemovalModule(sym));
-                } else {
-                    removalHandler.report(pos, LintWarnings.HasBeenDeprecatedForRemoval(sym, sym.location()));
-                }
-            }
-        } else if (!lint.isSuppressed(LintCategory.DEPRECATION)) {
             if (sym.kind == MDL) {
-                deprecationHandler.report(pos, LintWarnings.HasBeenDeprecatedModule(sym));
+                log.mandatoryWarnIfEnabled(pos, LintWarnings.HasBeenDeprecatedForRemovalModule(sym));
             } else {
-                deprecationHandler.report(pos, LintWarnings.HasBeenDeprecated(sym, sym.location()));
+                log.mandatoryWarnIfEnabled(pos, LintWarnings.HasBeenDeprecatedForRemoval(sym, sym.location()));
+            }
+        } else {
+            if (sym.kind == MDL) {
+                log.mandatoryWarnIfEnabled(pos, LintWarnings.HasBeenDeprecatedModule(sym));
+            } else {
+                log.mandatoryWarnIfEnabled(pos, LintWarnings.HasBeenDeprecated(sym, sym.location()));
             }
         }
     }
@@ -267,17 +242,9 @@ public class Check {
      *  @param msg        A Warning describing the problem.
      */
     public void warnPreviewAPI(DiagnosticPosition pos, LintWarning warnKey) {
-        if (!lint.isSuppressed(LintCategory.PREVIEW))
-            preview.reportPreviewWarning(pos, warnKey);
-    }
-
-    /** Log a preview warning.
-     *  @param pos        Position to be used for error reporting.
-     *  @param msg        A Warning describing the problem.
-     */
-    public void warnDeclaredUsingPreview(DiagnosticPosition pos, Symbol sym) {
-        if (!lint.isSuppressed(LintCategory.PREVIEW))
-            preview.reportPreviewWarning(pos, LintWarnings.DeclaredUsingPreview(kindName(sym), sym));
+        if (!importSuppression) {
+            log.mandatoryWarnIfEnabled(pos, warnKey);
+        }
     }
 
     /** Warn about unchecked operation.
@@ -285,19 +252,8 @@ public class Check {
      *  @param msg        A string describing the problem.
      */
     public void warnUnchecked(DiagnosticPosition pos, LintWarning warnKey) {
-        if (!lint.isSuppressed(LintCategory.UNCHECKED))
-            uncheckedHandler.report(pos, warnKey);
+        log.mandatoryWarnIfEnabled(pos, warnKey);
     }
-
-    /**
-     * Report any deferred diagnostics.
-     */
-    public void reportDeferredDiagnostics() {
-        deprecationHandler.reportDeferredDiagnostic();
-        removalHandler.reportDeferredDiagnostic();
-        uncheckedHandler.reportDeferredDiagnostic();
-    }
-
 
     /** Report a failure to complete a class.
      *  @param pos        Position to be used for error reporting.
@@ -465,12 +421,6 @@ public class Check {
     public void newRound() {
         compiled.clear();
         localClassNameIndexes.clear();
-    }
-
-    public void clear() {
-        deprecationHandler.clear();
-        removalHandler.clear();
-        uncheckedHandler.clear();
     }
 
     public void putCompiled(ClassSymbol csym) {
@@ -3661,7 +3611,7 @@ public class Check {
      */
     public boolean validateAnnotationDeferErrors(JCAnnotation a) {
         boolean res = false;
-        final Log.DiagnosticHandler diagHandler = new Log.DiscardDiagnosticHandler(log);
+        final Log.DiagnosticHandler diagHandler = log.new DiscardDiagnosticHandler();
         try {
             res = validateAnnotation(a);
         } finally {
@@ -3763,15 +3713,7 @@ public class Check {
                 && (s.isDeprecatedForRemoval() || s.isDeprecated() && !other.isDeprecated())
                 && (s.outermostClass() != other.outermostClass() || s.outermostClass() == null)
                 && s.kind != Kind.PCK) {
-            DiagnosticPosition pos = posSup.get();
-            log.withLintAt(pos, newLint -> {
-                Lint prevLint = setLint(newLint);
-                try {
-                    warnDeprecated(pos, s);
-                } finally {
-                    setLint(prevLint);
-                }
-            });
+            warnDeprecated(posSup.get(), s);
         }
     }
 
@@ -3815,14 +3757,10 @@ public class Check {
                     log.error(pos, Errors.IsPreview(s));
                 } else {
                     preview.markUsesPreview(pos);
-                    if (!importSuppression) {
-                        warnPreviewAPI(pos, LintWarnings.IsPreview(s));
-                    }
+                    warnPreviewAPI(pos, LintWarnings.IsPreview(s));
                 }
             } else {
-                if (!importSuppression) {
-                    warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s));
-                }
+                warnPreviewAPI(pos, LintWarnings.IsPreviewReflective(s));
             }
         }
         if (preview.declaredUsingPreviewFeature(s)) {
@@ -3831,9 +3769,7 @@ public class Check {
                 //If "s" is compiled from source, then there was an error for it already;
                 //if "s" is from classfile, there already was an error for the classfile.
                 preview.markUsesPreview(pos);
-                if (!importSuppression) {
-                    warnDeclaredUsingPreview(pos, s);
-                }
+                warnPreviewAPI(pos, LintWarnings.DeclaredUsingPreview(kindName(s), s));
             }
         }
     }

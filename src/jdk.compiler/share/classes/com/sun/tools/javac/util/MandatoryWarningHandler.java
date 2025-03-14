@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import javax.tools.JavaFileObject;
 
+import com.sun.tools.javac.code.Lint;
 import com.sun.tools.javac.code.Lint.LintCategory;
 import com.sun.tools.javac.code.Source;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
@@ -58,7 +59,7 @@ import com.sun.tools.javac.util.JCDiagnostic.Warning;
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
  */
-public class MandatoryWarningHandler {
+class MandatoryWarningHandler {
 
     /**
      * The kinds of different deferred diagnostics that might be generated
@@ -109,16 +110,10 @@ public class MandatoryWarningHandler {
      *
      * @param log     The log on which to generate any diagnostics
      * @param source  Associated source file, or null for none
-     * @param verbose Specify whether or not detailed messages about
-     *                individual instances should be given, or whether an aggregate
-     *                message should be generated at the end of the compilation.
-     *                Typically set via  -Xlint:option.
-     * @param enforceMandatory
-     *                True if mandatory warnings and notes are being enforced.
      * @param lc      The lint category for all warnings
      */
-    public MandatoryWarningHandler(Log log, Source source, boolean verbose, boolean enforceMandatory, LintCategory lc) {
-        this(log, source, verbose, enforceMandatory, lc, null);
+    public MandatoryWarningHandler(Log log, Source source, LintCategory lc) {
+        this(log, source, lc, null);
     }
 
     /**
@@ -126,43 +121,38 @@ public class MandatoryWarningHandler {
      *
      * @param log     The log on which to generate any diagnostics
      * @param source  Associated source file, or null for none
-     * @param verbose Specify whether or not detailed messages about
-     *                individual instances should be given, or whether an aggregate
-     *                message should be generated at the end of the compilation.
-     *                Typically set via  -Xlint:option.
-     * @param enforceMandatory
-     *                True if mandatory warnings and notes are being enforced.
      * @param lc      The lint category for all warnings
      * @param prefix  A common prefix for the set of message keys for the messages
      *                that may be generated, or null to infer from the lint category.
      */
-    public MandatoryWarningHandler(Log log, Source source, boolean verbose, boolean enforceMandatory, LintCategory lc, String prefix) {
+    public MandatoryWarningHandler(Log log, Source source, LintCategory lc, String prefix) {
         this.log = log;
         this.source = source;
-        this.verbose = verbose;
         this.prefix = prefix != null ? prefix : lc.option;
-        this.enforceMandatory = enforceMandatory;
         this.lintCategory = lc;
     }
 
     /**
      * Report a mandatory warning.
      *
-     * @param pos source code position
-     * @param warnKey lint warning
+     * @param lint the applicable Lint configuration
+     * @param diagnostic the mandatory warning
      */
-    public void report(DiagnosticPosition pos, LintWarning warnKey) {
+    public void report(Lint lint, JCDiagnostic diagnostic) {
+        Assert.check(diagnostic.isMandatory());
+        Assert.check(diagnostic.getLintCategory() == lintCategory);
+        if (lint.isSuppressed(lintCategory)) {
+            return;
+        }
         JavaFileObject currentSource = log.currentSourceFile();
-        Assert.check(warnKey.getLintCategory() == lintCategory);
-
-        if (verbose) {
+        if (lint.isEnabled(lintCategory)) {
             if (sourcesWithReportedWarnings == null)
                 sourcesWithReportedWarnings = new HashSet<>();
-
             if (log.nwarnings < log.MaxWarnings) {
                 // generate message and remember the source file
-                logMandatoryWarning(pos, warnKey);
+                log.report(diagnostic);
                 sourcesWithReportedWarnings.add(currentSource);
+                anyWarningGenerated = true;
             } else if (deferredDiagnosticKind == null) {
                 // set up deferred message
                 if (sourcesWithReportedWarnings.contains(currentSource)) {
@@ -215,7 +205,7 @@ public class MandatoryWarningHandler {
                 }
             }
 
-            if (!verbose)
+            if (!anyWarningGenerated)
                 logMandatoryNote(deferredDiagnosticSource, prefix + ".recompile");
         }
     }
@@ -225,12 +215,6 @@ public class MandatoryWarningHandler {
      */
     private final Log log;
     private final Source source;
-
-    /**
-     * Whether or not to report individual warnings, or simply to report a
-     * single aggregate warning at the end of the compilation.
-     */
-    private final boolean verbose;
 
     /**
      * The common prefix for all I18N message keys generated by this handler.
@@ -268,9 +252,10 @@ public class MandatoryWarningHandler {
     private Object deferredDiagnosticArg;
 
     /**
-     * True if mandatory warnings and notes are being enforced.
+     * Whether we have actually logged a warning yet or just deferred everything.
+     * In the latter case, the "recompile" notice is included in the summary.
      */
-    private final boolean enforceMandatory;
+    private boolean anyWarningGenerated;
 
     /**
      * A LintCategory to be included in point-of-use diagnostics to indicate
@@ -279,25 +264,10 @@ public class MandatoryWarningHandler {
     private final LintCategory lintCategory;
 
     /**
-     * Reports a mandatory warning to the log.  If mandatory warnings
-     * are not being enforced, treat this as an ordinary warning.
-     */
-    private void logMandatoryWarning(DiagnosticPosition pos, LintWarning warnKey) {
-        if (enforceMandatory)
-            log.mandatoryWarning(pos, warnKey);
-        else
-            log.warning(pos, warnKey);
-    }
-
-    /**
-     * Reports a mandatory note to the log.  If mandatory notes are
-     * not being enforced, treat this as an ordinary note.
+     * Reports a mandatory note to the log.
      */
     private void logMandatoryNote(JavaFileObject file, String msg, Object... args) {
-        if (enforceMandatory)
-            log.mandatoryNote(file, new Note("compiler", msg, args));
-        else
-            log.note(file, new Note("compiler", msg, args));
+        log.mandatoryNote(file, new Note("compiler", msg, args));
     }
 
     public void clear() {

@@ -119,7 +119,7 @@ public class ReferenceParser {
         Name member;
         List<JCTree> paramTypes;
 
-        Log.DeferredDiagnosticHandler dh = new Log.DeferredDiagnosticHandler(fac.log);
+        Log.DeferredDiagnosticHandler dh = fac.log.new DeferredDiagnosticHandler();
 
         try {
             int slash = sig.indexOf("/");

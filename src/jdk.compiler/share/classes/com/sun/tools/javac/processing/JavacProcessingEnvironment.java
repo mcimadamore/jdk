@@ -1005,7 +1005,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                 Assert.checkNonNull(deferredDiagnosticHandler);
                 this.deferredDiagnosticHandler = deferredDiagnosticHandler;
             } else {
-                this.deferredDiagnosticHandler = new Log.DeferredDiagnosticHandler(log);
+                this.deferredDiagnosticHandler = log.new DeferredDiagnosticHandler();
                 compiler.setDeferredDiagnosticHandler(this.deferredDiagnosticHandler);
             }
 
