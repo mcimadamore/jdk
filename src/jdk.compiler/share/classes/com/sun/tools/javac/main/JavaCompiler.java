@@ -1862,7 +1862,7 @@ public class JavaCompiler {
             else
                 log.warning(Warnings.ProcUseProcOrImplicit);
         }
-        log.reportDeferredMandatoryDiagnostics();
+        log.reportAggregatedWarningNotes();
         if (log.compressedOutput) {
             log.mandatoryNote(null, Notes.CompressedDiags);
         }

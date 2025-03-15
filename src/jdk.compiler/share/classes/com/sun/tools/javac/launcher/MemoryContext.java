@@ -124,7 +124,7 @@ final class MemoryContext {
         var task = compiler.getTask(out, memoryFileManager, null, opts, null, units, context);
 
         // suppress diagnostics like "Note: Recompile with -Xlint:preview for details."
-        Log.instance(context).suppressDeferredMandatoryDiagnostics(LintCategory.PREVIEW);
+        Log.instance(context).suppressAggregatedWarningNotes(LintCategory.PREVIEW);
 
         var ok = task.call();
         if (!ok) {

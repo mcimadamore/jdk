@@ -38,10 +38,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import javax.tools.DiagnosticListener;
@@ -117,7 +116,7 @@ public class Log extends AbstractLog {
         /**
          * Diagnostics waiting for an applicable {@link Lint} instance.
          */
-        protected Map<JavaFileObject, List<LintWaiter>> lintWaitersMap = new HashMap<>();
+        protected Map<JavaFileObject, List<JCDiagnostic>> lintWaitersMap = new HashMap<>();
 
         /**
          * Install this diagnostic handler as the current one,
@@ -137,10 +136,10 @@ public class Log extends AbstractLog {
          * Defer some diagnostic until the applicable {@link Lint} configuration is known.
          *
          * @param sourceFile the source file
-         * @param waiter waiting diagnostic
+         * @param diagnostic waiting diagnostic
          */
-        public void addLintWaiter(JavaFileObject sourceFile, LintWaiter waiter) {
-            lintWaitersMap.computeIfAbsent(sourceFile, s -> new LinkedList<>()).add(waiter);
+        public void addLintWaiter(JavaFileObject sourceFile, JCDiagnostic diagnostic) {
+            lintWaitersMap.computeIfAbsent(sourceFile, s -> new LinkedList<>()).add(diagnostic);
         }
 
         /**
@@ -151,14 +150,13 @@ public class Log extends AbstractLog {
          * @param decl declaration whose {@link Lint} configuration is now known
          */
         public void flushLintWaiters(SourceInfo sourceInfo, Decl decl) {
-            List<LintWaiter> lintWaiters = lintWaitersMap.get(sourceInfo.sourceFile);
-            if (lintWaiters != null) {
+            List<JCDiagnostic> diagnostics = lintWaitersMap.get(sourceInfo.sourceFile);
+            if (diagnostics != null) {
                 Lint lint = decl.lint.get();
-                for (Iterator<LintWaiter> i = lintWaiters.iterator(); i.hasNext(); ) {
-                    LintWaiter lintWaiter = i.next();
-                    JCDiagnostic diag = lintWaiter.diagnostic;
-                    if (sourceInfo.findDecl(diag.getDiagnosticPosition()) == decl) {
-                        lintWaiter.action.accept(lint, diag);
+                for (Iterator<JCDiagnostic> i = diagnostics.iterator(); i.hasNext(); ) {
+                    JCDiagnostic diagnostic = i.next();
+                    if (sourceInfo.findDecl(diagnostic.getDiagnosticPosition()) == decl) {
+                        applyLint(lint, diagnostic, this::report);
                         i.remove();
                     }
                 }
@@ -175,7 +173,7 @@ public class Log extends AbstractLog {
         public void report(JCDiagnostic diag) { }
 
         @Override
-        public void addLintWaiter(JavaFileObject sourceFile, LintWaiter lintWaiter) { }
+        public void addLintWaiter(JavaFileObject sourceFile, JCDiagnostic diagnostic) { }
 
         @Override
         public void flushLintWaiters(SourceInfo sourceInfo, Decl decl) { }
@@ -203,16 +201,17 @@ public class Log extends AbstractLog {
 
         @SuppressWarnings("this-escape")
         public DeferredDiagnosticHandler(Predicate<JCDiagnostic> filter, boolean passOnNonDeferrable) {
-            this.filter = filter;
+            this.filter = Optional.ofNullable(filter).orElse(d -> true);
             this.passOnNonDeferrable = passOnNonDeferrable;
+        }
+
+        private boolean deferrable(JCDiagnostic diag) {
+            return !(diag.isFlagSet(DiagnosticFlag.NON_DEFERRABLE) && passOnNonDeferrable) && filter.test(diag);
         }
 
         @Override
         public void report(JCDiagnostic diag) {
-            boolean deferrable = !passOnNonDeferrable ||
-                                 !diag.isFlagSet(JCDiagnostic.DiagnosticFlag.NON_DEFERRABLE);
-            if (deferrable &&
-                (filter == null || filter.test(diag))) {
+            if (deferrable(diag)) {
                 deferred.add(diag);
             } else {
                 prev.report(diag);
@@ -220,9 +219,17 @@ public class Log extends AbstractLog {
         }
 
         @Override
+        public void addLintWaiter(JavaFileObject sourceFile, JCDiagnostic diag) {
+            if (deferrable(diag)) {
+                super.addLintWaiter(sourceFile, diag);
+            } else {
+                prev.addLintWaiter(sourceFile, diag);
+            }
+        }
+
+        @Override
         public void flushLintWaiters(SourceInfo sourceInfo, Decl decl) {
-            if (prev != null)
-                prev.flushLintWaiters(sourceInfo, decl);
+            prev.flushLintWaiters(sourceInfo, decl);
             super.flushLintWaiters(sourceInfo, decl);
         }
 
@@ -244,11 +251,11 @@ public class Log extends AbstractLog {
               .forEach(prev::report);
             deferred = null; // prevent accidental ongoing use
 
-            // Flush matching LintWaiters to the previous handler
+            // Flush matching Lint waiters to the previous handler
             lintWaitersMap.forEach(
-              (sourceFile, lintWaiters) -> lintWaiters.stream()
-                .filter(lintWaiter -> accepter.test(lintWaiter.diagnostic()))
-                .forEach(lintWaiter -> prev.addLintWaiter(sourceFile, lintWaiter)));
+              (sourceFile, diagnostics) -> diagnostics.stream()
+                .filter(accepter)
+                .forEach(diagnostic -> prev.addLintWaiter(sourceFile, diagnostic)));
             lintWaitersMap = null; // prevent accidental ongoing use
         }
 
@@ -560,8 +567,8 @@ public class Log extends AbstractLog {
      */
     public void popDiagnosticHandler(DiagnosticHandler h) {
         Assert.check(diagnosticHandler == h);
+        Assert.check(h.prev != null);
         diagnosticHandler = h.prev;
-        Assert.check(diagnosticHandler != null);
     }
 
     /** Flush the logs
@@ -766,12 +773,7 @@ public class Log extends AbstractLog {
      */
     public void warnIfEnabled(DiagnosticPosition pos, LintWarning key) {
         Assert.check(pos != null);
-        waitForLint(pos, diags.warning(source, pos, key), this::reportIfEnabled);
-    }
-
-    private void reportIfEnabled(Lint lint, JCDiagnostic diagnostic) {
-        if (lint.isEnabled(diagnostic.getLintCategory()))
-            report(diagnostic);
+        waitForLint(pos, diags.warning(source, pos, key));
     }
 
     /**
@@ -781,6 +783,19 @@ public class Log extends AbstractLog {
     @Override
     public void report(JCDiagnostic diagnostic) {
         diagnosticHandler.report(diagnostic);
+    }
+
+    // Apply the given Lint configuration to the diagnostic and if it survives pass on downstream
+    private void applyLint(Lint lint, JCDiagnostic diagnostic, Consumer<? super JCDiagnostic> downstream) {
+        LintCategory lc = diagnostic.getLintCategory();
+        if (diagnostic.isMandatory()) {
+            if (!lint.isSuppressed(lc)) {
+                if (!lint.isEnabled(lc))
+                    diagnostic.setFlag(DiagnosticFlag.AGGREGATE);
+                downstream.accept(diagnostic);
+            }
+        } else if (lint.isEnabled(lc))
+            downstream.accept(diagnostic);
     }
 
     /**
@@ -797,65 +812,56 @@ public class Log extends AbstractLog {
         recordedSourceLevelErrors.clear();
         while (diagnosticHandler.prev != null)
             popDiagnosticHandler(diagnosticHandler);
-        mandatoryWarningHandlers.values().forEach(MandatoryWarningHandler::clear);
+        aggregators.values().forEach(MandatoryWarningAggregator::clear);
         suppressedDeferredMandatory.clear();
     }
 
 // Mandatory Warnings
 
-    private final EnumMap<LintCategory, MandatoryWarningHandler> mandatoryWarningHandlers = new EnumMap<>(LintCategory.class);
+    private final EnumMap<LintCategory, MandatoryWarningAggregator> aggregators = new EnumMap<>(LintCategory.class);
 
     private final EnumSet<LintCategory> suppressedDeferredMandatory = EnumSet.noneOf(LintCategory.class);
 
     /**
-     * Report a mandatory warning subject to the applicable {@link Lint} configuration.
+     * Report a mandatory warning if its {@link LintCategory} is enabled at the position.
      *
-     * <p>
-     * If the lint category is enabled, the warning is emitted; if the lint category
-     * is suppressed, no warning is emitted; otherwise, no warning is emitted but
-     * an aggregate "recompile" note may still be emitted at the end of compilation.
-     *
-     * @param pos warning source position, or null if not position specific
+     * @param pos warning source position, or null if not specific to a source code position
      * @param key warning key
-     * @see #reportDeferredMandatoryWarningDiagnostics
      */
     public void mandatoryWarnIfEnabled(DiagnosticPosition pos, LintWarning key) {
         JCDiagnostic diag = diags.mandatoryWarning(source, pos, key);
-        MandatoryWarningHandler handler = mandatoryWarningHandlerFor(key.getLintCategory());
         if (pos == null)
-            handler.report(rootLint(), diag);
+            applyLint(rootLint(), diag, this::report);
         else
-            waitForLint(pos, diag, handler::report);
+            waitForLint(pos, diag);
     }
 
     /**
-     * Suppress reporting of aggregated deferred diagnostics for the specified category.
+     * Suppress aggregated mandatory warning notes for the specified category.
      */
-    public void suppressDeferredMandatoryDiagnostics(LintCategory category) {
+    public void suppressAggregatedWarningNotes(LintCategory category) {
         suppressedDeferredMandatory.add(category);
     }
 
     /**
-     * Report any aggregated deferred diagnostics from disabled mandatory warnings.
+     * Report aggregated mandatory warning notes.
      */
-    public void reportDeferredMandatoryDiagnostics() {
-        mandatoryWarningHandlers.entrySet().stream()
-          .filter(e -> !suppressedDeferredMandatory.contains(e.getKey()))
+    public void reportAggregatedWarningNotes() {
+        aggregators.entrySet().stream()
+          .filter(entry -> !suppressedDeferredMandatory.contains(entry.getKey()))
           .map(Map.Entry::getValue)
-          .forEach(MandatoryWarningHandler::reportDeferredDiagnostic);
+          .map(MandatoryWarningAggregator::aggregationNotes)
+          .flatMap(List::stream)
+          .forEach(this::report);
     }
 
-    // Create MandatoryWarningHandler's lazily to avoid init loops (involving Source)
-    private MandatoryWarningHandler mandatoryWarningHandlerFor(LintCategory category) {
-        if (mandatoryWarningHandlers.isEmpty()) {
-            mandatoryWarningHandlers.put(DEPRECATION, new MandatoryWarningHandler(this, null, DEPRECATION, "deprecated"));
-            mandatoryWarningHandlers.put(REMOVAL, new MandatoryWarningHandler(this, null, REMOVAL));
-            mandatoryWarningHandlers.put(UNCHECKED, new MandatoryWarningHandler(this, null, UNCHECKED));
-            mandatoryWarningHandlers.put(PREVIEW, new MandatoryWarningHandler(this, Source.instance(context), PREVIEW));
-        }
-        MandatoryWarningHandler handler = mandatoryWarningHandlers.get(category);
-        Assert.check(handler != null);
-        return handler;
+    private MandatoryWarningAggregator aggregatorFor(LintCategory lc) {
+        return switch (lc) {
+        case PREVIEW -> aggregators.computeIfAbsent(lc, c -> new MandatoryWarningAggregator(this, Source.instance(context), c));
+        case DEPRECATION -> aggregators.computeIfAbsent(lc, c -> new MandatoryWarningAggregator(this, null, c, "deprecated"));
+        case REMOVAL, UNCHECKED -> aggregators.computeIfAbsent(lc, c -> new MandatoryWarningAggregator(this, null, c));
+        case null, default -> null;
+        };
     }
 
     // Obtain root Lint singleton lazily to avoid init loops
@@ -911,28 +917,27 @@ public class Log extends AbstractLog {
     }
 
     /**
-     * Take the given action with the diagnostic once the applicable {@link Lint} is known.
+     * Report the given diagnostic once the applicable {@link Lint} is known.
      *
      * @param pos source code position
      * @param diagnostic the lint warning
-     * @param action the action to take when {@link Lint} is determined
      */
-    private void waitForLint(DiagnosticPosition pos, JCDiagnostic diagnostic, BiConsumer<Lint, JCDiagnostic> action) {
+    private void waitForLint(DiagnosticPosition pos, JCDiagnostic diagnostic) {
         Assert.check(pos != null);
 
-        // Do we already know the Lint corresponding to "pos"?
+        // Do we already know the Lint corresponding to "pos"? If so, report now.
         JavaFileObject sourceFile = currentSourceFile();
         SourceInfo sourceInfo = sourceInfoMap.computeIfAbsent(sourceFile, SourceInfo::new);
         if (sourceInfo.isParsed()) {
             Lint lint = sourceInfo.findDecl(pos).lint.get();
             if (lint != null) {
-                action.accept(lint, diagnostic);
+                applyLint(lint, diagnostic, this::report);
                 return;
             }
         }
 
         // We must wait for it
-        diagnosticHandler.addLintWaiter(sourceFile, new LintWaiter(diagnostic, action));
+        diagnosticHandler.addLintWaiter(sourceFile, diagnostic);
     }
 
     /**
@@ -1087,16 +1092,6 @@ public class Log extends AbstractLog {
         }
     }
 
-// LintWaiter
-
-    /**
-     * A diagnostic that requires consulting the applicable {@lint Lint} configuration.
-     *
-     * @param diagnostic lint warning at some source code position
-     * @param action the action to take when the {@link Lint} is determined
-     */
-    private record LintWaiter(JCDiagnostic diagnostic, BiConsumer<Lint, JCDiagnostic> action) { }
-
 // DefaultDiagnosticHandler
 
     /**
@@ -1129,6 +1124,15 @@ public class Log extends AbstractLog {
                 break;
 
             case WARNING:
+
+                // We aggregate mandatory warnings in certain categories
+                if (diagnostic.isMandatory()) {
+                    MandatoryWarningAggregator aggregator = aggregatorFor(diagnostic.getLintCategory());
+                    if (aggregator != null && aggregator.aggregate(diagnostic))
+                        break;
+                }
+
+                // Emit warning unless not mandatory and warnings are disabled
                 if (emitWarnings || diagnostic.isMandatory()) {
                     if (nwarnings < MaxWarnings) {
                         writeDiagnostic(diagnostic);
@@ -1151,7 +1155,7 @@ public class Log extends AbstractLog {
                 }
                 break;
             }
-            if (diagnostic.isFlagSet(JCDiagnostic.DiagnosticFlag.COMPRESSED)) {
+            if (diagnostic.isFlagSet(DiagnosticFlag.COMPRESSED)) {
                 compressedOutput = true;
             }
         }

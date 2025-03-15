@@ -447,6 +447,9 @@ public class JCDiagnostic implements Diagnostic<JavaFileObject> {
         RECOVERABLE,
         NON_DEFERRABLE,
         COMPRESSED,
+        /** Flags mandatory warnings that should be aggregated.
+         */
+        AGGREGATE,
         /** Flag for diagnostics that were reported through API methods.
          */
         API,
@@ -692,6 +695,14 @@ public class JCDiagnostic implements Diagnostic<JavaFileObject> {
      */
     public boolean isMandatory() {
         return flags.contains(DiagnosticFlag.MANDATORY);
+    }
+
+    /**
+     * Check whether this diagnostic should be aggregated by the {@link MandatoryWarningAggregator}.
+     * @return true if this diagnostic should be aggregated
+     */
+    public boolean isAggregate() {
+        return flags.contains(DiagnosticFlag.AGGREGATE);
     }
 
     /**
