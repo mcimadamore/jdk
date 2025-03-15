@@ -1028,6 +1028,7 @@ public class Log extends AbstractLog {
         // Find the Decl for the innermost tree node containing the position
         Decl findDecl(DiagnosticPosition dp) {
             int pos = dp.getStartPosition();
+            Assert.check(pos != Position.NOPOS);
             Decl best = null;
             for (Decl decl : decls) {
                 if (decl.contains(pos) && (best == null || decl.isNarrowerThan(best))) {
