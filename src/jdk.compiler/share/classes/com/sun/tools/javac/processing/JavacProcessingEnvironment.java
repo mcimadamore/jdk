@@ -650,7 +650,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                         add(importStringToPattern(allowModules, annotationPattern,
                                                   processor, log, lint));
                     if (!patternAdded) {
-                        lint.logIfEnabled(LintWarnings.ProcDuplicateSupportedAnnotation(annotationPattern,
+                        log.warnIfEnabled(LintWarnings.ProcDuplicateSupportedAnnotation(annotationPattern,
                                                                               p.getClass().getName()));
                     }
                 }
@@ -663,7 +663,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                 // and "foo.bar.*".
                 if (supportedAnnotationPatterns.contains(MatchingUtils.validImportStringToPattern("*")) &&
                     supportedAnnotationPatterns.size() > 1) {
-                    lint.logIfEnabled(LintWarnings.ProcRedundantTypesWithWildcard(p.getClass().getName()));
+                    log.warnIfEnabled(LintWarnings.ProcRedundantTypesWithWildcard(p.getClass().getName()));
                 }
 
                 supportedOptionNames = new LinkedHashSet<>();
@@ -671,7 +671,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                     if (checkOptionName(optionName, log)) {
                         boolean optionAdded = supportedOptionNames.add(optionName);
                         if (!optionAdded) {
-                            lint.logIfEnabled(LintWarnings.ProcDuplicateOptionName(optionName,
+                            log.warnIfEnabled(LintWarnings.ProcDuplicateOptionName(optionName,
                                                                          p.getClass().getName()));
                         }
                     }
@@ -1676,7 +1676,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
     }
 
     private static Pattern warnAndNoMatches(String s, Processor p, Log log, Lint lint) {
-        lint.logIfEnabled(LintWarnings.ProcMalformedSupportedString(s, p.getClass().getName()));
+        log.warnIfEnabled(LintWarnings.ProcMalformedSupportedString(s, p.getClass().getName()));
         return noMatches; // won't match any valid identifier
     }
 

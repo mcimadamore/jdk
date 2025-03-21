@@ -777,6 +777,15 @@ public class Log extends AbstractLog {
     }
 
     /**
+     * Report a warning if its {@link LintCategory} is enabled at the position.
+     *
+     * @param key warning key
+     */
+    public void warnIfEnabled(LintWarning key) {
+        applyLint(rootLint(), diags.warning(source, null, key), this::report);
+    }
+
+    /**
      * Primary method to report a diagnostic.
      * @param diagnostic
      */

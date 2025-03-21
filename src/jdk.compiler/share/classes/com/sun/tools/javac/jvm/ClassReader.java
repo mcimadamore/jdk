@@ -854,7 +854,7 @@ public class ClassReader {
                 if (!warnedAttrs.contains(name)) {
                     JavaFileObject prev = log.useSource(currentClassFile);
                     try {
-                        lint.logIfEnabled(
+                        log.warnIfEnabled(
                                     LintWarnings.FutureAttr(name, version.major, version.minor, majorVersion, minorVersion));
                     } finally {
                         log.useSource(prev);
@@ -1608,7 +1608,7 @@ public class ClassReader {
         } else if (parameterAnnotations.length != numParameters) {
             //the RuntimeVisibleParameterAnnotations and RuntimeInvisibleParameterAnnotations
             //provide annotations for a different number of parameters, ignore:
-            lint.logIfEnabled(LintWarnings.RuntimeVisibleInvisibleParamAnnotationsMismatch(currentClassFile));
+            log.warnIfEnabled(LintWarnings.RuntimeVisibleInvisibleParamAnnotationsMismatch(currentClassFile));
             for (int pnum = 0; pnum < numParameters; pnum++) {
                 readAnnotations();
             }
@@ -2074,9 +2074,9 @@ public class ClassReader {
             JavaFileObject prevSource = log.useSource(requestingOwner.classfile);
             try {
                 if (failure == null) {
-                    lint.logIfEnabled(LintWarnings.AnnotationMethodNotFound(container, name));
+                    log.warnIfEnabled(LintWarnings.AnnotationMethodNotFound(container, name));
                 } else {
-                    lint.logIfEnabled(LintWarnings.AnnotationMethodNotFoundReason(container,
+                    log.warnIfEnabled(LintWarnings.AnnotationMethodNotFoundReason(container,
                                                                             name,
                                                                             failure.getDetailValue()));//diagnostic, if present
                 }
@@ -2954,7 +2954,7 @@ public class ClassReader {
 
     private void dropParameterAnnotations() {
         parameterAnnotations = null;
-        lint.logIfEnabled(LintWarnings.RuntimeInvisibleParameterAnnotations(currentClassFile));
+        log.warnIfEnabled(LintWarnings.RuntimeInvisibleParameterAnnotations(currentClassFile));
     }
     /**
      * Creates the parameter at the position {@code mpIndex} in the parameter list of the owning method.
