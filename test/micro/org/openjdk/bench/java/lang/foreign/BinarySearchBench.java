@@ -97,7 +97,43 @@ public class BinarySearchBench {
     }
 
     @Benchmark
-    public long binarySearchSimpleSegment() {
+    public long binarySearchSimpleDirectSegment() {
+        long lo = 0;
+        long hi = ALLOC_SIZE;
+        while (true) {
+            long mid = (hi + lo) / 2;
+            int curr = segment.get(ValueLayout.JAVA_INT_UNALIGNED, mid);
+            if (curr == result.value) {
+                return check(mid / 4, result.index);
+            } else if (curr > result.value) {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+    }
+
+    @Benchmark
+    public long binarySearchSimpleSlicedSegment() {
+        MemorySegment segment = this.segment.asSlice(0, ALLOC_SIZE);
+        long lo = 0;
+        long hi = ALLOC_SIZE;
+        while (true) {
+            long mid = (hi + lo) / 2;
+            int curr = segment.get(ValueLayout.JAVA_INT_UNALIGNED, mid);
+            if (curr == result.value) {
+                return check(mid / 4, result.index);
+            } else if (curr > result.value) {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+    }
+
+    @Benchmark
+    public long binarySearchSimpleReinterpretedSegment() {
+        MemorySegment segment = this.segment.reinterpret(ALLOC_SIZE, Arena.global(), null);
         long lo = 0;
         long hi = ALLOC_SIZE;
         while (true) {
