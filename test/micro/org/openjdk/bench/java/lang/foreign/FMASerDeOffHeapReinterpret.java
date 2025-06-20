@@ -1,17 +1,11 @@
-package org.example;
+package org.openjdk.bench.java.lang.foreign;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.options.Options;
-import org.openjdk.jmh.runner.options.OptionsBuilder;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.lang.reflect.Field;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -19,10 +13,10 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(org.openjdk.jmh.annotations.Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 1)
+@Fork(value = 3, jvmArgs = {"--enable-native-access=ALL-UNNAMED", "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED"})
 public class FMASerDeOffHeapReinterpret {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Utils.unsafe;
 
     long bufferUnsafe;
 
@@ -146,23 +140,5 @@ public class FMASerDeOffHeapReinterpret {
     @TearDown
     public void teardown() {
         UNSAFE.freeMemory(bufferUnsafe);
-    }
-
-    public static void main(String[] args) throws RunnerException {
-        Options options = new OptionsBuilder()
-            .include(FMASerDeOffHeapReinterpret.class.getSimpleName())
-            .build();
-
-        new Runner(options).run();
-    }
-
-    private static Unsafe getUnsafe() {
-        try {
-            Field field = Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            return (Unsafe) field.get(null);
-        } catch (Exception e) {
-            throw new RuntimeException();
-        }
     }
 }
