@@ -37,8 +37,18 @@ public class OffHeapAccessLoop {
     @Benchmark
     public void unsafeReadLoop(Blackhole blackhole) {
         for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
-            blackhole.consume(UNSAFE.getInt(address + i));
+            blackhole.consume(UNSAFE.getIntUnaligned(null, address + i));
         }
+    }
+
+    @Benchmark
+    public void unsafeWriteSingle() {
+        UNSAFE.putIntUnaligned(null, address, 3);
+    }
+
+    @Benchmark
+    public void unsafeReadSingle(Blackhole blackhole) {
+        blackhole.consume(UNSAFE.getIntUnaligned(null, address));
     }
 
     @Benchmark
@@ -56,20 +66,30 @@ public class OffHeapAccessLoop {
     }
 
     @Benchmark
-    public void segmentWriteLoopReinterpret() {
-        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
-        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
-            slice.set(ValueLayout.JAVA_INT_UNALIGNED, i, 3);
-        }
+    public void segmentWriteSingle() {
+        segment.set(ValueLayout.JAVA_INT_UNALIGNED, 0, 3);
     }
 
     @Benchmark
-    public void segmentReadLoopReinterpret(Blackhole blackhole) {
-        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
-        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
-            blackhole.consume(slice.get(ValueLayout.JAVA_INT_UNALIGNED, i));
-        }
+    public void segmentReadSingle(Blackhole blackhole) {
+        blackhole.consume(segment.get(ValueLayout.JAVA_INT_UNALIGNED, 0));
     }
+
+//    @Benchmark
+//    public void segmentWriteLoopReinterpret() {
+//        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
+//        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
+//            slice.set(ValueLayout.JAVA_INT_UNALIGNED, i, 3);
+//        }
+//    }
+//
+//    @Benchmark
+//    public void segmentReadLoopReinterpret(Blackhole blackhole) {
+//        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
+//        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
+//            blackhole.consume(slice.get(ValueLayout.JAVA_INT_UNALIGNED, i));
+//        }
+//    }
 
     @Setup(Level.Trial)
     public void setup() {
