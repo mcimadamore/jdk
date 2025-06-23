@@ -75,22 +75,6 @@ public class OffHeapAccessLoop {
         blackhole.consume(segment.get(ValueLayout.JAVA_INT_UNALIGNED, 0));
     }
 
-//    @Benchmark
-//    public void segmentWriteLoopReinterpret() {
-//        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
-//        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
-//            slice.set(ValueLayout.JAVA_INT_UNALIGNED, i, 3);
-//        }
-//    }
-//
-//    @Benchmark
-//    public void segmentReadLoopReinterpret(Blackhole blackhole) {
-//        MemorySegment slice = MemorySegment.ofAddress(address).reinterpret(bytes);
-//        for (int i = 0 ; i < bytes ; i += ELEM_SIZE) {
-//            blackhole.consume(slice.get(ValueLayout.JAVA_INT_UNALIGNED, i));
-//        }
-//    }
-
     @Setup(Level.Trial)
     public void setup() {
         bytes = elems * (int)ValueLayout.JAVA_INT_UNALIGNED.byteSize();
