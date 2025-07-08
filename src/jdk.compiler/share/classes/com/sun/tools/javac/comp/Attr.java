@@ -4371,10 +4371,9 @@ public class Attr extends JCTree.Visitor {
         Env<AttrContext> env1 = env;
         if (sym.kind != ERR && sym.kind != TYP &&
             sym.owner != null && sym.owner != env1.enclClass.sym) {
-            // If the found symbol is inaccessible, then it is
-            // accessed through an enclosing instance.  Locate this
-            // enclosing instance:
-            while (env1.outer != null && !rs.isAccessible(env, env1.enclClass.sym.type, sym))
+            // If the found symbol is not a member of the current class, then it is
+            // accessed through an enclosing instance. Locate this enclosing instance:
+            while (env1.outer != null && !sym.isMemberOf(env1.enclClass.sym, types))
                 env1 = env1.outer;
         }
 
@@ -4704,7 +4703,7 @@ public class Attr extends JCTree.Visitor {
                     v.owner.kind == TYP &&
                     (v.flags() & STATIC) == 0 &&
                     (site.hasTag(CLASS) || site.hasTag(TYPEVAR))) {
-                    Type s = types.asOuterSuper(site, v.owner);
+                    Type s = types.asSuper(site, v.owner);
                     if (s != null &&
                         s.isRaw() &&
                         !types.isSameType(v.type, v.erasure(types))) {
@@ -4902,7 +4901,7 @@ public class Attr extends JCTree.Visitor {
         // an unchecked warning if its argument types change under erasure.
         if ((sym.flags() & STATIC) == 0 &&
             (site.hasTag(CLASS) || site.hasTag(TYPEVAR))) {
-            Type s = types.asOuterSuper(site, sym.owner);
+            Type s = types.asSuper(site, sym.owner);
             if (s != null && s.isRaw() &&
                 !types.isSameTypes(sym.type.getParameterTypes(),
                                    sym.erasure(types).getParameterTypes())) {
@@ -5064,7 +5063,7 @@ public class Attr extends JCTree.Visitor {
                     } else throw new AssertionError(""+tree);
                     if (clazzOuter.hasTag(CLASS) && site != clazzOuter) {
                         if (site.hasTag(CLASS))
-                            site = types.asOuterSuper(site, clazzOuter.tsym);
+                            site = types.asEnclosingSuper(site, clazzOuter.tsym);
                         if (site == null)
                             site = types.erasure(clazzOuter);
                         clazzOuter = site;
