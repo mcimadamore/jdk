@@ -211,8 +211,31 @@ public abstract sealed class AbstractMemorySegmentImpl
 
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
+        return allocateInternal(byteSize, byteAlignment, true);
+    }
+
+    private MemorySegment allocateInternal(long byteSize, long byteAlignment, boolean init) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-        return asSlice(0, byteSize, byteAlignment);
+        MemorySegment slice = asSlice(0, byteSize, byteAlignment);
+        return init ?
+                slice.fill((byte)0) : slice;
+    }
+
+    @Override
+    public Optional<SegmentAllocator> rawAllocator() {
+        return Optional.of(new SegmentAllocator() {
+            @Override
+            public MemorySegment allocate(long byteSize, long byteAlignment) {
+                Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+                // try to slice from current segment first...
+                return allocateInternal(byteSize, byteAlignment, false);
+            }
+
+            @Override
+            public Optional<SegmentAllocator> rawAllocator() {
+                return Optional.of(this);
+            }
+        });
     }
 
     @Override

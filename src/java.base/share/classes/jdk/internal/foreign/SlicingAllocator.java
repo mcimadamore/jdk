@@ -27,6 +27,7 @@ package jdk.internal.foreign;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
+import java.util.Optional;
 
 public final class SlicingAllocator implements SegmentAllocator {
 
@@ -54,18 +55,37 @@ public final class SlicingAllocator implements SegmentAllocator {
         return start + byteSize <= segment.byteSize();
     }
 
-    MemorySegment trySlice(long byteSize, long byteAlignment) {
+    MemorySegment trySlice(long byteSize, long byteAlignment, boolean init) {
         long min = segment.address();
         long start = Utils.alignUp(min + sp, byteAlignment) - min;
         MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
         sp = start + byteSize;
-        return slice;
+        return init ?
+                slice.fill((byte)0) :
+                slice;
     }
 
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
         Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
         // try to slice from current segment first...
-        return trySlice(byteSize, byteAlignment);
+        return trySlice(byteSize, byteAlignment, true);
+    }
+
+    @Override
+    public Optional<SegmentAllocator> rawAllocator() {
+        return Optional.of(new SegmentAllocator() {
+            @Override
+            public MemorySegment allocate(long byteSize, long byteAlignment) {
+                Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+                // try to slice from current segment first...
+                return trySlice(byteSize, byteAlignment, false);
+            }
+
+            @Override
+            public Optional<SegmentAllocator> rawAllocator() {
+                return Optional.of(this);
+            }
+        });
     }
 }
