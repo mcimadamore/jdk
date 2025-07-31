@@ -25,11 +25,8 @@
 
 package jdk.internal.foreign;
 
-import jdk.internal.vm.annotation.ForceInline;
-
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
-import java.util.Optional;
 
 public final class SlicingAllocator implements SegmentAllocator {
 
