@@ -721,49 +721,32 @@ public interface SegmentAllocator {
 
     @ForceInline
     private MemorySegment allocateNoInit(long byteSize) {
-        if (this instanceof ArenaImpl arenaImpl) {
-            return arenaImpl.allocateNoInit(byteSize, 1);
-        }
-        Optional<SegmentAllocator> rawAllocator = rawAllocator();
-        if (rawAllocator.isPresent()) {
-            return rawAllocator.get().allocate(byteSize);
-        } else {
-            return allocate(byteSize);
-        }
+        return (this instanceof ArenaImpl arenaImpl) ?
+                arenaImpl.allocateNoInit(byteSize, 1) :
+                rawAllocator().allocate(byteSize);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout) {
-        if (this instanceof ArenaImpl arenaImpl) {
-            return arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment());
-        }
-        Optional<SegmentAllocator> rawAllocator = rawAllocator();
-        if (rawAllocator.isPresent()) {
-            return rawAllocator.get().allocate(layout);
-        } else {
-            return allocate(layout);
-        }
+        return (this instanceof ArenaImpl arenaImpl) ?
+                arenaImpl.allocateNoInit(layout.byteSize(), layout.byteAlignment()) :
+                rawAllocator().allocate(layout);
     }
 
     @ForceInline
     private MemorySegment allocateNoInit(MemoryLayout layout, long size) {
-        if (this instanceof ArenaImpl arenaImpl) {
-            return arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment());
-        }
-        Optional<SegmentAllocator> rawAllocator = rawAllocator();
-        if (rawAllocator.isPresent()) {
-            return rawAllocator.get().allocate(layout, size);
-        } else {
-            return allocate(layout, size);
-        }
+        return (this instanceof ArenaImpl arenaImpl) ?
+            arenaImpl.allocateNoInit(layout.byteSize() * size, layout.byteAlignment()) :
+            rawAllocator().allocate(layout, size);
     }
 
     /**
      * {@return a new allocator that implements the same allocation strategy as this allocator,
      * but that does not zero allocated memory} This is a partial operation: not all segment
-     * allocators can safely be used without zeroing.
+     * allocators can safely be used without zeroing. In such cases, this method just returns
+     * this allocator.
      */
-    default Optional<SegmentAllocator> rawAllocator() {
-        return Optional.empty();
+    default SegmentAllocator rawAllocator() {
+        return this;
     }
 }

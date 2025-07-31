@@ -80,7 +80,7 @@ public class StrLenTest extends CLayouts {
         arenaAllocator = new RingAllocator(arena, size + 1);
         pool = new SlicingPool(size + 1);
         segmentAllocator = SegmentAllocator.prefixAllocator(arena.allocate(size + 1, 1));
-        segmentRawAllocator = segmentAllocator.rawAllocator().get();
+        segmentRawAllocator = segmentAllocator.rawAllocator();
     }
 
     @TearDown
@@ -120,7 +120,7 @@ public class StrLenTest extends CLayouts {
 
     @Benchmark
     public int panama_strlen_prefix_raw_call() throws Throwable {
-        return (int)STRLEN.invokeExact(segmentAllocator.rawAllocator().get().allocateFrom(str));
+        return (int)STRLEN.invokeExact(segmentAllocator.rawAllocator().allocateFrom(str));
     }
 
     @Benchmark

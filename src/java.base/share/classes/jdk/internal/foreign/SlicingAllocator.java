@@ -25,6 +25,8 @@
 
 package jdk.internal.foreign;
 
+import jdk.internal.vm.annotation.ForceInline;
+
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.Optional;
@@ -55,37 +57,27 @@ public final class SlicingAllocator implements SegmentAllocator {
         return start + byteSize <= segment.byteSize();
     }
 
-    MemorySegment trySlice(long byteSize, long byteAlignment, boolean init) {
+    MemorySegment trySlice(long byteSize, long byteAlignment) {
         long min = segment.address();
         long start = Utils.alignUp(min + sp, byteAlignment) - min;
         MemorySegment slice = segment.asSlice(start, byteSize, byteAlignment);
         sp = start + byteSize;
-        return init ?
-                slice.fill((byte)0) :
-                slice;
+        return slice;
+    }
+
+    MemorySegment allocateInternal(long byteSize, long byteAlignment) {
+        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
+        // try to slice from current segment first...
+        return trySlice(byteSize, byteAlignment);
     }
 
     @Override
     public MemorySegment allocate(long byteSize, long byteAlignment) {
-        Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-        // try to slice from current segment first...
-        return trySlice(byteSize, byteAlignment, true);
+        return allocateInternal(byteSize, byteAlignment).fill((byte)0);
     }
 
     @Override
-    public Optional<SegmentAllocator> rawAllocator() {
-        return Optional.of(new SegmentAllocator() {
-            @Override
-            public MemorySegment allocate(long byteSize, long byteAlignment) {
-                Utils.checkAllocationSizeAndAlign(byteSize, byteAlignment);
-                // try to slice from current segment first...
-                return trySlice(byteSize, byteAlignment, false);
-            }
-
-            @Override
-            public Optional<SegmentAllocator> rawAllocator() {
-                return Optional.of(this);
-            }
-        });
+    public SegmentAllocator rawAllocator() {
+        return this::allocateInternal;
     }
 }
