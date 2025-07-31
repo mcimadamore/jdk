@@ -35,6 +35,7 @@ import jdk.internal.vm.annotation.Stable;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
@@ -54,7 +55,7 @@ import java.util.Objects;
  * access is possible when a session is being closed (see {@link jdk.internal.misc.ScopedMemoryAccess}).
  */
 public abstract sealed class MemorySessionImpl
-        implements Scope
+        implements Scope, SegmentAllocator
         permits ConfinedSession, GlobalSession, SharedSession {
 
     /**
@@ -242,6 +243,22 @@ public abstract sealed class MemorySessionImpl
     }
 
     abstract void justClose();
+
+    // allocation
+
+    NativeMemorySegmentImpl allocateInternal(long byteSize, long byteAlignment, boolean init) {
+        return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, false, init);
+    }
+
+    @Override
+    public MemorySegment allocate(long byteSize, long byteAlignment) {
+        return allocateInternal(byteSize, byteAlignment, true);
+    }
+
+    @Override
+    public SegmentAllocator rawAllocator() {
+        return (byteSize, byteAlignment) -> allocateInternal(byteSize, byteAlignment, false);
+    }
 
     /**
      * A list of all cleanup actions associated with a memory session. Cleanup actions are modelled as instances

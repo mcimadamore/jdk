@@ -47,6 +47,11 @@ final class ImplicitSession extends SharedSession {
     }
 
     @Override
+    NativeMemorySegmentImpl allocateInternal(long byteSize, long byteAlignment, boolean init) {
+        return SegmentFactories.allocateNativeSegment(byteSize, byteAlignment, this, true, init);
+    }
+
+    @Override
     public void release0() {
         Reference.reachabilityFence(this);
     }
