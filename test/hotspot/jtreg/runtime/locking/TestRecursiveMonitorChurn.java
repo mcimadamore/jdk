@@ -49,13 +49,12 @@ public class TestRecursiveMonitorChurn {
     }
 
     static final WhiteBox WB = WhiteBox.getWhiteBox();
-    static final int LM_MONITOR = 0;
     static final int COUNT = 100000;
 
     public static volatile Monitor monitor;
     public static void main(String[] args) {
-        if (WB.getIntVMFlag("LockingMode") == LM_MONITOR) {
-            throw new SkippedException("LM_MONITOR always inflates. Invalid test.");
+        if (WB.getBooleanVMFlag("VerifyHeavyMonitors")) {
+            throw new SkippedException("VerifyHeavyMonitors always inflates. Invalid test.");
         }
         final long pre_monitor_count = WB.getInUseMonitorCount();
         System.out.println(" Precount = " + pre_monitor_count);
@@ -70,6 +69,18 @@ public class TestRecursiveMonitorChurn {
         if (pre_monitor_count != post_monitor_count) {
             final long monitor_count_change = post_monitor_count - pre_monitor_count;
             System.out.println("Unexpected change in monitor count: " + monitor_count_change);
+
+            // Intermittent deflation and inflation may occur due to running the test
+            // with stress flags (like DeoptimizeALot) or with added instrumentation
+            // which runs in the same VM.
+            // An arbitrary fuzzy max difference of 10 (= 0.01% of COUNT) is chosen to
+            // allow for these occurrences to be skipped while still catching regressions.
+            final long fuzzy_max_difference = 10;
+            if (Math.abs(monitor_count_change) < fuzzy_max_difference) {
+                final String type = monitor_count_change < 0 ? "deflation" : "inflation";
+                throw new SkippedException("Intermittent " + type + " detected. Invalid test.");
+            }
+
             if (monitor_count_change < 0) {
                 throw new RuntimeException("Unexpected Deflation");
             }

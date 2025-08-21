@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package jdk.internal.classfile.impl;
 
-import java.util.Optional;
-import java.util.function.Consumer;
-
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.ConstantPoolBuilder;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.util.function.Consumer;
+
+import static java.util.Objects.requireNonNull;
 
 public final class ChainedClassBuilder
         implements ClassBuilder, Consumer<ClassElement> {
@@ -39,27 +39,20 @@ public final class ChainedClassBuilder
     public ChainedClassBuilder(ClassBuilder downstream,
                                Consumer<ClassElement> consumer) {
         this.consumer = consumer;
-        this.terminal = switch (downstream) {
-            case ChainedClassBuilder cb -> cb.terminal;
-            case DirectClassBuilder db -> db;
-        };
+        this.terminal = downstream instanceof ChainedClassBuilder ccb ?
+                ccb.terminal : (DirectClassBuilder) downstream;
     }
 
     @Override
     public ClassBuilder with(ClassElement element) {
-        consumer.accept(element);
+        consumer.accept(requireNonNull(element));
         return this;
-    }
-
-    @Override
-    public Optional<ClassModel> original() {
-        return terminal.original();
     }
 
     @Override
     public ClassBuilder withField(Utf8Entry name, Utf8Entry descriptor, Consumer<? super FieldBuilder> handler) {
         consumer.accept(new BufferedFieldBuilder(terminal.constantPool, terminal.context,
-                                                        name, descriptor, null)
+                                                        name, descriptor)
                                        .run(handler)
                                        .toModel());
         return this;
@@ -68,8 +61,7 @@ public final class ChainedClassBuilder
     @Override
     public ClassBuilder transformField(FieldModel field, FieldTransform transform) {
         BufferedFieldBuilder builder = new BufferedFieldBuilder(terminal.constantPool, terminal.context,
-                                                                field.fieldName(), field.fieldType(),
-                                                                field);
+                                                                field.fieldName(), field.fieldType());
         builder.transform(field, transform);
         consumer.accept(builder.toModel());
         return this;
@@ -79,7 +71,7 @@ public final class ChainedClassBuilder
     public ClassBuilder withMethod(Utf8Entry name, Utf8Entry descriptor, int flags,
                                    Consumer<? super MethodBuilder> handler) {
         consumer.accept(new BufferedMethodBuilder(terminal.constantPool, terminal.context,
-                                                         name, descriptor, null)
+                                                         name, descriptor, flags, null)
                                        .run(handler)
                                        .toModel());
         return this;
@@ -88,7 +80,7 @@ public final class ChainedClassBuilder
     @Override
     public ClassBuilder transformMethod(MethodModel method, MethodTransform transform) {
         BufferedMethodBuilder builder = new BufferedMethodBuilder(terminal.constantPool, terminal.context,
-                                                                  method.methodName(), method.methodType(), method);
+                                                                  method.methodName(), method.methodType(), method.flags().flagsMask(), method);
         builder.transform(method, transform);
         consumer.accept(builder.toModel());
         return this;

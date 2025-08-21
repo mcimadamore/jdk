@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,15 @@
  */
 package jdk.internal.classfile.impl;
 
-import java.util.Optional;
-import java.util.function.Consumer;
-
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.CodeTransform;
 import java.lang.classfile.MethodBuilder;
 import java.lang.classfile.MethodElement;
-import java.lang.classfile.MethodModel;
 import java.lang.classfile.constantpool.ConstantPoolBuilder;
+import java.util.function.Consumer;
+
+import static java.util.Objects.requireNonNull;
 
 public final class ChainedMethodBuilder implements MethodBuilder {
     final TerminalMethodBuilder terminal;
@@ -42,15 +41,13 @@ public final class ChainedMethodBuilder implements MethodBuilder {
     public ChainedMethodBuilder(MethodBuilder downstream,
                                 Consumer<MethodElement> consumer) {
         this.consumer = consumer;
-        this.terminal = switch (downstream) {
-            case ChainedMethodBuilder cb -> cb.terminal;
-            case TerminalMethodBuilder tb -> tb;
-        };
+        this.terminal = downstream instanceof ChainedMethodBuilder cmb ?
+                cmb.terminal : (TerminalMethodBuilder) downstream;
     }
 
     @Override
     public MethodBuilder with(MethodElement element) {
-        consumer.accept(element);
+        consumer.accept(requireNonNull(element));
         return this;
     }
 
@@ -73,11 +70,6 @@ public final class ChainedMethodBuilder implements MethodBuilder {
     @Override
     public ConstantPoolBuilder constantPool() {
         return terminal.constantPool();
-    }
-
-    @Override
-    public Optional<MethodModel> original() {
-        return terminal.original();
     }
 
 }

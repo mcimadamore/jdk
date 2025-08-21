@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Red Hat Inc.
+ * Copyright (c) 2020, 2025, Red Hat Inc.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +25,22 @@
 
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
+
+// Constructor
+CgroupV2Controller::CgroupV2Controller(char* mount_path,
+                                       char *cgroup_path,
+                                       bool ro) :  _read_only(ro),
+                                                   _path(construct_path(mount_path, cgroup_path)) {
+  _cgroup_path = os::strdup(cgroup_path);
+  _mount_point = os::strdup(mount_path);
+}
+// Shallow copy constructor
+CgroupV2Controller::CgroupV2Controller(const CgroupV2Controller& o) :
+                                            _read_only(o._read_only),
+                                            _path(o._path) {
+  _cgroup_path = o._cgroup_path;
+  _mount_point = o._mount_point;
+}
 
 /* cpu_shares
  *
@@ -95,6 +112,19 @@ int CgroupV2CpuController::cpu_quota() {
   return limit;
 }
 
+// Constructor
+CgroupV2Subsystem::CgroupV2Subsystem(CgroupV2MemoryController * memory,
+                                     CgroupV2CpuController* cpu,
+                                     CgroupV2CpuacctController* cpuacct,
+                                     CgroupV2Controller unified) :
+                                     _unified(unified) {
+  CgroupUtil::adjust_controller(memory);
+  CgroupUtil::adjust_controller(cpu);
+  _memory = new CachingCgroupController<CgroupMemoryController>(memory);
+  _cpu = new CachingCgroupController<CgroupCpuController>(cpu);
+  _cpuacct = cpuacct;
+}
+
 bool CgroupV2Subsystem::is_containerized() {
   return _unified.is_read_only() &&
          _memory->controller()->is_read_only() &&
@@ -125,6 +155,17 @@ int CgroupV2CpuController::cpu_period() {
   return period;
 }
 
+jlong CgroupV2CpuController::cpu_usage_in_micros() {
+  julong cpu_usage;
+  bool is_ok = reader()->read_numerical_key_value("/cpu.stat", "usage_usec", &cpu_usage);
+  if (!is_ok) {
+    log_trace(os, container)("CPU Usage failed: %d", OSCONTAINER_ERROR);
+    return OSCONTAINER_ERROR;
+  }
+  log_trace(os, container)("CPU Usage is: " JULONG_FORMAT, cpu_usage);
+  return (jlong)cpu_usage;
+}
+
 /* memory_usage_in_bytes
  *
  * Return the amount of used memory used by this cgroup and descendents
@@ -146,10 +187,16 @@ jlong CgroupV2MemoryController::memory_soft_limit_in_bytes(julong phys_mem) {
   return mem_soft_limit;
 }
 
+jlong CgroupV2MemoryController::memory_throttle_limit_in_bytes() {
+  jlong mem_throttle_limit;
+  CONTAINER_READ_NUMBER_CHECKED_MAX(reader(), "/memory.high", "Memory Throttle Limit", mem_throttle_limit);
+  return mem_throttle_limit;
+}
+
 jlong CgroupV2MemoryController::memory_max_usage_in_bytes() {
-  // Log this string at trace level so as to make tests happy.
-  log_trace(os, container)("Maximum Memory Usage is not supported.");
-  return OSCONTAINER_ERROR; // not supported
+  julong mem_max_usage;
+  CONTAINER_READ_NUMBER_CHECKED(reader(), "/memory.peak", "Maximum Memory Usage", mem_max_usage);
+  return mem_max_usage;
 }
 
 jlong CgroupV2MemoryController::rss_usage_in_bytes() {
@@ -264,6 +311,22 @@ jlong memory_swap_limit_value(CgroupV2Controller* ctrl) {
   return swap_limit;
 }
 
+void CgroupV2Controller::set_subsystem_path(const char* cgroup_path) {
+  if (_cgroup_path != nullptr) {
+    os::free(_cgroup_path);
+  }
+  _cgroup_path = os::strdup(cgroup_path);
+  if (_path != nullptr) {
+    os::free(_path);
+  }
+  _path = construct_path(_mount_point, cgroup_path);
+}
+
+// For cgv2 we only need hierarchy walk if the cgroup path isn't '/' (root)
+bool CgroupV2Controller::needs_hierarchy_adjustment() {
+  return strcmp(_cgroup_path, "/") != 0;
+}
+
 void CgroupV2MemoryController::print_version_specific_info(outputStream* st, julong phys_mem) {
   jlong swap_current = memory_swap_current_value(reader());
   jlong swap_limit = memory_swap_limit_value(reader());
@@ -272,7 +335,7 @@ void CgroupV2MemoryController::print_version_specific_info(outputStream* st, jul
   OSContainer::print_container_helper(st, swap_limit, "memory_swap_max_limit_in_bytes");
 }
 
-char* CgroupV2Controller::construct_path(char* mount_path, char *cgroup_path) {
+char* CgroupV2Controller::construct_path(char* mount_path, const char* cgroup_path) {
   stringStream ss;
   ss.print_raw(mount_path);
   if (strcmp(cgroup_path, "/") != 0) {

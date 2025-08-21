@@ -2,8 +2,6 @@ package jdk.internal.foreign;
 
 import jdk.internal.foreign.SharedSession.SharedResourceList;
 import jdk.internal.misc.ThreadFlock;
-import jdk.internal.vm.ScopedValueContainer;
-import jdk.internal.vm.StackableScope;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.util.Objects;
