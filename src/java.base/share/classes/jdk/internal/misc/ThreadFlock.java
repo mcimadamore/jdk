@@ -538,15 +538,14 @@ public class ThreadFlock implements AutoCloseable {
 
         private void computeDepthAndParents() {
             List<ThreadContainer> parents = new ArrayList<>();
+            parents.add(this);
             var parent = parent();
             while (parent != null && parent != ThreadContainers.root()) {
                 parents.add(parent);
                 parent = parent.parent();
             }
-            parents = parents.reversed();
-            parents.add(this);
             this.depth = parents.size() - 1;
-            this.parents = parents.toArray(new ThreadContainer[0]);
+            this.parents = parents.reversed().toArray(new ThreadContainer[0]);
         }
 
         /**
