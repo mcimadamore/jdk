@@ -36,7 +36,7 @@ public final class StructuredSession extends MemorySessionImpl {
     @ForceInline
     void checkThreadRaw() {
         Thread current = Thread.currentThread();
-        if (current != owner && !flock.containsThread(current)) {
+        if (current != owner && !flock.containsThreadFast(current)) {
             throw WRONG_THREAD;
         }
     }

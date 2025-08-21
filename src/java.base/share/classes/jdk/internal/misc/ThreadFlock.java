@@ -27,6 +27,8 @@ package jdk.internal.misc;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +42,8 @@ import jdk.internal.invoke.MhUtil;
 import jdk.internal.vm.ScopedValueContainer;
 import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.ThreadContainers;
+import jdk.internal.vm.annotation.Stable;
+
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
@@ -473,6 +477,26 @@ public class ThreadFlock implements AutoCloseable {
         return false;
     }
 
+    /**
+     * Tests if this flock contains the given thread. This method returns {@code true}
+     * if the thread was started in this flock and has not finished. If the thread
+     * is not in this flock then it tests if the thread is in flocks owned by threads
+     * in this flock, essentially equivalent to invoking {@code containsThread} method
+     * on all flocks owned by the threads in this flock.
+     *
+     * @param thread the thread
+     * @return true if this flock contains the thread
+     */
+    public boolean containsThreadFast(Thread thread) {
+        var c = (ThreadContainerImpl) JLA.threadContainer(thread);
+        if (c == this.container) {
+            // fast path
+            return true;
+        } else {
+            return c.parents[container.depth] == container;
+        }
+    }
+
     @Override
     public String toString() {
         String id = Objects.toIdentityString(this);
@@ -490,6 +514,8 @@ public class ThreadFlock implements AutoCloseable {
         private final ThreadFlock flock;
         private volatile Object key;
         private boolean closing;
+        @Stable private int depth;
+        @Stable private ThreadContainer[] parents;
 
         ThreadContainerImpl(ThreadFlock flock) {
             super(/*shared*/ false);
@@ -508,7 +534,21 @@ public class ThreadFlock implements AutoCloseable {
                 }
             }
             super.push();
+            computeDepthAndParents();
             return this;
+        }
+
+        private void computeDepthAndParents() {
+            List<ThreadContainer> parents = new ArrayList<>();
+            var parent = parent();
+            while (parent != null && parent != ThreadContainers.root()) {
+                parents.add(parent);
+                parent = parent.parent();
+            }
+            parents = parents.reversed();
+            parents.add(this);
+            this.depth = parents.size() - 1;
+            this.parents = parents.toArray(new ThreadContainer[0]);
         }
 
         /**
