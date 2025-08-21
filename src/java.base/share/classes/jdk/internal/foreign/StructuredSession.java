@@ -1,6 +1,7 @@
 package jdk.internal.foreign;
 
-import jdk.internal.foreign.SharedSession.SharedResourceList;
+import jdk.internal.foreign.ConfinedSession.ConfinedResourceList;
+import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ThreadFlock;
 import jdk.internal.vm.annotation.ForceInline;
 
@@ -11,12 +12,24 @@ public final class StructuredSession extends MemorySessionImpl {
     private final ThreadFlock flock = ThreadFlock.open("Arena$" + this.hashCode());
 
     public StructuredSession(Thread owner) {
-        super(owner, new SharedResourceList());
+        super(owner, new ConfinedResourceList());
     }
 
     public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
         return thread == owner || flock.containsThread(thread);
+    }
+
+    private void checkOwner() {
+        if (Thread.currentThread() != owner) {
+            throw new WrongThreadException();
+        }
+    }
+
+    @Override
+    void addInternal(ResourceCleanup resource) {
+        checkOwner();
+        super.addInternal(resource);
     }
 
     @Override

@@ -116,7 +116,7 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
     public int segment_structured_loop_scope_other() throws Throwable {
         try (Arena arena = Arena.ofStructured()) {
             try (var scope = StructuredTaskScope.open()) {
-                MemorySegment segment = arena.allocate(ALLOC_SIZE);
+                MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
                 Subtask<Integer> task = scope.fork(() -> {
                     int sum = 0;
                     for (int i = 0; i < ELEM_SIZE; i++) {
@@ -135,7 +135,7 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
         try (var scope = StructuredTaskScope.open()) {
             Subtask<Integer> task = scope.fork(() -> {
                 try (Arena arena = Arena.ofStructured()) {
-                    MemorySegment segment = arena.allocate(ALLOC_SIZE);
+                    MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
                     int sum = 0;
                     for (int i = 0; i < ELEM_SIZE; i++) {
                         sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
