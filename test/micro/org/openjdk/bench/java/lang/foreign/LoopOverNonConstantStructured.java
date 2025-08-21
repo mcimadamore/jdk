@@ -32,7 +32,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -49,7 +49,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(org.openjdk.jmh.annotations.Scope.Thread)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Fork(value = 3, jvmArgsAppend = { "--enable-preview" })
+@Fork(value = 3, jvmArgsAppend = { "--enable-preview", "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED" })
 public class LoopOverNonConstantStructured extends JavaLayouts {
 
     static final Unsafe unsafe = Utils.unsafe;
@@ -115,7 +115,7 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
     @Benchmark
     public int segment_structured_loop_scope_other() throws Throwable {
         try (Arena arena = Arena.ofStructured()) {
-            try (var scope = new StructuredTaskScope<>()) {
+            try (var scope = StructuredTaskScope.open()) {
                 MemorySegment segment = arena.allocate(ALLOC_SIZE);
                 Subtask<Integer> task = scope.fork(() -> {
                     int sum = 0;
@@ -132,7 +132,7 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
 
     @Benchmark
     public int segment_structured_loop_scope_same() throws Throwable {
-        try (var scope = new StructuredTaskScope<>()) {
+        try (var scope = StructuredTaskScope.open()) {
             Subtask<Integer> task = scope.fork(() -> {
                 try (Arena arena = Arena.ofStructured()) {
                     MemorySegment segment = arena.allocate(ALLOC_SIZE);
