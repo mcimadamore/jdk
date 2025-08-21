@@ -491,7 +491,8 @@ public class ThreadFlock implements AutoCloseable {
     @ForceInline
     public boolean containsThreadFast(Thread thread) {
         var c = (ThreadContainerImpl) JLA.threadContainer(thread);
-        return c.parents[container.depth] == container;
+        return c.parents.length > container.depth &&
+                c.parents[container.depth] == container;
     }
 
     @Override
