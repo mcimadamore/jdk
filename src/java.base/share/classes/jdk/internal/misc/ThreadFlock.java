@@ -42,6 +42,7 @@ import jdk.internal.invoke.MhUtil;
 import jdk.internal.vm.ScopedValueContainer;
 import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.ThreadContainers;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -487,14 +488,10 @@ public class ThreadFlock implements AutoCloseable {
      * @param thread the thread
      * @return true if this flock contains the thread
      */
+    @ForceInline
     public boolean containsThreadFast(Thread thread) {
         var c = (ThreadContainerImpl) JLA.threadContainer(thread);
-        if (c == this.container) {
-            // fast path
-            return true;
-        } else {
-            return c.parents[container.depth] == container;
-        }
+        return c.parents[container.depth] == container;
     }
 
     @Override
