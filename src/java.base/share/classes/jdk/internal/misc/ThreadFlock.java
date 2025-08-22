@@ -27,10 +27,7 @@ package jdk.internal.misc;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.StructureViolationException;
@@ -537,15 +534,15 @@ public class ThreadFlock implements AutoCloseable {
         }
 
         private void computeDepthAndParents() {
-            List<ThreadContainer> parents = new ArrayList<>();
-            parents.add(this);
             var parent = parent();
-            while (parent != null && parent != ThreadContainers.root()) {
-                parents.add(parent);
-                parent = parent.parent();
+            if (parent instanceof ThreadContainerImpl parentContainer) {
+                this.depth = parentContainer.depth + 1;
+                this.parents = Arrays.copyOf(parentContainer.parents, parentContainer.parents.length + 1);
+                this.parents[parentContainer.parents.length] = this;
+            } else {
+                this.depth = 0;
+                this.parents = new ThreadContainer[] { this };
             }
-            this.depth = parents.size() - 1;
-            this.parents = parents.reversed().toArray(new ThreadContainer[0]);
         }
 
         /**
