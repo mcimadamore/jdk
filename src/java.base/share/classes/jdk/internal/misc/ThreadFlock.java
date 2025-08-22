@@ -504,6 +504,47 @@ public class ThreadFlock implements AutoCloseable {
 
     /**
      * A ThreadContainer backed by a ThreadFlock.
+     *
+     * The parent list of a thread container T is the same as that of the parent container P, except
+     * that it features one more element at the end, containing T itself. Moreover, the depth of T
+     * is the depth of P + 1 (except if P is the root container, in which case depth is set to 0).
+     * So, given a tree of thread containers like:
+     *
+     *       A
+     *     /  \
+     *    B    C
+     *   / \    \
+     *  D   E    F
+     *
+     * The parent lists and depths for the various thread containers are populated as follows:
+     *
+     * A parents = [A], depth = 0
+     * B parents = [A, B], depth = 1
+     * C parents = [A, C], depth = 1
+     * D parents = [A, B, D], depth = 2
+     * E parents = [A, B, E], depth = 2
+     * F parents = [A, C, F], depth = 2
+     *
+     * This invariant allows to perform O(1) containment checks. For instance, to check whether a thread container
+     * TC1 is contained into another thread container TC2 we use the following check:
+     *
+     * TC1.parents[TC2.depth] == TC2
+     *
+     * Examples:
+     *
+     * Is E is contained in C ?
+     * E.parents[C.depth] == C
+     * --> [A, B, E][1] == C
+     * --> B == C
+     * --> false
+     *
+     * Is F is contained in C ?
+     * F.parents[C.depth] == C
+     * --> [A, C, F][1] == C
+     * --> C == C
+     * --> true
+     *
+     * @see ThreadFlock#containsThreadFast(Thread)
      */
     private static class ThreadContainerImpl extends ThreadContainer {
         private final ThreadFlock flock;
