@@ -1036,6 +1036,11 @@ public sealed interface StructuredTaskScope<T, R>
     boolean isCancelled();
 
     /**
+     * {@return The thread scope associated with this structured task scope}
+     */
+    ThreadScope scope();
+
+    /**
      * Closes this scope.
      *
      * <p> This method first <a href="#Cancallation">cancels</a> the scope, if not

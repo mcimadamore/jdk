@@ -29,6 +29,8 @@ package jdk.internal.foreign;
 import jdk.internal.foreign.GlobalSession.HeapSession;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.misc.ThreadFlock;
+import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
@@ -39,6 +41,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
+import java.util.concurrent.ThreadScope;
 
 /**
  * This class manages the temporal bounds associated with a memory segment as well
@@ -144,8 +147,8 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
-    public static MemorySessionImpl createStructured(Thread thread) {
-        return new StructuredSession(thread);
+    public static MemorySessionImpl createStructured(ThreadScope scope) {
+        return new StructuredSession((ThreadFlock)scope);
     }
 
     public static MemorySessionImpl createShared() {

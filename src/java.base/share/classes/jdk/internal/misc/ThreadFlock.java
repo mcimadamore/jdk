@@ -29,16 +29,20 @@ import java.lang.invoke.VarHandle;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadScope;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.StructureViolationException;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Stream;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.foreign.StructuredSession;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.vm.ScopedValueContainer;
 import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.ThreadContainers;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
@@ -82,7 +86,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * <p> Unless otherwise specified, passing a {@code null} argument to a method
  * in this class will cause a {@link NullPointerException} to be thrown.
  */
-public class ThreadFlock implements AutoCloseable {
+public non-sealed class ThreadFlock implements AutoCloseable, ThreadScope {
     private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
     private static final VarHandle THREAD_COUNT;
     private static final VarHandle PERMIT;
@@ -235,8 +239,64 @@ public class ThreadFlock implements AutoCloseable {
     /**
      * {@return the name of this flock or {@code null} if unnamed}
      */
+    @Override
     public String name() {
         return name;
+    }
+
+    @Override
+    public ThreadScope parent() {
+        if (container.parent() instanceof ThreadContainerImpl containerImpl) {
+            return containerImpl.flock;
+        } else {
+            return RootScope.INSTANCE;
+        }
+    }
+
+    public static final class RootScope implements ThreadScope {
+        @Override
+        public String name() {
+            return "<ROOT>";
+        }
+
+        @Override
+        public ThreadScope parent() {
+            return null;
+        }
+
+        @Override
+        public boolean isContainedBy(ThreadScope that) {
+            return that == this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return true;
+        }
+
+        public static final RootScope INSTANCE = new RootScope();
+    }
+
+    @Override
+    public boolean isContainedBy(ThreadScope scope) {
+        ThreadFlock that = (ThreadFlock) scope;
+        return that.containsFast(container);
+    }
+
+    @Override
+    public boolean isAlive() {
+        return !isClosed();
+    }
+
+    @Stable
+    MemorySessionImpl structuredSession;
+
+    public MemorySessionImpl structuredSession() {
+        ensureOwner();
+        if (structuredSession == null) {
+            structuredSession = MemorySessionImpl.createStructured(this);
+        }
+        return structuredSession;
     }
 
     /**
@@ -417,6 +477,9 @@ public class ThreadFlock implements AutoCloseable {
         } finally {
             try {
                 container.close(); // may throw
+                if (structuredSession != null) {
+                    ((StructuredSession)structuredSession).closeInternal();
+                }
             } finally {
                 closed = true;
                 if (interrupted) Thread.currentThread().interrupt();
@@ -460,10 +523,26 @@ public class ThreadFlock implements AutoCloseable {
      * @param thread the thread
      * @return true if this flock contains the thread
      */
+    @ForceInline
     public boolean containsThread(Thread thread) {
         var c = JLA.threadContainer(thread);
         if (c == this.container)
             return true;
+        else if (c instanceof ThreadContainerImpl that) {
+            return containsFast(that);
+        } else {
+            return containsSlow(c);
+        }
+    }
+
+    @ForceInline
+    private boolean containsFast(ThreadContainerImpl c) {
+        return c.parents.length > container.depth &&
+                c.parents[container.depth] == container;
+    }
+
+    @DontInline
+    private boolean containsSlow(ThreadContainer c) {
         if (c != null && c != ThreadContainers.root()) {
             var parent = c.parent();
             while (parent != null) {
@@ -473,23 +552,6 @@ public class ThreadFlock implements AutoCloseable {
             }
         }
         return false;
-    }
-
-    /**
-     * Tests if this flock contains the given thread. This method returns {@code true}
-     * if the thread was started in this flock and has not finished. If the thread
-     * is not in this flock then it tests if the thread is in flocks owned by threads
-     * in this flock, essentially equivalent to invoking {@code containsThread} method
-     * on all flocks owned by the threads in this flock.
-     *
-     * @param thread the thread
-     * @return true if this flock contains the thread
-     */
-    @ForceInline
-    public boolean containsThreadFast(Thread thread) {
-        var c = (ThreadContainerImpl) JLA.threadContainer(thread);
-        return c.parents.length > container.depth &&
-                c.parents[container.depth] == container;
     }
 
     @Override
@@ -544,7 +606,7 @@ public class ThreadFlock implements AutoCloseable {
      * --> C == C
      * --> true
      *
-     * @see ThreadFlock#containsThreadFast(Thread)
+     * @see ThreadFlock#containsFast(ThreadContainerImpl)
      */
     private static class ThreadContainerImpl extends ThreadContainer {
         private final ThreadFlock flock;

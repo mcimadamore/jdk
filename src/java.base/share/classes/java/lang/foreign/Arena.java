@@ -26,9 +26,12 @@
 package java.lang.foreign;
 
 import jdk.internal.foreign.MemorySessionImpl;
+import jdk.internal.misc.ThreadFlock;
 import jdk.internal.ref.CleanerFactory;
+import jdk.internal.vm.ThreadContainer;
 
 import java.lang.foreign.MemorySegment.Scope;
+import java.util.concurrent.ThreadScope;
 import java.util.function.Consumer;
 
 /**
@@ -258,12 +261,16 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
-     * {@return a new structured arena} Segments allocated with the structured arena can be
-     * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread that is forked from a structured task
-     * scope that is nested inside the structured arena.
+     * {@return a structured arena, associated with the provided thread scope} Segments allocated with the structured arena can be
+     * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread that belongs to the provided
+     * thread scope. A structured arena cannot be closed explicitly. It is instead closed automatically
+     * when the thread scope becomes invalid.
+     *
+     * @param threadScope thread scope
+     *
      */
-    static Arena ofStructured() {
-        return MemorySessionImpl.createStructured(Thread.currentThread()).asArena();
+    static Arena ofStructured(ThreadScope threadScope) {
+        return ((ThreadFlock)threadScope).structuredSession().asArena();
     }
 
     /**

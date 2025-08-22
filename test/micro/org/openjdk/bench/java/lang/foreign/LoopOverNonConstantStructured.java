@@ -69,7 +69,8 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
             unsafe.putInt(unsafe_addr + (i * CARRIER_SIZE) , i);
         }
         arena_confined = Arena.ofConfined();
-        arena_structured = Arena.ofStructured();
+        StructuredTaskScope<?, ?> sts = StructuredTaskScope.open();
+        arena_structured = Arena.ofStructured(sts.scope());
         segment_confined = arena_confined.allocate(ALLOC_SIZE, 1);
         segment_structured = arena_structured.allocate(ALLOC_SIZE, 1);
         for (int i = 0; i < ELEM_SIZE; i++) {
@@ -81,7 +82,6 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
     @TearDown
     public void tearDown() {
         arena_confined.close();
-        arena_structured.close();
         unsafe.freeMemory(unsafe_addr);
     }
 
@@ -114,34 +114,32 @@ public class LoopOverNonConstantStructured extends JavaLayouts {
 
     @Benchmark
     public int segment_structured_loop_scope_other() throws Throwable {
-        try (Arena arena = Arena.ofStructured()) {
-            try (var scope = StructuredTaskScope.open()) {
-                MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
-                Subtask<Integer> task = scope.fork(() -> {
-                    int sum = 0;
-                    for (int i = 0; i < ELEM_SIZE; i++) {
-                        sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
-                    }
-                    return sum;
-                });
-                scope.join();
-                return task.get();
-            }
+        try (var scope = StructuredTaskScope.open()) {
+            Arena arena = Arena.ofStructured(scope.scope());
+            MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
+            Subtask<Integer> task = scope.fork(() -> {
+                int sum = 0;
+                for (int i = 0; i < ELEM_SIZE; i++) {
+                    sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
+                }
+                return sum;
+            });
+            scope.join();
+            return task.get();
         }
     }
 
     @Benchmark
     public int segment_structured_loop_scope_same() throws Throwable {
         try (var scope = StructuredTaskScope.open()) {
+            Arena arena = Arena.ofStructured(scope.scope());
             Subtask<Integer> task = scope.fork(() -> {
-                try (Arena arena = Arena.ofStructured()) {
-                    MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
-                    int sum = 0;
-                    for (int i = 0; i < ELEM_SIZE; i++) {
-                        sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
-                    }
-                    return sum;
+                MemorySegment segment = MemorySegment.ofAddress(unsafe_addr).reinterpret(ALLOC_SIZE, arena, null);
+                int sum = 0;
+                for (int i = 0; i < ELEM_SIZE; i++) {
+                    sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
                 }
+                return sum;
             });
             scope.join();
             return task.get();

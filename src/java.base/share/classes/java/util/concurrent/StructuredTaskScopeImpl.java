@@ -265,6 +265,11 @@ final class StructuredTaskScopeImpl<T, R> implements StructuredTaskScope<T, R> {
     }
 
     @Override
+    public ThreadScope scope() {
+        return flock;
+    }
+
+    @Override
     public void close() {
         ensureOwner();
         int s = state;

@@ -1,5 +1,7 @@
 package jdk.internal.foreign;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.ConfinedSession.ConfinedResourceList;
 import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.misc.ThreadFlock;
@@ -8,16 +10,17 @@ import jdk.internal.vm.annotation.ForceInline;
 import java.util.Objects;
 
 public final class StructuredSession extends MemorySessionImpl {
+    private final ThreadFlock flock;
 
-    private final ThreadFlock flock = ThreadFlock.open("Arena$" + this.hashCode());
-
-    public StructuredSession(Thread owner) {
-        super(owner, new ConfinedResourceList());
+    public StructuredSession(ThreadFlock flock) {
+        super(flock.owner(), new ConfinedResourceList());
+        this.flock = flock;
+        this.state = NONCLOSEABLE;
     }
 
     public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return thread == owner || flock.containsThread(thread);
+        return flock.containsThread(thread);
     }
 
     private void checkOwner() {
@@ -49,19 +52,16 @@ public final class StructuredSession extends MemorySessionImpl {
     @ForceInline
     void checkThreadRaw() {
         Thread current = Thread.currentThread();
-        if (current != owner && !flock.containsThreadFast(current)) {
+        if (current != owner && !flock.containsThread(current)) {
             throw WRONG_THREAD;
         }
     }
 
     void justClose() {
-        checkValidState();
-        if (Thread.currentThread() != ownerThread()) {
-            throw wrongThread();
-        }
-        if (flock.threads().findAny().isPresent()) {
-            throw new IllegalStateException("Cannot close");
-        }
-        flock.close();
+        throw nonCloseable();
+    }
+
+    public void closeInternal() {
+        resourceList.cleanup();
     }
 }
