@@ -4,15 +4,17 @@ import jdk.internal.foreign.ConfinedSession.ConfinedResourceList;
 import jdk.internal.foreign.MemorySessionImpl.ResourceList.ResourceCleanup;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ThreadFlock;
+import jdk.internal.vm.ThreadContainer;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public final class StructuredSession extends MemorySessionImpl {
 
-    private final ThreadFlock flock = ThreadFlock.open("Arena$" + this.hashCode());
+    private final ThreadContainer container = new StructuredArenaContainer();
 
     public StructuredSession(Thread owner) {
         super(owner, new ConfinedResourceList());
@@ -20,7 +22,7 @@ public final class StructuredSession extends MemorySessionImpl {
 
     public boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return thread == owner || flock.containsThread(thread);
+        return thread == owner || container.containsThreadFast(thread);
     }
 
     private void checkOwner() {
@@ -65,7 +67,7 @@ public final class StructuredSession extends MemorySessionImpl {
     @ForceInline
     void checkThreadRaw() {
         Thread current = Thread.currentThread();
-        if (current != owner && !flock.containsThreadFast(current)) {
+        if (current != owner && !container.containsThreadFast(current)) {
             throw WRONG_THREAD;
         }
     }
@@ -73,12 +75,24 @@ public final class StructuredSession extends MemorySessionImpl {
     void justClose() {
         checkValidState();
         checkOwner();
-        if (flock.threads().findAny().isPresent()) {
+        if (acquireCount > 0) {
+            throw alreadyAcquired(acquireCount);
+        }
+        if (!container.tryPop()) {
             throw new IllegalStateException("Cannot close");
         }
-        if (acquireCount == 0) {
-            state = CLOSED;
-            flock.close();
+        state = CLOSED;
+    }
+
+    static class StructuredArenaContainer extends ThreadContainer {
+        public StructuredArenaContainer() {
+            super(false);
+            push();
+        }
+
+        @Override
+        public Stream<Thread> threads() {
+            return Stream.empty();
         }
     }
 }
