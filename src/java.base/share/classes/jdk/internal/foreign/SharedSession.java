@@ -28,6 +28,7 @@ package jdk.internal.foreign;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -47,8 +48,26 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
     private static final int CLOSED_ACQUIRE_COUNT = -1;
 
+    @Stable
+    private volatile boolean tainted = false;
+
+    private final Thread otherOwner = Thread.currentThread();
+
     SharedSession() {
         super(null, new SharedResourceList());
+    }
+
+
+    @ForceInline
+    public void checkValidStateRaw() {
+        if (Thread.currentThread() != otherOwner) {
+            if (!tainted) {
+                tainted = true;
+            }
+        }
+        if (state < OPEN) {
+            throw ALREADY_CLOSED;
+        }
     }
 
     @Override
@@ -89,6 +108,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
 
         STATE.setVolatile(this, CLOSED);
+        if (tainted)
         SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
     }
 
