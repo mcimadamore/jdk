@@ -22,7 +22,7 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
-import java.lang.foreign.MemorySegment;
+import java.lang.foreign.*;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -36,7 +36,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.foreign.Arena;
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +49,8 @@ import java.util.concurrent.TimeUnit;
 @Fork(3)
 public class MemorySessionClose {
 
-    static final int ALLOC_SIZE = 1024;
+    @Param({"4", "16", "256", "1024", "4096"})
+    int ALLOC_SIZE;
 
     public enum StressMode {
         NONE,
@@ -109,7 +110,24 @@ public class MemorySessionClose {
     }
 
     @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=false" })
     public MemorySegment shared_close() {
+        try (Arena arena = Arena.ofShared()) {
+            return arena.allocate(ALLOC_SIZE, 4);
+        }
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true" })
+    public MemorySegment shared_close_delay() {
+        try (Arena arena = Arena.ofShared()) {
+            return arena.allocate(ALLOC_SIZE, 4);
+        }
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=true" })
+    public MemorySegment shared_close_delay_virtual() {
         try (Arena arena = Arena.ofShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }

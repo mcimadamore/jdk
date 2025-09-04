@@ -31,6 +31,11 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * A shared session, which can be shared across multiple threads. Closing a shared session has to ensure that
@@ -42,6 +47,12 @@ import java.lang.invoke.VarHandle;
  * checking the liveness bit upon access can be performed in plain mode, as in the confined case.
  */
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
+
+    private static final boolean DEFER_CLEANUP = Boolean.parseBoolean(
+            System.getProperty("jdk.internal.foreign.SharedSession.DEFER_CLEANUP", "false"));
+
+    private static final boolean USE_VIRTUAL_THREAD_CLEANUP = Boolean.parseBoolean(
+            System.getProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP", "false"));
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
@@ -89,7 +100,11 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
 
         STATE.setVolatile(this, CLOSED);
-        SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
+        if (DEFER_CLEANUP) {
+            SharedSessionCleaner.INSTANCE.register(this);
+        } else {
+            SCOPED_MEMORY_ACCESS.closeScope(new MemorySessionImpl[] { this }, ALREADY_CLOSED);
+        }
     }
 
     private IllegalStateException sharedSessionAlreadyClosed() {
@@ -99,6 +114,14 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
             Thread.onSpinWait();
         }
         return alreadyClosed();
+    }
+
+    @Override
+    public void close() {
+        justClose();
+        if (!DEFER_CLEANUP) {
+            resourceList.cleanup();
+        }
     }
 
     /**
@@ -143,6 +166,56 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
                 cleanup(prev);
             } else {
                 throw alreadyClosed();
+            }
+        }
+    }
+
+    static class SharedSessionCleaner implements Runnable {
+
+        static final int BATCH_SIZE = 1000;
+
+        final BlockingDeque<SharedSession> toClose = new LinkedBlockingDeque<>();
+
+        void register(SharedSession sharedSession) {
+            if (toClose.size() > BATCH_SIZE * 2) {
+                // do this right now
+                closeSessions(new SharedSession[] { sharedSession });
+            } else {
+                // enque
+                toClose.add(sharedSession);
+            }
+        }
+
+        @Override
+        public void run() {
+            try {
+                SharedSession[] sessions = new SharedSession[BATCH_SIZE];
+                while (true) {
+                    for (int i = 0 ; i < BATCH_SIZE ; i++) {
+                        sessions[i] = toClose.take();
+                    }
+                    //System.out.println("toClose size = " + toClose.size());
+                    closeSessions(sessions);
+                }
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        static void closeSessions(SharedSession[] sessions) {
+            SCOPED_MEMORY_ACCESS.closeScope(sessions, ALREADY_CLOSED);
+            for (SharedSession session : sessions) {
+                session.resourceList.cleanup();
+            }
+        }
+
+        static final SharedSessionCleaner INSTANCE = new SharedSessionCleaner();
+
+        static {
+            if (USE_VIRTUAL_THREAD_CLEANUP) {
+                Thread.ofVirtual().name("SharedSessionCleaner").start(INSTANCE);
+            } else {
+                Thread.ofPlatform().name("SharedSessionCleaner").start(INSTANCE);
             }
         }
     }

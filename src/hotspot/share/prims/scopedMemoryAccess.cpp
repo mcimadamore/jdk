@@ -34,6 +34,7 @@
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/vframe.inline.hpp"
+#include "utilities/growableArray.hpp"
 
 template<typename Func>
 static bool for_scoped_method(JavaThread* jt, const Func& func) {
@@ -92,6 +93,26 @@ static bool is_accessing_session(JavaThread* jt, oop session, bool& in_scoped) {
   });
 }
 
+static bool is_accessing_sessions(JavaThread* jt, GrowableArray<jobject> sessions, bool& in_scoped, oop& target_session) {
+  return for_scoped_method(jt, [&](vframeStream& stream){
+    in_scoped = true;
+    StackValueCollection* locals = stream.asJavaVFrame()->locals();
+    for (int i = 0; i < locals->size(); i++) {
+      StackValue* var = locals->at(i);
+      if (var->type() == T_OBJECT) {
+        for(int index = 0; index < sessions.length(); index++) {
+          oop _session = JNIHandles::resolve(sessions.at(index));
+          if (var->get_obj() == _session) {
+            target_session = _session;
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  });
+}
+
 static frame get_last_frame(JavaThread* jt) {
   frame last_frame = jt->last_frame();
   RegisterMap register_map(jt,
@@ -128,13 +149,13 @@ public:
 };
 
 class CloseScopedMemoryHandshakeClosure : public HandshakeClosure {
-  jobject _session;
+  GrowableArray<jobject> _sessions;
   jobject _error;
 
 public:
-  CloseScopedMemoryHandshakeClosure(jobject session, jobject error)
+  CloseScopedMemoryHandshakeClosure(GrowableArray<jobject> sessions, jobject error)
     : HandshakeClosure("CloseScopedMemory")
-    , _session(session)
+    , _sessions(sessions)
     , _error(error) {}
 
   void do_thread(Thread* thread) {
@@ -152,12 +173,13 @@ public:
     }
 
     bool in_scoped = false;
-    if (is_accessing_session(jt, JNIHandles::resolve(_session), in_scoped)) {
+    oop target_session;
+    if (is_accessing_sessions(jt, _sessions, in_scoped, target_session)) {
       // We have found that the target thread is inside of a scoped access.
       // An asynchronous handshake is sent to the target thread, telling it
       // to throw an exception, which will unwind the target thread out from
       // the scoped access.
-      OopHandle session(Universe::vm_global(), JNIHandles::resolve(_session));
+      OopHandle session(Universe::vm_global(), target_session);
       OopHandle error(Universe::vm_global(), JNIHandles::resolve(_error));
       jt->install_async_exception(new ScopedAsyncExceptionHandshakeClosure(session, error));
     } else if (!in_scoped) {
@@ -212,8 +234,14 @@ public:
  * class annotated with the '@Scoped' annotation), and whose local variables mention the session being
  * closed (deopt), this method returns false, signalling that the session cannot be closed safely.
  */
-JVM_ENTRY(void, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject session, jobject error))
-  CloseScopedMemoryHandshakeClosure cl(session, error);
+JVM_ENTRY(void, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobjectArray sessions, jobject error))
+  ResourceMark rm;
+  GrowableArray<jobject> session_array;
+  int length = env->GetArrayLength(sessions);
+  for(int index = 0; index < length; index++) {
+    session_array.append(env->GetObjectArrayElement(sessions, index));
+  }
+  CloseScopedMemoryHandshakeClosure cl(session_array, error);
   Handshake::execute(&cl);
 JVM_END
 
@@ -222,14 +250,14 @@ JVM_END
 #define PKG_MISC "Ljdk/internal/misc/"
 #define PKG_FOREIGN "Ljdk/internal/foreign/"
 
-#define SCOPED_SESSION PKG_FOREIGN "MemorySessionImpl;"
+#define SCOPED_SESSIONS "[" PKG_FOREIGN "MemorySessionImpl;"
 #define SCOPED_ERROR PKG_MISC "ScopedMemoryAccess$ScopedAccessError;"
 
 #define CC (char*)  /*cast a literal from (const char*)*/
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &f)
 
 static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
-  {CC "closeScope0", CC "(" SCOPED_SESSION SCOPED_ERROR ")V", FN_PTR(ScopedMemoryAccess_closeScope)},
+  {CC "closeScope0", CC "(" SCOPED_SESSIONS SCOPED_ERROR ")V", FN_PTR(ScopedMemoryAccess_closeScope)},
 };
 
 #undef CC
