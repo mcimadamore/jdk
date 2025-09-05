@@ -27,6 +27,7 @@ package jdk.internal.foreign;
 
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
@@ -44,12 +45,24 @@ import java.lang.invoke.VarHandle;
  */
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
+    private static final boolean USE_TAINTING = Boolean.parseBoolean(
+            System.getProperty("jdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS", "true"));
+
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
     private static final int CLOSED_ACQUIRE_COUNT = -1;
 
-    @Stable
-    private volatile boolean tainted = false;
+    private boolean tainted = false;
+
+    static final VarHandle TAINTED;
+
+    static {
+        try {
+            TAINTED = MethodHandles.lookup().findVarHandle(SharedSession.class, "tainted", boolean.class);
+        } catch (Throwable ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
 
     private final Thread otherOwner = Thread.currentThread();
 
@@ -60,10 +73,10 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
     @ForceInline
     public void checkValidStateRaw() {
-        if (Thread.currentThread() != otherOwner) {
-            if (!tainted) {
-                tainted = true;
-            }
+        if (USE_TAINTING && Thread.currentThread() != otherOwner && !tainted) {
+            acquire0();
+            TAINTED.setVolatile(this, true);
+            release0();
         }
         if (state < OPEN) {
             throw ALREADY_CLOSED;
@@ -108,8 +121,9 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
 
         STATE.setVolatile(this, CLOSED);
-        if (tainted)
-        SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
+        if ((boolean)TAINTED.getVolatile(this)) {
+            SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
+        }
     }
 
     private IllegalStateException sharedSessionAlreadyClosed() {

@@ -107,12 +107,26 @@ public class ParallelSum extends JavaLayouts {
     }
 
     @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=false" })
     public int segment_parallel() {
         return new SumSegment(segment.spliterator(ELEM_LAYOUT), SEGMENT_TO_INT).invoke();
     }
 
     @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=true" })
+    public int segment_parallel_tainted() {
+        return new SumSegment(segment.spliterator(ELEM_LAYOUT), SEGMENT_TO_INT).invoke();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=false" })
     public int segment_parallel_bulk() {
+        return new SumSegment(segment.spliterator(ELEM_LAYOUT_BULK), SEGMENT_TO_INT_BULK).invoke();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=true" })
+    public int segment_parallel_bulk_tainted() {
         return new SumSegment(segment.spliterator(ELEM_LAYOUT_BULK), SEGMENT_TO_INT_BULK).invoke();
     }
 

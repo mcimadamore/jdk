@@ -68,7 +68,7 @@ public class LoopOverNonConstantShared extends JavaLayouts {
         for (int i = 0; i < ELEM_SIZE; i++) {
             unsafe.putInt(unsafe_addr + (i * CARRIER_SIZE) , i);
         }
-        arena = Arena.ofConfined();
+        arena = Arena.ofShared();
         segment = arena.allocate(ALLOC_SIZE, CARRIER_SIZE);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);
@@ -132,7 +132,18 @@ public class LoopOverNonConstantShared extends JavaLayouts {
     }
 
     @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=false" })
     public int segment_loop() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_INT.get(segment, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED", "-Djdk.internal.foreign.SharedSession.TAINT_SHARED_ARENAS=true" })
+    public int segment_loop_tainted() {
         int sum = 0;
         for (int i = 0; i < ELEM_SIZE; i++) {
             sum += (int) VH_INT.get(segment, (long) i);
