@@ -118,8 +118,8 @@ public class MemorySessionClose {
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true" })
-    public MemorySegment shared_close_delay() {
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=false" })
+    public MemorySegment shared_close_delay_platform() {
         try (Arena arena = Arena.ofShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }

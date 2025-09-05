@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A shared session, which can be shared across multiple threads. Closing a shared session has to ensure that
@@ -49,10 +50,10 @@ import java.util.concurrent.LinkedBlockingDeque;
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
     private static final boolean DEFER_CLEANUP = Boolean.parseBoolean(
-            System.getProperty("jdk.internal.foreign.SharedSession.DEFER_CLEANUP", "false"));
+            System.getProperty("jdk.internal.foreign.SharedSession.DEFER_CLEANUP", "true"));
 
     private static final boolean USE_VIRTUAL_THREAD_CLEANUP = Boolean.parseBoolean(
-            System.getProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP", "false"));
+            System.getProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP", "true"));
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
@@ -103,8 +104,20 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         if (DEFER_CLEANUP) {
             SharedSessionCleaner.INSTANCE.register(this);
         } else {
-            SCOPED_MEMORY_ACCESS.closeScope(new MemorySessionImpl[] { this }, ALREADY_CLOSED);
+            closeSession(this);
         }
+    }
+
+    static void closeSessions(SharedSession[] sessions, int count) {
+        SCOPED_MEMORY_ACCESS.closeScope(sessions, count, ALREADY_CLOSED);
+        for (int i = 0 ; i < count ; i++) {
+            sessions[i].resourceList.cleanup();
+            sessions[i] = null;
+        }
+    }
+
+    static void closeSession(SharedSession session) {
+        closeSessions(new SharedSession[] { session }, 1);
     }
 
     private IllegalStateException sharedSessionAlreadyClosed() {
@@ -119,9 +132,6 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
     @Override
     public void close() {
         justClose();
-        if (!DEFER_CLEANUP) {
-            resourceList.cleanup();
-        }
     }
 
     /**
@@ -179,9 +189,9 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         void register(SharedSession sharedSession) {
             if (toClose.size() > BATCH_SIZE * 2) {
                 // do this right now
-                closeSessions(new SharedSession[] { sharedSession });
+                closeSession(sharedSession);
             } else {
-                // enque
+                // enque for deferred cleaning
                 toClose.add(sharedSession);
             }
         }
@@ -191,21 +201,22 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
             try {
                 SharedSession[] sessions = new SharedSession[BATCH_SIZE];
                 while (true) {
-                    for (int i = 0 ; i < BATCH_SIZE ; i++) {
-                        sessions[i] = toClose.take();
+                    int count = 0;
+                    while (count < BATCH_SIZE && toClose.peek() != null) {
+                        sessions[count++] = toClose.take();
                     }
-                    //System.out.println("toClose size = " + toClose.size());
-                    closeSessions(sessions);
+                    if (count > 0) {
+                        // handshake a batch of sessions
+                        closeSessions(sessions, count);
+                    } else {
+                        // queue is empty, wait for more
+                        SharedSession session = toClose.take();
+                        // ok, now we're ready to go, but we have to put that back
+                        toClose.offer(session);
+                    }
                 }
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
-            }
-        }
-
-        static void closeSessions(SharedSession[] sessions) {
-            SCOPED_MEMORY_ACCESS.closeScope(sessions, ALREADY_CLOSED);
-            for (SharedSession session : sessions) {
-                session.resourceList.cleanup();
             }
         }
 

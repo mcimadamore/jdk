@@ -84,11 +84,11 @@ public final class ScopedMemoryAccess {
         registerNatives();
     }
 
-    public void closeScope(MemorySessionImpl[] sessions, ScopedAccessError error) {
-        closeScope0(sessions, error);
+    public void closeScope(MemorySessionImpl[] sessions, int count, ScopedAccessError error) {
+        closeScope0(sessions, count, error);
     }
 
-    native void closeScope0(MemorySessionImpl[] sessions, ScopedAccessError error);
+    native void closeScope0(MemorySessionImpl[] sessions, int count, ScopedAccessError error);
 
     private ScopedMemoryAccess() {}
 

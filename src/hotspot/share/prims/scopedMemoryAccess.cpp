@@ -234,11 +234,11 @@ public:
  * class annotated with the '@Scoped' annotation), and whose local variables mention the session being
  * closed (deopt), this method returns false, signalling that the session cannot be closed safely.
  */
-JVM_ENTRY(void, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobjectArray sessions, jobject error))
+JVM_ENTRY(void, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobjectArray sessions, jint count, jobject error))
   ResourceMark rm;
   GrowableArray<jobject> session_array;
-  int length = env->GetArrayLength(sessions);
-  for(int index = 0; index < length; index++) {
+  int limit = (int)count;
+  for(int index = 0; index < limit; index++) {
     session_array.append(env->GetObjectArrayElement(sessions, index));
   }
   CloseScopedMemoryHandshakeClosure cl(session_array, error);
@@ -257,7 +257,7 @@ JVM_END
 #define FN_PTR(f) CAST_FROM_FN_PTR(void*, &f)
 
 static JNINativeMethod jdk_internal_misc_ScopedMemoryAccess_methods[] = {
-  {CC "closeScope0", CC "(" SCOPED_SESSIONS SCOPED_ERROR ")V", FN_PTR(ScopedMemoryAccess_closeScope)},
+  {CC "closeScope0", CC "(" SCOPED_SESSIONS "I" SCOPED_ERROR ")V", FN_PTR(ScopedMemoryAccess_closeScope)},
 };
 
 #undef CC
