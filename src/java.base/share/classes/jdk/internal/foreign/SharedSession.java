@@ -200,6 +200,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
                 synchronized (lock) {
                     // ok, no more submissions here, run handshake
                     doHandshake();
+                    lock.notifyAll();
                 }
             } catch (InterruptedException ex) {
                 // ignore
@@ -226,7 +227,12 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
                     //System.out.println("Second in " + sharedSession + " " + submissionQueue.done);
                     if (!submissionQueue.done) {
                         submissionQueue.toClose.add(sharedSession);
-                        return;
+                        try {
+                            submissionQueue.lock.wait();
+                            return;
+                        } catch (InterruptedException ex) {
+                            // ignore (fall into code below)
+                        }
                     }
                 }
                 // arrived late, try again
