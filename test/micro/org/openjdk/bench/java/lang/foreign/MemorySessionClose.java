@@ -38,7 +38,12 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -48,6 +53,9 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Fork(3)
 public class MemorySessionClose {
+
+    @Param({"1", "2", "4", "8", "16", "32", "64"})
+    int PARALLELISM;
 
     @Param({"4", "16", "256", "1024", "4096"})
     int ALLOC_SIZE;
@@ -64,6 +72,8 @@ public class MemorySessionClose {
     List<byte[]> arrays;
     volatile boolean stop = false;
     List<Thread> threads;
+
+    ExecutorService POOL;
 
     @Setup
     public void setup() throws Throwable {
@@ -84,7 +94,7 @@ public class MemorySessionClose {
             }
             threads.forEach(Thread::start);
         }
-
+        POOL = Executors.newFixedThreadPool(PARALLELISM);
     }
 
     @TearDown
@@ -100,6 +110,7 @@ public class MemorySessionClose {
                 }
             });
         }
+        POOL.shutdownNow();
     }
 
     @Benchmark
@@ -118,19 +129,35 @@ public class MemorySessionClose {
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=false" })
-    public MemorySegment shared_close_delay_platform() {
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true" })
+    public MemorySegment shared_close_delay() {
         try (Arena arena = Arena.ofShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=true" })
-    public MemorySegment shared_close_delay_virtual() {
-        try (Arena arena = Arena.ofShared()) {
-            return arena.allocate(ALLOC_SIZE, 4);
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=false" })
+    public long shared_pool_close() throws Throwable {
+        List<Callable<MemorySegment>> actions = Collections.nCopies(PARALLELISM, this::shared_close);
+        List<Future<MemorySegment>> futures = POOL.invokeAll(actions);
+        long sum = 0;
+        for (int i = 0 ; i < PARALLELISM ; i++) {
+            sum += futures.get(i).get().address();
         }
+        return sum;
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true" })
+    public long shared_pool_close_delay() throws Throwable {
+        List<Callable<MemorySegment>> actions = Collections.nCopies(PARALLELISM, this::shared_close);
+        List<Future<MemorySegment>> futures = POOL.invokeAll(actions);
+        long sum = 0;
+        for (int i = 0 ; i < PARALLELISM ; i++) {
+            sum += futures.get(i).get().address();
+        }
+        return sum;
     }
 
     @Benchmark

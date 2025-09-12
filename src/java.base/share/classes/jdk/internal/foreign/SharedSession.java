@@ -31,12 +31,10 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * A shared session, which can be shared across multiple threads. Closing a shared session has to ensure that
@@ -51,9 +49,6 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
     private static final boolean DEFER_CLEANUP = Boolean.parseBoolean(
             System.getProperty("jdk.internal.foreign.SharedSession.DEFER_CLEANUP", "true"));
-
-    private static final boolean USE_VIRTUAL_THREAD_CLEANUP = Boolean.parseBoolean(
-            System.getProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP", "true"));
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
@@ -102,7 +97,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
         STATE.setVolatile(this, CLOSED);
         if (DEFER_CLEANUP) {
-            SharedSessionCleaner.INSTANCE.register(this);
+            SubmissionQueue.register(this);
         } else {
             closeSession(this);
         }
@@ -180,53 +175,74 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
     }
 
-    static class SharedSessionCleaner implements Runnable {
-
-        static final int BATCH_SIZE = 1000;
+    static class SubmissionQueue {
+        static final int MAX_SIZE = 1000;
+        static final Duration WAIT = Duration.of(10, ChronoUnit.NANOS);
 
         final BlockingDeque<SharedSession> toClose = new LinkedBlockingDeque<>();
+        final Object lock = new Object();
+        boolean done = false;
 
-        void register(SharedSession sharedSession) {
-            if (toClose.size() > BATCH_SIZE * 2) {
-                // do this right now
-                closeSession(sharedSession);
-            } else {
-                // enque for deferred cleaning
-                toClose.add(sharedSession);
+        public void doHandshake() {
+            SharedSession[] sessions = toClose.toArray(new SharedSession[0]);
+            if (sessions.length > 0) {
+                //System.out.println("Closing sessions: #" + sessions.length);
+                // handshake a batch of sessions
+                closeSessions(sessions, sessions.length);
             }
+            done = true;
         }
 
-        @Override
-        public void run() {
+        public void finish() {
             try {
-                SharedSession[] sessions = new SharedSession[BATCH_SIZE];
-                while (true) {
-                    int count = 0;
-                    while (count < BATCH_SIZE && toClose.peek() != null) {
-                        sessions[count++] = toClose.take();
-                    }
-                    if (count > 0) {
-                        // handshake a batch of sessions
-                        closeSessions(sessions, count);
-                    } else {
-                        // queue is empty, wait for more
-                        SharedSession session = toClose.take();
-                        // ok, now we're ready to go, but we have to put that back
-                        toClose.offer(session);
-                    }
+                Thread.sleep(WAIT);
+                CURRENT_HANDLE.compareAndSet(this, null);
+                synchronized (lock) {
+                    // ok, no more submissions here, run handshake
+                    doHandshake();
                 }
             } catch (InterruptedException ex) {
-                ex.printStackTrace();
+                // ignore
             }
         }
 
-        static final SharedSessionCleaner INSTANCE = new SharedSessionCleaner();
+        static void register(SharedSession sharedSession) {
+            SubmissionQueue submissionQueue, temp;
+            submissionQueue = (SubmissionQueue) CURRENT_HANDLE.compareAndExchange(null, temp = new SubmissionQueue());
+            boolean first = submissionQueue == null;
+            if (first) {
+                submissionQueue = temp;
+            }
+
+            if (submissionQueue.toClose.size() > MAX_SIZE) {
+                // do this right now
+                closeSession(sharedSession);
+            } else if (first) {
+                submissionQueue.toClose.add(sharedSession);
+                submissionQueue.finish();
+            } else {
+                //System.out.println("Second out " + sharedSession);
+                synchronized (submissionQueue.lock) {
+                    //System.out.println("Second in " + sharedSession + " " + submissionQueue.done);
+                    if (!submissionQueue.done) {
+                        submissionQueue.toClose.add(sharedSession);
+                        return;
+                    }
+                }
+                // arrived late, try again
+                register(sharedSession);
+            }
+        }
+
+        private static SubmissionQueue CURRENT;
+
+        private static final VarHandle CURRENT_HANDLE;
 
         static {
-            if (USE_VIRTUAL_THREAD_CLEANUP) {
-                Thread.ofVirtual().name("SharedSessionCleaner").start(INSTANCE);
-            } else {
-                Thread.ofPlatform().name("SharedSessionCleaner").start(INSTANCE);
+            try {
+                CURRENT_HANDLE = MethodHandles.lookup().findStaticVarHandle(SubmissionQueue.class, "CURRENT", SubmissionQueue.class);
+            } catch (Throwable ex) {
+                throw new ExceptionInInitializerError(ex);
             }
         }
     }
