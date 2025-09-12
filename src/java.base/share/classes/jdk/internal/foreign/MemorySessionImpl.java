@@ -144,8 +144,8 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
-    public static MemorySessionImpl createShared() {
-        return new SharedSession();
+    public static MemorySessionImpl createShared(boolean asyncClose) {
+        return new SharedSession(asyncClose);
     }
 
     public static MemorySessionImpl createImplicit(Cleaner cleaner) {

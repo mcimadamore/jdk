@@ -265,7 +265,21 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      * are zero-initialized.
      */
     static Arena ofShared() {
-        return MemorySessionImpl.createShared().asArena();
+        return MemorySessionImpl.createShared(false).asArena();
+    }
+
+    /**
+     * {@return a new shared arena} Segments allocated with the shared arena can be
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread.
+     *          Unlike a regular {@linkplain #ofShared() shared} arena, resources associated
+     *          with the returned arena might be released <em>after</em> the arena is
+     *          {@linkplain #close() closed}.
+     * <p>
+     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
+     * are zero-initialized.
+     */
+    static Arena ofSharedAsync() {
+        return MemorySessionImpl.createShared(true).asArena();
     }
 
     /**

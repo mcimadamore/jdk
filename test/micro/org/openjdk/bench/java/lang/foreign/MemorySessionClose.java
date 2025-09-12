@@ -34,16 +34,11 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -53,9 +48,6 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Fork(3)
 public class MemorySessionClose {
-
-    @Param({"1", "2", "4", "8", "16", "32", "64"})
-    int PARALLELISM;
 
     @Param({"4", "16", "256", "1024", "4096"})
     int ALLOC_SIZE;
@@ -72,8 +64,6 @@ public class MemorySessionClose {
     List<byte[]> arrays;
     volatile boolean stop = false;
     List<Thread> threads;
-
-    ExecutorService POOL;
 
     @Setup
     public void setup() throws Throwable {
@@ -94,7 +84,6 @@ public class MemorySessionClose {
             }
             threads.forEach(Thread::start);
         }
-        POOL = Executors.newFixedThreadPool(PARALLELISM);
     }
 
     @TearDown
@@ -110,86 +99,183 @@ public class MemorySessionClose {
                 }
             });
         }
-        POOL.shutdownNow();
     }
 
     @Benchmark
-    public MemorySegment confined_close() {
+    public MemorySegment confined_close_01() {
         try (Arena arena = Arena.ofConfined()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=false" })
-    public MemorySegment shared_close() {
+    @Threads(2)
+    public MemorySegment confined_close_02() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    @Threads(4)
+    public MemorySegment confined_close_04() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    @Threads(8)
+    public MemorySegment confined_close_08() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    @Threads(16)
+    public MemorySegment confined_close_16() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    @Threads(32)
+    public MemorySegment confined_close_32() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    @Threads(64)
+    public MemorySegment confined_close_64() {
+        return confined_close_01();
+    }
+
+    @Benchmark
+    public MemorySegment shared_close_01() {
         try (Arena arena = Arena.ofShared()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=false" })
-    public MemorySegment shared_close_delay_platform() {
-        try (Arena arena = Arena.ofShared()) {
+    @Threads(2)
+    public MemorySegment shared_close_02() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    @Threads(4)
+    public MemorySegment shared_close_04() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    @Threads(8)
+    public MemorySegment shared_close_08() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    @Threads(16)
+    public MemorySegment shared_close_16() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    @Threads(32)
+    public MemorySegment shared_close_32() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    @Threads(64)
+    public MemorySegment shared_close_64() {
+        return shared_close_01();
+    }
+
+    @Benchmark
+    public MemorySegment shared_async_close_01() {
+        try (Arena arena = Arena.ofSharedAsync()) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=true" })
-    public MemorySegment shared_close_delay_virtual() {
-        try (Arena arena = Arena.ofShared()) {
-            return arena.allocate(ALLOC_SIZE, 4);
-        }
+    @Threads(2)
+    public MemorySegment shared_async_close_02() {
+        return shared_async_close_01();
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=false" })
-    public long shared_pool_close() throws Throwable {
-        List<Callable<MemorySegment>> actions = Collections.nCopies(PARALLELISM, this::shared_close);
-        List<Future<MemorySegment>> futures = POOL.invokeAll(actions);
-        long sum = 0;
-        for (int i = 0 ; i < PARALLELISM ; i++) {
-            sum += futures.get(i).get().address();
-        }
-        return sum;
+    @Threads(4)
+    public MemorySegment shared_async_close_04() {
+        return shared_async_close_01();
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=false" })
-    public long shared_pool_close_delay_platform() throws Throwable {
-        List<Callable<MemorySegment>> actions = Collections.nCopies(PARALLELISM, this::shared_close);
-        List<Future<MemorySegment>> futures = POOL.invokeAll(actions);
-        long sum = 0;
-        for (int i = 0 ; i < PARALLELISM ; i++) {
-            sum += futures.get(i).get().address();
-        }
-        return sum;
+    @Threads(8)
+    public MemorySegment shared_async_close_08() {
+        return shared_async_close_01();
     }
 
     @Benchmark
-    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.DEFER_CLEANUP=true", "-Djdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP=true" })
-    public long shared_pool_close_delay_virtual() throws Throwable {
-        List<Callable<MemorySegment>> actions = Collections.nCopies(PARALLELISM, this::shared_close);
-        List<Future<MemorySegment>> futures = POOL.invokeAll(actions);
-        long sum = 0;
-        for (int i = 0 ; i < PARALLELISM ; i++) {
-            sum += futures.get(i).get().address();
-        }
-        return sum;
+    @Threads(16)
+    public MemorySegment shared_async_close_16() {
+        return shared_async_close_01();
     }
 
     @Benchmark
-    public MemorySegment implicit_close() {
+    @Threads(32)
+    public MemorySegment shared_async_close_32() {
+        return shared_async_close_01();
+    }
+
+    @Benchmark
+    @Threads(64)
+    public MemorySegment shared_async_close_64() {
+        return shared_async_close_01();
+    }
+
+    @Benchmark
+    public MemorySegment implicit_close_01() {
         return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
     }
 
     @Benchmark
-    public MemorySegment implicit_close_systemgc() {
-        if (gcCount++ == 0) System.gc(); // GC when we overflow
-        return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
+    @Threads(2)
+    public MemorySegment implicit_close_02() {
+        return implicit_close_01();
     }
+
+    @Benchmark
+    @Threads(4)
+    public MemorySegment implicit_close_04() {
+        return implicit_close_01();
+    }
+
+    @Benchmark
+    @Threads(8)
+    public MemorySegment implicit_close_08() {
+        return implicit_close_01();
+    }
+
+    @Benchmark
+    @Threads(16)
+    public MemorySegment implicit_close_16() {
+        return implicit_close_01();
+    }
+
+    @Benchmark
+    @Threads(32)
+    public MemorySegment implicit_close_32() {
+        return implicit_close_01();
+    }
+
+    @Benchmark
+    @Threads(32)
+    public MemorySegment implicit_close_64() {
+        return implicit_close_01();
+    }
+
+//    @Benchmark
+//    public MemorySegment implicit_close_systemgc() {
+//        if (gcCount++ == 0) System.gc(); // GC when we overflow
+//        return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
+//    }
 
     // keep
     static byte gcCount = 0;

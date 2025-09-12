@@ -41,7 +41,7 @@ import java.lang.ref.Reference;
 final class ImplicitSession extends SharedSession {
 
     public ImplicitSession(Cleaner cleaner) {
-        super();
+        super(false);
         this.state = NONCLOSEABLE;
         cleaner.register(this, resourceList);
     }

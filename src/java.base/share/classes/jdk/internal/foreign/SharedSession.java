@@ -31,12 +31,8 @@ import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A shared session, which can be shared across multiple threads. Closing a shared session has to ensure that
@@ -49,19 +45,16 @@ import java.util.concurrent.TimeUnit;
  */
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
-    private static final boolean DEFER_CLEANUP = Boolean.parseBoolean(
-            System.getProperty("jdk.internal.foreign.SharedSession.DEFER_CLEANUP", "true"));
-
-    private static final boolean USE_VIRTUAL_THREAD_CLEANUP = Boolean.parseBoolean(
-            System.getProperty("jdk.internal.foreign.SharedSession.USE_VIRTUAL_THREAD_CLEANUP", "true"));
-
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
     private static final int CLOSED_ACQUIRE_COUNT = -1;
 
-    SharedSession() {
+    SharedSession(boolean asyncClose) {
         super(null, new SharedResourceList());
+        this.asyncClose = asyncClose;
     }
+
+    final boolean asyncClose;
 
     @Override
     @ForceInline
@@ -101,7 +94,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
 
         STATE.setVolatile(this, CLOSED);
-        if (DEFER_CLEANUP) {
+        if (asyncClose) {
             SharedSessionCleaner.INSTANCE.register(this);
         } else {
             closeSession(this);
@@ -182,7 +175,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
 
     static class SharedSessionCleaner implements Runnable {
 
-        static final int BATCH_SIZE = 1000;
+        static final int BATCH_SIZE = Runtime.getRuntime().availableProcessors() * 100;
 
         final BlockingDeque<SharedSession> toClose = new LinkedBlockingDeque<>();
 
@@ -207,6 +200,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
                     }
                     if (count > 0) {
                         // handshake a batch of sessions
+                        //System.out.println("Closing sessions #" + count);
                         closeSessions(sessions, count);
                     } else {
                         // queue is empty, wait for more
@@ -223,11 +217,7 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         static final SharedSessionCleaner INSTANCE = new SharedSessionCleaner();
 
         static {
-            if (USE_VIRTUAL_THREAD_CLEANUP) {
-                Thread.ofVirtual().name("SharedSessionCleaner").start(INSTANCE);
-            } else {
-                Thread.ofPlatform().name("SharedSessionCleaner").start(INSTANCE);
-            }
+            Thread.ofVirtual().name("SharedSessionCleaner").start(INSTANCE);
         }
     }
 }
