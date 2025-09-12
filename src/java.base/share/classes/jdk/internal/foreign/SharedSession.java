@@ -27,6 +27,7 @@ package jdk.internal.foreign;
 
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
+import jdk.internal.ref.CleanerImpl;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.invoke.MethodHandles;
@@ -42,6 +43,9 @@ import java.lang.invoke.VarHandle;
  * checking the liveness bit upon access can be performed in plain mode, as in the confined case.
  */
 sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
+
+    private static final boolean SKIP_CLEANER_HANDSHAKE = Boolean.parseBoolean(
+            System.getProperty("jdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE", "true"));
 
     private static final ScopedMemoryAccess SCOPED_MEMORY_ACCESS = ScopedMemoryAccess.getScopedMemoryAccess();
 
@@ -89,7 +93,10 @@ sealed class SharedSession extends MemorySessionImpl permits ImplicitSession {
         }
 
         STATE.setVolatile(this, CLOSED);
-        SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
+        if (!SKIP_CLEANER_HANDSHAKE || !CleanerImpl.inCleaner()) {
+            // if arena is still reachable, we need to make sure no segment access can occur
+            SCOPED_MEMORY_ACCESS.closeScope(this, ALREADY_CLOSED);
+        }
     }
 
     private IllegalStateException sharedSessionAlreadyClosed() {

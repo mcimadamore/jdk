@@ -34,9 +34,12 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.ref.Cleaner;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -116,15 +119,70 @@ public class MemorySessionClose {
     }
 
     @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=false" })
+    public MemorySegment implicit_close_shared_wrapper_noskip_01() {
+        return new Wrapper().allocate(ALLOC_SIZE, 4);
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=true" })
+    public MemorySegment implicit_close_shared_wrapper_skip_01() {
+        return new Wrapper().allocate(ALLOC_SIZE, 4);
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=false" })
+    @Threads(4)
+    public MemorySegment implicit_close_shared_wrapper_noskip_04() {
+        return implicit_close_shared_wrapper_noskip_01();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=true" })
+    @Threads(4)
+    public MemorySegment implicit_close_shared_wrapper_skip_04() {
+        return implicit_close_shared_wrapper_skip_01();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=false" })
+    @Threads(16)
+    public MemorySegment implicit_close_shared_wrapper_noskip_16() {
+        return implicit_close_shared_wrapper_noskip_01();
+    }
+
+    @Benchmark
+    @Fork(value = 3, jvmArgs = { "-Djdk.internal.foreign.SharedSession.SKIP_CLEANER_HANDSHAKE=true" })
+    @Threads(16)
+    public MemorySegment implicit_close_shared_wrapper_skip_16() {
+        return implicit_close_shared_wrapper_skip_01();
+    }
+
+    static class Wrapper implements SegmentAllocator {
+        final Arena arena = Arena.ofShared();
+
+        public Wrapper() {
+            CLEANER.register(this, arena::close);
+        }
+
+        @Override
+        public MemorySegment allocate(long byteSize, long byteAlignment) {
+            return arena.allocate(byteSize, byteAlignment);
+        }
+
+        static final Cleaner CLEANER = Cleaner.create();
+    }
+
+    @Benchmark
     public MemorySegment implicit_close() {
         return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
     }
 
-    @Benchmark
-    public MemorySegment implicit_close_systemgc() {
-        if (gcCount++ == 0) System.gc(); // GC when we overflow
-        return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
-    }
+//    @Benchmark
+//    public MemorySegment implicit_close_systemgc() {
+//        if (gcCount++ == 0) System.gc(); // GC when we overflow
+//        return Arena.ofAuto().allocate(ALLOC_SIZE, 4);
+//    }
 
     // keep
     static byte gcCount = 0;

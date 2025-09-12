@@ -145,7 +145,8 @@ public final class CleanerImpl implements Runnable {
                 // dummy reference.
                 Cleanable ref = (Cleanable) queue.remove(60 * 1000L);
                 if (ref != null) {
-                    ref.clean();
+                    ScopedValue.where(CURRENT_CLEANER, this)
+                               .run(ref::clean);
                 }
             } catch (Throwable e) {
                 // ignore exceptions from the cleanup action
@@ -362,4 +363,10 @@ public final class CleanerImpl implements Runnable {
             Node next;
         }
     }
+
+    public static boolean inCleaner() {
+        return CURRENT_CLEANER.isBound();
+    }
+
+    private static final ScopedValue<CleanerImpl> CURRENT_CLEANER = ScopedValue.newInstance();
 }
