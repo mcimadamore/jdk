@@ -56,9 +56,7 @@ import java.nio.ByteOrder;
  * @since 22
  */
 public sealed interface ValueLayout extends MemoryLayout
-        permits ValueLayout.OfBoolean, ValueLayout.OfByte, ValueLayout.OfChar,
-        ValueLayout.OfShort, ValueLayout.OfInt,  ValueLayout.OfFloat,
-        ValueLayout.OfLong, ValueLayout.OfDouble, AddressLayout {
+        permits ValueLayout.OfIntegral, ValueLayout.OfFloat, ValueLayout.OfDouble, AddressLayout {
 
     /**
      * {@return the value's byte order}
@@ -124,12 +122,23 @@ public sealed interface ValueLayout extends MemoryLayout
     VarHandle varHandle();
 
     /**
+     * A layout that models an integral value. An integral layout can be either signed, or unsigned.
+     */
+    sealed interface OfIntegral extends ValueLayout permits ValueLayout.OfBoolean, ValueLayout.OfByte, ValueLayout.OfChar,
+            ValueLayout.OfShort, ValueLayout.OfInt, ValueLayout.OfLong {
+        /**
+         * {@return {@code true} if this layout models signed integral values}
+         */
+        boolean isSigned();
+    }
+
+    /**
      * A value layout whose carrier is {@code boolean.class}.
      *
      * @see #JAVA_BOOLEAN
      * @since 22
      */
-        sealed interface OfBoolean extends ValueLayout permits ValueLayouts.OfBooleanImpl {
+        sealed interface OfBoolean extends OfIntegral permits ValueLayouts.OfBooleanImpl {
 
         /**
          * {@inheritDoc}
@@ -164,7 +173,7 @@ public sealed interface ValueLayout extends MemoryLayout
      * @see #JAVA_BYTE
      * @since 22
      */
-        sealed interface OfByte extends ValueLayout permits ValueLayouts.OfByteImpl {
+        sealed interface OfByte extends OfIntegral permits ValueLayouts.OfByteImpl {
 
         /**
          * {@inheritDoc}
@@ -200,7 +209,7 @@ public sealed interface ValueLayout extends MemoryLayout
      * @see #JAVA_CHAR_UNALIGNED
      * @since 22
      */
-        sealed interface OfChar extends ValueLayout permits ValueLayouts.OfCharImpl {
+        sealed interface OfChar extends OfIntegral permits ValueLayouts.OfCharImpl {
 
         /**
          * {@inheritDoc}
@@ -236,7 +245,7 @@ public sealed interface ValueLayout extends MemoryLayout
      * @see #JAVA_SHORT_UNALIGNED
      * @since 22
      */
-        sealed interface OfShort extends ValueLayout permits ValueLayouts.OfShortImpl {
+        sealed interface OfShort extends OfIntegral permits ValueLayouts.OfShortImpl {
 
         /**
          * {@inheritDoc}
@@ -272,7 +281,7 @@ public sealed interface ValueLayout extends MemoryLayout
      * @see #JAVA_INT_UNALIGNED
      * @since 22
      */
-        sealed interface OfInt extends ValueLayout permits ValueLayouts.OfIntImpl {
+        sealed interface OfInt extends OfIntegral permits ValueLayouts.OfIntImpl {
 
         /**
          * {@inheritDoc}
@@ -343,7 +352,7 @@ public sealed interface ValueLayout extends MemoryLayout
      * @see #JAVA_LONG_UNALIGNED
      * @since 22
      */
-        sealed interface OfLong extends ValueLayout permits ValueLayouts.OfLongImpl {
+        sealed interface OfLong extends OfIntegral permits ValueLayouts.OfLongImpl {
 
         /**
          * {@inheritDoc}
@@ -416,40 +425,40 @@ public sealed interface ValueLayout extends MemoryLayout
     AddressLayout ADDRESS = ValueLayouts.OfAddressImpl.of(ByteOrder.nativeOrder());
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code byte},
+     * A signed integral layout constant whose size is the same as that of a Java {@code byte},
      * byte alignment set to 1, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfByte JAVA_BYTE = ValueLayouts.OfByteImpl.of(ByteOrder.nativeOrder());
+    OfByte JAVA_BYTE = ValueLayouts.OfByteImpl.of(ByteOrder.nativeOrder(), true);
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code boolean},
+     * An unsigned integral layout constant whose size is the same as that of a Java {@code boolean},
      * byte alignment set to 1, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfBoolean JAVA_BOOLEAN = ValueLayouts.OfBooleanImpl.of(ByteOrder.nativeOrder());
+    OfBoolean JAVA_BOOLEAN = ValueLayouts.OfBooleanImpl.of(ByteOrder.nativeOrder(), false);
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code char},
+     * An unsigned integral layout constant whose size is the same as that of a Java {@code char},
      * byte alignment set to 2, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfChar JAVA_CHAR = ValueLayouts.OfCharImpl.of(ByteOrder.nativeOrder());
+    OfChar JAVA_CHAR = ValueLayouts.OfCharImpl.of(ByteOrder.nativeOrder(), false);
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code short},
+     * A signed integral layout constant whose size is the same as that of a Java {@code short},
      * byte alignment set to 2, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfShort JAVA_SHORT = ValueLayouts.OfShortImpl.of(ByteOrder.nativeOrder());
+    OfShort JAVA_SHORT = ValueLayouts.OfShortImpl.of(ByteOrder.nativeOrder(), true);
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code int},
+     * A signed integral layout constant whose size is the same as that of a Java {@code int},
      * byte alignment set to 4, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfInt JAVA_INT = ValueLayouts.OfIntImpl.of(ByteOrder.nativeOrder());
+    OfInt JAVA_INT = ValueLayouts.OfIntImpl.of(ByteOrder.nativeOrder(), true);
 
     /**
-     * A value layout constant whose size is the same as that of a Java {@code long},
+     * A signed integral layout constant whose size is the same as that of a Java {@code long},
      * byte alignment set to 8, and byte order set to {@link ByteOrder#nativeOrder()}.
      */
-    OfLong JAVA_LONG = ValueLayouts.OfLongImpl.of(ByteOrder.nativeOrder());
+    OfLong JAVA_LONG = ValueLayouts.OfLongImpl.of(ByteOrder.nativeOrder(), true);
 
     /**
      * A value layout constant whose size is the same as that of a Java {@code float},
