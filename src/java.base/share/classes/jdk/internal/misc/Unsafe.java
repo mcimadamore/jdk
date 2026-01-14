@@ -3510,6 +3510,98 @@ public final class Unsafe {
         throw new NoSuchMethodError();
     }
 
+    // Stable semantics
+
+    /**
+     * Fetches a reference value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-{@code null} value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     *
+     * @see #getReference(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public Object getReferenceStable(Object o, long offset) {
+        return getReferenceVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public boolean getBooleanStable(Object o, long offset) {
+        return getBooleanVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public byte getByteStable(Object o, long offset) {
+        return getByteVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public short getShortStable(Object o, long offset) {
+        return getShortVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public char getCharStable(Object o, long offset) {
+        return getCharVolatile(o, offset);
+    }
+
+    /**
+     * Fetches a value from a given Java variable using <em>stable</em>
+     * semantics initially using plain reads.
+     * <p>
+     * Stable semantics means, if the VM observes a non-default value,
+     * (i.e, a non-zero value), the VM is free to reuse said value indefinitely
+     * and elide subsequent reads using this method. This is only true if there is a
+     * trusted path from a VM constant to the targeted reference value.
+     * <p>
+     * By adding various memory fences after a plain stable access, other memory semantics
+     * can be emulated.
+     *
+     * @param o Java heap object in which the variable resides, if any, else
+     *        null
+     * @param offset indication of where the variable resides in a Java heap
+     *        object, if any, else a memory address locating the variable
+     *        statically
+     * @param fence the speculation fence used to invalidate optimization on this load. May be {@code null}
+     * @return the value fetched from the indicated Java variable using plain
+     *         stable semantics
+     * @throws RuntimeException No defined exceptions are thrown, not even
+     *         {@link NullPointerException}
+     *
+     * @see #getInt(Object, long)
+     * @since 99
+     */
+    @IntrinsicCandidate
+    public int getIntStable(Object o, long offset) {
+        return getIntVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public long getLongStable(Object o, long offset){
+        return getLongVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public float getFloatStable(Object o, long offset) {
+        return getFloatVolatile(o, offset);
+    }
+
+    /** @see #getIntStable(Object, long) @since 99 */
+    @IntrinsicCandidate
+    public double getDoubleStable(Object o, long offset) {
+        return getDoubleVolatile(o, offset);
+    }
+
     /**
      * @return Returns true if the native byte ordering of this
      * platform is big-endian, false if it is little-endian.

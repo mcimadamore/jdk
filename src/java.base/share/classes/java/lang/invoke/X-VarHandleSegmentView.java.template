@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -251,6 +251,21 @@ final class VarHandleSegmentAs$Type$sAligned extends VarHandleSegmentAs$Type$s {
                 bb.unsafeGetBase(),
                 offset(bb, base, offset),
                 convEndian(handle.be, value));
+    }
+
+    @ForceInline
+    static $type$ getStable(VarHandle ob, Object obb, long base) {
+        return getStable(ob, obb, base, ((SegmentVarHandle) ob).offset);
+    }
+
+    @ForceInline
+    static $type$ getStable(VarHandle ob, Object obb, long base, long offset) {
+        SegmentVarHandle handle = (SegmentVarHandle)ob;
+        AbstractMemorySegmentImpl bb = handle.checkSegment(obb, base, true);
+        return convEndian(handle.be,
+                          SCOPED_MEMORY_ACCESS.get$RawType$Stable(bb.sessionImpl(),
+                                  bb.unsafeGetBase(),
+                                  offset(bb, base, offset)));
     }
 #if[CAS]
 
