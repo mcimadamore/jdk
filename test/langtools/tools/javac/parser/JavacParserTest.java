@@ -1617,7 +1617,6 @@ public class JavacParserTest extends TestCase {
                      out.toString().replaceAll("\\R", "\n"),
                      """
                      Test.java:5:17: compiler.err.expected: token.identifier
-                     Test.java:5:16: compiler.err.not.stmt
                      """);
     }
 

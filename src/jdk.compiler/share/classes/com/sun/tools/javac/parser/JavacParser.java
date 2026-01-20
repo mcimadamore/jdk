@@ -28,6 +28,7 @@ package com.sun.tools.javac.parser;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import javax.lang.model.SourceVersion;
 
@@ -207,7 +208,7 @@ public class JavacParser implements Parser {
     protected JavacParser(JavacParser parser,
                           Lexer S) {
         this.S = S;
-        this.token = parser.token;
+        this.token = S.token();
         this.F = parser.F;
         this.log = parser.log;
         this.names = parser.names;
@@ -560,7 +561,7 @@ public class JavacParser implements Parser {
     protected void checkNoMods(int pos, long mods) {
         if (mods != 0) {
             long lowestMod = mods & -mods;
-            log.error(DiagnosticFlag.SYNTAX, pos, Errors.ModNotAllowedHere(Flags.asFlagSet(lowestMod)));
+            syntaxError(pos, Errors.ModNotAllowedHere(Flags.asFlagSet(lowestMod)));
         }
     }
 
@@ -770,11 +771,11 @@ public class JavacParser implements Parser {
             nextToken();
             return name;
         } else if (token.kind == ASSERT) {
-            log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.AssertAsIdentifier);
+            syntaxError(token.pos, Errors.AssertAsIdentifier);
             nextToken();
             return names.error;
         } else if (token.kind == ENUM) {
-            log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.EnumAsIdentifier);
+            syntaxError(token.pos, Errors.EnumAsIdentifier);
             nextToken();
             return names.error;
         } else if (token.kind == THIS) {
@@ -783,7 +784,7 @@ public class JavacParser implements Parser {
                 nextToken();
                 return name;
             } else {
-                log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.ThisAsIdentifier);
+                syntaxError(token.pos, Errors.ThisAsIdentifier);
                 nextToken();
                 return names.error;
             }
@@ -793,13 +794,13 @@ public class JavacParser implements Parser {
             } else if (asVariable) {
                 checkSourceLevel(Feature.UNNAMED_VARIABLES);
                 if (peek(LBRACKET)) {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.UseOfUnderscoreNotAllowedWithBrackets);
+                    syntaxError(token.pos, Errors.UseOfUnderscoreNotAllowedWithBrackets);
                 }
             } else {
                 if (Feature.UNNAMED_VARIABLES.allowedInSource(source)) {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.UseOfUnderscoreNotAllowedNonVariable);
+                    syntaxError(token.pos, Errors.UseOfUnderscoreNotAllowedNonVariable);
                 } else {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.UnderscoreAsIdentifier);
+                    syntaxError(token.pos, Errors.UnderscoreAsIdentifier);
                 }
             }
             Name name = token.name();
@@ -1467,7 +1468,16 @@ public class JavacParser implements Parser {
             break;
         case LPAREN:
             if (typeArgs == null && isMode(EXPR)) {
-                ParensResult pres = analyzeParens();
+                ParensResult pres = analyzeParens2();
+                ParensResult pres2 = analyzeParens();
+                if (pres != pres2) {
+                    System.err.println("found: " + pres + " expected: " + pres2 + " in " +
+                            S.token(0).kind + S.token(1).kind + S.token(2).kind +
+                                    S.token(3).kind + S.token(4).kind + S.token(5).kind +
+                                    S.token(6).kind + S.token(7).kind + S.token(8).kind +
+                                    S.token(9).kind + S.token(10).kind + S.token(11).kind +
+                                    S.token(12).kind + S.token(13).kind + S.token(14).kind + "...");
+                }
                 switch (pres) {
                     case CAST:
                        accept(LPAREN);
@@ -1753,30 +1763,35 @@ public class JavacParser implements Parser {
             }
             break;
         case SWITCH:
-            checkSourceLevel(Feature.SWITCH_EXPRESSION);
-            allowYieldStatement = true;
-            int switchPos = token.pos;
-            nextToken();
-            JCExpression selector = parExpression();
-            accept(LBRACE);
-            ListBuffer<JCCase> cases = new ListBuffer<>();
-            while (true) {
-                pos = token.pos;
-                switch (token.kind) {
-                case CASE:
-                case DEFAULT:
-                    cases.appendList(switchExpressionStatementGroup());
-                    break;
-                case RBRACE: case EOF:
-                    JCSwitchExpression e = to(F.at(switchPos).SwitchExpression(selector,
-                                                                               cases.toList()));
-                    e.bracePos = token.pos;
-                    accept(RBRACE);
-                    return e;
-                default:
-                    nextToken(); // to ensure progress
-                    syntaxError(pos, Errors.Expected3(CASE, DEFAULT, RBRACE));
+            if (isMode(EXPR)) {
+                checkSourceLevel(Feature.SWITCH_EXPRESSION);
+                allowYieldStatement = true;
+                int switchPos = token.pos;
+                nextToken();
+                JCExpression selector = parExpression();
+                accept(LBRACE);
+                ListBuffer<JCCase> cases = new ListBuffer<>();
+                while (true) {
+                    pos = token.pos;
+                    switch (token.kind) {
+                        case CASE:
+                        case DEFAULT:
+                            cases.appendList(switchExpressionStatementGroup());
+                            break;
+                        case RBRACE:
+                        case EOF:
+                            JCSwitchExpression e = to(F.at(switchPos).SwitchExpression(selector,
+                                    cases.toList()));
+                            e.bracePos = token.pos;
+                            accept(RBRACE);
+                            return e;
+                        default:
+                            nextToken(); // to ensure progress
+                            syntaxError(pos, Errors.Expected3(CASE, DEFAULT, RBRACE));
+                    }
                 }
+            } else {
+                return illegal();
             }
             // Not reachable.
         default:
@@ -2164,8 +2179,87 @@ public class JavacParser implements Parser {
         return lookahead;
     }
 
+    Matcher CAST_CONT = (lexer, lookahead) ->
+            switch (lexer.token(lookahead).kind) {
+                /*case PLUSPLUS: case SUBSUB: */
+                case BANG, TILDE, LPAREN, THIS, SUPER, INTLITERAL, LONGLITERAL, FLOATLITERAL, DOUBLELITERAL, CHARLITERAL,
+                     STRINGLITERAL, STRINGFRAGMENT, TRUE, FALSE, NULL, NEW, IDENTIFIER, ASSERT, ENUM, UNDERSCORE, SWITCH,
+                     BYTE, SHORT, CHAR, INT, LONG, FLOAT, DOUBLE, BOOLEAN, VOID -> Result.ofSuccess(1);
+                default -> Result.ERROR;
+            };
+
+//    Matcher PRIM_TYPE = (lexer, lookahead) ->
+//            switch (lexer.token(lookahead).kind) {
+//                case BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, BOOLEAN, CHAR, VOID -> Result.ofSuccess(1);
+//                default -> Result.ERROR;
+//            };
+
+    @SuppressWarnings("fallthrough")
+    ParensResult analyzeParens2() {
+        if (!isMode(NOLAMBDA)) {
+            // in some cases (e.g. case labels) we don't want to match lambdas!
+            if (peek(RPAREN) ||
+                    peek(FINAL) ||
+                    peek(TYPE_OR_INT_TYPE, LAX_IDENTIFIER) ||
+                    peek(TYPE_OR_INT_TYPE, ELLIPSIS, LAX_IDENTIFIER)) {
+                return ParensResult.EXPLICIT_LAMBDA;
+            } else if (peek(LAX_IDENTIFIER, COMMA) ||
+                    peek(LAX_IDENTIFIER, RPAREN, ARROW)) {
+                return ParensResult.IMPLICIT_LAMBDA;
+            }
+        }
+        if (peek(PRIM_TYPE, RPAREN) ||
+                peek(TYPE_OR_INT_TYPE, RPAREN, CAST_CONT)) {
+            return ParensResult.CAST;
+        } else {
+            return ParensResult.PARENS;
+        }
+    }
+
     /** Accepts all identifier-like tokens */
     protected Matcher LAX_IDENTIFIER = IDENTIFIER.or(UNDERSCORE).or(ASSERT).or(ENUM);
+
+    protected Matcher TYPE_OR_INT_TYPE = (lexer, lookahead) -> {
+        JavacParser speculative = new VirtualParser(this, lookahead);
+        int start = ((VirtualScanner)speculative.S).offset;
+        JCExpression speculativeResult = speculative.parseType(true);
+        if (speculativeResult.hasTag(ERRONEOUS)) {
+            return Result.ERROR;
+        } else if (speculative.token.kind == AMP) {
+            speculativeResult = speculative.parseIntersectionType(speculativeResult.pos, speculativeResult);
+            if (speculativeResult.hasTag(ERRONEOUS)) {
+                return Result.ERROR;
+            }
+        }
+        int read = lastTypeTokenOffset((VirtualScanner) speculative.S) - start;
+        return Result.ofSuccess(read);
+    };
+
+    protected Matcher PRIM_TYPE = (lexer, lookahead) -> {
+        JavacParser speculative = new VirtualParser(this, lookahead);
+        int start = ((VirtualScanner)speculative.S).offset;
+        JCExpression speculativeResult = speculative.parseType(true);
+        if (speculativeResult.hasTag(ERRONEOUS)) {
+            return Result.ERROR;
+        }
+        if (speculativeResult instanceof JCAnnotatedType annotatedType) {
+            speculativeResult = annotatedType.underlyingType;
+        }
+        if (!speculativeResult.hasTag(TYPEIDENT)) {
+            // not a primitive type
+            return Result.ERROR;
+        }
+        int read = lastTypeTokenOffset((VirtualScanner) speculative.S) - start;
+        return Result.ofSuccess(read);
+    };
+
+    // @@@: the parser consumes a `[` when parsing a type and an array access is found
+    // (instead of stopping at the identifier preceding the `[`)
+    private int lastTypeTokenOffset(VirtualScanner s) {
+        int last = s.offset;
+        return s.prevToken().kind == LBRACKET ?
+                last - 1 : last;
+    }
 
     enum ParensResult {
         CAST,
@@ -2185,7 +2279,7 @@ public class JavacParser implements Parser {
                 if (param.vartype != null &&
                         (restrictedTypeName = restrictedTypeName(param.vartype, false)) != null &&
                         param.vartype.hasTag(TYPEARRAY)) {
-                    log.error(DiagnosticFlag.SYNTAX, param.pos,
+                    syntaxError(param.pos,
                         Feature.VAR_SYNTAX_IMPLICIT_LAMBDAS.allowedInSource(source)
                             ? Errors.RestrictedTypeNotAllowedArray(restrictedTypeName) : Errors.RestrictedTypeNotAllowedHere(restrictedTypeName));
                 }
@@ -2195,7 +2289,7 @@ public class JavacParser implements Parser {
                 }
             }
             if (lambdaClassifier.diagFragment != null) {
-                log.error(DiagnosticFlag.SYNTAX, pos, Errors.InvalidLambdaParameterDeclaration(lambdaClassifier.diagFragment));
+                syntaxError(pos, Errors.InvalidLambdaParameterDeclaration(lambdaClassifier.diagFragment));
             }
             for (JCVariableDecl param: params) {
                 if (param.vartype != null
@@ -2358,7 +2452,7 @@ public class JavacParser implements Parser {
         JCExpression mi = F.at(pos).Apply(typeArgs, t, args);
         if (t.hasTag(IDENT) && isInvalidUnqualifiedMethodIdentifier(((JCIdent) t).pos,
                                                                     ((JCIdent) t).name)) {
-            log.error(DiagnosticFlag.SYNTAX, t, Errors.InvalidYield);
+            syntaxError(t.pos, Errors.InvalidYield);
             mi = F.Erroneous(List.of(mi));
         }
         return toP(mi);
@@ -2917,7 +3011,7 @@ public class JavacParser implements Parser {
                 break;
             }
             if (error != null) {
-                log.error(DiagnosticFlag.SYNTAX, first, error);
+                syntaxError(first.pos, error);
                 List<JCBlock> blist = List.of(F.at(first.pos).Block(0, stats));
                 return toP(F.at(pos).Exec(F.at(first.pos).Erroneous(blist)));
             }
@@ -2961,7 +3055,7 @@ public class JavacParser implements Parser {
             return List.of(classOrRecordOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
         case ENUM:
             if (!allowRecords) {
-                log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.LocalEnum);
+                syntaxError(token.pos, Errors.LocalEnum);
             }
             dc = token.docComment();
             return List.of(classOrRecordOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
@@ -3020,14 +3114,14 @@ public class JavacParser implements Parser {
                 //else intentional fall-through
             } else {
                 if (isNonSealedClassStart(true)) {
-                    log.error(token.pos, Errors.SealedOrNonSealedLocalClassesNotAllowed);
+                    syntaxError(token.pos, Errors.SealedOrNonSealedLocalClassesNotAllowed);
                     nextToken();
                     nextToken();
                     nextToken();
                     return List.of(classOrRecordOrInterfaceOrEnumDeclaration(modifiersOpt(), token.docComment()));
                 } else if (isSealedClassStart(true)) {
                     checkSourceLevel(Feature.SEALED_CLASSES);
-                    log.error(token.pos, Errors.SealedOrNonSealedLocalClassesNotAllowed);
+                    syntaxError(token.pos, Errors.SealedOrNonSealedLocalClassesNotAllowed);
                     nextToken();
                     return List.of(classOrRecordOrInterfaceOrEnumDeclaration(modifiersOpt(), token.docComment()));
                 }
@@ -3164,7 +3258,7 @@ public class JavacParser implements Parser {
                 }
             } else {
                 if (resources.isEmpty()) {
-                    log.error(DiagnosticFlag.SYNTAX, pos, Errors.TryWithoutCatchFinallyOrResourceDecls);
+                    syntaxError(pos, Errors.TryWithoutCatchFinallyOrResourceDecls);
                 }
             }
             return F.at(pos).Try(resources, body, catchers.toList(), finalizer);
@@ -3335,7 +3429,7 @@ public class JavacParser implements Parser {
                 caseKind = JCCase.RULE;
                 JCStatement statement = parseStatementAsBlock();
                 if (!statement.hasTag(EXEC) && !statement.hasTag(BLOCK) && !statement.hasTag(Tag.THROW)) {
-                    log.error(statement.pos(), Errors.SwitchCaseUnexpectedStatement);
+                    syntaxError(statement.pos, Errors.SwitchCaseUnexpectedStatement);
                 }
                 stats = List.of(statement);
                 body = stats.head;
@@ -3361,7 +3455,7 @@ public class JavacParser implements Parser {
                 caseKind = JCCase.RULE;
                 JCStatement statement = parseStatementAsBlock();
                 if (!statement.hasTag(EXEC) && !statement.hasTag(BLOCK) && !statement.hasTag(Tag.THROW)) {
-                    log.error(statement.pos(), Errors.SwitchCaseUnexpectedStatement);
+                    syntaxError(statement.pos, Errors.SwitchCaseUnexpectedStatement);
                 }
                 stats = List.of(statement);
                 body = stats.head;
@@ -3543,7 +3637,7 @@ public class JavacParser implements Parser {
             if (wasTypeMode() && LAX_IDENTIFIER.match(S)) {
                 return variableDeclarators(modifiersOpt(), t, stats, true).toList();
             } else if (wasTypeMode() && token.kind == COLON) {
-                log.error(DiagnosticFlag.SYNTAX, pos, Errors.BadInitializer("for-loop"));
+                syntaxError(pos, Errors.BadInitializer("for-loop"));
                 return List.of((JCStatement)F.at(pos).VarDef(modifiersOpt(), names.error, t, null));
             } else {
                 return moreStatementExpressions(pos, t, stats).toList();
@@ -3642,7 +3736,7 @@ public class JavacParser implements Parser {
             }
             default: break loop;
             }
-            if ((flags & flag) != 0) log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+            if ((flags & flag) != 0) syntaxError(token.pos, Errors.RepeatedModifier);
             lastPos = token.pos;
             nextToken();
             if (flag == Flags.ANNOTATION) {
@@ -3822,7 +3916,7 @@ public class JavacParser implements Parser {
 
         if (Feature.UNNAMED_VARIABLES.allowedInSource(source) && name == names.underscore) {
             if (!localDecl) {
-                log.error(DiagnosticFlag.SYNTAX, pos, Errors.UseOfUnderscoreNotAllowed);
+                syntaxError(pos, Errors.UseOfUnderscoreNotAllowed);
             }
             name = names.empty;
         }
@@ -3944,13 +4038,13 @@ public class JavacParser implements Parser {
             } else {
                 if (allowThisIdent) {
                     if ((mods.flags & Flags.VARARGS) != 0) {
-                        log.error(token.pos, Errors.VarargsAndReceiver);
+                        syntaxError(token.pos, Errors.VarargsAndReceiver);
                     }
                     if (token.kind == LBRACKET) {
-                        log.error(token.pos, Errors.ArrayAndReceiver);
+                        syntaxError(token.pos, Errors.ArrayAndReceiver);
                     }
                     if (pn.hasTag(Tag.SELECT) && ((JCFieldAccess)pn).name != names._this) {
-                        log.error(token.pos, Errors.WrongReceiver);
+                        syntaxError(token.pos, Errors.WrongReceiver);
                     }
                 }
                 return toP(F.at(pos).ReceiverVarDef(mods, pn, type));
@@ -3967,10 +4061,10 @@ public class JavacParser implements Parser {
         }
         if ((mods.flags & Flags.VARARGS) != 0 &&
                 token.kind == LBRACKET) {
-            log.error(token.pos, Errors.VarargsAndOldArraySyntax);
+            syntaxError(token.pos, Errors.VarargsAndOldArraySyntax);
         }
         if (recordComponent && token.kind == LBRACKET) {
-            log.error(token.pos, Errors.RecordComponentAndOldArraySyntax);
+            syntaxError(token.pos, Errors.RecordComponentAndOldArraySyntax);
         }
         type = bracketsOpt(type);
 
@@ -4020,7 +4114,7 @@ public class JavacParser implements Parser {
         } else {
             checkSourceLevel(Feature.EFFECTIVELY_FINAL_VARIABLES_IN_TRY_WITH_RESOURCES);
             if (!t.hasTag(IDENT) && !t.hasTag(SELECT)) {
-                log.error(t.pos(), Errors.TryWithResourcesExprNeedsVar);
+                syntaxError(t.pos, Errors.TryWithResourcesExprNeedsVar);
             }
 
             return t;
@@ -4131,7 +4225,7 @@ public class JavacParser implements Parser {
                 // is the same as in the past.
                 if (!isDeclaration(true)) {
                     final JCModifiers finalMods = mods;
-                    JavacParser speculative = new VirtualParser(this);
+                    JavacParser speculative = new VirtualParser(this, 0);
                     List<JCTree> speculativeResult =
                             speculative.topLevelMethodOrFieldDeclaration(finalMods, null);
                     if (speculativeResult.head.hasTag(METHODDEF) ||
@@ -4183,7 +4277,7 @@ public class JavacParser implements Parser {
 
         for (JCTree def : origDefs) {
             if (def.hasTag(Tag.PACKAGEDEF)) {
-                log.error(def.pos(), Errors.ImplicitClassShouldNotHavePackageDeclaration);
+                syntaxError(def.pos, Errors.ImplicitClassShouldNotHavePackageDeclaration);
             } else if (def.hasTag(Tag.IMPORT) || def.hasTag(Tag.MODULEIMPORT)) {
                 topDefs.append(def);
             } else if (!def.hasTag(Tag.SKIP)) {
@@ -4198,7 +4292,7 @@ public class JavacParser implements Parser {
             simplename = simplename.substring(0, simplename.length() - ".java".length());
         }
         if (!SourceVersion.isIdentifier(simplename) || SourceVersion.isKeyword(simplename)) {
-            log.error(primaryPos, Errors.BadFileName(simplename));
+            syntaxError(primaryPos, Errors.BadFileName(simplename));
         }
 
         Name name = names.fromString(simplename);
@@ -4249,7 +4343,7 @@ public class JavacParser implements Parser {
                                     break loop;
                                 }
                                 if (isTransitive) {
-                                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+                                    syntaxError(token.pos, Errors.RepeatedModifier);
                                 }
                                 isTransitive = true;
                                 break;
@@ -4258,7 +4352,7 @@ public class JavacParser implements Parser {
                             }
                         case STATIC:
                             if (isStaticPhase) {
-                                log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+                                syntaxError(token.pos, Errors.RepeatedModifier);
                             }
                             isStaticPhase = true;
                             break;
@@ -4295,7 +4389,7 @@ public class JavacParser implements Parser {
                     nextToken();
                     implNames = qualidentList(false);
                 } else {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.ExpectedStr("'" + names.with + "'"));
+                    syntaxError(token.pos, Errors.ExpectedStr("'" + names.with + "'"));
                     implNames = List.nil();
                 }
                 accept(SEMI);
@@ -4511,7 +4605,7 @@ public class JavacParser implements Parser {
         if (allowSealedTypes && token.kind == IDENTIFIER && token.name() == names.permits) {
             checkSourceLevel(Feature.SEALED_CLASSES);
             if ((mods.flags & Flags.SEALED) == 0) {
-                log.error(token.pos, Errors.InvalidPermitsClause(Fragments.ClassIsNotSealed(classOrInterface)));
+                syntaxError(token.pos, Errors.InvalidPermitsClause(Fragments.ClassIsNotSealed(classOrInterface)));
             }
             nextToken();
             return qualidentList(false);
@@ -4535,7 +4629,7 @@ public class JavacParser implements Parser {
             int errorPosition = typarams == null
                     ? typeNamePos
                     : typarams.head.pos;
-            log.error(DiagnosticFlag.SYNTAX, errorPosition, Errors.EnumCantBeGeneric);
+            syntaxError(errorPosition, Errors.EnumCantBeGeneric);
         }
 
         List<JCExpression> implementing = List.nil();
@@ -4777,9 +4871,9 @@ public class JavacParser implements Parser {
                        (mods.flags & Flags.StandardFlags & ~Flags.STATIC) == 0 &&
                        mods.annotations.isEmpty()) {
                 if (isInterface) {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.InitializerNotAllowed);
+                    syntaxError(token.pos, Errors.InitializerNotAllowed);
                 } else if (isRecord && (mods.flags & Flags.STATIC) == 0) {
-                    log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.InstanceInitializerNotAllowedInRecords);
+                    syntaxError(token.pos, Errors.InstanceInitializerNotAllowedInRecords);
                 }
                 ignoreDanglingComments();   // no declaration with which dangling comments can be associated
                 return List.of(block(pos, mods.flags));
@@ -4832,7 +4926,7 @@ public class JavacParser implements Parser {
         if ((token.kind == LPAREN && !isInterface ||
                 isRecord && token.kind == LBRACE) && type.hasTag(IDENT)) {
             if (isInterface || tk.name() != className) {
-                log.error(DiagnosticFlag.SYNTAX, pos, Errors.InvalidMethDeclRetTypeReq);
+                syntaxError(pos, Errors.InvalidMethDeclRetTypeReq);
             } else if (annosAfterParams.nonEmpty()) {
                 illegal(annosAfterParams.head.pos);
             }
@@ -4849,7 +4943,7 @@ public class JavacParser implements Parser {
         // Record constructor
         if (isRecord && type.hasTag(IDENT) && token.kind == THROWS) {
             // trying to define a compact constructor with a throws clause
-            log.error(DiagnosticFlag.SYNTAX, token.pos,
+            syntaxError(token.pos,
                     Errors.InvalidCanonicalConstructorInRecord(
                             Fragments.Compact,
                             className,
@@ -4958,7 +5052,7 @@ public class JavacParser implements Parser {
                 return defs;
             }
         } else if (token.kind == LPAREN && type.hasTag(IDENT)) {
-            log.error(DiagnosticFlag.SYNTAX, pos, Errors.InvalidMethDeclRetTypeReq);
+            syntaxError(pos, Errors.InvalidMethDeclRetTypeReq);
 
             return List.of(methodDeclaratorRest(
                     pos, mods, null, names.init, typarams,
@@ -5171,7 +5265,7 @@ public class JavacParser implements Parser {
                     //check if adding an opening brace would balance out
                     //the opening and closing braces:
                     int braceBalance = 1;
-                    VirtualScanner virtualScanner = new VirtualScanner(S);
+                    VirtualScanner virtualScanner = new VirtualScanner(S, 0);
 
                     virtualScanner.nextToken();
 
@@ -5190,7 +5284,7 @@ public class JavacParser implements Parser {
                     //if the result would suggest there is a block
                     //e.g.: it contains a statement that is not
                     //a member declaration
-                    JavacParser speculative = new VirtualParser(this);
+                    JavacParser speculative = new VirtualParser(this, 0);
                     JCBlock speculativeResult =
                             speculative.block();
                     if (!speculativeResult.stats.isEmpty()) {
@@ -5315,7 +5409,7 @@ public class JavacParser implements Parser {
             this.allowThisIdent = false;
             while (token.kind == COMMA) {
                 if ((lastParam.mods.flags & Flags.VARARGS) != 0) {
-                    log.error(DiagnosticFlag.SYNTAX, lastParam, Errors.VarargsMustBeLast);
+                    syntaxError(lastParam.pos, Errors.VarargsMustBeLast);
                 }
                 nextToken();
                 params.append(lastParam = formalParameter(lambdaParameters, recordComponents));
@@ -5432,7 +5526,7 @@ public class JavacParser implements Parser {
     protected JCVariableDecl formalParameter(boolean lambdaParameter, boolean recordComponent) {
         JCModifiers mods = !recordComponent ? optFinal(Flags.PARAMETER) : modifiersOpt();
         if (recordComponent && mods.flags != 0) {
-            log.error(mods.pos, Errors.RecordCantDeclareFieldModifiers);
+            syntaxError(mods.pos, Errors.RecordCantDeclareFieldModifiers);
         }
         if (recordComponent) {
             mods.flags |= Flags.RECORD | Flags.FINAL | Flags.PRIVATE | Flags.GENERATED_MEMBER;
@@ -5471,7 +5565,7 @@ public class JavacParser implements Parser {
     protected JCExpression checkExprStat(JCExpression t) {
         if (!TreeInfo.isExpressionStatement(t)) {
             JCExpression ret = F.at(t.pos).Erroneous(List.<JCTree>of(t));
-            log.error(DiagnosticFlag.SYNTAX, ret, Errors.NotStmt);
+            syntaxError(ret.pos, Errors.NotStmt);
             return ret;
         } else {
             return t;
@@ -5625,10 +5719,10 @@ public class JavacParser implements Parser {
     protected void checkSourceLevel(int pos, Feature feature) {
         if (preview.isPreview(feature) && !preview.isEnabled()) {
             //preview feature without --preview flag, error
-            log.error(pos, preview.disabledError(feature));
+            syntaxError(pos, preview.disabledError(feature));
         } else if (!feature.allowedInSource(source)) {
             //incompatible source level, error
-            log.error(pos, feature.error(source.name));
+            syntaxError(pos, feature.error(source.name));
         } else if (preview.isPreview(feature)) {
             //use of preview feature, warn
             preview.warnPreview(pos, feature);

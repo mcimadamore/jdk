@@ -52,8 +52,8 @@ public class VirtualParser extends JavacParser {
 
     private boolean hasErrors;
 
-    public VirtualParser(JavacParser parser) {
-        super(parser, new VirtualScanner(parser.S));
+    public VirtualParser(JavacParser parser, int lookahead) {
+        super(parser, new VirtualScanner(parser.S, lookahead));
     }
 
     @Override
@@ -93,7 +93,7 @@ public class VirtualParser extends JavacParser {
 
         /** Token offset from where parent scanner branched.
          */
-        int offset = 0;
+        int offset;
 
         /** The token, set by nextToken().
          */
@@ -103,14 +103,15 @@ public class VirtualParser extends JavacParser {
          */
         private Token prevToken;
 
-        public VirtualScanner(Lexer s) {
+        public VirtualScanner(Lexer s, int offset) {
             while (s instanceof VirtualScanner virtualScanner) {
                 s = virtualScanner.S;
                 offset += virtualScanner.offset;
             }
+            this.offset = offset;
             S = s;
-            token = s.token();
-            prevToken = S.prevToken();
+            token = s.token(offset);
+            prevToken = offset == 0 ? S.prevToken() : S.token(offset - 1);
         }
 
         @Override
@@ -184,7 +185,7 @@ public class VirtualParser extends JavacParser {
      * @return true if successful
      */
     public static boolean tryParse(JavacParser parser, Consumer<JavacParser> parserAction) {
-        VirtualParser virtualParser = new VirtualParser(parser);
+        VirtualParser virtualParser = new VirtualParser(parser, 0);
         try {
             parserAction.accept(virtualParser);
             return true;
