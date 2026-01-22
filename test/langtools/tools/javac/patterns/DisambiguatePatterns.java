@@ -42,7 +42,13 @@ import com.sun.tools.javac.parser.JavacParser;
 import com.sun.tools.javac.parser.ParserFactory;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.main.Option;
+import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Options;
+
+import javax.tools.JavaFileObject.Kind;
+import javax.tools.SimpleJavaFileObject;
+import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.Charset;
 
 public class DisambiguatePatterns {
@@ -116,12 +122,14 @@ public class DisambiguatePatterns {
     }
 
     private final ParserFactory factory;
+    private final Log log;
 
     public DisambiguatePatterns() {
         Context context = new Context();
         JavacFileManager jfm = new JavacFileManager(context, true, Charset.defaultCharset());
         Options.instance(context).put(Option.PREVIEW, "");
         factory = ParserFactory.instance(context);
+        log = Log.instance(context);
     }
 
     void disambiguationTest(String snippet, ExpressionType expectedType) {
@@ -135,6 +143,12 @@ public class DisambiguatePatterns {
                       }
                       """.replace("SNIPPET", snippet);
         JavacParser parser = factory.newParser(code, false, false, false);
+        log.useSource(new SimpleJavaFileObject(URI.create("file://Test.java"),  Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+                return code;
+            }
+        });
         CompilationUnitTree result = parser.parseCompilationUnit();
         ClassTree clazz = (ClassTree) result.getTypeDecls().get(0);
         MethodTree method = (MethodTree) clazz.getMembers().get(0);

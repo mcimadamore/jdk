@@ -3389,12 +3389,11 @@ public class JavacParser implements Parser {
             nextToken();
             label = toP(F.at(patternPos).DefaultCaseLabel());
         } else {
-            JCModifiers mods = optFinal(0);
-            boolean pattern = mods.flags != 0 || mods.annotations.nonEmpty() ||
-                              analyzePattern(0) == PatternResult.PATTERN;
-            if (pattern) {
+            var result = VirtualParser.tryParse(this, P -> P.parsePattern(patternPos, null, null, false, true));
+            if (isValidSpeculativePattern(result)) {
                 checkSourceLevel(token.pos, Feature.PATTERN_SWITCH);
-                JCPattern p = parsePattern(patternPos, mods, null, false, true);
+                result.commit();
+                JCPattern p = result.peek();
                 return toP(F.at(patternPos).PatternCaseLabel(p));
             } else {
                 JCExpression expr = term(EXPR | NOLAMBDA);
@@ -3403,6 +3402,49 @@ public class JavacParser implements Parser {
         }
 
         return label;
+    }
+
+    boolean isValidSpeculativePattern(VirtualParser.Result<JCPattern> result) {
+        class PatternScanner extends TreeScanner {
+            boolean error = false;
+            final boolean toplevel;
+
+            PatternScanner(boolean toplevel) {
+                this.toplevel = toplevel;
+            }
+
+            @Override
+            public void visitBindingPattern(JCBindingPattern tree) {
+                if (tree.var.name == names.error) {
+                    error = true; // missing binding name, not a binding pattern
+                }
+            }
+
+            @Override
+            public void visitRecordPattern(JCRecordPattern that) {
+                if (that.deconstructor == null || that.deconstructor.hasTag(ERRONEOUS)) {
+                    error = true; // missing record type, not a record pattern
+                } else if (that.nested.nonEmpty()) {
+                    // there should be at least one valid component
+                    error = that.nested.stream()
+                            .noneMatch(t -> new PatternScanner(false).isValid(t));
+                }
+            }
+
+            @Override
+            public void visitAnyPattern(JCAnyPattern that) {
+                if (toplevel) {
+                    error = true; // not allowed at top level!
+                }
+            }
+
+            boolean isValid(JCPattern pattern) {
+                pattern.accept(this);
+                return !error;
+            }
+        }
+        return result.isPresent() &&
+                new PatternScanner(true).isValid(result.peek());
     }
 
     private JCExpression parseGuard(JCCaseLabel label) {
@@ -3420,89 +3462,6 @@ public class JavacParser implements Parser {
         }
 
         return guard;
-    }
-    @SuppressWarnings("fallthrough")
-    PatternResult analyzePattern(int lookahead) {
-        int typeDepth = 0;
-        int parenDepth = 0;
-        PatternResult pendingResult = PatternResult.EXPRESSION;
-        while (true) {
-            TokenKind token = S.token(lookahead).kind;
-            switch (token) {
-                case BYTE: case SHORT: case INT: case LONG: case FLOAT:
-                case DOUBLE: case BOOLEAN: case CHAR: case VOID:
-                case ASSERT, ENUM, IDENTIFIER:
-                    if (typeDepth == 0 && peekToken(lookahead, LAX_IDENTIFIER)) {
-                        if (parenDepth == 0) {
-                            return PatternResult.PATTERN;
-                        } else {
-                            pendingResult = PatternResult.PATTERN;
-                        }
-                    } else if (typeDepth == 0 && parenDepth == 0 && (peekToken(lookahead, tk -> tk == ARROW || tk == COMMA))) {
-                        return PatternResult.EXPRESSION;
-                    }
-                    break;
-                case UNDERSCORE:
-                    // TODO: REFACTOR to remove the code duplication
-                    if (typeDepth == 0 && peekToken(lookahead, tk -> tk == RPAREN || tk == COMMA)) {
-                        return PatternResult.PATTERN;
-                    } else if (typeDepth == 0 && peekToken(lookahead, LAX_IDENTIFIER)) {
-                        if (parenDepth == 0) {
-                            return PatternResult.PATTERN;
-                        } else {
-                            pendingResult = PatternResult.PATTERN;
-                        }
-                    }
-                    break;
-                case DOT, QUES, EXTENDS, SUPER, COMMA: break;
-                case LT: typeDepth++; break;
-                case GTGTGT: typeDepth--;
-                case GTGT: typeDepth--;
-                case GT:
-                    typeDepth--;
-                    if (typeDepth == 0 && !peekToken(lookahead, DOT)) {
-                         return peekToken(lookahead, LAX_IDENTIFIER) ||
-                                peekToken(lookahead, tk -> tk == LPAREN) ? PatternResult.PATTERN
-                                                                         : PatternResult.EXPRESSION;
-                    } else if (typeDepth < 0) return PatternResult.EXPRESSION;
-                    break;
-                case MONKEYS_AT:
-                    lookahead = skipAnnotation(lookahead);
-                    break;
-                case LBRACKET:
-                    if (peekToken(lookahead, RBRACKET, LAX_IDENTIFIER)) {
-                        return PatternResult.PATTERN;
-                    } else if (peekToken(lookahead, RBRACKET)) {
-                        lookahead++;
-                        break;
-                    } else {
-                        // This is a potential guard, if we are already in a pattern
-                        return pendingResult;
-                    }
-                case LPAREN:
-                    if (S.token(lookahead + 1).kind == RPAREN) {
-                        return parenDepth != 0 && S.token(lookahead + 2).kind == ARROW
-                                ? PatternResult.EXPRESSION
-                                : PatternResult.PATTERN;
-                    }
-                    parenDepth++; break;
-                case RPAREN:
-                    parenDepth--;
-                    if (parenDepth == 0 &&
-                        typeDepth == 0 &&
-                        peekToken(lookahead, TokenKind.IDENTIFIER) &&
-                        S.token(lookahead + 1).name() == names.when) {
-                        return PatternResult.PATTERN;
-                    }
-                    break;
-                case ARROW: return parenDepth > 0 ? PatternResult.EXPRESSION
-                                                   : pendingResult;
-                case FINAL:
-                    if (parenDepth > 0) return PatternResult.PATTERN;
-                default: return pendingResult;
-            }
-            lookahead++;
-        }
     }
 
     private enum PatternResult {
