@@ -187,4 +187,19 @@ public class IntHashTable {
         }
         num_bindings = 0;
     }
+
+    /**
+     * Duplicates all mappings from this map to another map.
+     * @@@: This is very slow
+     */
+    public void dupTo(IntHashTable other) {
+        for (int i = objs.length; --i >= 0;) {
+            if (objs[i] != null) {
+                int val = get(objs[i]);
+                if (val != -1) {
+                    other.put(objs[i], val);
+                }
+            }
+        }
+    }
 }

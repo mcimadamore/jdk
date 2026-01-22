@@ -105,12 +105,4 @@ public interface Lexer {
      * token.
      */
     Queue<Comment> getDocComments();
-
-    /**
-     * Report a warning that is subject to possible suppression by {@code @SuppressWarnings}.
-     *
-     * @param pos the lexical position at which the warning occurs
-     * @param key the warning to report
-     */
-    void lintWarning(DiagnosticPosition pos, LintWarning key);
 }

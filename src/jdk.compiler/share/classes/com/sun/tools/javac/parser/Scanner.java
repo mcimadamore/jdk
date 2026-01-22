@@ -152,11 +152,6 @@ public class Scanner implements Lexer {
         return docComments;
     }
 
-    @Override
-    public void lintWarning(DiagnosticPosition pos, LintWarning key) {
-        tokenizer.log.warning(pos, key);
-    }
-
     public int errPos() {
         return tokenizer.errPos();
     }

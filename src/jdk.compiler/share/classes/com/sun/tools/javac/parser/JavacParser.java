@@ -99,7 +99,7 @@ public class JavacParser implements Parser {
 
     /** The log to be used for error diagnostics.
      */
-    private Log log;
+    protected Log log;
 
     /** The Source language setting. */
     private Source source;
@@ -218,7 +218,8 @@ public class JavacParser implements Parser {
         this.parseModuleInfo = false;
         this.docComments = parser.docComments;
         this.errorTree = F.Erroneous();
-        this.endPosTable = newEndPosTable(false);
+        this.endPosTable = parser.endPosTable instanceof MinimalEndPosTable ?
+                newEndPosTable(false) : newEndPosTable(true);
         this.allowYieldStatement = Feature.SWITCH_EXPRESSION.allowedInSource(source);
         this.allowRecords = Feature.RECORDS.allowedInSource(source);
         this.allowSealedTypes = Feature.SEALED_CLASSES.allowedInSource(source);
@@ -663,7 +664,7 @@ public class JavacParser implements Parser {
         var pos = c.getPos();
         if (pos != null && !shebang(c, pos)) {
             pos = pos.withLintPosition(tree.getStartPosition());
-            S.lintWarning(pos, LintWarnings.DanglingDocComment);
+            log.warning(pos, LintWarnings.DanglingDocComment);
         }
     }
 
@@ -4117,7 +4118,8 @@ public class JavacParser implements Parser {
                 }
 
                 defs.appendList(semiList.toList());
-                boolean isTopLevelMethodOrField = false;
+                List<JCTree> implicitClassDefs = null;
+                int savedPos = token.pos;
 
                 // Due to a significant number of existing negative tests
                 // this code speculatively tests to see if a top level method
@@ -4127,18 +4129,21 @@ public class JavacParser implements Parser {
                 // is the same as in the past.
                 if (!isDeclaration(true)) {
                     final JCModifiers finalMods = mods;
-                    JavacParser speculative = new VirtualParser(this);
-                    List<JCTree> speculativeResult =
-                            speculative.topLevelMethodOrFieldDeclaration(finalMods, null);
+                    final Tokens.Comment finalDocComment = docComment;
+                    var result = VirtualParser.tryParse(this, P -> P.topLevelMethodOrFieldDeclaration(finalMods, finalDocComment));
+                    List<JCTree> speculativeResult = result.peek();
                     if (speculativeResult.head.hasTag(METHODDEF) ||
                         speculativeResult.head.hasTag(VARDEF)) {
-                        isTopLevelMethodOrField = true;
+                        implicitClassDefs = speculativeResult;
+                        result.commit();
+                    } else {
+                        result.discard();
                     }
                 }
 
-                if (isTopLevelMethodOrField) {
-                    checkSourceLevel(token.pos, Feature.IMPLICIT_CLASSES);
-                    defs.appendList(topLevelMethodOrFieldDeclaration(mods, docComment));
+                if (implicitClassDefs != null) {
+                    checkSourceLevel(savedPos, Feature.IMPLICIT_CLASSES);
+                    defs.appendList(implicitClassDefs);
                     isImplicitClass = true;
                 } else if (isDefiniteStatementStartToken()) {
                     int startPos = token.pos;
@@ -5186,12 +5191,12 @@ public class JavacParser implements Parser {
                     //if the result would suggest there is a block
                     //e.g.: it contains a statement that is not
                     //a member declaration
-                    JavacParser speculative = new VirtualParser(this);
-                    JCBlock speculativeResult =
-                            speculative.block();
-                    if (!speculativeResult.stats.isEmpty()) {
-                        JCStatement last = speculativeResult.stats.last();
-                        yield !speculativeResult.stats.stream().allMatch(s -> s.hasTag(VARDEF) ||
+                    var result = VirtualParser.tryParse(this, JavacParser::block);
+                    var block = result.peek();
+                    result.discard();
+                    if (!block.stats.isEmpty()) {
+                        JCStatement last = block.stats.last();
+                        yield !block.stats.stream().allMatch(s -> s.hasTag(VARDEF) ||
                                 s.hasTag(CLASSDEF) ||
                                 s.hasTag(BLOCK) ||
                                 s == last) ||
@@ -5672,6 +5677,11 @@ public class JavacParser implements Parser {
             }
             return pos;
         }
+
+        @Override
+        void dupTo(EndPosTable that) {
+            endPosMap.dupTo(((SimpleEndPosTable)that).endPosMap);
+        }
     }
 
     /**
@@ -5708,5 +5718,7 @@ public class JavacParser implements Parser {
                 errorEndPos = errPos;
             }
         }
+
+        abstract void dupTo(EndPosTable that);
     }
 }

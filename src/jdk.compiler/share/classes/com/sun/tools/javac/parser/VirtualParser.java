@@ -28,12 +28,18 @@ package com.sun.tools.javac.parser;
 import com.sun.tools.javac.parser.Tokens.Token;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCErroneous;
+import com.sun.tools.javac.util.Assert;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.JCDiagnostic.Error;
 import com.sun.tools.javac.util.JCDiagnostic.LintWarning;
 import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Log;
+import com.sun.tools.javac.util.Log.DeferredDiagnosticHandler;
 import com.sun.tools.javac.util.Position.LineMap;
 
+import javax.tools.Diagnostic.Kind;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.function.Consumer;
@@ -50,37 +56,19 @@ import java.util.function.Function;
  */
 public class VirtualParser extends JavacParser {
 
-    private boolean hasErrors;
+    Log.DeferredDiagnosticHandler deferredDiagnosticHandler;
+    final JavacParser parentParser;
 
-    public VirtualParser(JavacParser parser) {
+    private VirtualParser(JavacParser parser) {
         super(parser, new VirtualScanner(parser.S));
+        deferredDiagnosticHandler = log.new DeferredDiagnosticHandler();
+        this.parentParser = parser;
     }
 
-    @Override
-    protected JCErroneous syntaxError(int pos, Error errorKey) {
-        hasErrors = true;
-        return F.Erroneous();
-    }
-
-    @Override
-    protected JCErroneous syntaxError(int pos, List<? extends JCTree> errs, Error errorKey) {
-        hasErrors = true;
-        return F.Erroneous();
-    }
-
-    @Override
-    protected void reportSyntaxError(int pos, Error errorKey) {
-        hasErrors = true;
-    }
-
-    @Override
-    protected void reportSyntaxError(DiagnosticPosition diagPos, Error errorKey) {
-        hasErrors = true;
-    }
-
-    public boolean hasErrors() {
-        return hasErrors;
-    }
+//    public VirtualParser(JavacParser parser, boolean alt) {
+//        super(parser, new VirtualScanner(parser.S));
+//        //deferredDiagnosticHandler = log.new DeferredDiagnosticHandler();
+//    }
 
     /**
      * Scanner that does token lookahead and throws AssertionErrors if an error
@@ -102,6 +90,11 @@ public class VirtualParser extends JavacParser {
         /** The previous token, set by nextToken().
          */
         private Token prevToken;
+
+        /**
+         * Return the position where a lexical error occurred;
+         */
+        int errPos;
 
         public VirtualScanner(Lexer s) {
             while (s instanceof VirtualScanner virtualScanner) {
@@ -155,23 +148,40 @@ public class VirtualParser extends JavacParser {
 
         @Override
         public int errPos() {
-            return S.errPos();
+            return errPos;
         }
 
         @Override
         public void errPos(int pos) {
-            S.errPos(pos);
+            errPos = pos;
         }
 
         @Override
         public LineMap getLineMap() {
             return S.getLineMap();
         }
+    }
 
-        @Override
-        public void lintWarning(DiagnosticPosition pos, LintWarning key) {
-           // ignore
+    private void commit() {
+        // flush diagnostics and make sure that the err pos is propagated to the outer lexer
+        deferredDiagnosticHandler.reportDeferredDiagnostics();
+        // set last error pos
+        parentParser.S.errPos(S.errPos());
+        // advance scanner to current position
+        for (int i = 0 ; i < ((VirtualScanner)S).offset ; i++) {
+            parentParser.nextToken();
         }
+        Assert.check(parentParser.token.pos == token.pos);
+        Assert.check(parentParser.S.prevToken().pos == S.prevToken().pos);
+        // merge end pos table entries
+        endPosTable.dupTo(parentParser.endPosTable);
+        // cleanup resources
+        cleanup();
+    }
+
+    private void cleanup() {
+        deferredDiagnosticHandler = null;
+        S = null;
     }
 
     /**
@@ -183,13 +193,71 @@ public class VirtualParser extends JavacParser {
      *
      * @return true if successful
      */
-    public static boolean tryParse(JavacParser parser, Consumer<JavacParser> parserAction) {
+    public static <R> Result<R> tryParse(JavacParser parser, Function<JavacParser, R> parserAction) {
         VirtualParser virtualParser = new VirtualParser(parser);
         try {
-            parserAction.accept(virtualParser);
-            return true;
+            return virtualParser.new Result<>(parserAction.apply(virtualParser));
         } catch (AssertionError ex) {
-            return false;
+            return virtualParser.new Result<>(null);
+        } finally {
+            virtualParser.log.popDiagnosticHandler(virtualParser.deferredDiagnosticHandler);
+        }
+    }
+
+    /**
+     * The result of a trial parser run. A result is parameterized in the result type of the function
+     * passed to {@link #tryParse(JavacParser, Function)}. The result contains detailed information
+     * about any diagnostic that has been generated during parsing, as well as the result of the parse
+     * action. Clients can inspect, without committing, to the results of a trial parser run using
+     * the {@link #peek()} method. Alternatively, they can <em>commit</em> to a specific
+     * trial parser run using the {@link #get()} method. When this method is called, any diagnostic
+     * that has been generated during the trial parser run will be emitted.
+     * @param <X> the result type
+     */
+    public class Result<X> {
+        private final X x;
+
+        private Result(X x) {
+            this.x = x;
+        }
+
+        /**
+         * {@return {@code true}, if the trial parser run completed normally}
+         */
+        public boolean isPresent() {
+            return x != null;
+        }
+
+        /**
+         * {@return {@code true}, if the trial parser run generated some error diagnostics}
+         */
+        public boolean hasErrors() {
+            return deferredDiagnosticHandler.getDiagnostics().stream()
+                    .anyMatch(d -> d.getKind() == Kind.ERROR);
+        }
+
+        /**
+         * {@return {@code true}, if the trial parser run generated some warning diagnostics}
+         */
+        public boolean hasWarnings() {
+            return deferredDiagnosticHandler.getDiagnostics().stream()
+                    .anyMatch(d -> d.getKind() == Kind.WARNING);
+        }
+
+        /**
+         * {@return the result value, if present, of the trial parser action}
+         */
+        public X peek() {
+            Objects.requireNonNull(x);
+            return x;
+        }
+
+        public void commit() {
+            VirtualParser.this.commit();
+        }
+
+        public void discard() {
+            cleanup();
         }
     }
 }
