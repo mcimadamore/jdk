@@ -3390,10 +3390,9 @@ public class JavacParser implements Parser {
             label = toP(F.at(patternPos).DefaultCaseLabel());
         } else {
             var result = VirtualParser.tryParse(this, P -> P.parsePattern(patternPos, null, null, false, true));
-            if (isValidSpeculativePattern(result)) {
+            if (result.test(p -> isValidSpeculativePattern(p, true))) {
                 checkSourceLevel(token.pos, Feature.PATTERN_SWITCH);
-                result.commit();
-                JCPattern p = result.peek();
+                JCPattern p = result.getAndCommit();
                 return toP(F.at(patternPos).PatternCaseLabel(p));
             } else {
                 JCExpression expr = term(EXPR | NOLAMBDA);
@@ -3404,14 +3403,9 @@ public class JavacParser implements Parser {
         return label;
     }
 
-    boolean isValidSpeculativePattern(VirtualParser.Result<JCPattern> result) {
+    boolean isValidSpeculativePattern(JCPattern pattern, boolean toplevel) {
         class PatternScanner extends TreeScanner {
             boolean error = false;
-            final boolean toplevel;
-
-            PatternScanner(boolean toplevel) {
-                this.toplevel = toplevel;
-            }
 
             @Override
             public void visitBindingPattern(JCBindingPattern tree) {
@@ -3427,7 +3421,7 @@ public class JavacParser implements Parser {
                 } else if (that.nested.nonEmpty()) {
                     // there should be at least one valid component
                     error = that.nested.stream()
-                            .noneMatch(t -> new PatternScanner(false).isValid(t));
+                            .noneMatch(t -> isValidSpeculativePattern(t, false));
                 }
             }
 
@@ -3437,14 +3431,10 @@ public class JavacParser implements Parser {
                     error = true; // not allowed at top level!
                 }
             }
-
-            boolean isValid(JCPattern pattern) {
-                pattern.accept(this);
-                return !error;
-            }
         }
-        return result.isPresent() &&
-                new PatternScanner(true).isValid(result.peek());
+        var scanner = new PatternScanner();
+        pattern.accept(scanner);
+        return !scanner.error;
     }
 
     private JCExpression parseGuard(JCCaseLabel label) {
@@ -4077,8 +4067,7 @@ public class JavacParser implements Parser {
                 }
 
                 defs.appendList(semiList.toList());
-                List<JCTree> implicitClassDefs = null;
-                int savedPos = token.pos;
+                boolean isTopLevelMethodOrField = false;
 
                 // Due to a significant number of existing negative tests
                 // this code speculatively tests to see if a top level method
@@ -4090,27 +4079,23 @@ public class JavacParser implements Parser {
                     final JCModifiers finalMods = mods;
                     final Tokens.Comment finalDocComment = docComment;
                     var result = VirtualParser.tryParse(this, P -> P.topLevelMethodOrFieldDeclaration(finalMods, finalDocComment));
-                    List<JCTree> speculativeResult = result.peek();
-                    if (speculativeResult.head.hasTag(METHODDEF) ||
-                        speculativeResult.head.hasTag(VARDEF)) {
-                        implicitClassDefs = speculativeResult;
-                        result.commit();
-                    } else {
-                        result.discard();
+                    if (result.test(D ->
+                            D.head.hasTag(METHODDEF) || D.head.hasTag(VARDEF))) {
+                        checkSourceLevel(token.pos, Feature.IMPLICIT_CLASSES);
+                        defs.appendList(result.getAndCommit());
+                        isTopLevelMethodOrField = true;
                     }
                 }
 
-                if (implicitClassDefs != null) {
-                    checkSourceLevel(savedPos, Feature.IMPLICIT_CLASSES);
-                    defs.appendList(implicitClassDefs);
+                if (isTopLevelMethodOrField) {
                     isImplicitClass = true;
                 } else if (isDefiniteStatementStartToken()) {
                     int startPos = token.pos;
                     List<JCStatement> statements = blockStatement();
                     defs.append(syntaxError(startPos,
-                                            statements,
-                                            Errors.StatementNotExpected,
-                                            true));
+                            statements,
+                            Errors.StatementNotExpected,
+                            true));
                 } else {
                     JCTree def = typeDeclaration(mods, docComment);
                     if (def instanceof JCExpressionStatement statement)
@@ -5151,19 +5136,19 @@ public class JavacParser implements Parser {
                     //e.g.: it contains a statement that is not
                     //a member declaration
                     var result = VirtualParser.tryParse(this, JavacParser::block);
-                    var block = result.peek();
-                    result.discard();
-                    if (!block.stats.isEmpty()) {
-                        JCStatement last = block.stats.last();
-                        yield !block.stats.stream().allMatch(s -> s.hasTag(VARDEF) ||
-                                s.hasTag(CLASSDEF) ||
-                                s.hasTag(BLOCK) ||
-                                s == last) ||
-                            !(last instanceof JCExpressionStatement exprStatement &&
-                            exprStatement.expr.hasTag(ERRONEOUS));
-                    } else {
-                        yield false;
-                    }
+                    yield result.test(block -> {
+                        if (!block.stats.isEmpty()) {
+                            JCStatement last = block.stats.last();
+                            return !block.stats.stream().allMatch(s -> s.hasTag(VARDEF) ||
+                                    s.hasTag(CLASSDEF) ||
+                                    s.hasTag(BLOCK) ||
+                                    s == last) ||
+                                !(last instanceof JCExpressionStatement exprStatement &&
+                                exprStatement.expr.hasTag(ERRONEOUS));
+                        } else {
+                            return false;
+                        }
+                    });
                 }
             };
         }

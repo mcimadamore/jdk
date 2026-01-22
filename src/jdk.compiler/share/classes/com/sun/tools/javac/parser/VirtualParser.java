@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * The virtual parser allows for speculative parsing while not commiting to
@@ -175,13 +176,6 @@ public class VirtualParser extends JavacParser {
         Assert.check(parentParser.S.prevToken().pos == S.prevToken().pos);
         // merge end pos table entries
         endPosTable.dupTo(parentParser.endPosTable);
-        // cleanup resources
-        cleanup();
-    }
-
-    private void cleanup() {
-        deferredDiagnosticHandler = null;
-        S = null;
     }
 
     /**
@@ -209,9 +203,9 @@ public class VirtualParser extends JavacParser {
      * passed to {@link #tryParse(JavacParser, Function)}. The result contains detailed information
      * about any diagnostic that has been generated during parsing, as well as the result of the parse
      * action. Clients can inspect, without committing, to the results of a trial parser run using
-     * the {@link #peek()} method. Alternatively, they can <em>commit</em> to a specific
-     * trial parser run using the {@link #get()} method. When this method is called, any diagnostic
-     * that has been generated during the trial parser run will be emitted.
+     * the {@link #test(Predicate)} method. Alternatively, they can <em>commit</em> to a specific
+     * trial parser run using the {@link #getAndCommit()} ()} method. When this method is called,
+     * any diagnostic that has been generated during the trial parser run will be emitted.
      * @param <X> the result type
      */
     public class Result<X> {
@@ -245,19 +239,26 @@ public class VirtualParser extends JavacParser {
         }
 
         /**
+         * {@return {@code true} if this result indicates that the trial parser run completed
+         * normally, and if the result value matches the provided predicate.
+         * <p>
+         * Clients should refrain from holding onto the result value passed to the provided predicate
+         * (e.g. saving it in a field for further use outside the scope of the trial parser run). In such
+         * cases they should use {@link #getAndCommit()} instead.
+         *
+         * @param predicate a predicate used to the the result value associated with a trial parser run
+         */
+        public boolean test(Predicate<X> predicate) {
+            return isPresent() && predicate.test(x);
+        }
+
+        /**
          * {@return the result value, if present, of the trial parser action}
          */
-        public X peek() {
+        public X getAndCommit() {
             Objects.requireNonNull(x);
+            commit();
             return x;
-        }
-
-        public void commit() {
-            VirtualParser.this.commit();
-        }
-
-        public void discard() {
-            cleanup();
         }
     }
 }
