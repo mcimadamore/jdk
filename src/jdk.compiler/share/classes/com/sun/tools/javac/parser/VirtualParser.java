@@ -66,11 +66,6 @@ public class VirtualParser extends JavacParser {
         this.parentParser = parser;
     }
 
-//    public VirtualParser(JavacParser parser, boolean alt) {
-//        super(parser, new VirtualScanner(parser.S));
-//        //deferredDiagnosticHandler = log.new DeferredDiagnosticHandler();
-//    }
-
     /**
      * Scanner that does token lookahead and throws AssertionErrors if an error
      * occurs.
@@ -98,10 +93,10 @@ public class VirtualParser extends JavacParser {
         int errPos;
 
         public VirtualScanner(Lexer s) {
-            while (s instanceof VirtualScanner virtualScanner) {
-                s = virtualScanner.S;
-                offset += virtualScanner.offset;
-            }
+//            while (s instanceof VirtualScanner virtualScanner) {
+//                s = virtualScanner.S;
+//                offset += virtualScanner.offset;
+//            }
             S = s;
             token = s.token();
             prevToken = S.prevToken();
@@ -136,10 +131,19 @@ public class VirtualParser extends JavacParser {
 
         @Override
         public Token split() {
-            Token[] splitTokens = token.split(((Scanner)S).tokens);
+            // @@@: this can probably cause issues on commit
+            Token[] splitTokens = token.split(tokens());
             prevToken = splitTokens[0];
             token = splitTokens[1];
             return token;
+        }
+
+        private Tokens tokens() {
+            return switch (S) {
+                case Scanner s -> s.tokens;
+                case VirtualScanner vs -> vs.tokens();
+                default -> throw new AssertionError();
+            };
         }
 
         @Override
@@ -169,13 +173,16 @@ public class VirtualParser extends JavacParser {
         // set last error pos
         parentParser.S.errPos(S.errPos());
         // advance scanner to current position
-        for (int i = 0 ; i < ((VirtualScanner)S).offset ; i++) {
+        int start = 0;//parentParser instanceof VirtualParser vpp ? ((VirtualScanner)vpp.S).offset : 0;
+        for (int i = start ; i < ((VirtualScanner)S).offset ; i++) {
             parentParser.nextToken();
         }
         Assert.check(parentParser.token.pos == token.pos);
         Assert.check(parentParser.S.prevToken().pos == S.prevToken().pos);
         // merge end pos table entries
         endPosTable.dupTo(parentParser.endPosTable);
+        // propagate modes to parent parser
+        parentParser.mode = mode;
     }
 
     /**
@@ -191,7 +198,7 @@ public class VirtualParser extends JavacParser {
         VirtualParser virtualParser = new VirtualParser(parser);
         try {
             return virtualParser.new Result<>(parserAction.apply(virtualParser));
-        } catch (AssertionError ex) {
+        } catch (Throwable ex) {
             return virtualParser.new Result<>(null);
         } finally {
             virtualParser.log.popDiagnosticHandler(virtualParser.deferredDiagnosticHandler);
@@ -209,7 +216,7 @@ public class VirtualParser extends JavacParser {
      * @param <X> the result type
      */
     public class Result<X> {
-        private final X x;
+        public final X x;
 
         private Result(X x) {
             this.x = x;

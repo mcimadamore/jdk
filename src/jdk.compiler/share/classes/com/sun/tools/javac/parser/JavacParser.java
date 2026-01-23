@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import javax.lang.model.SourceVersion;
 
@@ -46,6 +47,7 @@ import com.sun.tools.javac.resources.CompilerProperties.LintWarnings;
 import com.sun.tools.javac.resources.CompilerProperties.Warnings;
 import com.sun.tools.javac.tree.*;
 import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.tree.JCTree.JCLambda.ParameterKind;
 import com.sun.tools.javac.util.*;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag;
 import com.sun.tools.javac.util.JCDiagnostic.Error;
@@ -208,6 +210,7 @@ public class JavacParser implements Parser {
                           Lexer S) {
         this.S = S;
         this.token = parser.token;
+        this.mode = parser.mode;
         this.F = parser.F;
         this.log = parser.log;
         this.names = parser.names;
@@ -1464,32 +1467,16 @@ public class JavacParser implements Parser {
             break;
         case LPAREN:
             if (typeArgs == null && isMode(EXPR)) {
-                ParensResult pres = analyzeParens();
-                switch (pres) {
-                    case CAST:
-                       accept(LPAREN);
-                       selectTypeMode();
-                       t = parseIntersectionType(pos, parseType());
-                       accept(RPAREN);
-                       selectExprMode();
-                       JCExpression t1 = term3();
-                       return F.at(pos).TypeCast(t, t1);
-                    case IMPLICIT_LAMBDA:
-                    case EXPLICIT_LAMBDA:
-                        t = lambdaExpressionOrStatement(true, pres == ParensResult.EXPLICIT_LAMBDA, pos);
-                        break;
-                    default: //PARENS
-                        accept(LPAREN);
-                        selectExprMode();
-                        t = termRest(term1Rest(term2Rest(term3(), TreeInfo.orPrec)));
-                        accept(RPAREN);
-                        t = toP(F.at(pos).Parens(t));
-                        break;
+                var res = parseParensSpeculative(pos);
+                var expr = res.getAndCommit();
+                if (expr.hasTag(TYPECAST)) {
+                    return expr;
                 }
+                t = expr;
+                break;
             } else {
                 return illegal();
             }
-            break;
         case THIS:
             if (isMode(EXPR)) {
                 selectExprMode();
@@ -1987,6 +1974,85 @@ public class JavacParser implements Parser {
         }
     }
 
+    JCTypeCast parseCast(int pos) {
+        accept(LPAREN);
+        selectTypeMode();
+        JCExpression t = parseIntersectionType(pos, parseType());
+        accept(RPAREN);
+        selectExprMode();
+        JCExpression t1 = term3();
+        return F.at(pos).TypeCast(t, t1);
+    }
+
+    JCParens parseParenthesized(int pos) {
+        accept(LPAREN);
+        selectExprMode();
+        JCExpression t = termRest(term1Rest(term2Rest(term3(), TreeInfo.orPrec)));
+        accept(RPAREN);
+        return toP(F.at(pos).Parens(t));
+    }
+
+    // Useful for debugging
+    List<TokenKind> tokens(int n) {
+        return IntStream.range(0, n).mapToObj(i -> S.token(i).kind)
+                .collect(List.collector());
+    }
+
+    VirtualParser.Result<? extends JCExpression> parseParensSpeculative(int startPos) {
+        if (!isMode(NOLAMBDA)) {
+            // 1. first try implicit lambdas
+            var implicitLambdaResult = VirtualParser.tryParse(this, P ->
+                    P.lambdaExpressionOrStatement(true, false, startPos));
+            if (!implicitLambdaResult.hasErrors()) {
+                return implicitLambdaResult;
+            }
+            // 2. then try explicit lambdas
+            var explicitLambdaResult = VirtualParser.tryParse(this, P ->
+                    P.lambdaExpressionOrStatement(true, true, startPos));
+            if (!explicitLambdaResult.hasErrors()) {
+                return explicitLambdaResult;
+            }
+            // @@@: this is likely too strict; a missing semi in a lambda body will lead to an erro
+            // which will mean the expression will not be classified as a lambda
+        }
+        // 3. then try cast
+        var castResult = VirtualParser.tryParse(this, P -> P.parseCast(startPos));
+        if (!castResult.hasErrors() && castResult.test(this::isValidCast)) {
+            return castResult;
+        }
+        // 4. assume it's an expression (even if it's not)
+        return VirtualParser.tryParse(this, P -> P.parseParenthesized(startPos));
+    }
+
+    // how do we write a good check that the lambda is sort of ok (even if not perfect) ?
+    boolean isValidLambda(JCLambda lambda) {
+        return lambda.params.stream()
+                .noneMatch(p -> p.hasTag(ERRONEOUS)) &&
+                !lambda.body.hasTag(ERRONEOUS);
+    }
+
+    boolean isValidCast(JCTypeCast cast) {
+        if (isPrimitive(cast.clazz)) {
+            return true;
+        }
+        if (cast.expr.hasTag(Tag.POS) ||
+                   cast.expr.hasTag(NEG) ||
+                   cast.expr.hasTag(PREINC) ||
+                   cast.expr.hasTag(PREDEC) ||
+                   cast.expr.hasTag(LITERAL) && cast.expr.toString().startsWith("-")) { // @@@: is there a better way to do this?
+            return false;
+        }
+        return true;
+    }
+
+    boolean isPrimitive(JCTree expr) {
+        return switch (expr.getTag()) {
+            case TYPEIDENT -> true;
+            case ANNOTATED_TYPE -> isPrimitive(((JCAnnotatedType)expr).underlyingType);
+            default -> false;
+        };
+    }
+
     /**
      * If we see an identifier followed by a '&lt;' it could be an unbound
      * method reference or a binary expression. To disambiguate, look for a
@@ -2171,7 +2237,7 @@ public class JavacParser implements Parser {
         PARENS
     }
 
-    JCExpression lambdaExpressionOrStatement(boolean hasParens, boolean explicitParams, int pos) {
+    JCLambda lambdaExpressionOrStatement(boolean hasParens, boolean explicitParams, int pos) {
         List<JCVariableDecl> params = explicitParams ?
                 formalParameters(true, false) :
                 implicitParameters(hasParens);
@@ -2273,7 +2339,7 @@ public class JavacParser implements Parser {
         }
     }
 
-    JCExpression lambdaExpressionOrStatementRest(List<JCVariableDecl> args, int pos) {
+    JCLambda lambdaExpressionOrStatementRest(List<JCVariableDecl> args, int pos) {
         accept(ARROW);
 
         return token.kind == LBRACE ?
@@ -2281,12 +2347,12 @@ public class JavacParser implements Parser {
             lambdaExpression(args, pos);
     }
 
-    JCExpression lambdaStatement(List<JCVariableDecl> args, int pos, int pos2) {
+    JCLambda lambdaStatement(List<JCVariableDecl> args, int pos, int pos2) {
         JCBlock block = block(pos2, 0);
         return toP(F.at(pos).Lambda(args, block));
     }
 
-    JCExpression lambdaExpression(List<JCVariableDecl> args, int pos) {
+    JCLambda lambdaExpression(List<JCVariableDecl> args, int pos) {
         JCTree expr = parseExpression();
         return toP(F.at(pos).Lambda(args, expr));
     }
