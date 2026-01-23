@@ -1980,8 +1980,19 @@ public class JavacParser implements Parser {
         JCExpression t = parseIntersectionType(pos, parseType());
         accept(RPAREN);
         selectExprMode();
-        JCExpression t1 = term3();
-        return F.at(pos).TypeCast(t, t1);
+        JCExpression expr;
+        if (!isPrimitive(t) &&
+                       (token.kind == PLUSPLUS ||
+                        token.kind == SUBSUB ||
+                        token.kind == TokenKind.PLUS ||
+                        token.kind == SUB)) {
+            // next token is not allowed in a reference cast
+            expr = F.at(pos).Erroneous();
+            illegal(pos);
+        } else {
+            expr = term3();
+        }
+        return F.at(pos).TypeCast(t, expr);
     }
 
     JCParens parseParenthesized(int pos) {
@@ -2012,12 +2023,12 @@ public class JavacParser implements Parser {
             if (!explicitLambdaResult.hasErrors()) {
                 return explicitLambdaResult;
             }
-            // @@@: this is likely too strict; a missing semi in a lambda body will lead to an erro
+            // @@@: this is likely too strict; a missing semi in a lambda body will lead to an error
             // which will mean the expression will not be classified as a lambda
         }
         // 3. then try cast
         var castResult = VirtualParser.tryParse(this, P -> P.parseCast(startPos));
-        if (!castResult.hasErrors() && castResult.test(this::isValidCast)) {
+        if (!castResult.hasErrors()) {
             return castResult;
         }
         // 4. assume it's an expression (even if it's not)
@@ -2031,20 +2042,6 @@ public class JavacParser implements Parser {
                 !lambda.body.hasTag(ERRONEOUS);
     }
 
-    boolean isValidCast(JCTypeCast cast) {
-        if (isPrimitive(cast.clazz)) {
-            return true;
-        }
-        if (cast.expr.hasTag(Tag.POS) ||
-                   cast.expr.hasTag(NEG) ||
-                   cast.expr.hasTag(PREINC) ||
-                   cast.expr.hasTag(PREDEC) ||
-                   cast.expr.hasTag(LITERAL) && cast.expr.toString().startsWith("-")) { // @@@: is there a better way to do this?
-            return false;
-        }
-        return true;
-    }
-
     boolean isPrimitive(JCTree expr) {
         return switch (expr.getTag()) {
             case TYPEIDENT -> true;
@@ -2053,189 +2050,8 @@ public class JavacParser implements Parser {
         };
     }
 
-    /**
-     * If we see an identifier followed by a '&lt;' it could be an unbound
-     * method reference or a binary expression. To disambiguate, look for a
-     * matching '&gt;' and see if the subsequent terminal is either '.' or '::'.
-     */
-    @SuppressWarnings("fallthrough")
-    ParensResult analyzeParens() {
-        int depth = 0;
-        boolean type = false;
-        ParensResult defaultResult = ParensResult.PARENS;
-        outer: for (int lookahead = 0; ; lookahead++) {
-            TokenKind tk = S.token(lookahead).kind;
-            switch (tk) {
-                case COMMA:
-                    type = true;
-                case EXTENDS: case SUPER: case DOT: case AMP:
-                    //skip
-                    break;
-                case QUES:
-                    if (peekToken(lookahead, EXTENDS) ||
-                            peekToken(lookahead, SUPER)) {
-                        //wildcards
-                        type = true;
-                    }
-                    break;
-                case BYTE: case SHORT: case INT: case LONG: case FLOAT:
-                case DOUBLE: case BOOLEAN: case CHAR: case VOID:
-                    if (peekToken(lookahead, RPAREN)) {
-                        //Type, ')' -> cast
-                        return ParensResult.CAST;
-                    } else if (peekToken(lookahead, LAX_IDENTIFIER)) {
-                        //Type, Identifier/'_'/'assert'/'enum' -> explicit lambda
-                        return ParensResult.EXPLICIT_LAMBDA;
-                    }
-                    break;
-                case LPAREN:
-                    if (lookahead != 0) {
-                        // '(' in a non-starting position -> parens
-                        return ParensResult.PARENS;
-                    } else if (peekToken(lookahead, RPAREN)) {
-                        // '(', ')' -> explicit lambda
-                        return ParensResult.EXPLICIT_LAMBDA;
-                    }
-                    break;
-                case RPAREN:
-                    // if we have seen something that looks like a type,
-                    // then it's a cast expression
-                    if (type) return ParensResult.CAST;
-                    // otherwise, disambiguate cast vs. parenthesized expression
-                    // based on subsequent token.
-                    switch (S.token(lookahead + 1).kind) {
-                        /*case PLUSPLUS: case SUBSUB: */
-                        case BANG: case TILDE:
-                        case LPAREN: case THIS: case SUPER:
-                        case INTLITERAL: case LONGLITERAL: case FLOATLITERAL:
-                        case DOUBLELITERAL: case CHARLITERAL: case STRINGLITERAL:
-                        case STRINGFRAGMENT:
-                        case TRUE: case FALSE: case NULL:
-                        case NEW: case IDENTIFIER: case ASSERT: case ENUM: case UNDERSCORE:
-                        case SWITCH:
-                        case BYTE: case SHORT: case CHAR: case INT:
-                        case LONG: case FLOAT: case DOUBLE: case BOOLEAN: case VOID:
-                            return ParensResult.CAST;
-                        default:
-                            return defaultResult;
-                    }
-                case UNDERSCORE:
-                case ASSERT:
-                case ENUM:
-                case IDENTIFIER:
-                    if (peekToken(lookahead, LAX_IDENTIFIER)) {
-                        // Identifier, Identifier/'_'/'assert'/'enum' -> explicit lambda
-                        return ParensResult.EXPLICIT_LAMBDA;
-                    } else if (peekToken(lookahead, RPAREN, ARROW)) {
-                        // Identifier, ')' '->' -> implicit lambda
-                        return !isMode(NOLAMBDA) ? ParensResult.IMPLICIT_LAMBDA
-                                                 : ParensResult.PARENS;
-                    } else if (depth == 0 && peekToken(lookahead, COMMA)) {
-                        defaultResult = ParensResult.IMPLICIT_LAMBDA;
-                    }
-                    type = false;
-                    break;
-                case FINAL:
-                case ELLIPSIS:
-                    //those can only appear in explicit lambdas
-                    return ParensResult.EXPLICIT_LAMBDA;
-                case MONKEYS_AT:
-                    type = true;
-                    lookahead = skipAnnotation(lookahead);
-                    break;
-                case LBRACKET:
-                    if (peekToken(lookahead, RBRACKET, LAX_IDENTIFIER)) {
-                        // '[', ']', Identifier/'_'/'assert'/'enum' -> explicit lambda
-                        return ParensResult.EXPLICIT_LAMBDA;
-                    } else if (peekToken(lookahead, RBRACKET, RPAREN) ||
-                            peekToken(lookahead, RBRACKET, AMP)) {
-                        // '[', ']', ')' -> cast
-                        // '[', ']', '&' -> cast (intersection type)
-                        return ParensResult.CAST;
-                    } else if (peekToken(lookahead, RBRACKET)) {
-                        //consume the ']' and skip
-                        type = true;
-                        lookahead++;
-                        break;
-                    } else {
-                        return ParensResult.PARENS;
-                    }
-                case LT:
-                    depth++; break;
-                case GTGTGT:
-                    depth--;
-                case GTGT:
-                    depth--;
-                case GT:
-                    depth--;
-                    if (depth == 0) {
-                        if (peekToken(lookahead, RPAREN) ||
-                                peekToken(lookahead, AMP)) {
-                            // '>', ')' -> cast
-                            // '>', '&' -> cast
-                            return ParensResult.CAST;
-                        } else if (peekToken(lookahead, LAX_IDENTIFIER, COMMA) ||
-                                peekToken(lookahead, LAX_IDENTIFIER, RPAREN, ARROW) ||
-                                peekToken(lookahead, ELLIPSIS)) {
-                            // '>', Identifier/'_'/'assert'/'enum', ',' -> explicit lambda
-                            // '>', Identifier/'_'/'assert'/'enum', ')', '->' -> explicit lambda
-                            // '>', '...' -> explicit lambda
-                            return ParensResult.EXPLICIT_LAMBDA;
-                        }
-                        //it looks a type, but could still be (i) a cast to generic type,
-                        //(ii) an unbound method reference or (iii) an explicit lambda
-                        type = true;
-                        break;
-                    } else if (depth < 0) {
-                        //unbalanced '<', '>' - not a generic type
-                        return ParensResult.PARENS;
-                    }
-                    break;
-                default:
-                    //this includes EOF
-                    return defaultResult;
-            }
-        }
-    }
-
-    private int skipAnnotation(int lookahead) {
-        lookahead += 1; //skip '@'
-        while (peekToken(lookahead, DOT)) {
-            lookahead += 2;
-        }
-        if (peekToken(lookahead, LPAREN)) {
-            lookahead++;
-            //skip annotation values
-            int nesting = 0;
-            for (; ; lookahead++) {
-                TokenKind tk2 = S.token(lookahead).kind;
-                switch (tk2) {
-                    case EOF:
-                        return lookahead;
-                    case LPAREN:
-                        nesting++;
-                        break;
-                    case RPAREN:
-                        nesting--;
-                        if (nesting == 0) {
-                            return lookahead;
-                        }
-                    break;
-                }
-            }
-        }
-        return lookahead;
-    }
-
     /** Accepts all identifier-like tokens */
     protected Predicate<TokenKind> LAX_IDENTIFIER = t -> t == IDENTIFIER || t == UNDERSCORE || t == ASSERT || t == ENUM;
-
-    enum ParensResult {
-        CAST,
-        EXPLICIT_LAMBDA,
-        IMPLICIT_LAMBDA,
-        PARENS
-    }
 
     JCLambda lambdaExpressionOrStatement(boolean hasParens, boolean explicitParams, int pos) {
         List<JCVariableDecl> params = explicitParams ?
