@@ -38,11 +38,12 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     private final MemoryLayout elementLayout;
 
     private SequenceLayoutImpl(long elemCount, MemoryLayout elementLayout) {
-        this(elemCount, elementLayout, elementLayout.byteAlignment(), Optional.empty());
+        this(elemCount, elementLayout, elementLayout.byteAlignment(), Optional.empty(), Optional.empty());
     }
 
-    private SequenceLayoutImpl(long elemCount, MemoryLayout elementLayout, long byteAlignment, Optional<String> name) {
-        super(Math.multiplyExact(elemCount, elementLayout.byteSize()), byteAlignment, name);
+    private SequenceLayoutImpl(long elemCount, MemoryLayout elementLayout, long byteAlignment, Optional<String> name,
+                               Optional<String> canonicalLinkerName) {
+        super(Math.multiplyExact(elemCount, elementLayout.byteSize()), byteAlignment, name, canonicalLinkerName);
         this.elemCount = elemCount;
         this.elementLayout = elementLayout;
     }
@@ -71,7 +72,7 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
      */
     public SequenceLayout withElementCount(long elementCount) {
         return Utils.wrapOverflow(() ->
-                new SequenceLayoutImpl(elementCount, elementLayout, byteAlignment(), name()));
+                new SequenceLayoutImpl(elementCount, elementLayout, byteAlignment(), name(), canonicalLinkerName()));
     }
 
     /**
@@ -147,7 +148,11 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
         for (int i = elementCounts.length - 1; i >= 0; i--) {
             res = MemoryLayout.sequenceLayout(elementCounts[i], res);
         }
-        return (SequenceLayoutImpl) res;
+        // preserve canonical linker name (if any)
+        var cn = canonicalLinkerName();
+        return cn.isPresent()
+                ? (SequenceLayoutImpl) MemoryLayoutUtil.withCanonicalLinkerName(res, cn.get())
+                : (SequenceLayoutImpl) res;
     }
 
     /**
@@ -174,7 +179,9 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
             count = count * elemSeq.elementCount();
             elemLayout = elemSeq.elementLayout();
         }
-        return MemoryLayout.sequenceLayout(count, elemLayout);
+        MemoryLayout flat = MemoryLayout.sequenceLayout(count, elemLayout);
+        var cn = canonicalLinkerName();
+        return cn.isPresent() ? (SequenceLayout) MemoryLayoutUtil.withCanonicalLinkerName(flat, cn.get()) : (SequenceLayout) flat;
     }
 
     @Override
@@ -199,8 +206,8 @@ public final class SequenceLayoutImpl extends AbstractLayout<SequenceLayoutImpl>
     }
 
     @Override
-    SequenceLayoutImpl dup(long byteAlignment, Optional<String> name) {
-        return new SequenceLayoutImpl(elementCount(), elementLayout, byteAlignment, name);
+    SequenceLayoutImpl dup(long byteAlignment, Optional<String> name, Optional<String> canonicalLinkerName) {
+        return new SequenceLayoutImpl(elementCount(), elementLayout, byteAlignment, name, canonicalLinkerName);
     }
 
     @Override

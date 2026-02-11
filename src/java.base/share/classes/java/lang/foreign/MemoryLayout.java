@@ -463,6 +463,17 @@ public sealed interface MemoryLayout
     Optional<String> name();
 
     /**
+     * {@return the canonical name (if any) associated with this layout by a {@link Linker}}
+     * <p>
+     * A linker may associate a canonical name with layouts returned from
+     * {@link Linker#canonicalLayouts()}, to retain information about the foreign type
+     * modelled by this layout.
+     *
+     * @see Linker#canonicalLayouts()
+     */
+    Optional<String> canonicalLinkerName();
+
+    /**
      * {@return a memory layout with the same characteristics as this layout, but with
      *          the given name}
      *

@@ -49,6 +49,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import jdk.internal.foreign.layout.MemoryLayoutUtil;
+
 import static java.lang.foreign.ValueLayout.*;
 import static java.lang.invoke.MethodHandles.foldArguments;
 
@@ -300,28 +302,31 @@ public final class FallbackLinker extends AbstractLinker {
                 };
 
                 CANONICAL_LAYOUTS = Map.ofEntries(
+                    // All entries are tagged with their canonical name
+                    // so that linkers can retain type information.
+                    // (see MemoryLayout::canonicalLinkerName)
                     // specified canonical layouts
-                    Map.entry("bool", JAVA_BOOLEAN),
-                    Map.entry("char", JAVA_BYTE),
-                    Map.entry("float", JAVA_FLOAT),
-                    Map.entry("long long", JAVA_LONG.withByteAlignment(LibFallback.longLongAlign())),
-                    Map.entry("double", JAVA_DOUBLE.withByteAlignment(LibFallback.doubleAlign())),
-                    Map.entry("void*", ADDRESS),
+                    Map.entry("bool", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_BOOLEAN, "bool")),
+                    Map.entry("char", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_BYTE, "char")),
+                    Map.entry("float", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_FLOAT, "float")),
+                    Map.entry("long long", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_LONG.withByteAlignment(LibFallback.longLongAlign()), "long long")),
+                    Map.entry("double", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_DOUBLE.withByteAlignment(LibFallback.doubleAlign()), "double")),
+                    Map.entry("void*", MemoryLayoutUtil.withCanonicalLinkerName(ADDRESS, "void*")),
                     // platform-dependent sizes
-                    Map.entry("size_t", FFIType.SIZE_T),
-                    Map.entry("short", FFIType.layoutFor(LibFallback.shortSize())),
-                    Map.entry("int", FFIType.layoutFor(LibFallback.intSize())),
-                    Map.entry("long", FFIType.layoutFor(LibFallback.longSize())),
-                    Map.entry("wchar_t", wchartLayout),
+                    Map.entry("size_t", MemoryLayoutUtil.withCanonicalLinkerName(FFIType.SIZE_T, "size_t")),
+                    Map.entry("short", MemoryLayoutUtil.withCanonicalLinkerName(FFIType.layoutFor(LibFallback.shortSize()), "short")),
+                    Map.entry("int", MemoryLayoutUtil.withCanonicalLinkerName(FFIType.layoutFor(LibFallback.intSize()), "int")),
+                    Map.entry("long", MemoryLayoutUtil.withCanonicalLinkerName(FFIType.layoutFor(LibFallback.longSize()), "long")),
+                    Map.entry("wchar_t", MemoryLayoutUtil.withCanonicalLinkerName(wchartLayout, "wchar_t")),
                     // JNI types
-                    Map.entry("jboolean", JAVA_BOOLEAN),
-                    Map.entry("jchar", JAVA_CHAR),
-                    Map.entry("jbyte", JAVA_BYTE),
-                    Map.entry("jshort", JAVA_SHORT),
-                    Map.entry("jint", JAVA_INT),
-                    Map.entry("jlong", JAVA_LONG),
-                    Map.entry("jfloat", JAVA_FLOAT),
-                    Map.entry("jdouble", JAVA_DOUBLE)
+                    Map.entry("jboolean", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_BOOLEAN, "jboolean")),
+                    Map.entry("jchar", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_CHAR, "jchar")),
+                    Map.entry("jbyte", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_BYTE, "jbyte")),
+                    Map.entry("jshort", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_SHORT, "jshort")),
+                    Map.entry("jint", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_INT, "jint")),
+                    Map.entry("jlong", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_LONG, "jlong")),
+                    Map.entry("jfloat", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_FLOAT, "jfloat")),
+                    Map.entry("jdouble", MemoryLayoutUtil.withCanonicalLinkerName(JAVA_DOUBLE, "jdouble"))
                 );
             }
         }

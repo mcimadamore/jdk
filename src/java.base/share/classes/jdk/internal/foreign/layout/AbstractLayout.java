@@ -52,28 +52,50 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
     private final long byteSize;
     private final long byteAlignment;
     private final Optional<String> name;
+    private final Optional<String> canonicalLinkerName;
 
     AbstractLayout(long byteSize, long byteAlignment, Optional<String> name) {
+        this(byteSize, byteAlignment, name, Optional.empty());
+    }
+
+    AbstractLayout(long byteSize, long byteAlignment, Optional<String> name, Optional<String> canonicalLinkerName) {
         this.byteSize = MemoryLayoutUtil.requireByteSizeValid(byteSize, true);
         this.byteAlignment = requirePowerOfTwoAndGreaterOrEqualToOne(byteAlignment);
         this.name = Objects.requireNonNull(name);
+        this.canonicalLinkerName = Objects.requireNonNull(canonicalLinkerName);
     }
 
     public final L withName(String name) {
-        return dup(byteAlignment(), Optional.of(name));
+        return dup(byteAlignment(), Optional.of(name), canonicalLinkerName);
     }
 
     @SuppressWarnings("unchecked")
     public final L withoutName() {
-        return name.isPresent() ? dup(byteAlignment(), Optional.empty()) : (L) this;
+        return name.isPresent() ? dup(byteAlignment(), Optional.empty(), canonicalLinkerName) : (L) this;
     }
 
     public final Optional<String> name() {
         return name;
     }
 
+    public final Optional<String> canonicalLinkerName() {
+        return canonicalLinkerName;
+    }
+
+    // Internal hook used by Linker implementations to associate a canonical name with a layout.
+    final L withCanonicalLinkerName(String canonicalLinkerName) {
+        Objects.requireNonNull(canonicalLinkerName);
+        return dup(byteAlignment(), name, Optional.of(canonicalLinkerName));
+    }
+
+    // Internal hook used to strip canonical name when needed.
+    @SuppressWarnings("unchecked")
+    final L withoutCanonicalLinkerName() {
+        return canonicalLinkerName.isPresent() ? dup(byteAlignment(), name, Optional.empty()) : (L) this;
+    }
+
     public L withByteAlignment(long byteAlignment) {
-        return dup(byteAlignment, name);
+        return dup(byteAlignment, name, canonicalLinkerName);
     }
 
     public final long byteAlignment() {
@@ -96,7 +118,7 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
      */
     @Override
     public int hashCode() {
-        return Objects.hash(name, byteSize, byteAlignment);
+        return Objects.hash(name, byteSize, byteAlignment, canonicalLinkerName);
     }
 
     /**
@@ -121,7 +143,8 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
         return other instanceof AbstractLayout<?> otherLayout &&
                 name.equals(otherLayout.name) &&
                 byteSize == otherLayout.byteSize &&
-                byteAlignment == otherLayout.byteAlignment;
+                byteAlignment == otherLayout.byteAlignment &&
+                canonicalLinkerName.equals(otherLayout.canonicalLinkerName);
     }
 
     /**
@@ -130,7 +153,7 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
     @Override
     public abstract String toString();
 
-    abstract L dup(long byteAlignment, Optional<String> name);
+    abstract L dup(long byteAlignment, Optional<String> name, Optional<String> canonicalLinkerName);
 
     String decorateLayoutString(String s) {
         if (name().isPresent()) {

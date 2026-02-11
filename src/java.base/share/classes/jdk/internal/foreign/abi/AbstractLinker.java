@@ -38,6 +38,7 @@ import jdk.internal.foreign.abi.s390.linux.LinuxS390Linker;
 import jdk.internal.foreign.abi.x64.sysv.SysVx64Linker;
 import jdk.internal.foreign.abi.x64.windows.Windowsx64Linker;
 import jdk.internal.foreign.layout.AbstractLayout;
+import jdk.internal.foreign.layout.MemoryLayoutUtil;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 
@@ -87,7 +88,9 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     }
     private final SoftReferenceCache<LinkRequest, MethodHandle> DOWNCALL_CACHE = new SoftReferenceCache<>();
     private final SoftReferenceCache<LinkRequest, UpcallStubFactory> UPCALL_CACHE = new SoftReferenceCache<>();
-    private final Set<MemoryLayout> CANONICAL_LAYOUTS_CACHE = new HashSet<>(canonicalLayouts().values());
+    private final Set<MemoryLayout> CANONICAL_LAYOUTS_CACHE = canonicalLayouts().values().stream()
+            .map(AbstractLinker::layoutForSupportedCheck)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Override
     @CallerSensitive
@@ -164,11 +167,14 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
             List<MemoryLayout> variadicLayouts = argumentLayouts.subList(optionSet.firstVariadicArgIndex(), argumentLayouts.size());
 
             for (MemoryLayout variadicLayout : variadicLayouts) {
-                if (variadicLayout.equals(ValueLayout.JAVA_BOOLEAN)
-                    || variadicLayout.equals(ValueLayout.JAVA_BYTE)
-                    || variadicLayout.equals(ValueLayout.JAVA_CHAR)
-                    || variadicLayout.equals(ValueLayout.JAVA_SHORT)
-                    || variadicLayout.equals(ValueLayout.JAVA_FLOAT)) {
+                // Variadic promotions are based on the physical layout; canonical linker names
+                // should not affect the validation.
+                MemoryLayout plainLayout = MemoryLayoutUtil.withoutCanonicalLinkerName(variadicLayout);
+                if (plainLayout.equals(ValueLayout.JAVA_BOOLEAN)
+                    || plainLayout.equals(ValueLayout.JAVA_BYTE)
+                    || plainLayout.equals(ValueLayout.JAVA_CHAR)
+                    || plainLayout.equals(ValueLayout.JAVA_SHORT)
+                    || plainLayout.equals(ValueLayout.JAVA_FLOAT)) {
                     throw new IllegalArgumentException("Invalid variadic argument layout: " + variadicLayout);
                 }
             }
@@ -298,13 +304,20 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     }
 
     private void checkSupported(ValueLayout valueLayout) {
-        valueLayout = valueLayout.withoutName();
-        if (valueLayout instanceof AddressLayout addressLayout) {
-            valueLayout = addressLayout.withoutTargetLayout();
-        }
-        if (!CANONICAL_LAYOUTS_CACHE.contains(valueLayout.withoutName())) {
+        if (!CANONICAL_LAYOUTS_CACHE.contains(layoutForSupportedCheck(valueLayout))) {
             throw new IllegalArgumentException("Unsupported layout: " + valueLayout);
         }
+    }
+
+    private static MemoryLayout layoutForSupportedCheck(MemoryLayout layout) {
+        // canonical linker name is metadata used by linkers; it should not affect whether
+        // a layout is supported by this linker.
+        layout = MemoryLayoutUtil.withoutCanonicalLinkerName(layout);
+        layout = layout.withoutName();
+        if (layout instanceof AddressLayout addressLayout) {
+            layout = addressLayout.withoutTargetLayout();
+        }
+        return layout;
     }
 
     private void checkHasNaturalAlignment(MemoryLayout layout) {
@@ -318,9 +331,21 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
         // we don't care about transferring alignment and byte order here
         // since the linker already restricts those such that they will always be the same
         return switch (ml) {
-            case StructLayout sl -> MemoryLayout.structLayout(stripNames(sl.memberLayouts()));
-            case UnionLayout ul -> MemoryLayout.unionLayout(stripNames(ul.memberLayouts()));
-            case SequenceLayout sl -> MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()));
+            case StructLayout sl -> {
+                MemoryLayout stripped = MemoryLayout.structLayout(stripNames(sl.memberLayouts()));
+                var cn = sl.canonicalLinkerName();
+                yield cn.isPresent() ? MemoryLayoutUtil.withCanonicalLinkerName(stripped, cn.get()) : stripped;
+            }
+            case UnionLayout ul -> {
+                MemoryLayout stripped = MemoryLayout.unionLayout(stripNames(ul.memberLayouts()));
+                var cn = ul.canonicalLinkerName();
+                yield cn.isPresent() ? MemoryLayoutUtil.withCanonicalLinkerName(stripped, cn.get()) : stripped;
+            }
+            case SequenceLayout sl -> {
+                MemoryLayout stripped = MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()));
+                var cn = sl.canonicalLinkerName();
+                yield cn.isPresent() ? MemoryLayoutUtil.withCanonicalLinkerName(stripped, cn.get()) : stripped;
+            }
             case AddressLayout al -> {
                 var stripped = al.withoutName();
                 var target = al.targetLayout();

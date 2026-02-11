@@ -32,13 +32,14 @@ import java.util.Optional;
 
 public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> implements UnionLayout {
 
-    private UnionLayoutImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name) {
-        super(Kind.UNION, elements, byteSize, byteAlignment, minByteAlignment, name);
+    private UnionLayoutImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment,
+                            Optional<String> name, Optional<String> canonicalLinkerName) {
+        super(Kind.UNION, elements, byteSize, byteAlignment, minByteAlignment, name, canonicalLinkerName);
     }
 
     @Override
-    UnionLayoutImpl dup(long byteAlignment, Optional<String> name) {
-        return new UnionLayoutImpl(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name);
+    UnionLayoutImpl dup(long byteAlignment, Optional<String> name, Optional<String> canonicalLinkerName) {
+        return new UnionLayoutImpl(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, canonicalLinkerName);
     }
 
     public static UnionLayout of(List<MemoryLayout> elements) {
@@ -48,7 +49,7 @@ public final class UnionLayoutImpl extends AbstractGroupLayout<UnionLayoutImpl> 
             size = Math.max(size, elem.byteSize());
             align = Math.max(align, elem.byteAlignment());
         }
-        return new UnionLayoutImpl(elements, size, align, align, Optional.empty());
+        return new UnionLayoutImpl(elements, size, align, align, Optional.empty(), Optional.empty());
     }
 
 }

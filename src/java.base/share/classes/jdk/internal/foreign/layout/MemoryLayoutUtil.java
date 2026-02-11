@@ -25,6 +25,9 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.MemoryLayout;
+import java.util.Objects;
+
 public final class MemoryLayoutUtil {
 
     private MemoryLayoutUtil() {
@@ -35,6 +38,17 @@ public final class MemoryLayoutUtil {
             throw new IllegalArgumentException("Invalid byte size: " + byteSize);
         }
         return byteSize;
+    }
+
+    public static MemoryLayout withCanonicalLinkerName(MemoryLayout layout, String canonicalLinkerName) {
+        Objects.requireNonNull(layout);
+        Objects.requireNonNull(canonicalLinkerName);
+        return ((AbstractLayout<?>) layout).withCanonicalLinkerName(canonicalLinkerName);
+    }
+
+    public static MemoryLayout withoutCanonicalLinkerName(MemoryLayout layout) {
+        Objects.requireNonNull(layout);
+        return ((AbstractLayout<?>) layout).withoutCanonicalLinkerName();
     }
 
 }
