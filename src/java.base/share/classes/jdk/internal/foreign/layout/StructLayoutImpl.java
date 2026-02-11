@@ -25,6 +25,7 @@
  */
 package jdk.internal.foreign.layout;
 
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.StructLayout;
 import java.util.List;
@@ -32,13 +33,14 @@ import java.util.Optional;
 
 public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl> implements StructLayout {
 
-    private StructLayoutImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name) {
-        super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name);
+    private StructLayoutImpl(List<MemoryLayout> elements, long byteSize, long byteAlignment, long minByteAlignment, Optional<String> name,
+                             List<Linker.Option> linkerOptions) {
+        super(Kind.STRUCT, elements, byteSize, byteAlignment, minByteAlignment, name, linkerOptions);
     }
 
     @Override
-    StructLayoutImpl dup(long byteAlignment, Optional<String> name) {
-        return new StructLayoutImpl(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name);
+    StructLayoutImpl dup(long byteAlignment, Optional<String> name, List<Linker.Option> linkerOptions) {
+        return new StructLayoutImpl(memberLayouts(), byteSize(), byteAlignment, minByteAlignment, name, linkerOptions);
     }
 
     public static StructLayout of(List<MemoryLayout> elements) {
@@ -51,7 +53,7 @@ public final class StructLayoutImpl extends AbstractGroupLayout<StructLayoutImpl
             size = Math.addExact(size, elem.byteSize());
             align = Math.max(align, elem.byteAlignment());
         }
-        return new StructLayoutImpl(elements, size, align, align, Optional.empty());
+        return new StructLayoutImpl(elements, size, align, align, Optional.empty(), List.of());
     }
 
 }

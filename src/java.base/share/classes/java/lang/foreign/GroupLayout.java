@@ -68,6 +68,18 @@ public sealed interface GroupLayout extends MemoryLayout permits StructLayout, U
 
     /**
      * {@inheritDoc}
+     */
+    @Override
+    GroupLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    GroupLayout withoutLinkerOptions();
+
+    /**
+     * {@inheritDoc}
      * @throws IllegalArgumentException {@inheritDoc}
      * @throws IllegalArgumentException if {@code byteAlignment} is less than {@code M},
      *         where {@code M} is the maximum alignment constraint in any of the

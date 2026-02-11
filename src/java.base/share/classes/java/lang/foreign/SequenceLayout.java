@@ -27,6 +27,8 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.SequenceLayoutImpl;
 
+import java.util.List;
+
 /**
  * A compound layout that denotes a homogeneous repetition of a given
  * <em>element layout</em>. The repetition count is said to be the sequence layout's
@@ -157,6 +159,18 @@ public sealed interface SequenceLayout extends MemoryLayout permits SequenceLayo
      */
     @Override
     MemoryLayout withoutName();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    SequenceLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    SequenceLayout withoutLinkerOptions();
 
     /**
      * {@inheritDoc}

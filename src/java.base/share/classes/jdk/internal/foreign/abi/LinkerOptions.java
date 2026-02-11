@@ -47,8 +47,18 @@ public class LinkerOptions {
         return forShared(LinkerOptionImpl::validateForDowncall, desc, options);
     }
 
+    public static LinkerOptions forDowncall(FunctionDescriptor desc) {
+        return forShared(LinkerOptionImpl::validateForDowncall, desc,
+                desc.linkerOptions().toArray(Linker.Option[]::new));
+    }
+
     public static LinkerOptions forUpcall(FunctionDescriptor desc, Linker.Option[] options) {
         return forShared(LinkerOptionImpl::validateForUpcall, desc, options);
+    }
+
+    public static LinkerOptions forUpcall(FunctionDescriptor desc) {
+        return forShared(LinkerOptionImpl::validateForUpcall, desc,
+                desc.linkerOptions().toArray(Linker.Option[]::new));
     }
 
     private static LinkerOptions forShared(BiConsumer<LinkerOptionImpl, FunctionDescriptor> validator,

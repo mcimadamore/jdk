@@ -27,6 +27,8 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.UnionLayoutImpl;
 
+import java.util.List;
+
 /**
  * A group layout whose member layouts are laid out at the same starting offset.
  *
@@ -49,6 +51,18 @@ public sealed interface UnionLayout extends GroupLayout permits UnionLayoutImpl 
      */
     @Override
     UnionLayout withoutName();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    UnionLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    UnionLayout withoutLinkerOptions();
 
     /**
      * {@inheritDoc}

@@ -107,9 +107,12 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     private MethodHandle downcallHandle0(FunctionDescriptor function, Option... options) {
         Objects.requireNonNull(function);
         Objects.requireNonNull(options);
+        if (options.length != 0) {
+            function = function.withLinkerOptions(List.of(options));
+        }
         checkLayouts(function);
         function = stripNames(function);
-        LinkerOptions optionSet = LinkerOptions.forDowncall(function, options);
+        LinkerOptions optionSet = LinkerOptions.forDowncall(function);
         validateVariadicLayouts(function, optionSet);
 
         return DOWNCALL_CACHE.get(new LinkRequest(function, optionSet), linkRequest ->  {
@@ -131,10 +134,14 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
         Objects.requireNonNull(arena);
         Objects.requireNonNull(target);
         Objects.requireNonNull(function);
+        Objects.requireNonNull(options);
+        if (options.length != 0) {
+            function = function.withLinkerOptions(List.of(options));
+        }
         checkLayouts(function);
         SharedUtils.checkExceptions(target);
         function = stripNames(function);
-        LinkerOptions optionSet = LinkerOptions.forUpcall(function, options);
+        LinkerOptions optionSet = LinkerOptions.forUpcall(function);
 
         MethodType type = function.toMethodType();
         if (!type.equals(target.type())) {
@@ -318,9 +325,12 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
         // we don't care about transferring alignment and byte order here
         // since the linker already restricts those such that they will always be the same
         return switch (ml) {
-            case StructLayout sl -> MemoryLayout.structLayout(stripNames(sl.memberLayouts()));
-            case UnionLayout ul -> MemoryLayout.unionLayout(stripNames(ul.memberLayouts()));
-            case SequenceLayout sl -> MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()));
+            case StructLayout sl -> MemoryLayout.structLayout(stripNames(sl.memberLayouts()))
+                    .withLinkerOptions(sl.linkerOptions());
+            case UnionLayout ul -> MemoryLayout.unionLayout(stripNames(ul.memberLayouts()))
+                    .withLinkerOptions(ul.linkerOptions());
+            case SequenceLayout sl -> MemoryLayout.sequenceLayout(sl.elementCount(), stripNames(sl.elementLayout()))
+                    .withLinkerOptions(sl.linkerOptions());
             case AddressLayout al -> {
                 var stripped = al.withoutName();
                 var target = al.targetLayout();
@@ -343,8 +353,10 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     private static FunctionDescriptor stripNames(FunctionDescriptor function) {
         var retLayout = function.returnLayout();
         if (retLayout.isEmpty()) {
-            return FunctionDescriptor.ofVoid(stripNames(function.argumentLayouts()));
+            return FunctionDescriptor.ofVoid(stripNames(function.argumentLayouts()))
+                    .withLinkerOptions(function.linkerOptions());
         }
-        return FunctionDescriptor.of(stripNames(retLayout.get()), stripNames(function.argumentLayouts()));
+        return FunctionDescriptor.of(stripNames(retLayout.get()), stripNames(function.argumentLayouts()))
+                .withLinkerOptions(function.linkerOptions());
     }
 }

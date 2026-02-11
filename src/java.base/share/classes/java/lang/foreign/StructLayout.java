@@ -27,6 +27,8 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.StructLayoutImpl;
 
+import java.util.List;
+
 /**
  * A group layout whose member layouts are laid out one after the other.
  *
@@ -49,6 +51,18 @@ public sealed interface StructLayout extends GroupLayout permits StructLayoutImp
      */
     @Override
     StructLayout withoutName();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    StructLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    StructLayout withoutLinkerOptions();
 
     /**
      * {@inheritDoc}

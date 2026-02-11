@@ -27,6 +27,8 @@ package java.lang.foreign;
 
 import jdk.internal.foreign.layout.PaddingLayoutImpl;
 
+import java.util.List;
+
 /**
  * A padding layout. A padding layout specifies the size of extra space which is
  * typically not accessed by applications, and is typically used for aligning member
@@ -51,6 +53,18 @@ public sealed interface PaddingLayout extends MemoryLayout permits PaddingLayout
      */
     @Override
     PaddingLayout withoutName();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    PaddingLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    PaddingLayout withoutLinkerOptions();
 
     /**
      * {@inheritDoc}

@@ -51,6 +51,30 @@ import java.util.Optional;
 public sealed interface FunctionDescriptor permits FunctionDescriptorImpl {
 
     /**
+     * {@return the linker options (if any) associated with this function descriptor}
+     * <p>
+     * The returned list is unmodifiable.
+     */
+    List<Linker.Option> linkerOptions();
+
+    /**
+     * {@return a function descriptor with the same characteristics as this descriptor,
+     *          but with the given linker options appended to the options already
+     *          associated with this descriptor}
+     *
+     * @param linkerOptions the linker options to append
+     * @throws NullPointerException if {@code linkerOptions} is {@code null}, or if it
+     *         contains one or more {@code null} elements
+     */
+    FunctionDescriptor withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@return a function descriptor with the same characteristics as this descriptor,
+     *          but with no linker options}
+     */
+    FunctionDescriptor withoutLinkerOptions();
+
+    /**
      * {@return the return layout (if any) of this function descriptor}
      */
     Optional<MemoryLayout> returnLayout();

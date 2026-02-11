@@ -25,6 +25,7 @@
 package jdk.internal.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -47,8 +48,13 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
 
     private final MemoryLayout resLayout; // Nullable
     private final List<MemoryLayout> argLayouts;
+    private final List<Linker.Option> linkerOptions;
 
     private FunctionDescriptorImpl(MemoryLayout resLayout, List<MemoryLayout> argLayouts) {
+        this(resLayout, argLayouts, List.of());
+    }
+
+    private FunctionDescriptorImpl(MemoryLayout resLayout, List<MemoryLayout> argLayouts, List<Linker.Option> linkerOptions) {
         if (resLayout instanceof PaddingLayout) {
             throw new IllegalArgumentException("Unsupported padding layout return in function descriptor: " + resLayout);
         }
@@ -58,6 +64,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
         }
         this.resLayout = resLayout;
         this.argLayouts = List.copyOf(argLayouts);
+        this.linkerOptions = List.copyOf(Objects.requireNonNull(linkerOptions));
     }
 
     /**
@@ -72,6 +79,30 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
      */
     public List<MemoryLayout> argumentLayouts() {
         return argLayouts;
+    }
+
+    @Override
+    public List<Linker.Option> linkerOptions() {
+        return linkerOptions;
+    }
+
+    @Override
+    public FunctionDescriptor withLinkerOptions(List<Linker.Option> linkerOptions) {
+        Objects.requireNonNull(linkerOptions);
+        if (linkerOptions.isEmpty()) {
+            return this;
+        }
+        var newOptions = new ArrayList<Linker.Option>(this.linkerOptions.size() + linkerOptions.size());
+        newOptions.addAll(this.linkerOptions);
+        for (var opt : linkerOptions) {
+            newOptions.add(Objects.requireNonNull(opt));
+        }
+        return new FunctionDescriptorImpl(resLayout, argLayouts, List.copyOf(newOptions));
+    }
+
+    @Override
+    public FunctionDescriptor withoutLinkerOptions() {
+        return this.linkerOptions.isEmpty() ? this : new FunctionDescriptorImpl(resLayout, argLayouts);
     }
 
     /**
@@ -102,7 +133,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
         newLayouts.addAll(argLayouts.subList(0, index));
         newLayouts.addAll(added);
         newLayouts.addAll(argLayouts.subList(index, argLayouts.size()));
-        return new FunctionDescriptorImpl(resLayout, newLayouts);
+        return new FunctionDescriptorImpl(resLayout, newLayouts, linkerOptions);
     }
 
     /**
@@ -113,7 +144,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
      */
     public FunctionDescriptorImpl changeReturnLayout(MemoryLayout newReturn) {
         requireNonNull(newReturn);
-        return new FunctionDescriptorImpl(newReturn, argLayouts);
+        return new FunctionDescriptorImpl(newReturn, argLayouts, linkerOptions);
     }
 
     /**
@@ -123,7 +154,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
      * @return the new function descriptor.
      */
     public FunctionDescriptorImpl dropReturnLayout() {
-        return new FunctionDescriptorImpl(null, argLayouts);
+        return new FunctionDescriptorImpl(null, argLayouts, linkerOptions);
     }
 
     private static Class<?> carrierTypeFor(MemoryLayout layout) {
@@ -175,7 +206,8 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
     public boolean equals(Object other) {
         return other instanceof FunctionDescriptorImpl f &&
                 Objects.equals(resLayout, f.resLayout) &&
-                Objects.equals(argLayouts, f.argLayouts);
+                Objects.equals(argLayouts, f.argLayouts) &&
+                Objects.equals(linkerOptions, f.linkerOptions);
     }
 
     /**
@@ -183,7 +215,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(argLayouts, resLayout);
+        return Objects.hash(argLayouts, resLayout, linkerOptions);
     }
 
     public static FunctionDescriptor of(MemoryLayout resLayout, List<MemoryLayout> argLayouts) {

@@ -29,6 +29,7 @@ import jdk.internal.foreign.layout.ValueLayouts;
 
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
+import java.util.List;
 
 /**
  * A layout that models values of basic data types. Examples of values modeled by
@@ -98,6 +99,18 @@ public sealed interface ValueLayout extends MemoryLayout
     ValueLayout withByteAlignment(long byteAlignment);
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    ValueLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    ValueLayout withoutLinkerOptions();
+
+    /**
      * {@return a var handle which can be used to access values described by this value
      *          layout, in a given memory segment}
      * <p>
@@ -156,6 +169,18 @@ public sealed interface ValueLayout extends MemoryLayout
         @Override
         OfBoolean withOrder(ByteOrder order);
 
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfBoolean withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfBoolean withoutLinkerOptions();
+
     }
 
     /**
@@ -190,6 +215,18 @@ public sealed interface ValueLayout extends MemoryLayout
          */
         @Override
         OfByte withOrder(ByteOrder order);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfByte withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfByte withoutLinkerOptions();
 
     }
 
@@ -227,6 +264,18 @@ public sealed interface ValueLayout extends MemoryLayout
         @Override
         OfChar withOrder(ByteOrder order);
 
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfChar withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfChar withoutLinkerOptions();
+
     }
 
     /**
@@ -262,6 +311,18 @@ public sealed interface ValueLayout extends MemoryLayout
          */
         @Override
         OfShort withOrder(ByteOrder order);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfShort withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfShort withoutLinkerOptions();
 
     }
 
@@ -299,6 +360,18 @@ public sealed interface ValueLayout extends MemoryLayout
         @Override
         OfInt withOrder(ByteOrder order);
 
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfInt withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfInt withoutLinkerOptions();
+
     }
 
     /**
@@ -333,6 +406,18 @@ public sealed interface ValueLayout extends MemoryLayout
          */
         @Override
         OfFloat withOrder(ByteOrder order);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfFloat withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfFloat withoutLinkerOptions();
 
     }
 
@@ -370,6 +455,18 @@ public sealed interface ValueLayout extends MemoryLayout
         @Override
         OfLong withOrder(ByteOrder order);
 
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfLong withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfLong withoutLinkerOptions();
+
     }
 
     /**
@@ -405,6 +502,18 @@ public sealed interface ValueLayout extends MemoryLayout
          */
         @Override
         OfDouble withOrder(ByteOrder order);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfDouble withLinkerOptions(List<Linker.Option> linkerOptions);
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        OfDouble withoutLinkerOptions();
 
     }
 

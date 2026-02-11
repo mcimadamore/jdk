@@ -32,6 +32,7 @@ import jdk.internal.reflect.CallerSensitive;
 import java.lang.foreign.Linker.Option;
 import java.lang.invoke.MethodHandle;
 import java.nio.ByteOrder;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -86,6 +87,18 @@ public sealed interface AddressLayout extends ValueLayout permits ValueLayouts.O
      */
     @Override
     AddressLayout withOrder(ByteOrder order);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    AddressLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    AddressLayout withoutLinkerOptions();
 
     /**
      * Returns an address layout with the same carrier, alignment constraint, name and

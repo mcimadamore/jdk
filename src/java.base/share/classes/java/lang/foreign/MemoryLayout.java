@@ -35,6 +35,7 @@ import jdk.internal.foreign.layout.UnionLayoutImpl;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -62,6 +63,8 @@ import java.util.stream.Stream;
  * <p>
  * Layouts can be optionally associated with a <em>name</em>. A layout name can be
  * referred to when constructing <a href="MemoryLayout.html#layout-paths"><em>layout paths</em></a>.
+ * <p>
+ * Layouts can also be optionally associated with one or more {@linkplain Linker.Option linker options}.
  * <p>
  * Consider the following struct declaration in C:
  *
@@ -480,6 +483,37 @@ public sealed interface MemoryLayout
      * @see MemoryLayout#name()
      */
     MemoryLayout withoutName();
+
+    /**
+     * {@return the linker options (if any) associated with this layout}
+     * <p>
+     * The returned list is unmodifiable.
+     *
+     * @apiNote Linker options can be used to provide additional parameters to a
+     * linkage request (see {@link Linker.Option}).
+     */
+    List<Linker.Option> linkerOptions();
+
+    /**
+     * {@return a memory layout with the same characteristics as this layout, but with
+     *          the given linker options appended to the options already associated with
+     *          this layout}
+     *
+     * @param linkerOptions the linker options to append
+     * @throws NullPointerException if {@code linkerOptions} is {@code null}, or if it
+     *         contains one or more {@code null} elements
+     */
+    MemoryLayout withLinkerOptions(List<Linker.Option> linkerOptions);
+
+    /**
+     * {@return a memory layout with the same characteristics as this layout, but with
+     *          no linker options}
+     *
+     * @apiNote This can be useful to compare two layouts that have different linker
+     *          options, but are otherwise equal.
+     * @see #linkerOptions()
+     */
+    MemoryLayout withoutLinkerOptions();
 
     /**
      * {@return the alignment constraint associated with this layout, expressed in bytes}
@@ -987,7 +1021,7 @@ public sealed interface MemoryLayout
      * Compares the specified object with this layout for equality. Returns {@code true}
      * if and only if the specified object is also a layout, and it is equal to this
      * layout. Two layouts are considered equal if they are of the same kind, have the
-     * same size, name and alignment constraint. Furthermore, depending on the
+     * same size, name, alignment constraint and linker options. Furthermore, depending on the
      * layout kind, additional conditions must be satisfied:
      * <ul>
      *     <li>two value layouts are considered equal if they have the same

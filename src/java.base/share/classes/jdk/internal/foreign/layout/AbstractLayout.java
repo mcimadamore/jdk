@@ -30,6 +30,7 @@ import jdk.internal.foreign.Utils;
 import jdk.internal.invoke.MhUtil;
 
 import java.lang.foreign.GroupLayout;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.foreign.SequenceLayout;
@@ -40,6 +41,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -52,28 +55,58 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
     private final long byteSize;
     private final long byteAlignment;
     private final Optional<String> name;
+    private final List<Linker.Option> linkerOptions;
 
     AbstractLayout(long byteSize, long byteAlignment, Optional<String> name) {
+        this(byteSize, byteAlignment, name, List.of());
+    }
+
+    AbstractLayout(long byteSize, long byteAlignment, Optional<String> name, List<Linker.Option> linkerOptions) {
         this.byteSize = MemoryLayoutUtil.requireByteSizeValid(byteSize, true);
         this.byteAlignment = requirePowerOfTwoAndGreaterOrEqualToOne(byteAlignment);
         this.name = Objects.requireNonNull(name);
+        this.linkerOptions = List.copyOf(Objects.requireNonNull(linkerOptions));
     }
 
     public final L withName(String name) {
-        return dup(byteAlignment(), Optional.of(name));
+        return dup(byteAlignment(), Optional.of(name), linkerOptions);
     }
 
     @SuppressWarnings("unchecked")
     public final L withoutName() {
-        return name.isPresent() ? dup(byteAlignment(), Optional.empty()) : (L) this;
+        return name.isPresent() ? dup(byteAlignment(), Optional.empty(), linkerOptions) : (L) this;
     }
 
     public final Optional<String> name() {
         return name;
     }
 
+    public final List<Linker.Option> linkerOptions() {
+        return linkerOptions;
+    }
+
     public L withByteAlignment(long byteAlignment) {
-        return dup(byteAlignment, name);
+        return dup(byteAlignment, name, linkerOptions);
+    }
+
+    public final L withLinkerOptions(List<Linker.Option> linkerOptions) {
+        Objects.requireNonNull(linkerOptions);
+        if (linkerOptions.isEmpty()) {
+            @SuppressWarnings("unchecked")
+            L self = (L) this;
+            return self;
+        }
+        var newOptions = new ArrayList<Linker.Option>(this.linkerOptions.size() + linkerOptions.size());
+        newOptions.addAll(this.linkerOptions);
+        for (var opt : linkerOptions) {
+            newOptions.add(Objects.requireNonNull(opt));
+        }
+        return dup(byteAlignment(), name, List.copyOf(newOptions));
+    }
+
+    @SuppressWarnings("unchecked")
+    public final L withoutLinkerOptions() {
+        return this.linkerOptions.isEmpty() ? (L) this : dup(byteAlignment(), name, List.of());
     }
 
     public final long byteAlignment() {
@@ -96,13 +129,13 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
      */
     @Override
     public int hashCode() {
-        return Objects.hash(name, byteSize, byteAlignment);
+        return Objects.hash(name, byteSize, byteAlignment, linkerOptions);
     }
 
     /**
      * Compares the specified object with this layout for equality. Returns {@code true} if and only if the specified
      * object is also a layout, and it is equal to this layout. Two layouts are considered equal if they are of
-     * the same kind, have the same size, name and alignment constraints. Furthermore, depending on the layout kind, additional
+     * the same kind, have the same size, name, alignment constraints and linker options. Furthermore, depending on the layout kind, additional
      * conditions must be satisfied:
      * <ul>
      *     <li>two value layouts are considered equal if they have the same {@linkplain ValueLayout#order() order},
@@ -121,7 +154,8 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
         return other instanceof AbstractLayout<?> otherLayout &&
                 name.equals(otherLayout.name) &&
                 byteSize == otherLayout.byteSize &&
-                byteAlignment == otherLayout.byteAlignment;
+                byteAlignment == otherLayout.byteAlignment &&
+                linkerOptions.equals(otherLayout.linkerOptions);
     }
 
     /**
@@ -130,7 +164,7 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
     @Override
     public abstract String toString();
 
-    abstract L dup(long byteAlignment, Optional<String> name);
+    abstract L dup(long byteAlignment, Optional<String> name, List<Linker.Option> linkerOptions);
 
     String decorateLayoutString(String s) {
         if (name().isPresent()) {

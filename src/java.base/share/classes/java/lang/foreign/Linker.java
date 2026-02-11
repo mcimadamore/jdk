@@ -672,6 +672,13 @@ public sealed interface Linker permits AbstractLinker {
      *         is given
      * @throws IllegalCallerException if the caller is in a module that does not have
      *         native access enabled
+     *
+     * @apiNote This method first associates the provided linker options
+     *          with the supplied function descriptor, and then performs the linkage request.
+     *          That is, calling this method is equivalent to:
+     * {@snippet lang = java:
+     * linker.downcallHandle(function.withLinkerOptions(List.of(options)));
+     * }
      */
     @CallerSensitive
     @Restricted
@@ -721,6 +728,13 @@ public sealed interface Linker permits AbstractLinker {
      *         is called from a thread {@code T}, other than the arena's owner thread
      * @throws IllegalCallerException if the caller is in a module that does not have
      *         native access enabled
+     *
+     * @apiNote This method first associates the provided linker options
+     *          with the supplied function descriptor, and then performs the linkage request.
+     *          That is, calling this method is equivalent to:
+     * {@snippet lang = java:
+     * linker.upcallStub(target, function.withLinkerOptions(List.of(options)), arena);
+     * }
      */
     @CallerSensitive
     @Restricted
