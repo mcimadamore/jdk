@@ -761,6 +761,11 @@ public sealed interface Linker permits AbstractLinker {
      * layouts exposed by the linker are unspecified; they vary from one {@link Linker}
      * to another.
      *
+     * @apiNote Canonical layouts returned by this method might carry linker-specific
+     *          metadata. As a result, a canonical layout might not compare equal to
+     *          another layout that has the same size, alignment constraint, and (for
+     *          value layouts) the same carrier and byte order.
+     *
      * @implNote It is strongly recommended that the result of {@link #canonicalLayouts()}
      *           exposes a set of symbols that is stable over time. Clients of
      *           {@link #canonicalLayouts()} are likely to fail if a data type that was

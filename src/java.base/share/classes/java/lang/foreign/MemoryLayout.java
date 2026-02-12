@@ -987,7 +987,13 @@ public sealed interface MemoryLayout
      * Compares the specified object with this layout for equality. Returns {@code true}
      * if and only if the specified object is also a layout, and it is equal to this
      * layout. Two layouts are considered equal if they are of the same kind, have the
-     * same size, name and alignment constraint. Furthermore, depending on the
+     * same size, name, alignment constraint and attributes.
+     * <p>
+     * Additionally, two layouts are considered equal only if they have the same
+     * linker-specific metadata, if any (for example, as associated with layouts returned
+     * by {@link Linker#canonicalLayouts()}).
+     * <p>
+     * Furthermore, depending on the
      * layout kind, additional conditions must be satisfied:
      * <ul>
      *     <li>two value layouts are considered equal if they have the same
