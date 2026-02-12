@@ -55,6 +55,8 @@ import java.lang.foreign.UnionLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -346,5 +348,16 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
             return FunctionDescriptor.ofVoid(stripNames(function.argumentLayouts()));
         }
         return FunctionDescriptor.of(stripNames(retLayout.get()), stripNames(function.argumentLayouts()));
+    }
+
+    // Example
+    public record SystemLinkerMetadata(EnumSet<Attribute> attributes) implements Linker.TypeMetadata {
+        enum Attribute {
+            UNSIGNED;
+        }
+
+        public SystemLinkerMetadata(Attribute... attributes) {
+            this(EnumSet.copyOf(Arrays.stream(attributes).toList()));
+        }
     }
 }

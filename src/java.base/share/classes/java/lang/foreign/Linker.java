@@ -761,10 +761,11 @@ public sealed interface Linker permits AbstractLinker {
      * layouts exposed by the linker are unspecified; they vary from one {@link Linker}
      * to another.
      *
-     * @apiNote Canonical layouts returned by this method might carry linker-specific
-     *          metadata. As a result, a canonical layout might not compare equal to
-     *          another layout that has the same size, alignment constraint, and (for
-     *          value layouts) the same carrier and byte order.
+     * @apiNote Canonical layouts returned by this method might carry linker type metadata
+     *          (see {@link MemoryLayout#linkerTypeMetadata()}). As a result, a canonical
+     *          layout might not compare equal to another layout that has the same size,
+     *          alignment constraint, and (for value layouts) the same carrier and byte
+     *          order.
      *
      * @implNote It is strongly recommended that the result of {@link #canonicalLayouts()}
      *           exposes a set of symbols that is stable over time. Clients of
@@ -777,6 +778,17 @@ public sealed interface Linker permits AbstractLinker {
      *           a consistent set of symbols across all the OS and processor combinations.
      */
     Map<String, MemoryLayout> canonicalLayouts();
+
+    /**
+     * Linker type metadata is a piece of semantic information used by a linker.
+     * <p>
+     * Linker type metadata can be associated with layouts (for example, with layouts
+     * returned by {@link #canonicalLayouts()}) to retain information about foreign
+     * types that might not be otherwise expressible using Java carrier types alone.
+     *
+     * @see MemoryLayout#linkerTypeMetadata()
+     */
+    sealed interface TypeMetadata permits AbstractLinker.Unsigned { }
 
     /**
      * A linker option is used to provide additional parameters to a linkage request.

@@ -463,6 +463,21 @@ public sealed interface MemoryLayout
     Optional<String> name();
 
     /**
+     * {@return the linker type metadata (if any) associated with this layout}
+     * <p>
+     * A linker may associate linker type metadata with layouts returned from
+     * {@link Linker#canonicalLayouts()}, to retain information about the foreign type
+     * that might not be otherwise expressible using Java carrier types alone.
+     *
+     * @apiNote This attribute is set by a linker and cannot be changed by clients.
+     * @see Linker#canonicalLayouts()
+     * @since 22
+     */
+    default Optional<Linker.TypeMetadata> linkerTypeMetadata() {
+        return Optional.empty();
+    }
+
+    /**
      * {@return a memory layout with the same characteristics as this layout, but with
      *          the given name}
      *
@@ -987,11 +1002,11 @@ public sealed interface MemoryLayout
      * Compares the specified object with this layout for equality. Returns {@code true}
      * if and only if the specified object is also a layout, and it is equal to this
      * layout. Two layouts are considered equal if they are of the same kind, have the
-     * same size, name, alignment constraint and attributes.
+     * same size, name and alignment constraint.
      * <p>
      * Additionally, two layouts are considered equal only if they have the same
-     * linker-specific metadata, if any (for example, as associated with layouts returned
-     * by {@link Linker#canonicalLayouts()}).
+     * linker type metadata, if any (for example, as associated with layouts returned by
+     * {@link Linker#canonicalLayouts()}).
      * <p>
      * Furthermore, depending on the
      * layout kind, additional conditions must be satisfied:
