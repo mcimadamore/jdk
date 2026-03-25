@@ -3608,11 +3608,19 @@ public class JavacParser implements Parser {
                     flag = Flags.SEALED;
                     break;
                 }
+                if (isCachedIdentifier()) {
+                    // @@@: make sure this is a method
+                    checkSourceLevel(Feature.CACHED_METHODS);
+                    flag = Flags.CACHED;
+                    break;
+                }
                 break loop;
             }
             default: break loop;
             }
-            if ((flags & flag) != 0) log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+            if ((flags & flag) != 0) {
+                log.error(DiagnosticFlag.SYNTAX, token.pos, Errors.RepeatedModifier);
+            }
             lastPos = token.pos;
             nextToken();
             if (flag == Flags.ANNOTATION) {
@@ -5004,6 +5012,10 @@ public class JavacParser implements Parser {
             }
         }
         return false;
+    }
+
+    protected boolean isCachedIdentifier() {
+        return token.name() == names.cached;
     }
 
     private boolean allowedAfterSealedOrNonSealed(Token next, boolean local, boolean currentIsNonSealed) {
