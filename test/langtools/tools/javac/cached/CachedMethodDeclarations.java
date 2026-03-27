@@ -17,7 +17,7 @@ class CachedMethodDeclarations {
     abstract class AC {
         cached int instanceMethod() { return 1; } // yep
         static cached int staticMethod() { return 2; } // yep
-        abstract int abstractMethod(); // nope
+        abstract cached int abstractMethod(); // nope
     }
 
     record R(int i) {
