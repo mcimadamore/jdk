@@ -30,6 +30,7 @@ class CachedMethodDeclarations {
 
         cached int instanceMethod() { return ordinal(); } // yep
         static cached int staticMethod() { return 2; } // yep
+        cached <T> T genericMethod() { return null; } // yep
     }
 
     interface I {
