@@ -28,9 +28,11 @@ package java.lang.runtime;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.lang.invoke.VarHandle;
 
+import jdk.internal.access.JavaLangInvokeAccess;
+import jdk.internal.access.JavaLangInvokeAccess.FieldVarHandleInfo;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
@@ -43,6 +45,7 @@ import static java.util.Objects.requireNonNull;
 public abstract class StableAccessor {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Object NULL_SENTINEL = new Object();
+    private static final JavaLangInvokeAccess JLI = SharedSecrets.getJavaLangInvokeAccess();
 
     final long offset;
     final MethodHandle initHandle;
@@ -57,9 +60,7 @@ public abstract class StableAccessor {
      * @param lookup the caller lookup
      * @param unusedName ignored bootstrap name
      * @param unusedAccessorType ignored bootstrap type
-     * @param owner the field owner
-     * @param fieldName the field name
-     * @param fieldDescriptor the field descriptor
+     * @param cacheHandle the field var handle to be used as backing storage
      * @param initHandle method handle used to initialize the cache on miss
      * @return the accessor
      * @throws NoSuchFieldException if the field cannot be found
@@ -68,40 +69,32 @@ public abstract class StableAccessor {
     public static StableAccessor of(MethodHandles.Lookup lookup,
                                     String unusedName,
                                     Class<?> unusedAccessorType,
-                                    Class<?> owner,
-                                    String fieldName,
-                                    String fieldDescriptor,
+                                    VarHandle cacheHandle,
                                     MethodHandle initHandle)
             throws NoSuchFieldException, IllegalAccessException {
-        requireNonNull(owner);
-        requireNonNull(fieldName);
-        requireNonNull(fieldDescriptor);
+        requireNonNull(cacheHandle);
+        requireNonNull(initHandle);
         requireNonNull(lookup);
 
-        Class<?> fieldType = fieldType(fieldDescriptor, owner.getClassLoader());
+        Class<?> fieldType = cacheHandle.varType();
         if (fieldType.isPrimitive()) {
             throw new IllegalArgumentException("reference cache field required");
         }
 
-        Field field = owner.getDeclaredField(fieldName);
-        if (field.getType() != fieldType) {
-            throw new NoSuchFieldException(fieldName);
-        }
-
-        boolean isStatic = Modifier.isStatic(field.getModifiers());
-        MethodHandle erasedInit = eraseInit(initHandle);
-        return isStatic
-                ? new StaticAccessor(lookup, owner, fieldName, fieldType, field, erasedInit)
-                : new InstanceAccessor(lookup, owner, fieldName, fieldType, field, erasedInit);
+        FieldVarHandleInfo fieldVarHandleInfo = JLI.fieldVarHandleInfo(cacheHandle);
+        return fieldVarHandleInfo.isStatic()
+                ? new StaticAccessor(fieldVarHandleInfo, initHandle)
+                : new InstanceAccessor(fieldVarHandleInfo, initHandle);
     }
 
     /**
      * Returns the cached value, initializing it on demand.
      * @param receiver the receiver, ignored for static fields
+     * @throws Throwable any exception thrown during initialization
      * @return the cached value
      */
     @ForceInline
-    public final Object getOrInit(Object receiver) {
+    public final Object getOrInit(Object receiver) throws Throwable {
         Object actualBase = resolveBase(receiver);
         Object cached = UNSAFE.getReferenceStableVolatile(actualBase, offset);
         if (cached != null) {
@@ -111,19 +104,11 @@ public abstract class StableAccessor {
     }
 
     @DontInline
-    private Object slowGetOrInit(Object actualBase, Object receiver) {
+    private Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
         if (initHandle == null) {
             throw new IllegalStateException("no init handle");
         }
-        Object value;
-        try {
-            value = initHandle.invokeExact(receiver);
-        } catch (RuntimeException | Error ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            return sneakyThrow(ex);
-        }
-
+        Object value = initHandle.invokeExact(receiver);
         Object encoded = encode(value);
         if (UNSAFE.compareAndSetReference(actualBase, offset, null, encoded)) {
             return value;
@@ -133,24 +118,6 @@ public abstract class StableAccessor {
 
     @ForceInline
     abstract Object resolveBase(Object receiver);
-
-    private static MethodHandle eraseInit(MethodHandle handle) {
-        if (handle == null) {
-            return null;
-        }
-        MethodType type = handle.type();
-        if (type.parameterCount() == 0) {
-            handle = MethodHandles.dropArguments(handle, 0, Object.class);
-        } else if (type.parameterCount() != 1) {
-            throw new IllegalArgumentException("unsupported init handle type: " + type);
-        }
-        return handle.asType(MethodType.methodType(Object.class, Object.class));
-    }
-
-    private static Class<?> fieldType(String fieldDescriptor, ClassLoader loader) {
-        return MethodType.fromMethodDescriptorString("(" + fieldDescriptor + ")V", loader)
-                .parameterType(0);
-    }
 
     @ForceInline
     private static Object encode(Object value) {
@@ -162,24 +129,16 @@ public abstract class StableAccessor {
         return value == NULL_SENTINEL ? null : value;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable, R> R sneakyThrow(Throwable ex) throws T {
-        throw (T) ex;
-    }
-
     @TrustFinalFields
     private static class StaticAccessor extends StableAccessor {
         final Object base;
 
-        private StaticAccessor(MethodHandles.Lookup lookup,
-                               Class<?> owner,
-                               String fieldName,
-                               Class<?> fieldType,
-                               Field field,
-                               MethodHandle initHandle) throws NoSuchFieldException, IllegalAccessException {
-            super(UNSAFE.staticFieldOffset(field), initHandle);
-            lookup.findStaticGetter(owner, fieldName, fieldType);
-            this.base = UNSAFE.staticFieldBase(field);
+        private StaticAccessor(FieldVarHandleInfo info,
+                               MethodHandle initHandle) {
+            super(info.offset(),
+                    MethodHandles.dropArguments(initHandle, 0, Object.class)
+                            .asType(MethodType.methodType(Object.class, Object.class)));
+            this.base = info.base();
         }
 
         @Override
@@ -191,14 +150,11 @@ public abstract class StableAccessor {
 
     @TrustFinalFields
     private static final class InstanceAccessor extends StableAccessor {
-        private InstanceAccessor(MethodHandles.Lookup lookup,
-                                 Class<?> owner,
-                                 String fieldName,
-                                 Class<?> fieldType,
-                                 Field field,
-                                 MethodHandle initHandle) throws NoSuchFieldException, IllegalAccessException {
-            super(UNSAFE.objectFieldOffset(field), initHandle);
-            lookup.findGetter(owner, fieldName, fieldType);
+        private InstanceAccessor(FieldVarHandleInfo info,
+                                 MethodHandle initHandle) {
+
+            super(info.offset(),
+                    initHandle.asType(MethodType.methodType(Object.class, Object.class)));
         }
 
         @Override

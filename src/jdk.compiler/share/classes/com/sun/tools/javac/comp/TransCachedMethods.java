@@ -41,13 +41,9 @@ import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
-import com.sun.tools.javac.tree.JCTree.JCStatement;
-import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
-import com.sun.tools.javac.tree.JCTree.Tag;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.InvalidUtfException;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
@@ -102,8 +98,7 @@ public class TransCachedMethods extends TreeTranslator {
     public void visitMethodDef(JCMethodDecl tree) {
         boolean isConstantMethod = (tree.sym.flags() & CACHED) != 0;
         if (isConstantMethod) {
-            MethodSymbol initSym = dupToSyntheticInit(tree);
-            tree.body = makeManagedBody(tree, initSym);
+            tree.body = translateCachedMethod(tree);
             result = tree;
         } else {
             super.visitMethodDef(tree);
@@ -125,29 +120,30 @@ public class TransCachedMethods extends TreeTranslator {
         }
     }
 
-    private JCTree.JCBlock makeManagedBody(JCMethodDecl tree, MethodSymbol initSym) {
+    private JCTree.JCBlock translateCachedMethod(JCMethodDecl tree) {
+        MethodSymbol initSym = dupToSyntheticInit(tree);
         VarSymbol cacheSym = makeCachedFieldSymbol(tree, syms.objectType);
-        VarSymbol accessorSym = makeManagedAccessor(tree, cacheSym, decorateName(tree.name, "cached"), initSym);
+        VarSymbol accessorSym = makeCachedMethodAccessor(tree, cacheSym, decorate(tree.name, "cached"), initSym);
         Symbol getterSym = rs.resolveInternalMethod(tree, attrEnv, accessorSym.type, names.fromString("getOrInit"), List.of(syms.objectType), List.nil());
         JCFieldAccess accessorMethodSelect = make.Select(make.Ident(accessorSym), getterSym);
         JCExpression receiver = tree.sym.isStatic() ? makeNull() : makeThis(currentClass.type, tree.sym);
         JCMethodInvocation accessorMethodApply = make.Apply(List.nil(), accessorMethodSelect, List.of(receiver)).setType(syms.objectType);
-        return make.Block(0, List.of(make.Return(convertManagedResult(accessorMethodApply, tree.type.getReturnType()))));
+        return make.Block(0, List.of(make.Return(unboxIfNeeded(accessorMethodApply, tree.type.getReturnType()))));
     }
 
     private VarSymbol makeCachedFieldSymbol(JCMethodDecl tree, Type cacheType) {
         VarSymbol cacheSym = new VarSymbol((tree.sym.isStatic() ? STATIC : 0) | PRIVATE | SYNTHETIC,
-                decorateName(tree.name, "cache"), cacheType, currentClass.sym);
+                decorate(tree.name, "cache"), cacheType, currentClass.sym);
         currentClass.sym.members().enter(cacheSym);
         return cacheSym;
     }
 
     private MethodSymbol dupToSyntheticInit(JCMethodDecl tree) {
         // create synthetic init symbol
-        // invariant: the constant method is non-void, non-generic, and 0-ary
+        // note: the constant method is non-void, non-generic, and 0-ary
         MethodSymbol initSym = new MethodSymbol(
                 (tree.sym.isStatic() ? STATIC : 0) | SYNTHETIC | PRIVATE,
-                decorateName(tree.name, "init"),
+                decorate(tree.name, "init"),
                 tree.sym.type,
                 currentClass.sym);
         currentClass.sym.members().enter(initSym);
@@ -157,32 +153,44 @@ public class TransCachedMethods extends TreeTranslator {
         return initSym;
     }
 
-    private Name decorateName(Name base, String prefix) {
+    private Name decorate(Name base, String prefix) {
         return base.append('$', names.fromString(prefix));
     }
 
-    private VarSymbol makeManagedAccessor(DiagnosticPosition pos, VarSymbol cacheSym, Name name, MethodSymbol initSym) {
+    private VarSymbol makeCachedMethodAccessor(DiagnosticPosition pos, VarSymbol cacheSym, Name name, MethodSymbol initSym) {
         List<Type> argTypes = List.of(syms.methodHandleLookupType,
                 syms.stringType,
                 syms.classType,
-                syms.classType,
-                syms.stringType,
-                syms.stringType,
+                syms.varHandleType,
                 syms.methodHandleType);
 
         MethodSymbol bsm = rs.resolveInternalMethod(pos, attrEnv, syms.stableAccessorType,
                 names.fromString("of"), argTypes, List.nil());
 
-        CachedMethodSignatureGenerator cachedMethodSignatureGenerator = new CachedMethodSignatureGenerator(false);
-        cachedMethodSignatureGenerator.assembleSig(cacheSym.type);
-        String cacheTypeSig = cachedMethodSignatureGenerator.toString();
-
         return new DynamicVarSymbol(name, currentClass.sym, bsm.asHandle(), syms.stableAccessorType,
                 new LoadableConstant[] {
-                        (ClassType) currentClass.type,
-                        LoadableConstant.String(cacheSym.name.toString()),
-                        LoadableConstant.String(cacheTypeSig),
+                        makeFieldVarHandle(pos, cacheSym),
                         initSym.asHandle()
+                });
+    }
+
+    private DynamicVarSymbol makeFieldVarHandle(DiagnosticPosition pos, VarSymbol cacheSym) {
+        List<Type> argTypes = List.of(syms.methodHandleLookupType,
+                syms.stringType,
+                new ClassType(Type.noType, List.of(syms.varHandleType), syms.classType.tsym),
+                syms.classType,
+                syms.classType);
+
+        Name bsmName = cacheSym.isStatic() ?
+                names.fromString("staticFieldVarHandle") :
+                names.fromString("fieldVarHandle");
+        MethodSymbol bsm = rs.resolveInternalMethod(pos, attrEnv, syms.constantBootstrapsType,
+                bsmName, argTypes, List.nil());
+
+        return new DynamicVarSymbol(cacheSym.name, currentClass.sym, bsm.asHandle(), syms.varHandleType,
+                new LoadableConstant[] {
+                        (ClassType) types.erasure(currentClass.type),
+                        (ClassType) types.erasure(cacheSym.type)
                 });
     }
 
@@ -199,7 +207,7 @@ public class TransCachedMethods extends TreeTranslator {
         return make.Apply(List.nil(), make.Select(casted, valueSym), List.nil()).setType(primitive);
     }
 
-    private JCExpression convertManagedResult(JCExpression tree, Type returnType) {
+    private JCExpression unboxIfNeeded(JCExpression tree, Type returnType) {
         return returnType.isPrimitive()
                 ? unbox(tree, returnType)
                 : make.TypeCast(returnType, tree).setType(returnType);
@@ -236,42 +244,4 @@ public class TransCachedMethods extends TreeTranslator {
             currentClass = null;
         }
     }
-
-    /**
-     * Signature Generation
-     */
-    private class CachedMethodSignatureGenerator extends Types.SignatureGenerator {
-        StringBuilder sb = new StringBuilder();
-
-        CachedMethodSignatureGenerator(boolean allowIllegalSignatures) {
-            types.super();
-        }
-
-        @Override
-        protected void append(char ch) {
-            sb.append(ch);
-        }
-
-        @Override
-        protected void append(byte[] ba) {
-            Name name;
-            try {
-                name = names.fromUtf(ba);
-            } catch (InvalidUtfException e) {
-                throw new AssertionError(e);
-            }
-            sb.append(name.toString());
-        }
-
-        @Override
-        protected void append(Name name) {
-            sb.append(name.toString());
-        }
-
-        @Override
-        public String toString() {
-            return sb.toString();
-        }
-    }
-
 }
