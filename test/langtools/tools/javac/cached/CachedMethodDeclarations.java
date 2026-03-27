@@ -10,6 +10,8 @@ class CachedMethodDeclarations {
         cached int instanceMethod() { return 1; } // yep
         static cached int staticMethod() { return 2; } // yep
         native cached int instanceMethod(); // nope
+        cached int methodWithArgs(int i, int j) { return i + j; } // nope
+        cached void voidMethod() { } // nope
     }
 
     abstract class AC {
