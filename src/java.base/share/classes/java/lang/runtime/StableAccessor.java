@@ -25,12 +25,14 @@
 
 package java.lang.runtime;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
 
@@ -40,25 +42,25 @@ import static java.util.Objects.requireNonNull;
 @TrustFinalFields
 public abstract class StableAccessor {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static final Object NULL_SENTINEL = new Object();
 
-    final boolean isStatic;
-    final Object base;
     final long offset;
+    final MethodHandle initHandle;
 
-    private StableAccessor(boolean isStatic, Object base, long offset) {
-        this.isStatic = isStatic;
-        this.base = base;
+    private StableAccessor(long offset, MethodHandle initHandle) {
         this.offset = offset;
+        this.initHandle = initHandle;
     }
 
     /**
-     * Creates a stable accessor.
+     * Creates a stable accessor with embedded initialization logic.
      * @param lookup the caller lookup
      * @param unusedName ignored bootstrap name
      * @param unusedAccessorType ignored bootstrap type
      * @param owner the field owner
      * @param fieldName the field name
      * @param fieldDescriptor the field descriptor
+     * @param initHandle method handle used to initialize the cache on miss
      * @return the accessor
      * @throws NoSuchFieldException if the field cannot be found
      * @throws IllegalAccessException if the field cannot be accessed
@@ -68,7 +70,8 @@ public abstract class StableAccessor {
                                     Class<?> unusedAccessorType,
                                     Class<?> owner,
                                     String fieldName,
-                                    String fieldDescriptor)
+                                    String fieldDescriptor,
+                                    MethodHandle initHandle)
             throws NoSuchFieldException, IllegalAccessException {
         requireNonNull(owner);
         requireNonNull(fieldName);
@@ -76,6 +79,9 @@ public abstract class StableAccessor {
         requireNonNull(lookup);
 
         Class<?> fieldType = fieldType(fieldDescriptor, owner.getClassLoader());
+        if (fieldType.isPrimitive()) {
+            throw new IllegalArgumentException("reference cache field required");
+        }
 
         Field field = owner.getDeclaredField(fieldName);
         if (field.getType() != fieldType) {
@@ -83,46 +89,62 @@ public abstract class StableAccessor {
         }
 
         boolean isStatic = Modifier.isStatic(field.getModifiers());
-        Object base;
-        long offset;
-        if (isStatic) {
-            lookup.findStaticGetter(owner, fieldName, fieldType);
-            base = UNSAFE.staticFieldBase(field);
-            offset = UNSAFE.staticFieldOffset(field);
-        } else {
-            lookup.findGetter(owner, fieldName, fieldType);
-            base = null;
-            offset = UNSAFE.objectFieldOffset(field);
+        MethodHandle erasedInit = eraseInit(initHandle);
+        return isStatic
+                ? new StaticAccessor(lookup, owner, fieldName, fieldType, field, erasedInit)
+                : new InstanceAccessor(lookup, owner, fieldName, fieldType, field, erasedInit);
+    }
+
+    /**
+     * Returns the cached value, initializing it on demand.
+     * @param receiver the receiver, ignored for static fields
+     * @return the cached value
+     */
+    @ForceInline
+    public final Object getOrInit(Object receiver) {
+        Object actualBase = resolveBase(receiver);
+        Object cached = UNSAFE.getReferenceStableVolatile(actualBase, offset);
+        if (cached != null) {
+            return decode(cached);
+        }
+        return slowGetOrInit(actualBase, receiver);
+    }
+
+    @DontInline
+    private Object slowGetOrInit(Object actualBase, Object receiver) {
+        if (initHandle == null) {
+            throw new IllegalStateException("no init handle");
+        }
+        Object value;
+        try {
+            value = initHandle.invokeExact(receiver);
+        } catch (RuntimeException | Error ex) {
+            throw ex;
+        } catch (Throwable ex) {
+            return sneakyThrow(ex);
         }
 
-        if (fieldType == boolean.class) {
-            return new OfBoolean(isStatic, base, offset);
-        } else if (fieldType == byte.class) {
-            return new OfByte(isStatic, base, offset);
-        } else if (fieldType == short.class) {
-            return new OfShort(isStatic, base, offset);
-        } else if (fieldType == char.class) {
-            return new OfChar(isStatic, base, offset);
-        } else if (fieldType == int.class) {
-            return new OfInt(isStatic, base, offset);
-        } else if (fieldType == long.class) {
-            return new OfLong(isStatic, base, offset);
-        } else if (fieldType == float.class) {
-            return new OfFloat(isStatic, base, offset);
-        } else if (fieldType == double.class) {
-            return new OfDouble(isStatic, base, offset);
-        } else {
-            return new OfReference<>(fieldType, isStatic, base, offset);
+        Object encoded = encode(value);
+        if (UNSAFE.compareAndSetReference(actualBase, offset, null, encoded)) {
+            return value;
         }
+        return decode(UNSAFE.getReferenceStableVolatile(actualBase, offset));
     }
 
     @ForceInline
-    final Object resolveBase(Object receiver) {
-        if (isStatic) {
-            return base;
-        } else {
-            return requireNonNull(receiver);
+    abstract Object resolveBase(Object receiver);
+
+    private static MethodHandle eraseInit(MethodHandle handle) {
+        if (handle == null) {
+            return null;
         }
+        MethodType type = handle.type();
+        if (type.parameterCount() == 0) {
+            handle = MethodHandles.dropArguments(handle, 0, Object.class);
+        } else if (type.parameterCount() != 1) {
+            throw new IllegalArgumentException("unsupported init handle type: " + type);
+        }
+        return handle.asType(MethodType.methodType(Object.class, Object.class));
     }
 
     private static Class<?> fieldType(String fieldDescriptor, ClassLoader loader) {
@@ -130,163 +152,59 @@ public abstract class StableAccessor {
                 .parameterType(0);
     }
 
-    /** Boolean accessor. */
-    public static final class OfBoolean extends StableAccessor {
-        private OfBoolean(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
+    @ForceInline
+    private static Object encode(Object value) {
+        return value == null ? NULL_SENTINEL : value;
+    }
+
+    @ForceInline
+    private static Object decode(Object value) {
+        return value == NULL_SENTINEL ? null : value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable, R> R sneakyThrow(Throwable ex) throws T {
+        throw (T) ex;
+    }
+
+    @TrustFinalFields
+    private static class StaticAccessor extends StableAccessor {
+        final Object base;
+
+        private StaticAccessor(MethodHandles.Lookup lookup,
+                               Class<?> owner,
+                               String fieldName,
+                               Class<?> fieldType,
+                               Field field,
+                               MethodHandle initHandle) throws NoSuchFieldException, IllegalAccessException {
+            super(UNSAFE.staticFieldOffset(field), initHandle);
+            lookup.findStaticGetter(owner, fieldName, fieldType);
+            this.base = UNSAFE.staticFieldBase(field);
         }
 
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
+        @Override
         @ForceInline
-        public boolean get(Object receiver) {
-            return UNSAFE.getBooleanStable(resolveBase(receiver), offset);
+        Object resolveBase(Object receiver) {
+            return base;
         }
     }
 
-    /** Byte accessor. */
-    public static final class OfByte extends StableAccessor {
-        private OfByte(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
+    @TrustFinalFields
+    private static final class InstanceAccessor extends StableAccessor {
+        private InstanceAccessor(MethodHandles.Lookup lookup,
+                                 Class<?> owner,
+                                 String fieldName,
+                                 Class<?> fieldType,
+                                 Field field,
+                                 MethodHandle initHandle) throws NoSuchFieldException, IllegalAccessException {
+            super(UNSAFE.objectFieldOffset(field), initHandle);
+            lookup.findGetter(owner, fieldName, fieldType);
         }
 
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
+        @Override
         @ForceInline
-        public byte get(Object receiver) {
-            return UNSAFE.getByteStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Short accessor. */
-    public static final class OfShort extends StableAccessor {
-        private OfShort(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public short get(Object receiver) {
-            return UNSAFE.getShortStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Char accessor. */
-    public static final class OfChar extends StableAccessor {
-        private OfChar(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public char get(Object receiver) {
-            return UNSAFE.getCharStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Int accessor. */
-    public static final class OfInt extends StableAccessor {
-        private OfInt(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public int get(Object receiver) {
-            return UNSAFE.getIntStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Long accessor. */
-    public static final class OfLong extends StableAccessor {
-        private OfLong(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public long get(Object receiver) {
-            return UNSAFE.getLongStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Float accessor. */
-    public static final class OfFloat extends StableAccessor {
-        private OfFloat(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public float get(Object receiver) {
-            return UNSAFE.getFloatStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /** Double accessor. */
-    public static final class OfDouble extends StableAccessor {
-        private OfDouble(boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public double get(Object receiver) {
-            return UNSAFE.getDoubleStable(resolveBase(receiver), offset);
-        }
-    }
-
-    /**
-     * Reference accessor.
-     * @param <T> the reference type
-     */
-    public static final class OfReference<T> extends StableAccessor {
-        private final Class<T> referenceType;
-
-        @SuppressWarnings("unchecked")
-        private OfReference(Class<?> fieldType, boolean isStatic, Object base, long offset) {
-            super(isStatic, base, offset);
-            this.referenceType = (Class<T>) fieldType;
-        }
-
-        /**
-         * Returns the field value.
-         * @param receiver the receiver, ignored for static fields
-         * @return the field value
-         */
-        @ForceInline
-        public T get(Object receiver) {
-            return referenceType.cast(UNSAFE.getReferenceStable(resolveBase(receiver), offset));
+        Object resolveBase(Object receiver) {
+            return requireNonNull(receiver);
         }
     }
 }

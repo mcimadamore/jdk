@@ -246,7 +246,6 @@ public class Symtab {
 
     // cached methods
     public final Type stableAccessorType;
-    public final Type[] stableAccessorConcreteTypes;
 
     /** The symbol representing the length field of an array.
      */
@@ -637,25 +636,6 @@ public class Symtab {
         objectOutputType = enterClass("java.io.ObjectOutput");
 
         stableAccessorType = enterClass("java.lang.runtime.StableAccessor");
-        stableAccessorConcreteTypes = new Type[TypeTag.getTypeTagCount()];
-        stableAccessorConcreteTypes[TypeTag.BOOLEAN.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfBoolean");
-        stableAccessorConcreteTypes[TypeTag.BYTE.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfByte");
-        stableAccessorConcreteTypes[TypeTag.SHORT.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfShort");
-        stableAccessorConcreteTypes[TypeTag.CHAR.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfChar");
-        stableAccessorConcreteTypes[TypeTag.INT.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfInt");
-        stableAccessorConcreteTypes[TypeTag.LONG.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfLong");
-        stableAccessorConcreteTypes[TypeTag.FLOAT.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfFloat");
-        stableAccessorConcreteTypes[TypeTag.DOUBLE.ordinal()] = enterClass("java.lang.runtime.StableAccessor$OfDouble");
-        Type stableAccessorReferenceType = enterClass("java.lang.runtime.StableAccessor$OfReference");
-        stableAccessorConcreteTypes[TypeTag.CLASS.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.ARRAY.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.TYPEVAR.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.WILDCARD.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.FORALL.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.DEFERRED.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.BOT.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.ERROR.ordinal()] = stableAccessorReferenceType;
-        stableAccessorConcreteTypes[TypeTag.UNDETVAR.ordinal()] = stableAccessorReferenceType;
 
         synthesizeEmptyInterfaceIfMissing(autoCloseableType);
         synthesizeEmptyInterfaceIfMissing(cloneableType);
