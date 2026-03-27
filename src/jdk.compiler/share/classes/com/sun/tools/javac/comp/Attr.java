@@ -1030,15 +1030,15 @@ public class Attr extends JCTree.Visitor {
             if (isConstMethod) {
                 // must not take parameters
                 if (tree.params.nonEmpty()) {
-                    log.error(tree.params.head, Errors.ConstMethodParams);
-                }
-                // must not take type parameters
-                if (tree.typarams.nonEmpty()) {
-                    log.error(tree.typarams.head, Errors.ConstMethodGeneric);
+                    log.error(tree.params.head, Errors.CachedMethodParams);
                 }
                 // must not be void
                 if (tree.sym.type.getReturnType().hasTag(VOID)) {
-                    log.error(tree.restype, Errors.ConstMethodVoid);
+                    log.error(tree.restype, Errors.CachedMethodVoid);
+                }
+                // must not belong to an interface/annotation
+                if (tree.sym.owner.isInterface()) {
+                    log.error(tree, Errors.CachedMethodNotIntf);
                 }
             }
 

@@ -1,0 +1,8 @@
+CachedMethodDeclarations.java:12:27: compiler.err.illegal.combination.of.modifiers: union or cached, native
+CachedMethodDeclarations.java:34:28: compiler.err.illegal.combination.of.modifiers: union or cached, default
+CachedMethodDeclarations.java:35:28: compiler.err.cached.method.not.intf
+CachedMethodDeclarations.java:36:27: compiler.err.cached.method.not.intf
+CachedMethodDeclarations.java:40:20: compiler.err.cached.method.not.intf
+- compiler.note.preview.filename: CachedMethodDeclarations.java, DEFAULT
+- compiler.note.preview.recompile
+5 errors

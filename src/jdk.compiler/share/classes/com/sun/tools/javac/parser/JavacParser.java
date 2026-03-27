@@ -5015,7 +5015,11 @@ public class JavacParser implements Parser {
     }
 
     protected boolean isCachedIdentifier() {
-        return token.name() == names.cached;
+        boolean isCached = token.name() == names.cached;
+        if (isCached) {
+            checkSourceLevel(Feature.CACHED_METHODS);
+        }
+        return isCached;
     }
 
     private boolean allowedAfterSealedOrNonSealed(Token next, boolean local, boolean currentIsNonSealed) {
