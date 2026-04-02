@@ -60,7 +60,6 @@ public class VectorLoad {
     MemorySegment heapSegment;
     MemorySegment nativeSegment;
     int[] randomVectorIndexes;
-    long[] randomVectorOffsets;
 
     @Setup
     public void setup() {
@@ -74,12 +73,10 @@ public class VectorLoad {
         MemorySegment.copy(longArray, 0, nativeSegment, JAVA_LONG, 0, ELEMENTS);
 
         randomVectorIndexes = new int[LOADS];
-        randomVectorOffsets = new long[LOADS];
         int vectorWindows = (ELEMENTS / LANES);
         Random random = new Random();
         for (int i = 0; i < LOADS; i++) {
             randomVectorIndexes[i] = random.nextInt(vectorWindows) * LANES;
-            randomVectorOffsets[i] = (long) randomVectorIndexes[i] * JAVA_LONG.byteSize();
         }
     }
 
@@ -130,7 +127,7 @@ public class VectorLoad {
         long sum = 0;
         for (int i = 0; i < LOADS; i++) {
             sum ^= LongVector.fromMemorySegment(LONG_SPECIES, heapSegment,
-                    randomVectorOffsets[i], ByteOrder.nativeOrder())
+                    (long) randomVectorIndexes[i] * JAVA_LONG.byteSize(), ByteOrder.nativeOrder())
                     .reduceLanes(VectorOperators.XOR);
         }
         return sum;
@@ -141,7 +138,7 @@ public class VectorLoad {
         long sum = 0;
         for (int i = 0; i < LOADS; i++) {
             sum ^= LongVector.fromMemorySegment(LONG_SPECIES, nativeSegment,
-                    randomVectorOffsets[i], ByteOrder.nativeOrder())
+                    (long) randomVectorIndexes[i] * JAVA_LONG.byteSize(), ByteOrder.nativeOrder())
                     .reduceLanes(VectorOperators.XOR);
         }
         return sum;
