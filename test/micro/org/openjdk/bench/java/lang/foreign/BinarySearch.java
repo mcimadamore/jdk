@@ -380,6 +380,50 @@ public class BinarySearch extends JavaLayouts {
         return ~((low + len) << 1);
     }
 
+    @Benchmark
+    public int binarySearch_ffm_parsed_keys_batch_vector_tail_offset() {
+        MemorySegment keys = parsedLongsSegment;
+        long key = packedKey;
+        int low = 0;
+        int len = parsedKeyCount;
+        int lanes = LONG_SPECIES.length();
+
+        while (len > lanes) {
+            int half = len >>> 1;
+            int mid = low + half;
+            long candidate = keys.get(JAVA_LONG_UNALIGNED, (long) mid * JAVA_LONG.byteSize());
+
+            if (candidate < key) {
+                low = mid + 1;
+                len -= half + 1;
+            } else if (candidate == key) {
+                return mid << 1;
+            } else {
+                len = half;
+            }
+        }
+
+        if (len > 0) {
+            VectorMask<Long> inRange = LONG_SPECIES.indexInRange(0, len);
+            LongVector candidates = LongVector.fromMemorySegment(
+                    LONG_SPECIES,
+                    keys,
+                    (long) low * JAVA_LONG.byteSize(),
+                    ByteOrder.nativeOrder(),
+                    inRange);
+            VectorMask<Long> eqMask = candidates.compare(VectorOperators.EQ, key, inRange);
+            if (eqMask.anyTrue()) {
+                return (low + eqMask.firstTrue()) << 1;
+            }
+            VectorMask<Long> gtMask = candidates.compare(VectorOperators.GT, key, inRange);
+            if (gtMask.anyTrue()) {
+                return ~((low + gtMask.firstTrue()) << 1);
+            }
+        }
+
+        return ~((low + len) << 1);
+    }
+
     static long packKey(byte[] key, int offset) {
         return ((long) Byte.toUnsignedInt(key[offset]) << 56)
                 | ((long) Byte.toUnsignedInt(key[offset + 1]) << 48)
@@ -416,12 +460,14 @@ public class BinarySearch extends JavaLayouts {
         int parsedLongs = binarySearch_ffm_parsed_keys_batch();
         int parsedLongsUnsafe = binarySearch_unsafe_parsed_keys_batch();
         int parsedLongsVectorTail = binarySearch_ffm_parsed_keys_batch_vector_tail();
-        if (vanilla != parsedBytes || vanilla != parsedLongs || vanilla != parsedLongsUnsafe || vanilla != parsedLongsVectorTail) {
+        int parsedLongsVectorTailOffset = binarySearch_ffm_parsed_keys_batch_vector_tail_offset();
+        if (vanilla != parsedBytes || vanilla != parsedLongs || vanilla != parsedLongsUnsafe || vanilla != parsedLongsVectorTail || vanilla != parsedLongsVectorTailOffset) {
             throw new AssertionError("search result mismatch: vanilla=" + vanilla
                     + ", parsedBytes=" + parsedBytes
                     + ", parsedLongs=" + parsedLongs
                     + ", parsedLongsUnsafe=" + parsedLongsUnsafe
-                    + ", parsedLongsVectorTail=" + parsedLongsVectorTail);
+                    + ", parsedLongsVectorTail=" + parsedLongsVectorTail
+                    + ", parsedLongsVectorTailOffset=" + parsedLongsVectorTailOffset);
         }
     }
 
