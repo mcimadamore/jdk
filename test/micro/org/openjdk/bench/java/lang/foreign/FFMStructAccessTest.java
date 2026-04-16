@@ -246,9 +246,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t0_copyUnsafeInline16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t0_copyUnsafeInline16() {
+    public void copyUnsafeInline() {
         var d = this.dst.address();
         var s = this.src.address();
 
@@ -338,9 +337,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t1_copySegmentInline16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t1_copySegmentInline16() {
+    public void copySegmentInline() {
         var dst = this.dst;
         var src = this.src;
 
@@ -430,9 +428,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t2_copyVHInline16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t2_copyVHInline16() {
+    public void copySegmentVHInline() {
         var d = this.ds;
         var s = this.ss;
 
@@ -522,9 +519,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t3_copyUnsafe16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t3_copyUnsafe16() {
+    public void copyUnsafe() {
         var d = this.dau;
         var s = this.sau;
 
@@ -554,9 +550,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t4_copySegment16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t4_copySegment16() {
+    public void copySegment() {
         var d = this.ds;
         var s = this.ss;
 
@@ -586,9 +581,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t5_copyVH16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t5_copyVH16() {
+    public void copySegmentVH() {
         var d = this.dsv;
         var s = this.ssv;
 
@@ -618,9 +612,8 @@ public class FFMStructAccessTest {
     // ------------------
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t6_copyReinterpret16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t6_copyReinterpret16() {
+    public void copySegmentReinterpret() {
         var d = this.das;
         var s = this.sas;
 
@@ -648,9 +641,8 @@ public class FFMStructAccessTest {
     }
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t7_copyEverything16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t7_copyEverything16() {
+    public void copySegmentEverything() {
         var d = this.dae;
         var s = this.sae;
 
@@ -678,9 +670,8 @@ public class FFMStructAccessTest {
     }
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t8_copyBuffer16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t8_copyBuffer16() {
+    public void copyBuffer() {
         var d = this.db;
         var s = this.sb;
 
@@ -708,9 +699,8 @@ public class FFMStructAccessTest {
     }
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t9_copyBufferInline16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t9_copyBufferInline16() {
+    public void copyBufferInline() {
         var d = this.db.buffer;
         var s = this.sb.buffer;
 
@@ -798,9 +788,8 @@ public class FFMStructAccessTest {
     }
 
     @Benchmark
-    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t12_copyStaticAccessors16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-    public void t12_copyStaticAccessors16() {
+    public void copySegmentStaticAccessors() {
         var d = this.dst;
         var s = this.src;
 
