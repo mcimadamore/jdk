@@ -144,6 +144,70 @@ public class FFMStructAccessTest {
         void wInternal(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value); }
     }
 
+    public record Vec4iSegmentDeep(MemorySegment segment) {
+        int x() { return xA(); }
+        int y() { return yA(); }
+        int z() { return zA(); }
+        int w() { return wA(); }
+
+        Vec4iSegmentDeep x(int value) {
+            xA(value);
+            return this;
+        }
+        Vec4iSegmentDeep y(int value) {
+            yA(value);
+            return this;
+        }
+        Vec4iSegmentDeep z(int value) {
+            zA(value);
+            return this;
+        }
+        Vec4iSegmentDeep w(int value) {
+            wA(value);
+            return this;
+        }
+
+        int xA() { return xB(); }
+        int yA() { return yB(); }
+        int zA() { return zB(); }
+        int wA() { return wB(); }
+
+        int xB() { return xC(); }
+        int yB() { return yC(); }
+        int zB() { return zC(); }
+        int wB() { return wC(); }
+
+        int xC() { return xD(); }
+        int yC() { return yD(); }
+        int zC() { return zD(); }
+        int wC() { return wD(); }
+
+        int xD() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 0L); }
+        int yD() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 4L); }
+        int zD() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 8L); }
+        int wD() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 12L); }
+
+        void xA(int value) { xB(value); }
+        void yA(int value) { yB(value); }
+        void zA(int value) { zB(value); }
+        void wA(int value) { wB(value); }
+
+        void xB(int value) { xC(value); }
+        void yB(int value) { yC(value); }
+        void zB(int value) { zC(value); }
+        void wB(int value) { wC(value); }
+
+        void xC(int value) { xD(value); }
+        void yC(int value) { yD(value); }
+        void zC(int value) { zD(value); }
+        void wC(int value) { wD(value); }
+
+        void xD(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, value); }
+        void yD(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, value); }
+        void zD(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, value); }
+        void wD(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value); }
+    }
+
     public record Vec4iAddressSegment(long address) {
         private MemorySegment asSegment() {
             return MemorySegment.ofAddress(address).reinterpret(LAYOUT.byteSize());
@@ -194,6 +258,104 @@ public class FFMStructAccessTest {
             UNSAFE.putIntUnaligned(null, address + 12L, value);
             return this;
         }
+    }
+
+    public record Vec4iAddressUnsafeIndirect(long address) {
+        int x() { return xInternal(); }
+        int y() { return yInternal(); }
+        int z() { return zInternal(); }
+        int w() { return wInternal(); }
+
+        Vec4iAddressUnsafeIndirect x(int value) {
+            xInternal(value);
+            return this;
+        }
+        Vec4iAddressUnsafeIndirect y(int value) {
+            yInternal(value);
+            return this;
+        }
+        Vec4iAddressUnsafeIndirect z(int value) {
+            zInternal(value);
+            return this;
+        }
+        Vec4iAddressUnsafeIndirect w(int value) {
+            wInternal(value);
+            return this;
+        }
+
+        int xInternal() { return UNSAFE.getIntUnaligned(null, address + 0L); }
+        int yInternal() { return UNSAFE.getIntUnaligned(null, address + 4L); }
+        int zInternal() { return UNSAFE.getIntUnaligned(null, address + 8L); }
+        int wInternal() { return UNSAFE.getIntUnaligned(null, address + 12L); }
+
+        void xInternal(int value) { UNSAFE.putIntUnaligned(null, address + 0L, value); }
+        void yInternal(int value) { UNSAFE.putIntUnaligned(null, address + 4L, value); }
+        void zInternal(int value) { UNSAFE.putIntUnaligned(null, address + 8L, value); }
+        void wInternal(int value) { UNSAFE.putIntUnaligned(null, address + 12L, value); }
+    }
+
+    public record Vec4iAddressUnsafeDeep(long address) {
+        int x() { return xA(); }
+        int y() { return yA(); }
+        int z() { return zA(); }
+        int w() { return wA(); }
+
+        Vec4iAddressUnsafeDeep x(int value) {
+            xA(value);
+            return this;
+        }
+        Vec4iAddressUnsafeDeep y(int value) {
+            yA(value);
+            return this;
+        }
+        Vec4iAddressUnsafeDeep z(int value) {
+            zA(value);
+            return this;
+        }
+        Vec4iAddressUnsafeDeep w(int value) {
+            wA(value);
+            return this;
+        }
+
+        int xA() { return xB(); }
+        int yA() { return yB(); }
+        int zA() { return zB(); }
+        int wA() { return wB(); }
+
+        int xB() { return xC(); }
+        int yB() { return yC(); }
+        int zB() { return zC(); }
+        int wB() { return wC(); }
+
+        int xC() { return xD(); }
+        int yC() { return yD(); }
+        int zC() { return zD(); }
+        int wC() { return wD(); }
+
+        int xD() { return UNSAFE.getIntUnaligned(null, address + 0L); }
+        int yD() { return UNSAFE.getIntUnaligned(null, address + 4L); }
+        int zD() { return UNSAFE.getIntUnaligned(null, address + 8L); }
+        int wD() { return UNSAFE.getIntUnaligned(null, address + 12L); }
+
+        void xA(int value) { xB(value); }
+        void yA(int value) { yB(value); }
+        void zA(int value) { zB(value); }
+        void wA(int value) { wB(value); }
+
+        void xB(int value) { xC(value); }
+        void yB(int value) { yC(value); }
+        void zB(int value) { zC(value); }
+        void wB(int value) { wC(value); }
+
+        void xC(int value) { xD(value); }
+        void yC(int value) { yD(value); }
+        void zC(int value) { zD(value); }
+        void wC(int value) { wD(value); }
+
+        void xD(int value) { UNSAFE.putIntUnaligned(null, address + 0L, value); }
+        void yD(int value) { UNSAFE.putIntUnaligned(null, address + 4L, value); }
+        void zD(int value) { UNSAFE.putIntUnaligned(null, address + 8L, value); }
+        void wD(int value) { UNSAFE.putIntUnaligned(null, address + 12L, value); }
     }
 
     public record Vec4iAddressEverything(long address) {
@@ -268,11 +430,20 @@ public class FFMStructAccessTest {
     private Vec4iSegmentIndirect ssi = new Vec4iSegmentIndirect(src);
     private Vec4iSegmentIndirect dsi = new Vec4iSegmentIndirect(dst);
 
+    private Vec4iSegmentDeep ssdp = new Vec4iSegmentDeep(src);
+    private Vec4iSegmentDeep dsdp = new Vec4iSegmentDeep(dst);
+
     private Vec4iAddressSegment sas = new Vec4iAddressSegment(src.address());
     private Vec4iAddressSegment das = new Vec4iAddressSegment(dst.address());
 
     private Vec4iAddressUnsafe sau = new Vec4iAddressUnsafe(src.address());
     private Vec4iAddressUnsafe dau = new Vec4iAddressUnsafe(dst.address());
+
+    private Vec4iAddressUnsafeIndirect saui = new Vec4iAddressUnsafeIndirect(src.address());
+    private Vec4iAddressUnsafeIndirect daui = new Vec4iAddressUnsafeIndirect(dst.address());
+
+    private Vec4iAddressUnsafeDeep saud = new Vec4iAddressUnsafeDeep(src.address());
+    private Vec4iAddressUnsafeDeep daud = new Vec4iAddressUnsafeDeep(dst.address());
 
     private Vec4iAddressEverything sae = new Vec4iAddressEverything(src.address());
     private Vec4iAddressEverything dae = new Vec4iAddressEverything(dst.address());
@@ -560,6 +731,93 @@ public class FFMStructAccessTest {
     public void copyUnsafe() {
         var d = this.dau;
         var s = this.sau;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copyUnsafeIndirect() {
+        var d = this.daui;
+        var s = this.saui;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copyUnsafeDeep() {
+        var d = this.daud;
+        var s = this.saud;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copySegmentDeep() {
+        var d = this.dsdp;
+        var s = this.ssdp;
 
         for (var i = 0; i < ITERS; i++) {
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());

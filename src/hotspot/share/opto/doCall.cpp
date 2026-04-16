@@ -213,6 +213,8 @@ CallGenerator* Compile::call_generator(ciMethod* callee, int vtable_index, bool 
           // first.
           if (should_delay) {
             return CallGenerator::for_late_inline(callee, cg);
+          } else if (callee->is_memory_access_wrapper()) {
+            return CallGenerator::for_late_inline(callee, cg);
           } else if (should_delay_string_inlining(callee, jvms)) {
             return CallGenerator::for_string_late_inline(callee, cg);
           } else if (should_delay_boxing_inlining(callee, jvms)) {
@@ -477,6 +479,10 @@ bool Compile::should_delay_boxing_inlining(ciMethod* call_method, JVMState* jvms
 
 bool Compile::should_delay_vector_inlining(ciMethod* call_method, JVMState* jvms) {
   return EnableVectorSupport && call_method->is_vector_method();
+}
+
+bool Compile::should_delay_memory_access_inlining(ciMethod* call_method, JVMState* jvms) {
+  return call_method->is_memory_access_wrapper();
 }
 
 bool Compile::should_delay_vector_reboxing_inlining(ciMethod* call_method, JVMState* jvms) {
