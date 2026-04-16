@@ -110,6 +110,40 @@ public class FFMStructAccessTest {
         }
     }
 
+    public record Vec4iSegmentIndirect(MemorySegment segment) {
+        int x() { return xInternal(); }
+        int y() { return yInternal(); }
+        int z() { return zInternal(); }
+        int w() { return wInternal(); }
+
+        Vec4iSegmentIndirect x(int value) {
+            xInternal(value);
+            return this;
+        }
+        Vec4iSegmentIndirect y(int value) {
+            yInternal(value);
+            return this;
+        }
+        Vec4iSegmentIndirect z(int value) {
+            zInternal(value);
+            return this;
+        }
+        Vec4iSegmentIndirect w(int value) {
+            wInternal(value);
+            return this;
+        }
+
+        int xInternal() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 0L); }
+        int yInternal() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 4L); }
+        int zInternal() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 8L); }
+        int wInternal() { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 12L); }
+
+        void xInternal(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, value); }
+        void yInternal(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, value); }
+        void zInternal(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, value); }
+        void wInternal(int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value); }
+    }
+
     public record Vec4iAddressSegment(long address) {
         private MemorySegment asSegment() {
             return MemorySegment.ofAddress(address).reinterpret(LAYOUT.byteSize());
@@ -230,6 +264,9 @@ public class FFMStructAccessTest {
 
     private Vec4iSegmentVH ssv = new Vec4iSegmentVH(src);
     private Vec4iSegmentVH dsv = new Vec4iSegmentVH(dst);
+
+    private Vec4iSegmentIndirect ssi = new Vec4iSegmentIndirect(src);
+    private Vec4iSegmentIndirect dsi = new Vec4iSegmentIndirect(dst);
 
     private Vec4iAddressSegment sas = new Vec4iAddressSegment(src.address());
     private Vec4iAddressSegment das = new Vec4iAddressSegment(dst.address());
@@ -873,6 +910,35 @@ public class FFMStructAccessTest {
             Vec4iStatic.y(d, Vec4iStatic.y(s));
             Vec4iStatic.z(d, Vec4iStatic.z(s));
             Vec4iStatic.w(d, Vec4iStatic.w(s));
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copySegmentIndirect() {
+        var d = this.dsi;
+        var s = this.ssi;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
         }
     }
 
