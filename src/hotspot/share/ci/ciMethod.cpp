@@ -1283,6 +1283,7 @@ bool ciMethod::has_jsrs       () const {         FETCH_FLAG_FROM_VM(has_jsrs);  
 bool ciMethod::is_getter      () const {         FETCH_FLAG_FROM_VM(is_getter); }
 bool ciMethod::is_setter      () const {         FETCH_FLAG_FROM_VM(is_setter); }
 bool ciMethod::is_accessor    () const {         FETCH_FLAG_FROM_VM(is_accessor); }
+bool ciMethod::is_memory_access_wrapper() const { FETCH_FLAG_FROM_VM(is_memory_access_wrapper); }
 bool ciMethod::is_empty       () const {         FETCH_FLAG_FROM_VM(is_empty_method); }
 
 bool ciMethod::is_boxing_method() const {

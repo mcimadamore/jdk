@@ -571,6 +571,7 @@ public:
 
   // returns true if the method is an accessor function (setter/getter).
   bool is_accessor() const;
+  bool is_memory_access_wrapper() const;
 
   // returns true if the method is a getter
   bool is_getter() const;

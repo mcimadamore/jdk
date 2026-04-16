@@ -389,6 +389,11 @@ bool InlineTree::try_to_inline(ciMethod* callee_method, ciMethod* caller_method,
     return true;
   }
 
+  if (callee_method->is_memory_access_wrapper()) {
+    set_msg("memory access wrapper");
+    return true;
+  }
+
   // suppress a few checks for accessors and trivial methods
   if (callee_method->code_size() > MaxTrivialSize) {
 

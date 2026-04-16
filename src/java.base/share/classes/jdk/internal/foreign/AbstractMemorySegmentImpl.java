@@ -35,6 +35,7 @@ import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.MemoryAccess;
 import sun.nio.ch.DirectBuffer;
 
 import java.lang.foreign.AddressLayout;
@@ -771,12 +772,14 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @ForceInline
+    @MemoryAccess
     @Override
     public int get(ValueLayout.OfInt layout, long offset) {
         return (int) layout.varHandle().get((MemorySegment)this, offset);
     }
 
     @ForceInline
+    @MemoryAccess
     @Override
     public void set(ValueLayout.OfInt layout, long offset, int value) {
         layout.varHandle().set((MemorySegment)this, offset, value);

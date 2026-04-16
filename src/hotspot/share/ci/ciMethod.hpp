@@ -196,6 +196,7 @@ class ciMethod : public ciMetadata {
 
   bool caller_sensitive()       const { return get_Method()->caller_sensitive();       }
   bool force_inline()           const { return get_Method()->force_inline();           }
+  bool memory_access()          const { return get_Method()->memory_access();          }
   bool dont_inline()            const { return get_Method()->dont_inline();            }
   bool intrinsic_candidate()    const { return get_Method()->intrinsic_candidate();    }
   bool is_static_initializer()  const { return get_Method()->is_static_initializer();  }
@@ -352,6 +353,7 @@ class ciMethod : public ciMetadata {
   bool is_getter      () const;
   bool is_setter      () const;
   bool is_accessor    () const;
+  bool is_memory_access_wrapper() const;
   bool is_empty       () const;
   bool can_be_statically_bound() const           { return _can_be_statically_bound; }
   bool has_reserved_stack_access() const         { return _has_reserved_stack_access; }

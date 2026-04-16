@@ -37,6 +37,7 @@
 #include "compiler/compilationPolicy.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/bytecodes.hpp"
+#include "interpreter/bytecode.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/bytecodeTracer.hpp"
 #include "interpreter/interpreter.hpp"
@@ -866,6 +867,49 @@ bool Method::can_omit_stack_trace() {
 
 bool Method::is_accessor() const {
   return is_getter() || is_setter();
+}
+
+bool Method::is_memory_access_wrapper() const {
+  if (code_size() <= 0 || code_size() > 40) return false;
+
+  methodHandle mh(Thread::current(), const_cast<Method*>(this));
+  int invoke_bci = -1;
+  int invoke_count = 0;
+  BytecodeStream stream(mh);
+  while (!stream.is_last_bytecode()) {
+    Bytecodes::Code code = stream.next();
+    if (code == Bytecodes::_illegal) {
+      break;
+    }
+    if (Bytecodes::is_invoke(code)) {
+      invoke_bci = stream.bci();
+      invoke_count++;
+      if (invoke_count > 1) {
+        return false;
+      }
+    }
+  }
+  if (invoke_count != 1) {
+    return false;
+  }
+
+  Bytecode_invoke call(mh, invoke_bci);
+  Method* target = nullptr;
+  Thread* current = Thread::current();
+  if (!current->can_call_java()) {
+    target = mh->constants()->cache()->method_if_resolved(call.index());
+    if (target == nullptr) {
+      return false;
+    }
+  } else {
+    EXCEPTION_MARK;
+    target = call.static_target(THREAD);
+    if (HAS_PENDING_EXCEPTION) {
+      CLEAR_PENDING_EXCEPTION;
+      return false;
+    }
+  }
+  return target != nullptr && target->memory_access();
 }
 
 bool Method::is_getter() const {
