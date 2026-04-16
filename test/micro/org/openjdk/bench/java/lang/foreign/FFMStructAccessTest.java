@@ -84,25 +84,27 @@ public class FFMStructAccessTest {
             segment.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value);
             return this;
         }
+    }
 
-        int xVH() { return (int)X.get(segment, 0L); }
-        int yVH() { return (int)Y.get(segment, 0L); }
-        int zVH() { return (int)Z.get(segment, 0L); }
-        int wVH() { return (int)W.get(segment, 0L); }
+    public record Vec4iSegmentVH(MemorySegment segment) {
+        int x() { return (int)X.get(segment, 0L); }
+        int y() { return (int)Y.get(segment, 0L); }
+        int z() { return (int)Z.get(segment, 0L); }
+        int w() { return (int)W.get(segment, 0L); }
 
-        Vec4iSegment xVH(int value) {
+        Vec4iSegmentVH x(int value) {
             X.set(segment, 0L, value);
             return this;
         }
-        Vec4iSegment yVH(int value) {
+        Vec4iSegmentVH y(int value) {
             Y.set(segment, 0L, value);
             return this;
         }
-        Vec4iSegment zVH(int value) {
+        Vec4iSegmentVH z(int value) {
             Z.set(segment, 0L, value);
             return this;
         }
-        Vec4iSegment wVH(int value) {
+        Vec4iSegmentVH w(int value) {
             W.set(segment, 0L, value);
             return this;
         }
@@ -213,6 +215,9 @@ public class FFMStructAccessTest {
 
     private Vec4iSegment ss = new Vec4iSegment(src);
     private Vec4iSegment ds = new Vec4iSegment(dst);
+
+    private Vec4iSegmentVH ssv = new Vec4iSegmentVH(src);
+    private Vec4iSegmentVH dsv = new Vec4iSegmentVH(dst);
 
     private Vec4iAddressSegment sas = new Vec4iAddressSegment(src.address());
     private Vec4iAddressSegment das = new Vec4iAddressSegment(dst.address());
@@ -572,29 +577,29 @@ public class FFMStructAccessTest {
     @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t5_copyVH16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void t5_copyVH16() {
-        var d = this.ds;
-        var s = this.ss;
+        var d = this.dsv;
+        var s = this.ssv;
 
         for (var i = 0; i < ITERS; i++) {
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
-            d.xVH(s.xVH()).yVH(s.yVH()).zVH(s.zVH()).wVH(s.wVH());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
         }
     }
 
@@ -687,6 +692,96 @@ public class FFMStructAccessTest {
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t9_copyBufferInline16.xml"})
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void t9_copyBufferInline16() {
+        var d = this.db.buffer;
+        var s = this.sb.buffer;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
+
+            d.putInt(0, s.getInt(0));
+            d.putInt(4, s.getInt(4));
+            d.putInt(8, s.getInt(8));
+            d.putInt(12, s.getInt(12));
         }
     }
 
