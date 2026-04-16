@@ -210,6 +210,18 @@ public class FFMStructAccessTest {
         }
     }
 
+    public static final class Vec4iStatic {
+        static int x(MemorySegment segment) { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 0L); }
+        static int y(MemorySegment segment) { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 4L); }
+        static int z(MemorySegment segment) { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 8L); }
+        static int w(MemorySegment segment) { return segment.get(ValueLayout.JAVA_INT_UNALIGNED, 12L); }
+
+        static void x(MemorySegment segment, int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, value); }
+        static void y(MemorySegment segment, int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, value); }
+        static void z(MemorySegment segment, int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, value); }
+        static void w(MemorySegment segment, int value) { segment.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value); }
+    }
+
     private MemorySegment src = Arena.global().allocate(LAYOUT);
     private MemorySegment dst = Arena.global().allocate(LAYOUT);
 
@@ -782,6 +794,96 @@ public class FFMStructAccessTest {
             d.putInt(4, s.getInt(4));
             d.putInt(8, s.getInt(8));
             d.putInt(12, s.getInt(12));
+        }
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t12_copyStaticAccessors16.xml"})
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void t12_copyStaticAccessors16() {
+        var d = this.dst;
+        var s = this.src;
+
+        for (var i = 0; i < ITERS; i++) {
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
+
+            Vec4iStatic.x(d, Vec4iStatic.x(s));
+            Vec4iStatic.y(d, Vec4iStatic.y(s));
+            Vec4iStatic.z(d, Vec4iStatic.z(s));
+            Vec4iStatic.w(d, Vec4iStatic.w(s));
         }
     }
 
