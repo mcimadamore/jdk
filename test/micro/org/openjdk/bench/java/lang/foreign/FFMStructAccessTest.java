@@ -27,6 +27,8 @@ import org.openjdk.jmh.annotations.*;
 
 import java.lang.foreign.*;
 import java.lang.invoke.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.*;
 
 // Credit: https://gist.github.com/Spasi/eed94bd2228e637464c32786a52fbd0d
@@ -106,7 +108,7 @@ public class FFMStructAccessTest {
         }
     }
 
-    public record Vec4iAddress(long address) {
+    public record Vec4iAddressSegment(long address) {
         private MemorySegment asSegment() {
             return MemorySegment.ofAddress(address).reinterpret(LAYOUT.byteSize());
         }
@@ -116,41 +118,43 @@ public class FFMStructAccessTest {
         int z() { return asSegment().get(ValueLayout.JAVA_INT_UNALIGNED, 8L); }
         int w() { return asSegment().get(ValueLayout.JAVA_INT_UNALIGNED, 12L); }
 
-        Vec4iAddress x(int value) {
+        Vec4iAddressSegment x(int value) {
             asSegment().set(ValueLayout.JAVA_INT_UNALIGNED, 0L, value);
             return this;
         }
-        Vec4iAddress y(int value) {
+        Vec4iAddressSegment y(int value) {
             asSegment().set(ValueLayout.JAVA_INT_UNALIGNED, 4L, value);
             return this;
         }
-        Vec4iAddress z(int value) {
+        Vec4iAddressSegment z(int value) {
             asSegment().set(ValueLayout.JAVA_INT_UNALIGNED, 8L, value);
             return this;
         }
-        Vec4iAddress w(int value) {
+        Vec4iAddressSegment w(int value) {
             asSegment().set(ValueLayout.JAVA_INT_UNALIGNED, 12L, value);
             return this;
         }
+    }
 
-        int xUS() { return UNSAFE.getIntUnaligned(null, address + 0L); }
-        int yUS() { return UNSAFE.getIntUnaligned(null, address + 4L); }
-        int zUS() { return UNSAFE.getIntUnaligned(null, address + 8L); }
-        int wUS() { return UNSAFE.getIntUnaligned(null, address + 12L); }
+    public record Vec4iAddressUnsafe(long address) {
+        int x() { return UNSAFE.getIntUnaligned(null, address + 0L); }
+        int y() { return UNSAFE.getIntUnaligned(null, address + 4L); }
+        int z() { return UNSAFE.getIntUnaligned(null, address + 8L); }
+        int w() { return UNSAFE.getIntUnaligned(null, address + 12L); }
 
-        Vec4iAddress xUS(int value) {
+        Vec4iAddressUnsafe x(int value) {
             UNSAFE.putIntUnaligned(null, address + 0L, value);
             return this;
         }
-        Vec4iAddress yUS(int value) {
+        Vec4iAddressUnsafe y(int value) {
             UNSAFE.putIntUnaligned(null, address + 4L, value);
             return this;
         }
-        Vec4iAddress zUS(int value) {
+        Vec4iAddressUnsafe z(int value) {
             UNSAFE.putIntUnaligned(null, address + 8L, value);
             return this;
         }
-        Vec4iAddress wUS(int value) {
+        Vec4iAddressUnsafe w(int value) {
             UNSAFE.putIntUnaligned(null, address + 12L, value);
             return this;
         }
@@ -180,17 +184,47 @@ public class FFMStructAccessTest {
         }
     }
 
+    public record Vec4iBuffer(ByteBuffer buffer) {
+        int x() { return buffer.getInt(0); }
+        int y() { return buffer.getInt(4); }
+        int z() { return buffer.getInt(8); }
+        int w() { return buffer.getInt(12); }
+
+        Vec4iBuffer x(int value) {
+            buffer.putInt(0, value);
+            return this;
+        }
+        Vec4iBuffer y(int value) {
+            buffer.putInt(4, value);
+            return this;
+        }
+        Vec4iBuffer z(int value) {
+            buffer.putInt(8, value);
+            return this;
+        }
+        Vec4iBuffer w(int value) {
+            buffer.putInt(12, value);
+            return this;
+        }
+    }
+
     private MemorySegment src = Arena.global().allocate(LAYOUT);
     private MemorySegment dst = Arena.global().allocate(LAYOUT);
 
     private Vec4iSegment ss = new Vec4iSegment(src);
     private Vec4iSegment ds = new Vec4iSegment(dst);
 
-    private Vec4iAddress sa = new Vec4iAddress(src.address());
-    private Vec4iAddress da = new Vec4iAddress(dst.address());
+    private Vec4iAddressSegment sas = new Vec4iAddressSegment(src.address());
+    private Vec4iAddressSegment das = new Vec4iAddressSegment(dst.address());
+
+    private Vec4iAddressUnsafe sau = new Vec4iAddressUnsafe(src.address());
+    private Vec4iAddressUnsafe dau = new Vec4iAddressUnsafe(dst.address());
 
     private Vec4iAddressEverything sae = new Vec4iAddressEverything(src.address());
     private Vec4iAddressEverything dae = new Vec4iAddressEverything(dst.address());
+
+    private Vec4iBuffer sb = new Vec4iBuffer(src.asByteBuffer().order(ByteOrder.nativeOrder()));
+    private Vec4iBuffer db = new Vec4iBuffer(dst.asByteBuffer().order(ByteOrder.nativeOrder()));
 
     // ------------------
 
@@ -474,29 +508,29 @@ public class FFMStructAccessTest {
     @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t3_copyUnsafe16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void t3_copyUnsafe16() {
-        var d = this.da;
-        var s = this.sa;
+        var d = this.dau;
+        var s = this.sau;
 
         for (var i = 0; i < ITERS; i++) {
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
 
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
-            d.xUS(s.xUS()).yUS(s.yUS()).zUS(s.zUS()).wUS(s.wUS());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
         }
     }
 
@@ -570,8 +604,8 @@ public class FFMStructAccessTest {
     @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t6_copyReinterpret16.xml"})
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void t6_copyReinterpret16() {
-        var d = this.da;
-        var s = this.sa;
+        var d = this.das;
+        var s = this.sas;
 
         for (var i = 0; i < ITERS; i++) {
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
@@ -602,6 +636,36 @@ public class FFMStructAccessTest {
     public void t7_copyEverything16() {
         var d = this.dae;
         var s = this.sae;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @Fork(jvmArgsAppend = {"-XX:+UnlockDiagnosticVMOptions", "-XX:LogFile=t8_copyBuffer16.xml"})
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void t8_copyBuffer16() {
+        var d = this.db;
+        var s = this.sb;
 
         for (var i = 0; i < ITERS; i++) {
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
