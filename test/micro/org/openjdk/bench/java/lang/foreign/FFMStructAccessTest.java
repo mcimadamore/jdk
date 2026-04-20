@@ -648,6 +648,175 @@ public class FFMStructAccessTest {
         }
     }
 
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copySegmentInlineDouble() {
+        var dst = this.dst;
+        var src = this.src;
+
+        for (var i = 0; i < ITERS; i++) {
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 0L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 0L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 4L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 4L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 8L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 8L));
+            dst.set(ValueLayout.JAVA_INT_UNALIGNED, 12L, src.get(ValueLayout.JAVA_INT_UNALIGNED, 12L));
+        }
+    }
+
     // ------------------
 
     @Benchmark
@@ -830,11 +999,109 @@ public class FFMStructAccessTest {
 
     @Benchmark
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copyUnsafeDeepDouble() {
+        var d = this.daud;
+        var s = this.saud;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void copySegmentDeep() {
         var d = this.dsdp;
         var s = this.ssdp;
 
         for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copySegmentDeepDouble() {
+        var d = this.dsdp;
+        var s = this.ssdp;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
