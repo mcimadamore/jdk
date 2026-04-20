@@ -33,6 +33,7 @@ import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.Preconditions;
+import jdk.internal.vm.annotation.DelayInline;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import sun.nio.ch.DirectBuffer;
@@ -771,12 +772,14 @@ public abstract sealed class AbstractMemorySegmentImpl
     }
 
     @ForceInline
+    @DelayInline
     @Override
     public int get(ValueLayout.OfInt layout, long offset) {
         return (int) layout.varHandle().get((MemorySegment)this, offset);
     }
 
     @ForceInline
+    @DelayInline
     @Override
     public void set(ValueLayout.OfInt layout, long offset, int value) {
         layout.varHandle().set((MemorySegment)this, offset, value);

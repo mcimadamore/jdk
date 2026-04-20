@@ -31,6 +31,7 @@ import jdk.internal.foreign.SegmentBulkOperations;
 import jdk.internal.foreign.SegmentFactories;
 import jdk.internal.javac.Restricted;
 import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.vm.annotation.DelayInline;
 import jdk.internal.vm.annotation.ForceInline;
 
 import java.io.UncheckedIOException;
@@ -1870,6 +1871,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IndexOutOfBoundsException if {@code offset > byteSize() - layout.byteSize()}
      *         or {@code offset < 0}
      */
+    @ForceInline
+    @DelayInline
     int get(ValueLayout.OfInt layout, long offset);
 
     /**
@@ -1891,6 +1894,8 @@ public sealed interface MemorySegment permits AbstractMemorySegmentImpl {
      * @throws IllegalArgumentException if this segment is
      *         {@linkplain #isReadOnly() read-only}
      */
+    @ForceInline
+    @DelayInline
     void set(ValueLayout.OfInt layout, long offset, int value);
 
     /**
