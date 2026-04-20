@@ -394,6 +394,70 @@ public class FFMStructAccessTest {
         }
     }
 
+    public record Vec4iAddressEverythingDeep(long address) {
+        int x() { return xA(); }
+        int y() { return yA(); }
+        int z() { return zA(); }
+        int w() { return wA(); }
+
+        Vec4iAddressEverythingDeep x(int value) {
+            xA(value);
+            return this;
+        }
+        Vec4iAddressEverythingDeep y(int value) {
+            yA(value);
+            return this;
+        }
+        Vec4iAddressEverythingDeep z(int value) {
+            zA(value);
+            return this;
+        }
+        Vec4iAddressEverythingDeep w(int value) {
+            wA(value);
+            return this;
+        }
+
+        int xA() { return xB(); }
+        int yA() { return yB(); }
+        int zA() { return zB(); }
+        int wA() { return wB(); }
+
+        int xB() { return xC(); }
+        int yB() { return yC(); }
+        int zB() { return zC(); }
+        int wB() { return wC(); }
+
+        int xC() { return xD(); }
+        int yC() { return yD(); }
+        int zC() { return zD(); }
+        int wC() { return wD(); }
+
+        int xD() { return EVERYTHING.get(ValueLayout.JAVA_INT_UNALIGNED, address + 0L); }
+        int yD() { return EVERYTHING.get(ValueLayout.JAVA_INT_UNALIGNED, address + 4L); }
+        int zD() { return EVERYTHING.get(ValueLayout.JAVA_INT_UNALIGNED, address + 8L); }
+        int wD() { return EVERYTHING.get(ValueLayout.JAVA_INT_UNALIGNED, address + 12L); }
+
+        void xA(int value) { xB(value); }
+        void yA(int value) { yB(value); }
+        void zA(int value) { zB(value); }
+        void wA(int value) { wB(value); }
+
+        void xB(int value) { xC(value); }
+        void yB(int value) { yC(value); }
+        void zB(int value) { zC(value); }
+        void wB(int value) { wC(value); }
+
+        void xC(int value) { xD(value); }
+        void yC(int value) { yD(value); }
+        void zC(int value) { zD(value); }
+        void wC(int value) { wD(value); }
+
+        void xD(int value) { EVERYTHING.set(ValueLayout.JAVA_INT_UNALIGNED, address + 0L, value); }
+        void yD(int value) { EVERYTHING.set(ValueLayout.JAVA_INT_UNALIGNED, address + 4L, value); }
+        void zD(int value) { EVERYTHING.set(ValueLayout.JAVA_INT_UNALIGNED, address + 8L, value); }
+        void wD(int value) { EVERYTHING.set(ValueLayout.JAVA_INT_UNALIGNED, address + 12L, value); }
+    }
+
     public record Vec4iBuffer(ByteBuffer buffer) {
         int x() { return buffer.getInt(0); }
         int y() { return buffer.getInt(4); }
@@ -462,6 +526,9 @@ public class FFMStructAccessTest {
 
     private Vec4iAddressEverything sae = new Vec4iAddressEverything(src.address());
     private Vec4iAddressEverything dae = new Vec4iAddressEverything(dst.address());
+
+    private Vec4iAddressEverythingDeep saed = new Vec4iAddressEverythingDeep(src.address());
+    private Vec4iAddressEverythingDeep daed = new Vec4iAddressEverythingDeep(dst.address());
 
     private Vec4iBuffer sb = new Vec4iBuffer(src.asByteBuffer().order(ByteOrder.nativeOrder()));
     private Vec4iBuffer db = new Vec4iBuffer(dst.asByteBuffer().order(ByteOrder.nativeOrder()));
@@ -1222,6 +1289,35 @@ public class FFMStructAccessTest {
     public void copySegmentEverything() {
         var d = this.dae;
         var s = this.sae;
+
+        for (var i = 0; i < ITERS; i++) {
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+            d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
+        }
+    }
+
+    @Benchmark
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+    public void copySegmentEverythingDeep() {
+        var d = this.daed;
+        var s = this.saed;
 
         for (var i = 0; i < ITERS; i++) {
             d.x(s.x()).y(s.y()).z(s.z()).w(s.w());
