@@ -283,6 +283,8 @@ public interface JavaLangAccess {
      */
     void ensureNativeAccess(Module m, Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 
+    boolean isNativeAccessEnabled(Module m);
+
     /**
      * Enable code in all unnamed modules to mutate final instance fields.
      */

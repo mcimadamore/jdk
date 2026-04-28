@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.Module.EnableNativeAccess;
 import java.lang.annotation.Annotation;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
@@ -2107,6 +2108,9 @@ public final class System {
             }
             public void ensureNativeAccess(Module m, Class<?> owner, String methodName, Class<?> currentClass, boolean jni) {
                 m.ensureNativeAccess(owner, methodName, currentClass, jni);
+            }
+            public boolean isNativeAccessEnabled(Module m) {
+                return EnableNativeAccess.isNativeAccessEnabled(m.moduleForNativeAccess());
             }
             public boolean isStaticallyExported(Module m, String pn, Module other) {
                 return m.isStaticallyExported(pn, other);

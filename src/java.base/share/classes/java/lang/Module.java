@@ -70,6 +70,7 @@ import jdk.internal.module.Resources;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.AOTSafeClassInitializer;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.Stable;
 
 /**
@@ -267,13 +268,13 @@ public final class Module implements AnnotatedElement {
      * This class is used to be able to bootstrap without using Unsafe
      * in the outer Module class as that would create a circular initializer dependency.
      */
-    private static final class EnableNativeAccess {
+    static final class EnableNativeAccess {
         private EnableNativeAccess() {}
 
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long FIELD_OFFSET = UNSAFE.objectFieldOffset(Module.class, "enableNativeAccess");
 
-        private static boolean isNativeAccessEnabled(Module target) {
+        static boolean isNativeAccessEnabled(Module target) {
             return UNSAFE.getBooleanVolatile(target, FIELD_OFFSET);
         }
 
@@ -286,51 +287,49 @@ public final class Module implements AnnotatedElement {
 
     // Returns the Module object that holds the enableNativeAccess
     // flag for this module.
-    private Module moduleForNativeAccess() {
+    Module moduleForNativeAccess() {
         return isNamed() ? this : ALL_UNNAMED_MODULE;
     }
 
     // This is invoked from Reflection.ensureNativeAccess
+    @DontInline
     void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni) {
         // The target module whose enableNativeAccess flag is ensured
         Module target = moduleForNativeAccess();
         ModuleBootstrap.IllegalNativeAccess illegalNativeAccess = ModuleBootstrap.illegalNativeAccess();
-        if (illegalNativeAccess != ModuleBootstrap.IllegalNativeAccess.ALLOW &&
-                !EnableNativeAccess.isNativeAccessEnabled(target)) {
-            String mod = isNamed() ? "module " + getName() : "an unnamed module";
-            if (currentClass != null) {
-                // try to extract location of the current class (e.g. jar or folder)
-                CodeSource cs = currentClass.getProtectionDomain().getCodeSource();
-                if (cs != null) {
-                    URL url = cs.getLocation();
-                    if (url != null) {
-                        mod += " (" + url + ")";
-                    }
+        String mod = isNamed() ? "module " + getName() : "an unnamed module";
+        if (currentClass != null) {
+            // try to extract location of the current class (e.g. jar or folder)
+            CodeSource cs = currentClass.getProtectionDomain().getCodeSource();
+            if (cs != null) {
+                URL url = cs.getLocation();
+                if (url != null) {
+                    mod += " (" + url + ")";
                 }
             }
-            if (illegalNativeAccess == ModuleBootstrap.IllegalNativeAccess.DENY) {
-                throw new IllegalCallerException("Illegal native access from " + mod);
-            } else if (EnableNativeAccess.trySetEnableNativeAccess(target)) {
-                // warn and set flag, so that only one warning is reported per module
-                String cls = owner.getName();
-                String mtd = cls + "::" + methodName;
-                String modflag = isNamed() ? getName() : "ALL-UNNAMED";
-                String caller = currentClass != null ? currentClass.getName() : "code";
-                if (jni) {
-                    VM.initialErr().printf("""
-                            WARNING: A native method in %s has been bound
-                            WARNING: %s is declared in %s
-                            WARNING: Use --enable-native-access=%s to avoid a warning for native methods declared in this module
-                            WARNING: Restricted methods will be blocked in a future release unless native access is enabled
-                            %n""", cls, mtd, mod, modflag);
-                } else {
-                    VM.initialErr().printf("""
-                            WARNING: A restricted method in %s has been called
-                            WARNING: %s has been called by %s in %s
-                            WARNING: Use --enable-native-access=%s to avoid a warning for callers in this module
-                            WARNING: Restricted methods will be blocked in a future release unless native access is enabled
-                            %n""", cls, mtd, caller, mod, modflag);
-                }
+        }
+        if (illegalNativeAccess == ModuleBootstrap.IllegalNativeAccess.DENY) {
+            throw new IllegalCallerException("Illegal native access from " + mod);
+        } else if (EnableNativeAccess.trySetEnableNativeAccess(target)) {
+            // warn and set flag, so that only one warning is reported per module
+            String cls = owner.getName();
+            String mtd = cls + "::" + methodName;
+            String modflag = isNamed() ? getName() : "ALL-UNNAMED";
+            String caller = currentClass != null ? currentClass.getName() : "code";
+            if (jni) {
+                VM.initialErr().printf("""
+                        WARNING: A native method in %s has been bound
+                        WARNING: %s is declared in %s
+                        WARNING: Use --enable-native-access=%s to avoid a warning for native methods declared in this module
+                        WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+                        %n""", cls, mtd, mod, modflag);
+            } else {
+                VM.initialErr().printf("""
+                        WARNING: A restricted method in %s has been called
+                        WARNING: %s has been called by %s in %s
+                        WARNING: Use --enable-native-access=%s to avoid a warning for callers in this module
+                        WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+                        %n""", cls, mtd, caller, mod, modflag);
             }
         }
     }
