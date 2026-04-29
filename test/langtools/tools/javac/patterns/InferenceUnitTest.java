@@ -160,6 +160,8 @@ public class InferenceUnitTest {
         checkInferedType("B<String>", "C", null); // no sideways casts
 
         checkInferedType("A<T1>", "B", "B<T1>");
+        checkInferedType("A<T1>", "C", "C<T1,?>");
+        checkInferedType("C<T1, ? extends Runnable>", "E", "E<T1>");
         checkInferedType("RecursiveTest1Interface<?>", "RecursiveTest1Use", "RecursiveTest1Use<? extends java.lang.Object&RecursiveTest1Use<?>&RecursiveTest1Interface<? extends RecursiveTest1Use<?>>>");
         checkInferedType("RecursiveTest2Interface<?>", "RecursiveTest2Use", "RecursiveTest2Use<? extends RecursiveTest2Use<?,?>,?>");
     }

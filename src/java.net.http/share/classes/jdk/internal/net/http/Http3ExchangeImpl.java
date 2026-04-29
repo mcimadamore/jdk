@@ -1013,7 +1013,10 @@ final class Http3ExchangeImpl<T> extends Http3Stream<T> {
 
         BodySubscriber<T> subscriber = responseSubscriber;
         if (subscriber == null) subscriber = pendingResponseSubscriber;
-        if (subscriber instanceof Http3StreamResponseSubscriber<?> h3srs) {
+        if (subscriber instanceof Http3ExchangeImpl<?>.Http3StreamResponseSubscriber<?>) {
+            @SuppressWarnings("unchecked")
+            Http3StreamResponseSubscriber<?> h3srs =
+                    (Http3StreamResponseSubscriber<?>) subscriber;
             // ensure subscriber is unregistered
             h3srs.complete(error);
         }

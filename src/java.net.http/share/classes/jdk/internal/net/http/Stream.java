@@ -1536,7 +1536,10 @@ class Stream<T> extends ExchangeImpl<T> {
                 if (debug.on())
                     debug.log("stream %s closing due to %s", streamid, (Object)errorRef.get());
                 sched.runOrSchedule();
-                if (subscriber instanceof Http2StreamResponseSubscriber<?> rs) {
+                if (subscriber instanceof Stream<?>.Http2StreamResponseSubscriber<?>) {
+                    @SuppressWarnings("unchecked")
+                    Http2StreamResponseSubscriber<?> rs =
+                            (Http2StreamResponseSubscriber<?>) subscriber;
                     // make sure the subscriber is stopped.
                     if (debug.on()) debug.log("closing response subscriber stream %s", streamid);
                     rs.complete(errorRef.get());
@@ -1605,7 +1608,10 @@ class Stream<T> extends ExchangeImpl<T> {
                 ? pendingResponseSubscriber
                 : responseSubscriber;
         if (debug.on()) debug.log("subscriber is %s", s);
-        if (s instanceof Http2StreamResponseSubscriber<?> sw) {
+        if (s instanceof Stream<?>.Http2StreamResponseSubscriber<?>) {
+            @SuppressWarnings("unchecked")
+            Http2StreamResponseSubscriber<?> sw =
+                    (Http2StreamResponseSubscriber<?>) s;
             if (debug.on()) debug.log("closing response subscriber stream %s", streamid);
             // if the subscriber has already completed,
             // there is nothing to do...

@@ -488,7 +488,10 @@ final class Http3PushPromiseStream<T> extends Http3Stream<T> {
 
         BodySubscriber<T> subscriber = responseSubscriber;
         if (subscriber == null) subscriber = pendingResponseSubscriber;
-        if (subscriber instanceof Http3PushStreamResponseSubscriber<?> h3srs) {
+        if (subscriber instanceof Http3PushPromiseStream<?>.Http3PushStreamResponseSubscriber<?>) {
+            @SuppressWarnings("unchecked")
+            Http3PushStreamResponseSubscriber<?> h3srs =
+                    (Http3PushStreamResponseSubscriber<?>) subscriber;
             // ensure subscriber is unregistered
             h3srs.complete(errorRef.get());
         }

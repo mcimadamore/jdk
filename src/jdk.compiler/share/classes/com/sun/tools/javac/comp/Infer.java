@@ -683,7 +683,11 @@ public class Infer {
 
         //step 1:
         List<Type> expressionTypes = List.nil();
-        List<Type> params = patternTypeSymbol.type.allparams();
+
+        List<Type> originalParams = patternTypeSymbol.type.allparams();
+        List<Type> freshParams = types.newInstances(originalParams);
+        Type freshPatternType = types.subst(patternTypeSymbol.type, originalParams, freshParams);
+        List<Type> params = freshParams;
         List<Type> capturedWildcards = List.nil();
         List<Type> todo = List.of(expressionType);
         while (todo.nonEmpty()) {
@@ -713,7 +717,7 @@ public class Infer {
         }
         //add synthetic captured ivars
         InferenceContext c = new InferenceContext(this, params);
-        Type patternType = c.asUndetVar(patternTypeSymbol.type);
+        Type patternType = c.asUndetVar(freshPatternType);
         List<Type> exprTypes = expressionTypes.map(t -> c.asUndetVar(t));
 
         capturedWildcards.forEach(s -> ((UndetVar) c.asUndetVar(s)).setNormal());
@@ -736,7 +740,7 @@ public class Infer {
             //step 3:
             List<Type> freshVars = instantiatePatternVars(params, c);
 
-            Type substituted = c.asInstType(patternTypeSymbol.type);
+            Type substituted = c.asInstType(freshPatternType);
 
             //step 4:
             return types.upward(substituted, freshVars);

@@ -49,6 +49,7 @@ import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Check;
 import com.sun.tools.javac.comp.Enter;
 import com.sun.tools.javac.comp.Env;
+import com.sun.tools.javac.comp.Infer;
 import com.sun.tools.javac.jvm.ClassFile;
 import com.sun.tools.javac.util.*;
 
@@ -95,6 +96,7 @@ public class Types {
     final Names names;
     final Check chk;
     final Enter enter;
+    final Infer infer;
     JCDiagnostic.Factory diags;
     List<Warner> warnStack = List.nil();
     final Name capturedName;
@@ -118,6 +120,7 @@ public class Types {
         Source source = Source.instance(context);
         chk = Check.instance(context);
         enter = Enter.instance(context);
+        infer = Infer.instance(context);
         capturedName = names.fromString("<captured wildcard>");
         messages = JavacMessages.instance(context);
         diags = JCDiagnostic.Factory.instance(context);
@@ -538,7 +541,13 @@ public class Types {
      * returned.
      */
     public Type asSub(Type t, Symbol sym) {
-        return asSub.visit(t, sym);
+        if (t.hasTag(ERROR)) {
+            return t;
+        } else if (sym instanceof TypeSymbol typeSymbol) {
+            return infer.instantiatePatternType(t, typeSymbol);
+        } else {
+            return null;
+        }
     }
     // where
         private final SimpleVisitor<Type,Symbol> asSub = new SimpleVisitor<Type,Symbol>() {
