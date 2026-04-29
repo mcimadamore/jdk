@@ -1316,11 +1316,19 @@ public class Check {
      * Visitor method: Validate a type expression, if it is not null, catching
      *  and reporting any completion failures.
      */
-    void validate(JCTree tree, Env<AttrContext> env) {
-        validate(tree, env, true);
+    Type validate(JCTree tree, Env<AttrContext> env) {
+        return validate(tree, env, true);
     }
-    void validate(JCTree tree, Env<AttrContext> env, boolean checkRaw) {
-        new Validator(env).validateTree(tree, checkRaw, true);
+    Type validate(JCTree tree, Env<AttrContext> env, boolean checkRaw) {
+        if (tree == null) {
+            return Type.noType;
+        }
+        Validator validator = new Validator(env);
+        validator.validateTree(tree, checkRaw, true);
+        if (!validator.isValid) {
+            tree.type = types.createErrorType(tree.type);
+        }
+        return tree.type;
     }
 
     /** Visitor method: Validate a list of type expressions.
@@ -1336,6 +1344,7 @@ public class Check {
 
         boolean checkRaw;
         boolean isOuter;
+        boolean isValid = true;
         Env<AttrContext> env;
 
         Validator(Env<AttrContext> env) {
@@ -1358,6 +1367,7 @@ public class Check {
                     for (JCTree arg : tree.arguments) {
                         if (arg.type == incompatibleArg) {
                             log.error(arg, Errors.NotWithinBounds(incompatibleArg, forms.head));
+                            isValid = false;
                         }
                         forms = forms.tail;
                      }
@@ -1379,8 +1389,10 @@ public class Check {
 
                 // Check that this type is either fully parameterized, or
                 // not parameterized at all.
-                if (tree.type.getEnclosingType().isRaw())
+                if (tree.type.getEnclosingType().isRaw()) {
                     log.error(tree.pos(), Errors.ImproperlyFormedTypeInnerRawParam);
+                    isValid = false;
+                }
                 if (tree.clazz.hasTag(SELECT))
                     visitSelectInternal((JCFieldAccess)tree.clazz);
             }
@@ -1405,8 +1417,10 @@ public class Check {
 
                 // Check that this type is either fully parameterized, or
                 // not parameterized at all.
-                if (tree.selected.type.isParameterized() && tree.type.tsym.type.getTypeArguments().nonEmpty())
+                if (tree.selected.type.isParameterized() && tree.type.tsym.type.getTypeArguments().nonEmpty()) {
                     log.error(tree.pos(), Errors.ImproperlyFormedTypeParamMissing);
+                    isValid = false;
+                }
             }
         }
 
@@ -1417,6 +1431,7 @@ public class Check {
                 // looking at a static member type.  However, the
                 // qualifying expression is parameterized.
                 log.error(tree.pos(), Errors.CantSelectStaticClassFromParamType);
+                isValid = false;
             } else {
                 // otherwise validate the rest of the expression
                 tree.selected.accept(this);
@@ -1432,6 +1447,7 @@ public class Check {
         public void visitTypeIdent(JCPrimitiveTypeTree that) {
             if (that.type.hasTag(TypeTag.VOID)) {
                 log.error(that.pos(), Errors.VoidNotAllowedHere);
+                isValid = false;
             }
             super.visitTypeIdent(that);
         }
@@ -1454,6 +1470,7 @@ public class Check {
                         checkRaw(tree, env);
                 } catch (CompletionFailure ex) {
                     completionError(tree.pos(), ex);
+                    isValid = false;
                 } finally {
                     this.checkRaw = prevCheckRaw;
                 }

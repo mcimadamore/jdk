@@ -1804,45 +1804,27 @@ public class Types {
                                 warnStack.head.warn(LintCategory.UNCHECKED);
                             return true;
                         }
-                        // Assume |a| <: |b|
-                        final Type a = upcast ? t : s;
-                        final Type b = upcast ? s : t;
-                        final boolean HIGH = true;
-                        final boolean LOW = false;
-                        final boolean DONT_REWRITE_TYPEVARS = false;
-                        Type aHigh = rewriteQuantifiers(a, HIGH, DONT_REWRITE_TYPEVARS);
-                        Type aLow  = rewriteQuantifiers(a, LOW,  DONT_REWRITE_TYPEVARS);
-                        Type bHigh = rewriteQuantifiers(b, HIGH, DONT_REWRITE_TYPEVARS);
-                        Type bLow  = rewriteQuantifiers(b, LOW,  DONT_REWRITE_TYPEVARS);
-                        Type lowSub = asSub(bLow, aLow.tsym);
-                        Type highSub = (lowSub == null) ? null : asSub(bHigh, aHigh.tsym);
-                        if (highSub == null) {
-                            final boolean REWRITE_TYPEVARS = true;
-                            aHigh = rewriteQuantifiers(a, HIGH, REWRITE_TYPEVARS);
-                            aLow  = rewriteQuantifiers(a, LOW,  REWRITE_TYPEVARS);
-                            bHigh = rewriteQuantifiers(b, HIGH, REWRITE_TYPEVARS);
-                            bLow  = rewriteQuantifiers(b, LOW,  REWRITE_TYPEVARS);
-                            lowSub = asSub(bLow, aLow.tsym);
-                            highSub = (lowSub == null) ? null : asSub(bHigh, aHigh.tsym);
+                        boolean notProvablyDistinct = true;
+                        for (Pair<Type, Type> commonSupers : infer.getParameterizedSupers(t, s)) {
+                            Type sourceProjection = upward(commonSupers.fst, captures(commonSupers.fst));
+                            Type targetProjection = upward(commonSupers.snd, captures(commonSupers.snd));
+                            if (disjointTypes(sourceProjection.allparams(), targetProjection.allparams())) {
+                                notProvablyDistinct = false;
+                                break;
+                            }
                         }
-                        if (highSub != null) {
-                            if (!(a.tsym == highSub.tsym && a.tsym == lowSub.tsym)) {
-                                Assert.error(a.tsym + " != " + highSub.tsym + " != " + lowSub.tsym);
-                            }
-                            if (!disjointTypes(aHigh.allparams(), highSub.allparams())
-                                && !disjointTypes(aHigh.allparams(), lowSub.allparams())
-                                && !disjointTypes(aLow.allparams(), highSub.allparams())
-                                && !disjointTypes(aLow.allparams(), lowSub.allparams())) {
-                                if (upcast ? giveWarning(a, b) :
-                                    giveWarning(b, a))
-                                    warnStack.head.warn(LintCategory.UNCHECKED);
-                                return true;
-                            }
+                        final Type low = upcast ? t : s;
+                        final Type high = upcast ? s : t;
+                        if (notProvablyDistinct) {
+                            if (upcast ? giveWarning(low, high) :
+                                giveWarning(high, low))
+                                warnStack.head.warn(LintCategory.UNCHECKED);
+                            return true;
                         }
                         if (isReifiable(s))
-                            return isSubtypeUnchecked(a, b);
+                            return isSubtypeUnchecked(low, high);
                         else
-                            return isSubtypeUnchecked(a, b, warnStack.head);
+                            return isSubtypeUnchecked(low, high, warnStack.head);
                     }
 
                     // Sidecast

@@ -1181,7 +1181,7 @@ public class Infer {
      *
      * [Pair[java.util.List<java.lang.String>,java.util.List<T>]]
      */
-    private List<Pair<Type, Type>> getParameterizedSupers(Type t, Type s) {
+    public List<Pair<Type, Type>> getParameterizedSupers(Type t, Type s) {
         Type lubResult = types.lub(t, s);
         if (lubResult == syms.errType || lubResult == syms.botType) {
             return List.nil();

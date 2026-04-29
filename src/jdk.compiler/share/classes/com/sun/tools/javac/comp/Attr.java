@@ -4109,7 +4109,7 @@ public class Attr extends JCTree.Visitor {
 
     public void visitTypeCast(final JCTypeCast tree) {
         Type clazztype = attribType(tree.clazz, env);
-        chk.validate(tree.clazz, env, false);
+        clazztype = chk.validate(tree.clazz, env, false);
         chk.checkRequiresIdentity(tree, env.info.lint);
         //a fresh environment is required for 292 inference to work properly ---
         //see Infer.instantiatePolymorphicSignatureInstance()
@@ -4165,7 +4165,7 @@ public class Attr extends JCTree.Visitor {
         } else {
             clazztype = attribType(tree.pattern, env);
             typeTree = tree.pattern;
-            chk.validate(typeTree, env, false);
+            clazztype = chk.validate(typeTree, env, false);
         }
         if (clazztype.isPrimitive()) {
             preview.checkSourceLevel(tree.pattern.pos(), Feature.PRIMITIVE_PATTERNS);
@@ -4238,7 +4238,9 @@ public class Attr extends JCTree.Visitor {
             setupImplicitlyTypedVariable(tree.var, type == Type.noType ? syms.errType
                                                       : type);
         }
-        chk.validate(tree.var.vartype, env, true);
+        if (!tree.var.isImplicitlyTyped()) {
+            v.type = chk.validate(tree.var.vartype, env, true);
+        }
         annotate.annotateLater(tree.var.mods.annotations, env, v);
         if (!tree.var.isImplicitlyTyped()) {
             annotate.queueScanTreeAndTypeAnnotate(tree.var.vartype, env, v);
@@ -4273,12 +4275,18 @@ public class Attr extends JCTree.Visitor {
                 }
             }
             tree.type = tree.deconstructor.type = type;
+            type = tree.type = tree.deconstructor.type =
+                    chk.validate(tree.deconstructor, env, true);
             site = types.capture(tree.type);
-            chk.validate(tree.deconstructor, env, true);
         }
 
         List<Type> expectedRecordTypes;
-        if (site.tsym instanceof ClassSymbol clazz && clazz.isRecord()) {
+        if (site.isErroneous()) {
+            expectedRecordTypes = Stream.generate(() -> types.createErrorType(tree.type))
+                                .limit(tree.nested.size())
+                                .collect(List.collector());
+            tree.record = syms.errSymbol;
+        } else if (site.tsym instanceof ClassSymbol clazz && clazz.isRecord()) {
             ClassSymbol record = (ClassSymbol) site.tsym;
             expectedRecordTypes = record.getRecordComponents()
                                         .stream()
