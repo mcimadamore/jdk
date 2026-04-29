@@ -425,7 +425,7 @@ public class Types {
     }
 
     /**
-     * Computes the set of captured variables mentioned in a given type. See {@link CaptureScanner}.
+     * Computes the set of captured variables mentioned in a given type. See {@link TypeVarScanner}.
      * This routine is typically used to computed the input set of variables to be used during
      * an upwards projection (see {@link Types#upward(Type, List)}).
      *
@@ -433,16 +433,36 @@ public class Types {
      * @return the set of captured variables found in t
      */
     public List<Type> captures(Type t) {
-        CaptureScanner cs = new CaptureScanner();
-        Set<Type> captures = new HashSet<>();
-        cs.visit(t, captures);
-        return List.from(captures);
+        return typeVars(t, tv -> tv instanceof CapturedType ||
+                (tv.tsym.flags() & Flags.SYNTHETIC) != 0);
     }
 
     /**
-     * This visitor scans a type recursively looking for occurrences of captured type variables.
+     * Computes the set of type variables mentioned in a given type, according to the
+     * provided predicate. See {@link TypeVarScanner}.
+     * This routine is typically used to computed the input set of variables to be used during
+     * an upwards projection (see {@link Types#upward(Type, List)}).
+     *
+     * @param t the type where occurrences of type variables have to be found
+     * @param typeVarFilter the type variable predicate
+     * @return the set of type variables found in t
      */
-    class CaptureScanner extends SimpleVisitor<Void, Set<Type>> {
+    public List<Type> typeVars(Type t, Predicate<TypeVar> typeVarFilter) {
+        TypeVarScanner tvs = new TypeVarScanner(typeVarFilter);
+        Set<Type> typeVars = new HashSet<>();
+        tvs.visit(t, typeVars);
+        return List.from(typeVars);
+    }
+
+    /**
+     * This visitor scans a type recursively looking for occurrences of type variables.
+     */
+    class TypeVarScanner extends SimpleVisitor<Void, Set<Type>> {
+        private final Predicate<TypeVar> typeVarFilter;
+
+        TypeVarScanner(Predicate<TypeVar> typeVarFilter) {
+            this.typeVarFilter = typeVarFilter;
+        }
 
         @Override
         public Void visitType(Type t, Set<Type> types) {
@@ -472,7 +492,7 @@ public class Types {
 
         @Override
         public Void visitTypeVar(TypeVar t, Set<Type> seen) {
-            if ((t.tsym.flags() & Flags.SYNTHETIC) != 0 && seen.add(t)) {
+            if (typeVarFilter.test(t) && seen.add(t)) {
                 visit(t.getUpperBound(), seen);
             }
             return null;
@@ -480,7 +500,7 @@ public class Types {
 
         @Override
         public Void visitCapturedType(CapturedType t, Set<Type> seen) {
-            if (seen.add(t)) {
+            if (typeVarFilter.test(t) && seen.add(t)) {
                 visit(t.getUpperBound(), seen);
                 visit(t.getLowerBound(), seen);
             }
@@ -2037,9 +2057,12 @@ public class Types {
     }
 
     private Type relaxBound(Type t) {
-        return (t.hasTag(TYPEVAR)) ?
-                rewriteQuantifiers(skipTypeVars(t, false), true, true) :
-                t;
+        if (t.hasTag(TYPEVAR)) {
+            Type bound = skipTypeVars(t, false);
+            return upward(bound, typeVars(bound, _ -> true));
+        } else {
+            return t;
+        }
     }
     // </editor-fold>
 
@@ -4758,171 +4781,6 @@ public class Types {
         }
     }
     // </editor-fold>
-
-    /**
-     * Rewrite all type variables (universal quantifiers) in the given
-     * type to wildcards (existential quantifiers).  This is used to
-     * determine if a cast is allowed.  For example, if high is true
-     * and {@code T <: Number}, then {@code List<T>} is rewritten to
-     * {@code List<?  extends Number>}.  Since {@code List<Integer> <:
-     * List<? extends Number>} a {@code List<T>} can be cast to {@code
-     * List<Integer>} with a warning.
-     * @param t a type
-     * @param high if true return an upper bound; otherwise a lower
-     * bound
-     * @param rewriteTypeVars only rewrite captured wildcards if false;
-     * otherwise rewrite all type variables
-     * @return the type rewritten with wildcards (existential
-     * quantifiers) only
-     */
-    private Type rewriteQuantifiers(Type t, boolean high, boolean rewriteTypeVars) {
-        return new Rewriter(high, rewriteTypeVars).visit(t);
-    }
-
-    class Rewriter extends UnaryVisitor<Type> {
-
-        boolean high;
-        boolean rewriteTypeVars;
-        // map to avoid visiting same type argument twice, like in Foo<T>.Bar<T>
-        Map<Type, Type> argMap = new HashMap<>();
-        // cycle detection within an argument, see JDK-8324809
-        Set<Type> seen = new HashSet<>();
-
-        Rewriter(boolean high, boolean rewriteTypeVars) {
-            this.high = high;
-            this.rewriteTypeVars = rewriteTypeVars;
-        }
-
-        @Override
-        public Type visitClassType(ClassType t, Void s) {
-            ListBuffer<Type> rewritten = new ListBuffer<>();
-            boolean changed = false;
-            for (Type arg : t.allparams()) {
-                Type bound = argMap.get(arg);
-                if (bound == null) {
-                    argMap.put(arg, bound = visit(arg));
-                }
-                if (arg != bound) {
-                    changed = true;
-                }
-                rewritten.append(bound);
-            }
-            if (changed)
-                return subst(t.tsym.type,
-                        t.tsym.type.allparams(),
-                        rewritten.toList());
-            else
-                return t;
-        }
-
-        public Type visitType(Type t, Void s) {
-            return t;
-        }
-
-        @Override
-        public Type visitCapturedType(CapturedType t, Void s) {
-            Type w_bound = t.wildcard.type;
-            Type bound = w_bound.contains(t) ?
-                        erasure(w_bound) :
-                        visit(w_bound);
-            return rewriteAsWildcardType(visit(bound), t.wildcard.bound, t.wildcard.kind);
-        }
-
-        @Override
-        public Type visitTypeVar(TypeVar t, Void s) {
-            if (seen.add(t)) {
-                if (rewriteTypeVars) {
-                    Type bound = t.getUpperBound().contains(t) ?
-                            erasure(t.getUpperBound()) :
-                            visit(t.getUpperBound());
-                    return rewriteAsWildcardType(bound, t, EXTENDS);
-                } else {
-                    return t;
-                }
-            } else {
-                return rewriteTypeVars ? makeExtendsWildcard(syms.objectType, t) : t;
-            }
-        }
-
-        @Override
-        public Type visitWildcardType(WildcardType t, Void s) {
-            Type bound2 = visit(t.type);
-            return t.type == bound2 ? t : rewriteAsWildcardType(bound2, t.bound, t.kind);
-        }
-
-        private Type rewriteAsWildcardType(Type bound, TypeVar formal, BoundKind bk) {
-            switch (bk) {
-               case EXTENDS: return high ?
-                       makeExtendsWildcard(B(bound), formal) :
-                       makeExtendsWildcard(syms.objectType, formal);
-               case SUPER: return high ?
-                       makeSuperWildcard(syms.botType, formal) :
-                       makeSuperWildcard(B(bound), formal);
-               case UNBOUND: return makeExtendsWildcard(syms.objectType, formal);
-               default:
-                   Assert.error("Invalid bound kind " + bk);
-                   return null;
-            }
-        }
-
-        Type B(Type t) {
-            while (t.hasTag(WILDCARD)) {
-                WildcardType w = (WildcardType)t;
-                t = high ?
-                    w.getExtendsBound() :
-                    w.getSuperBound();
-                if (t == null) {
-                    t = high ? syms.objectType : syms.botType;
-                }
-            }
-            return t;
-        }
-    }
-
-
-    /**
-     * Create a wildcard with the given upper (extends) bound; create
-     * an unbounded wildcard if bound is Object.
-     *
-     * @param bound the upper bound
-     * @param formal the formal type parameter that will be
-     * substituted by the wildcard
-     */
-    private WildcardType makeExtendsWildcard(Type bound, TypeVar formal) {
-        if (bound == syms.objectType) {
-            return new WildcardType(syms.objectType,
-                                    BoundKind.UNBOUND,
-                                    syms.boundClass,
-                                    formal);
-        } else {
-            return new WildcardType(bound,
-                                    BoundKind.EXTENDS,
-                                    syms.boundClass,
-                                    formal);
-        }
-    }
-
-    /**
-     * Create a wildcard with the given lower (super) bound; create an
-     * unbounded wildcard if bound is bottom (type of {@code null}).
-     *
-     * @param bound the lower bound
-     * @param formal the formal type parameter that will be
-     * substituted by the wildcard
-     */
-    private WildcardType makeSuperWildcard(Type bound, TypeVar formal) {
-        if (bound.hasTag(BOT)) {
-            return new WildcardType(syms.objectType,
-                                    BoundKind.UNBOUND,
-                                    syms.boundClass,
-                                    formal);
-        } else {
-            return new WildcardType(bound,
-                                    BoundKind.SUPER,
-                                    syms.boundClass,
-                                    formal);
-        }
-    }
 
     /**
      * A wrapper for a type that allows use in sets.
