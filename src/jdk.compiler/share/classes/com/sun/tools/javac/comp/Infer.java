@@ -786,6 +786,35 @@ public class Infer {
 
         return freshVars.toList();
     }
+
+    /**
+     * Can two types denote the same parameterization, for some
+     * instantiation of their type variables and wildcards?
+     */
+    public boolean parameterizationsMayCoincide(Type s, Type t) {
+        Type capturedS = types.capture(s);
+        Type capturedT = types.capture(t);
+        List<Type> inferenceVars = types.typeVars(capturedS, _ -> true);
+        inferenceVars = inferenceVars.appendList(types.typeVars(capturedT, _ -> true).diff(inferenceVars));
+
+        InferenceContext c = new InferenceContext(this, inferenceVars);
+        for (Type v : inferenceVars) {
+            if (((TypeVar)v).isCaptured()) {
+                ((UndetVar)c.asUndetVar(v)).setNormal();
+            }
+        }
+
+        try {
+            if (!types.isSameType(c.asUndetVar(capturedS), c.asUndetVar(capturedT))) {
+                return false;
+            }
+            doIncorporation(c, types.noWarnings);
+            return true;
+        } catch (InferenceException ex) {
+            return false;
+        }
+    }
+
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Incorporation">

@@ -1826,9 +1826,7 @@ public class Types {
                         }
                         boolean notProvablyDistinct = true;
                         for (Pair<Type, Type> commonSupers : infer.getParameterizedSupers(t, s)) {
-                            Type sourceProjection = upward(commonSupers.fst, captures(commonSupers.fst));
-                            Type targetProjection = upward(commonSupers.snd, captures(commonSupers.snd));
-                            if (disjointTypes(sourceProjection.allparams(), targetProjection.allparams())) {
+                            if (disjointTypes(commonSupers.fst, commonSupers.snd)) {
                                 notProvablyDistinct = false;
                                 break;
                             }
@@ -1932,18 +1930,14 @@ public class Types {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="disjointTypes">
-    public boolean disjointTypes(List<Type> ts, List<Type> ss) {
-        while (ts.tail != null && ss.tail != null) {
-            if (disjointType(ts.head, ss.head)) return true;
-            ts = ts.tail;
-            ss = ss.tail;
-        }
-        return false;
+    public boolean disjointTypes(Type t, Type s) {
+        return !t.isRaw() && !s.isRaw() &&
+                !infer.parameterizationsMayCoincide(t, s);
     }
 
     /**
-     * Two types or wildcards are considered disjoint if it can be
-     * proven that no type can be contained in both. It is
+     * Two parameterizations are considered disjoint if it can be
+     * proven that no instantiation can make them the same. It is
      * conservative in that it is allowed to say that two types are
      * not disjoint, even though they actually are.
      *
@@ -1951,74 +1945,8 @@ public class Types {
      * {@code X} and {@code Y} are not disjoint.
      */
     public boolean disjointType(Type t, Type s) {
-        return disjointType.visit(t, s);
+        return disjointTypes(t, s);
     }
-    // where
-        private TypeRelation disjointType = new TypeRelation() {
-
-            private Set<TypePair> cache = new HashSet<>();
-
-            @Override
-            public Boolean visitType(Type t, Type s) {
-                if (s.hasTag(WILDCARD))
-                    return visit(s, t);
-                else
-                    return notSoftSubtypeRecursive(t, s) || notSoftSubtypeRecursive(s, t);
-            }
-
-            private boolean isCastableRecursive(Type t, Type s) {
-                TypePair pair = new TypePair(t, s);
-                if (cache.add(pair)) {
-                    try {
-                        return Types.this.isCastable(t, s);
-                    } finally {
-                        cache.remove(pair);
-                    }
-                } else {
-                    return true;
-                }
-            }
-
-            private boolean notSoftSubtypeRecursive(Type t, Type s) {
-                TypePair pair = new TypePair(t, s);
-                if (cache.add(pair)) {
-                    try {
-                        return Types.this.notSoftSubtype(t, s);
-                    } finally {
-                        cache.remove(pair);
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            @Override
-            public Boolean visitWildcardType(WildcardType t, Type s) {
-                if (t.isUnbound())
-                    return false;
-
-                if (!s.hasTag(WILDCARD)) {
-                    if (t.isExtendsBound())
-                        return notSoftSubtypeRecursive(s, t.type);
-                    else
-                        return notSoftSubtypeRecursive(t.type, s);
-                }
-
-                if (s.isUnbound())
-                    return false;
-
-                if (t.isExtendsBound()) {
-                    if (s.isExtendsBound())
-                        return !isCastableRecursive(t.type, wildUpperBound(s));
-                    else if (s.isSuperBound())
-                        return notSoftSubtypeRecursive(wildLowerBound(s), t.type);
-                } else if (t.isSuperBound()) {
-                    if (s.isExtendsBound())
-                        return notSoftSubtypeRecursive(t.type, wildUpperBound(s));
-                }
-                return false;
-            }
-        };
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="cvarLowerBounds">
@@ -4577,7 +4505,7 @@ public class Types {
         while (commonSupers.nonEmpty()) {
             Type t1 = asSuper(from, commonSupers.head.tsym);
             Type t2 = commonSupers.head; // same as asSuper(to, commonSupers.head.tsym);
-            if (disjointTypes(t1.getTypeArguments(), t2.getTypeArguments()))
+            if (disjointTypes(t1, t2))
                 return false;
             giveWarning = giveWarning || (reverse ? giveWarning(t2, t1) : giveWarning(t1, t2));
             commonSupers = commonSupers.tail;
@@ -4605,7 +4533,7 @@ public class Types {
         Type t1 = asSuper(from, to.tsym);
         if (t1 == null) return false;
         Type t2 = to;
-        if (disjointTypes(t1.getTypeArguments(), t2.getTypeArguments()))
+        if (disjointTypes(t1, t2))
             return false;
         if (!isReifiable(target) &&
             (reverse ? giveWarning(t2, t1) : giveWarning(t1, t2)))
