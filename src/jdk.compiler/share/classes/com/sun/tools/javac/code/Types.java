@@ -1825,7 +1825,7 @@ public class Types {
                             return true;
                         }
                         boolean notProvablyDistinct = true;
-                        for (Pair<Type, Type> commonSupers : infer.getParameterizedSupers(t, s)) {
+                        for (Pair<Type, Type> commonSupers : infer.getParameterizedSupers(capture(t), capture(s))) {
                             if (disjointTypes(commonSupers.fst, commonSupers.snd)) {
                                 notProvablyDistinct = false;
                                 break;
