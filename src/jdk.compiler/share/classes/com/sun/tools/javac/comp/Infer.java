@@ -815,6 +815,40 @@ public class Infer {
         }
     }
 
+    /**
+     * Is there an instantiation of the given formal type variables in which
+     * {@code lowerBound} is a subtype of the instantiation of {@code formal}?
+     */
+    public boolean isTypeArgLowerBoundSatisfiable(List<Type> formals, Type formal, Type lowerBound) {
+        return isTypeArgBoundSatisfiable(formals, formal, lowerBound, InferenceBound.LOWER);
+    }
+
+    private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound,
+                                              InferenceBound boundKind) {
+        List<Type> freshFormals = types.newInstances(formals);
+        Type freshFormal = null;
+        List<Type> currentFormals = formals;
+        List<Type> currentFreshFormals = freshFormals;
+        while (currentFormals.nonEmpty() && currentFreshFormals.nonEmpty()) {
+            if (currentFormals.head.tsym == formal.tsym) {
+                freshFormal = currentFreshFormals.head;
+                break;
+            }
+            currentFormals = currentFormals.tail;
+            currentFreshFormals = currentFreshFormals.tail;
+        }
+
+        InferenceContext c = new InferenceContext(this, freshFormals);
+        UndetVar undet = (UndetVar)c.asUndetVar(Assert.checkNonNull(freshFormal));
+        try {
+            undet.addBound(boundKind, bound, types);
+            doIncorporation(c, types.noWarnings);
+            return true;
+        } catch (InferenceException ex) {
+            return false;
+        }
+    }
+
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Incorporation">

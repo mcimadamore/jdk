@@ -614,8 +614,11 @@ public class Check {
      *  @param a             The type that should be bounded by bs.
      *  @param bound         The bound.
      *  @param capturedBound The bound after capture conversion.
+     *  @param formal        The formal type parameter corresponding to {@code a}.
+     *  @param formals       All formal type parameters in the generic type.
      */
-    private boolean checkExtends(Type a, Type bound, Type capturedBound) {
+    private boolean checkExtends(Type a, Type bound, Type capturedBound,
+                                 Type formal, List<Type> formals) {
          if (a.isUnbound()) {
              return true;
          } else if (!a.hasTag(WILDCARD)) {
@@ -624,7 +627,7 @@ public class Check {
          } else if (a.isExtendsBound()) {
              return types.isCastable(capturedBound, types.wildUpperBound(a), types.noWarnings);
          } else if (a.isSuperBound()) {
-             return !types.notSoftSubtype(types.wildLowerBound(a), bound);
+             return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a));
          }
          return true;
      }
@@ -1046,17 +1049,20 @@ public class Check {
             }
 
             args = type.getTypeArguments();
+            forms = type.tsym.type.getTypeArguments();
             List<Type> bounds = bounds_buf.toList();
             capturedBounds = tvars_cap;
 
-            while (args.nonEmpty() && bounds.nonEmpty() && capturedBounds.nonEmpty()) {
+            while (args.nonEmpty() && forms.nonEmpty() && bounds.nonEmpty() && capturedBounds.nonEmpty()) {
                 Type actual = args.head;
                 if (!isTypeArgErroneous(actual) &&
                         !bounds.head.isErroneous() &&
-                        !checkExtends(actual, bounds.head, capturedBounds.head.getUpperBound())) {
+                        !checkExtends(actual, bounds.head, capturedBounds.head.getUpperBound(),
+                                forms.head, formals)) {
                     return args.head;
                 }
                 args = args.tail;
+                forms = forms.tail;
                 bounds = bounds.tail;
                 capturedBounds = capturedBounds.tail;
             }
