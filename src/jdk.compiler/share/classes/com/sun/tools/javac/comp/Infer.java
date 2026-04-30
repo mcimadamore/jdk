@@ -833,6 +833,15 @@ public class Infer {
         return isTypeArgBoundSatisfiable(formals, formal, upperBound, openVars, InferenceBound.UPPER);
     }
 
+    /**
+     * Is there an instantiation of the given formal type variables in which
+     * the instantiation of {@code formal} is the same type as {@code eqBound}?
+     */
+    public boolean isTypeArgEqualBoundSatisfiable(List<Type> formals, Type formal,
+                                                  Type eqBound, List<Type> openVars) {
+        return isTypeArgBoundSatisfiable(formals, formal, eqBound, openVars, InferenceBound.EQ);
+    }
+
     private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound, List<Type> openVars,
                                               InferenceBound boundKind) {
         List<Type> freshFormals = types.newInstances(formals);
@@ -855,7 +864,7 @@ public class Infer {
         InferenceContext c = new InferenceContext(this, freshFormals.appendList(freshOpenVars));
         UndetVar undet = (UndetVar)c.asUndetVar(Assert.checkNonNull(freshFormal));
         try {
-            undet.addBound(boundKind, bound, types);
+            undet.addBound(boundKind, c.asUndetVar(bound), types);
             doIncorporation(c, types.noWarnings);
             return true;
         } catch (InferenceException ex) {

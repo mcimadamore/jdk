@@ -623,8 +623,7 @@ public class Check {
          if (a.isUnbound()) {
              return true;
          } else if (!a.hasTag(WILDCARD)) {
-             a = types.cvarUpperBound(a);
-             return types.isSubtype(a, bound);
+             return infer.isTypeArgEqualBoundSatisfiable(formals, formal, a, openVars);
          } else if (a.isExtendsBound()) {
              return infer.isTypeArgUpperBoundSatisfiable(formals, formal, types.wildUpperBound(a), openVars);
          } else if (a.isSuperBound()) {
@@ -1417,9 +1416,7 @@ public class Check {
         @Override
         public void visitTypeParameter(JCTypeParameter tree) {
             List<Type> prevOpenVars = openVars;
-            if (env.enclClass != null) {
-                openVars = env.enclClass.sym.type.getTypeArguments();
-            }
+            openVars = openVars(tree);
             validateTrees(tree.bounds, true, isOuter);
             openVars = prevOpenVars;
             checkClassBounds(tree.pos(), tree.type);
@@ -1501,6 +1498,20 @@ public class Check {
         public void validateTrees(List<? extends JCTree> trees, boolean checkRaw, boolean isOuter) {
             for (List<? extends JCTree> l = trees; l.nonEmpty(); l = l.tail)
                 validateTree(l.head, checkRaw, isOuter);
+        }
+
+        private List<Type> openVars(JCTypeParameter tree) {
+            ListBuffer<Type> buf = new ListBuffer<>();
+            for (Symbol sym = tree.type.tsym.owner; sym != null && sym.kind != PCK; sym = sym.owner) {
+                if (sym.type != null) {
+                    for (Type t : sym.type.getTypeArguments()) {
+                        if (!buf.contains(t)) {
+                            buf.append(t);
+                        }
+                    }
+                }
+            }
+            return buf.toList();
         }
     }
 
