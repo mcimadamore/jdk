@@ -616,9 +616,10 @@ public class Check {
      *  @param capturedBound The bound after capture conversion.
      *  @param formal        The formal type parameter corresponding to {@code a}.
      *  @param formals       All formal type parameters in the generic type.
+     *  @param openVars      Type variables whose bounds are being validated.
      */
     private boolean checkExtends(Type a, Type bound, Type capturedBound,
-                                 Type formal, List<Type> formals) {
+                                 Type formal, List<Type> formals, List<Type> openVars) {
          if (a.isUnbound()) {
              return true;
          } else if (!a.hasTag(WILDCARD)) {
@@ -627,7 +628,7 @@ public class Check {
          } else if (a.isExtendsBound()) {
              return types.isCastable(capturedBound, types.wildUpperBound(a), types.noWarnings);
          } else if (a.isSuperBound()) {
-             return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a));
+             return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a), openVars);
          }
          return true;
      }
@@ -1018,6 +1019,10 @@ public class Check {
     }
     //WHERE
         private Type firstIncompatibleTypeArg(Type type) {
+            return firstIncompatibleTypeArg(type, List.nil());
+        }
+
+        private Type firstIncompatibleTypeArg(Type type, List<Type> openVars) {
             List<Type> formals = type.tsym.type.allparams();
             List<Type> actuals = type.allparams();
             List<Type> args = type.getTypeArguments();
@@ -1058,7 +1063,7 @@ public class Check {
                 if (!isTypeArgErroneous(actual) &&
                         !bounds.head.isErroneous() &&
                         !checkExtends(actual, bounds.head, capturedBounds.head.getUpperBound(),
-                                forms.head, formals)) {
+                                forms.head, formals, openVars)) {
                     return args.head;
                 }
                 args = args.tail;
@@ -1356,6 +1361,7 @@ public class Check {
         boolean isOuter;
         boolean isValid = true;
         Env<AttrContext> env;
+        List<Type> openVars = List.nil();
 
         Validator(Env<AttrContext> env) {
             this.env = env;
@@ -1372,7 +1378,7 @@ public class Check {
                 List<JCExpression> args = tree.arguments;
                 List<Type> forms = tree.type.tsym.type.getTypeArguments();
 
-                Type incompatibleArg = firstIncompatibleTypeArg(tree.type);
+                Type incompatibleArg = firstIncompatibleTypeArg(tree.type, openVars);
                 if (incompatibleArg != null) {
                     for (JCTree arg : tree.arguments) {
                         if (arg.type == incompatibleArg) {
@@ -1410,7 +1416,12 @@ public class Check {
 
         @Override
         public void visitTypeParameter(JCTypeParameter tree) {
+            List<Type> prevOpenVars = openVars;
+            if (env.enclClass != null) {
+                openVars = env.enclClass.sym.type.getTypeArguments();
+            }
             validateTrees(tree.bounds, true, isOuter);
+            openVars = prevOpenVars;
             checkClassBounds(tree.pos(), tree.type);
         }
 

@@ -819,11 +819,12 @@ public class Infer {
      * Is there an instantiation of the given formal type variables in which
      * {@code lowerBound} is a subtype of the instantiation of {@code formal}?
      */
-    public boolean isTypeArgLowerBoundSatisfiable(List<Type> formals, Type formal, Type lowerBound) {
-        return isTypeArgBoundSatisfiable(formals, formal, lowerBound, InferenceBound.LOWER);
+    public boolean isTypeArgLowerBoundSatisfiable(List<Type> formals, Type formal,
+                                                  Type lowerBound, List<Type> openVars) {
+        return isTypeArgBoundSatisfiable(formals, formal, lowerBound, openVars, InferenceBound.LOWER);
     }
 
-    private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound,
+    private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound, List<Type> openVars,
                                               InferenceBound boundKind) {
         List<Type> freshFormals = types.newInstances(formals);
         Type freshFormal = null;
@@ -838,7 +839,11 @@ public class Infer {
             currentFreshFormals = currentFreshFormals.tail;
         }
 
-        InferenceContext c = new InferenceContext(this, freshFormals);
+        List<Type> freeOpenVars = types.typeVars(bound, tv -> openVars.contains(tv));
+        List<Type> freshOpenVars = freeOpenVars.map(tv -> new TypeVar(tv.tsym, syms.objectType, syms.botType, tv.getMetadata()));
+        bound = types.subst(bound, freeOpenVars, freshOpenVars);
+
+        InferenceContext c = new InferenceContext(this, freshFormals.appendList(freshOpenVars));
         UndetVar undet = (UndetVar)c.asUndetVar(Assert.checkNonNull(freshFormal));
         try {
             undet.addBound(boundKind, bound, types);
