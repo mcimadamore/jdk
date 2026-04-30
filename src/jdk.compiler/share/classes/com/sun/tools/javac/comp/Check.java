@@ -626,7 +626,7 @@ public class Check {
              a = types.cvarUpperBound(a);
              return types.isSubtype(a, bound);
          } else if (a.isExtendsBound()) {
-             return types.isCastable(capturedBound, types.wildUpperBound(a), types.noWarnings);
+             return infer.isTypeArgUpperBoundSatisfiable(formals, formal, types.wildUpperBound(a), openVars);
          } else if (a.isSuperBound()) {
              return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a), openVars);
          }

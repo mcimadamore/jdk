@@ -824,6 +824,15 @@ public class Infer {
         return isTypeArgBoundSatisfiable(formals, formal, lowerBound, openVars, InferenceBound.LOWER);
     }
 
+    /**
+     * Is there an instantiation of the given formal type variables in which
+     * the instantiation of {@code formal} is a subtype of {@code upperBound}?
+     */
+    public boolean isTypeArgUpperBoundSatisfiable(List<Type> formals, Type formal,
+                                                  Type upperBound, List<Type> openVars) {
+        return isTypeArgBoundSatisfiable(formals, formal, upperBound, openVars, InferenceBound.UPPER);
+    }
+
     private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound, List<Type> openVars,
                                               InferenceBound boundKind) {
         List<Type> freshFormals = types.newInstances(formals);
