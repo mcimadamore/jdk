@@ -815,6 +815,42 @@ public class Infer {
         }
     }
 
+    public Type firstIncompatibleTypeArg(List<Type> actuals, List<Type> formals,
+                                         Predicate<Type> isTypeArgErroneous) {
+        List<Type> witnesses = types.newInstances(formals);
+        InferenceContext c = new InferenceContext(this, witnesses);
+        List<Type> currentActuals = actuals;
+        List<Type> currentWitnesses = witnesses;
+        while (currentActuals.nonEmpty() && currentWitnesses.nonEmpty()) {
+            Type actual = currentActuals.head;
+            Type witness = currentWitnesses.head;
+            UndetVar undet = (UndetVar)c.asUndetVar(witness);
+
+            try {
+                if (!isTypeArgErroneous.test(actual)) {
+                    if (actual.isUnbound()) {
+                        // An unbounded wildcard does not add any actual constraint.
+                    } else if (!actual.hasTag(WILDCARD)) {
+                        undet.addBound(InferenceBound.EQ, actual, types);
+                    } else if (actual.isExtendsBound()) {
+                        undet.addBound(InferenceBound.UPPER, types.wildUpperBound(actual), types);
+                    } else if (actual.isSuperBound()) {
+                        undet.addBound(InferenceBound.LOWER, types.wildLowerBound(actual), types);
+                    }
+                }
+
+                doIncorporation(c, types.noWarnings);
+            } catch (InferenceException ex) {
+                return actual;
+            }
+
+            currentActuals = currentActuals.tail;
+            currentWitnesses = currentWitnesses.tail;
+        }
+
+        return null;
+    }
+
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Incorporation">

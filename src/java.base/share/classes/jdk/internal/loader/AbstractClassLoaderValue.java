@@ -91,7 +91,7 @@ public abstract class AbstractClassLoaderValue<CLV extends AbstractClassLoaderVa
      * or {@code null} if there is none.
      */
     public V get(ClassLoader cl) {
-        Object val = AbstractClassLoaderValue.<CLV>map(cl).get(this);
+        Object val = AbstractClassLoaderValue.map(cl).get(this);
         try {
             return extractValue(val);
         } catch (Memoizer.RecursiveInvocationException e) {
@@ -149,7 +149,7 @@ public abstract class AbstractClassLoaderValue<CLV extends AbstractClassLoaderVa
      * @return {@code true} if the association was removed or {@code false} if not
      */
     public boolean remove(ClassLoader cl, Object v) {
-        return AbstractClassLoaderValue.<CLV>map(cl).remove(this, v);
+        return AbstractClassLoaderValue.map(cl).remove(this, v);
     }
 
     /**
@@ -259,7 +259,7 @@ public abstract class AbstractClassLoaderValue<CLV extends AbstractClassLoaderVa
      * @return a ConcurrentHashMap for given ClassLoader
      */
     @SuppressWarnings("unchecked")
-    private static <CLV extends AbstractClassLoaderValue<CLV, ?>>
+    private static <CLV extends AbstractClassLoaderValue<CLV, V>, V>
     ConcurrentHashMap<CLV, Object> map(ClassLoader cl) {
         return (ConcurrentHashMap<CLV, Object>)
             (cl == null ? BootLoader.getClassLoaderValueMap()

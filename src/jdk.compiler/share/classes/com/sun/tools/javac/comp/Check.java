@@ -607,27 +607,6 @@ public class Check {
 
         private static final boolean ignoreAnnotatedCasts = true;
 
-    /** Check that a type is within some bounds.
-     *
-     *  Used in TypeApply to verify that, e.g., X in {@code V<X>} is a valid
-     *  type argument.
-     *  @param a             The type that should be bounded by bs.
-     *  @param bound         The bound.
-     */
-    private boolean checkExtends(Type a, Type bound) {
-         if (a.isUnbound()) {
-             return true;
-         } else if (!a.hasTag(WILDCARD)) {
-             a = types.cvarUpperBound(a);
-             return types.isSubtype(a, bound);
-         } else if (a.isExtendsBound()) {
-             return types.isCastable(bound, types.wildUpperBound(a), types.noWarnings);
-         } else if (a.isSuperBound()) {
-             return !types.notSoftSubtype(types.wildLowerBound(a), bound);
-         }
-         return true;
-     }
-
     /** Check that type is different from 'void'.
      *  @param pos           Position to be used for error reporting.
      *  @param t             The type to be checked.
@@ -1016,62 +995,7 @@ public class Check {
         private Type firstIncompatibleTypeArg(Type type) {
             List<Type> formals = type.tsym.type.allparams();
             List<Type> actuals = type.allparams();
-            List<Type> args = type.getTypeArguments();
-            List<Type> forms = type.tsym.type.getTypeArguments();
-            ListBuffer<Type> bounds_buf = new ListBuffer<>();
-
-            // For matching pairs of actual argument types `a' and
-            // formal type parameters with declared bound `b' ...
-            while (args.nonEmpty() && forms.nonEmpty()) {
-                // exact type arguments needs to know their
-                // bounds (for upper and lower bound
-                // calculations).  So we create new bounds where
-                // type-parameters are replaced with actuals argument types.
-                bounds_buf.append(types.subst(forms.head.getUpperBound(), formals, actuals));
-                args = args.tail;
-                forms = forms.tail;
-            }
-
-            args = type.getTypeArguments();
-            List<Type> tvars_cap = types.substBounds(formals,
-                                      formals,
-                                      types.capture(type).allparams());
-            while (args.nonEmpty() && tvars_cap.nonEmpty()) {
-                // Let the actual arguments know their bound
-                args.head.withTypeVar((TypeVar)tvars_cap.head);
-                args = args.tail;
-                tvars_cap = tvars_cap.tail;
-            }
-
-            args = type.getTypeArguments();
-            List<Type> bounds = bounds_buf.toList();
-
-            while (args.nonEmpty() && bounds.nonEmpty()) {
-                Type actual = args.head;
-                if (!isTypeArgErroneous(actual) &&
-                        !bounds.head.isErroneous() &&
-                        !checkExtends(actual, bounds.head)) {
-                    return args.head;
-                }
-                args = args.tail;
-                bounds = bounds.tail;
-            }
-
-            args = type.getTypeArguments();
-            bounds = bounds_buf.toList();
-
-            for (Type arg : types.capture(type).getTypeArguments()) {
-                if (arg.hasTag(TYPEVAR) &&
-                        arg.getUpperBound().isErroneous() &&
-                        !bounds.head.isErroneous() &&
-                        !isTypeArgErroneous(args.head)) {
-                    return args.head;
-                }
-                bounds = bounds.tail;
-                args = args.tail;
-            }
-
-            return null;
+            return infer.firstIncompatibleTypeArg(actuals, formals, this::isTypeArgErroneous);
         }
         //where
         boolean isTypeArgErroneous(Type t) {
