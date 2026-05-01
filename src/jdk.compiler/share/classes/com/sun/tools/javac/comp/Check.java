@@ -1022,8 +1022,7 @@ public class Check {
             List<Type> actuals = type.allparams();
             List<Type> args = type.getTypeArguments();
             List<Type> forms = type.tsym.type.getTypeArguments();
-            ListBuffer<Type> bounds_buf = new ListBuffer<>();
-            ListBuffer<Type> captured_bounds_buf = new ListBuffer<>();
+            ListBuffer<Type> boundsBuf = new ListBuffer<>();
             Type capturedType = types.capture(type);
             List<Type> capturedActuals = capturedType.allparams();
 
@@ -1035,46 +1034,41 @@ public class Check {
                 // calculations).  So we create new bounds where
                 // type-parameters are replaced with actuals argument types.
                 Type formalBound = forms.head.getUpperBound();
-                bounds_buf.append(types.subst(formalBound, formals, actuals));
-                captured_bounds_buf.append(types.subst(formalBound, formals, capturedActuals));
+                Type bound = types.subst(formalBound, formals, actuals);
+                boundsBuf.append(bound);
                 args = args.tail;
                 forms = forms.tail;
-            }
-
-            args = type.getTypeArguments();
-            List<Type> tvars_cap = types.substBounds(formals,
-                                      formals,
-                                      capturedActuals);
-            List<Type> capturedBounds = tvars_cap;
-            while (args.nonEmpty() && capturedBounds.nonEmpty()) {
-                // Let the actual arguments know their bound
-                args.head.withTypeVar((TypeVar)capturedBounds.head);
-                args = args.tail;
-                capturedBounds = capturedBounds.tail;
             }
 
             args = type.getTypeArguments();
             forms = type.tsym.type.getTypeArguments();
-            List<Type> bounds = bounds_buf.toList();
-            capturedBounds = captured_bounds_buf.toList();
+            List<Type> capturedForms = types.substBounds(forms, formals, capturedActuals);
+            for (List<Type> as = args, cforms = capturedForms;
+                 as.nonEmpty() && cforms.nonEmpty();
+                 as = as.tail, cforms = cforms.tail) {
+                // Let wildcard actuals know their corresponding captured formal bound.
+                as.head.withTypeVar((TypeVar)cforms.head);
+            }
 
-            while (args.nonEmpty() && forms.nonEmpty() && bounds.nonEmpty() && capturedBounds.nonEmpty()) {
+            List<Type> bounds = boundsBuf.toList();
+            while (args.nonEmpty() && forms.nonEmpty() && bounds.nonEmpty()) {
+                Type formalBound = forms.head.getUpperBound();
+                Type capturedBound = types.subst(formalBound, formals, capturedActuals);
                 Type actual = args.head;
                 if (!isTypeArgErroneous(actual) &&
                         !bounds.head.isErroneous() &&
-                        !checkExtends(actual, capturedBounds.head)) {
-                    return args.head;
+                        !checkExtends(actual, capturedBound)) {
+                    return actual;
                 }
                 args = args.tail;
                 forms = forms.tail;
                 bounds = bounds.tail;
-                capturedBounds = capturedBounds.tail;
             }
 
             args = type.getTypeArguments();
-            bounds = bounds_buf.toList();
+            bounds = boundsBuf.toList();
 
-            for (Type arg : types.capture(type).getTypeArguments()) {
+            for (Type arg : capturedType.getTypeArguments()) {
                 if (arg.hasTag(TYPEVAR) &&
                         arg.getUpperBound().isErroneous() &&
                         !bounds.head.isErroneous() &&
