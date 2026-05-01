@@ -569,58 +569,6 @@ public class Types {
             return null;
         }
     }
-    // where
-        private final SimpleVisitor<Type,Symbol> asSub = new SimpleVisitor<Type,Symbol>() {
-
-            public Type visitType(Type t, Symbol sym) {
-                return null;
-            }
-
-            @Override
-            public Type visitClassType(ClassType t, Symbol sym) {
-                if (t.tsym == sym)
-                    return t;
-                Type base = asSuper(sym.type, t.tsym);
-                if (base == null)
-                    return null;
-                ListBuffer<Type> from = new ListBuffer<>();
-                ListBuffer<Type> to = new ListBuffer<>();
-                try {
-                    adapt(base, t, from, to);
-                } catch (AdaptFailure ex) {
-                    return null;
-                }
-                Type res = subst(sym.type, from.toList(), to.toList());
-                if (!isSubtype(res, t))
-                    return null;
-                ListBuffer<Type> openVars = new ListBuffer<>();
-                for (List<Type> l = sym.type.allparams();
-                     l.nonEmpty(); l = l.tail)
-                    if (res.contains(l.head) && !t.contains(l.head))
-                        openVars.append(l.head);
-                if (openVars.nonEmpty()) {
-                    if (t.isRaw()) {
-                        // The subtype of a raw type is raw
-                        res = erasure(res);
-                    } else {
-                        // Unbound type arguments default to ?
-                        List<Type> opens = openVars.toList();
-                        ListBuffer<Type> qs = new ListBuffer<>();
-                        for (List<Type> iter = opens; iter.nonEmpty(); iter = iter.tail) {
-                            qs.append(new WildcardType(syms.objectType, BoundKind.UNBOUND,
-                                                       syms.boundClass, (TypeVar) iter.head));
-                        }
-                        res = subst(res, opens, qs.toList());
-                    }
-                }
-                return res;
-            }
-
-            @Override
-            public Type visitErrorType(ErrorType t, Symbol sym) {
-                return t;
-            }
-        };
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="isConvertible">
