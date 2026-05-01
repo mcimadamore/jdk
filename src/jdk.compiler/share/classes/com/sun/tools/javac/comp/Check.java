@@ -612,25 +612,26 @@ public class Check {
      *  Used in TypeApply to verify that, e.g., X in {@code V<X>} is a valid
      *  type argument.
      *  @param a             The type that should be bounded by bs.
-     *  @param bound         The bound.
      *  @param capturedBound The bound after capture conversion.
      *  @param formal        The formal type parameter corresponding to {@code a}.
      *  @param formals       All formal type parameters in the generic type.
      *  @param openVars      Type variables whose bounds are being validated.
      */
-    private boolean checkExtends(Type a, Type bound, Type capturedBound,
+    private boolean checkExtends(Type a, Type capturedBound,
                                  Type formal, List<Type> formals, List<Type> openVars) {
-         if (a.isUnbound()) {
-             return true;
-         } else if (!a.hasTag(WILDCARD)) {
-             return infer.isTypeArgEqualBoundSatisfiable(formals, formal, a, openVars);
-         } else if (a.isExtendsBound()) {
-             return infer.isTypeArgUpperBoundSatisfiable(formals, formal, types.wildUpperBound(a), openVars);
-         } else if (a.isSuperBound()) {
-             return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a), openVars);
-         }
-         return true;
-     }
+        if (a.isUnbound()) {
+            return true;
+        } else if (!a.hasTag(WILDCARD)) {
+            // Project away use-site captures from dependent bounds before checking exact arguments.
+            Type projectedBound = types.upward(capturedBound, types.captures(capturedBound));
+            return types.isSubtype(a, projectedBound);
+        } else if (a.isExtendsBound()) {
+            return infer.isTypeArgUpperBoundSatisfiable(formals, formal, types.wildUpperBound(a), openVars);
+        } else if (a.isSuperBound()) {
+            return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a), openVars);
+        }
+        return true;
+    }
 
     /** Check that type is different from 'void'.
      *  @param pos           Position to be used for error reporting.
@@ -1027,6 +1028,9 @@ public class Check {
             List<Type> args = type.getTypeArguments();
             List<Type> forms = type.tsym.type.getTypeArguments();
             ListBuffer<Type> bounds_buf = new ListBuffer<>();
+            ListBuffer<Type> captured_bounds_buf = new ListBuffer<>();
+            Type capturedType = types.capture(type);
+            List<Type> capturedActuals = capturedType.allparams();
 
             // For matching pairs of actual argument types `a' and
             // formal type parameters with declared bound `b' ...
@@ -1035,7 +1039,9 @@ public class Check {
                 // bounds (for upper and lower bound
                 // calculations).  So we create new bounds where
                 // type-parameters are replaced with actuals argument types.
-                bounds_buf.append(types.subst(forms.head.getUpperBound(), formals, actuals));
+                Type formalBound = forms.head.getUpperBound();
+                bounds_buf.append(types.subst(formalBound, formals, actuals));
+                captured_bounds_buf.append(types.subst(formalBound, formals, capturedActuals));
                 args = args.tail;
                 forms = forms.tail;
             }
@@ -1043,7 +1049,7 @@ public class Check {
             args = type.getTypeArguments();
             List<Type> tvars_cap = types.substBounds(formals,
                                       formals,
-                                      types.capture(type).allparams());
+                                      capturedActuals);
             List<Type> capturedBounds = tvars_cap;
             while (args.nonEmpty() && capturedBounds.nonEmpty()) {
                 // Let the actual arguments know their bound
@@ -1055,13 +1061,13 @@ public class Check {
             args = type.getTypeArguments();
             forms = type.tsym.type.getTypeArguments();
             List<Type> bounds = bounds_buf.toList();
-            capturedBounds = tvars_cap;
+            capturedBounds = captured_bounds_buf.toList();
 
             while (args.nonEmpty() && forms.nonEmpty() && bounds.nonEmpty() && capturedBounds.nonEmpty()) {
                 Type actual = args.head;
                 if (!isTypeArgErroneous(actual) &&
                         !bounds.head.isErroneous() &&
-                        !checkExtends(actual, bounds.head, capturedBounds.head.getUpperBound(),
+                        !checkExtends(actual, capturedBounds.head,
                                 forms.head, formals, openVars)) {
                     return args.head;
                 }
