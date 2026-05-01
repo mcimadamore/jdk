@@ -816,54 +816,15 @@ public class Infer {
     }
 
     /**
-     * Is there an instantiation of the given formal type variables in which
-     * {@code lowerBound} is a subtype of the instantiation of {@code formal}?
+     * Is there a wildcard witness type that is a subtype of the projected
+     * formal bound and a subtype of {@code upperBound}?
      */
-    public boolean isTypeArgLowerBoundSatisfiable(List<Type> formals, Type formal,
-                                                  Type lowerBound, List<Type> openVars) {
-        return isTypeArgBoundSatisfiable(formals, formal, lowerBound, openVars, InferenceBound.LOWER);
-    }
-
-    /**
-     * Is there an instantiation of the given formal type variables in which
-     * the instantiation of {@code formal} is a subtype of {@code upperBound}?
-     */
-    public boolean isTypeArgUpperBoundSatisfiable(List<Type> formals, Type formal,
-                                                  Type upperBound, List<Type> openVars) {
-        return isTypeArgBoundSatisfiable(formals, formal, upperBound, openVars, InferenceBound.UPPER);
-    }
-
-    /**
-     * Is there an instantiation of the given formal type variables in which
-     * the instantiation of {@code formal} is the same type as {@code eqBound}?
-     */
-    public boolean isTypeArgEqualBoundSatisfiable(List<Type> formals, Type formal,
-                                                  Type eqBound, List<Type> openVars) {
-        return isTypeArgBoundSatisfiable(formals, formal, eqBound, openVars, InferenceBound.EQ);
-    }
-
-    private boolean isTypeArgBoundSatisfiable(List<Type> formals, Type formal, Type bound, List<Type> openVars,
-                                              InferenceBound boundKind) {
-        List<Type> freshFormals = types.newInstances(formals);
-        Type freshFormal = null;
-        List<Type> currentFormals = formals;
-        List<Type> currentFreshFormals = freshFormals;
-        while (currentFormals.nonEmpty() && currentFreshFormals.nonEmpty()) {
-            if (currentFormals.head.tsym == formal.tsym) {
-                freshFormal = currentFreshFormals.head;
-                break;
-            }
-            currentFormals = currentFormals.tail;
-            currentFreshFormals = currentFreshFormals.tail;
-        }
-
-        List<Type> freeOpenVars = types.typeVars(bound, tv -> openVars.contains(tv));
-        List<Type> freshOpenVars = freeOpenVars.map(tv -> new TypeVar(tv.tsym, syms.objectType, syms.botType, tv.getMetadata()));
-        bound = types.subst(bound, freeOpenVars, freshOpenVars);
-
-        InferenceContext c = new InferenceContext(this, freshFormals.appendList(freshOpenVars));
-        UndetVar undet = (UndetVar)c.asUndetVar(Assert.checkNonNull(freshFormal));
+    public boolean isTypeArgBoundSatisfiable(Type declaredBound, Type bound, InferenceBound boundKind) {
+        TypeVar witness = new TypeVar(syms.noSymbol, syms.objectType, syms.botType);
+        InferenceContext c = new InferenceContext(this, List.of(witness));
+        UndetVar undet = (UndetVar)c.asUndetVar(witness);
         try {
+            undet.addBound(InferenceBound.UPPER, c.asUndetVar(declaredBound), types);
             undet.addBound(boundKind, c.asUndetVar(bound), types);
             doIncorporation(c, types.noWarnings);
             return true;

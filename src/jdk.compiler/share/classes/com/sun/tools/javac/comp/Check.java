@@ -44,6 +44,7 @@ import com.sun.tools.javac.code.Attribute.Compound;
 import com.sun.tools.javac.code.Directive.ExportsDirective;
 import com.sun.tools.javac.code.Directive.RequiresDirective;
 import com.sun.tools.javac.code.Source.Feature;
+import com.sun.tools.javac.code.Type.UndetVar.InferenceBound;
 import com.sun.tools.javac.comp.Annotate.AnnotationTypeMetadata;
 import com.sun.tools.javac.jvm.*;
 import com.sun.tools.javac.resources.CompilerProperties;
@@ -613,22 +614,20 @@ public class Check {
      *  type argument.
      *  @param a             The type that should be bounded by bs.
      *  @param capturedBound The bound after capture conversion.
-     *  @param formal        The formal type parameter corresponding to {@code a}.
-     *  @param formals       All formal type parameters in the generic type.
-     *  @param openVars      Type variables whose bounds are being validated.
      */
-    private boolean checkExtends(Type a, Type capturedBound,
-                                 Type formal, List<Type> formals, List<Type> openVars) {
+    private boolean checkExtends(Type a, Type capturedBound) {
         if (a.isUnbound()) {
             return true;
-        } else if (!a.hasTag(WILDCARD)) {
-            // Project away use-site captures from dependent bounds before checking exact arguments.
-            Type projectedBound = types.upward(capturedBound, types.captures(capturedBound));
+        }
+
+        // Project away use-site captures from dependent bounds before checking type arguments.
+        Type projectedBound = types.upward(capturedBound, types.captures(capturedBound));
+        if (!a.hasTag(WILDCARD)) {
             return types.isSubtype(a, projectedBound);
         } else if (a.isExtendsBound()) {
-            return infer.isTypeArgUpperBoundSatisfiable(formals, formal, types.wildUpperBound(a), openVars);
+            return infer.isTypeArgBoundSatisfiable(projectedBound, types.wildUpperBound(a), InferenceBound.UPPER);
         } else if (a.isSuperBound()) {
-            return infer.isTypeArgLowerBoundSatisfiable(formals, formal, types.wildLowerBound(a), openVars);
+            return infer.isTypeArgBoundSatisfiable(projectedBound, types.wildLowerBound(a), InferenceBound.LOWER);
         }
         return true;
     }
@@ -1019,10 +1018,6 @@ public class Check {
     }
     //WHERE
         private Type firstIncompatibleTypeArg(Type type) {
-            return firstIncompatibleTypeArg(type, List.nil());
-        }
-
-        private Type firstIncompatibleTypeArg(Type type, List<Type> openVars) {
             List<Type> formals = type.tsym.type.allparams();
             List<Type> actuals = type.allparams();
             List<Type> args = type.getTypeArguments();
@@ -1067,8 +1062,7 @@ public class Check {
                 Type actual = args.head;
                 if (!isTypeArgErroneous(actual) &&
                         !bounds.head.isErroneous() &&
-                        !checkExtends(actual, capturedBounds.head,
-                                forms.head, formals, openVars)) {
+                        !checkExtends(actual, capturedBounds.head)) {
                     return args.head;
                 }
                 args = args.tail;
@@ -1366,7 +1360,6 @@ public class Check {
         boolean isOuter;
         boolean isValid = true;
         Env<AttrContext> env;
-        List<Type> openVars = List.nil();
 
         Validator(Env<AttrContext> env) {
             this.env = env;
@@ -1383,7 +1376,7 @@ public class Check {
                 List<JCExpression> args = tree.arguments;
                 List<Type> forms = tree.type.tsym.type.getTypeArguments();
 
-                Type incompatibleArg = firstIncompatibleTypeArg(tree.type, openVars);
+                Type incompatibleArg = firstIncompatibleTypeArg(tree.type);
                 if (incompatibleArg != null) {
                     for (JCTree arg : tree.arguments) {
                         if (arg.type == incompatibleArg) {
@@ -1421,10 +1414,7 @@ public class Check {
 
         @Override
         public void visitTypeParameter(JCTypeParameter tree) {
-            List<Type> prevOpenVars = openVars;
-            openVars = openVars(tree);
             validateTrees(tree.bounds, true, isOuter);
-            openVars = prevOpenVars;
             checkClassBounds(tree.pos(), tree.type);
         }
 
@@ -1506,19 +1496,6 @@ public class Check {
                 validateTree(l.head, checkRaw, isOuter);
         }
 
-        private List<Type> openVars(JCTypeParameter tree) {
-            ListBuffer<Type> buf = new ListBuffer<>();
-            for (Symbol sym = tree.type.tsym.owner; sym != null && sym.kind != PCK; sym = sym.owner) {
-                if (sym.type != null) {
-                    for (Type t : sym.type.getTypeArguments()) {
-                        if (!buf.contains(t)) {
-                            buf.append(t);
-                        }
-                    }
-                }
-            }
-            return buf.toList();
-        }
     }
 
     void checkRaw(JCTree tree, Env<AttrContext> env) {
