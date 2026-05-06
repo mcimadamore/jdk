@@ -623,6 +623,7 @@ public class Check {
         // Project away use-site captures from dependent bounds before checking type arguments.
         Type projectedBound = types.upward(capturedBound, types.captures(capturedBound));
         if (!a.hasTag(WILDCARD)) {
+            // we can't use isTypeArgBoundSatisfiable here because inference use unchecked subtyping
             return types.isSubtype(a, projectedBound);
         } else if (a.isExtendsBound()) {
             return infer.isTypeArgBoundSatisfiable(projectedBound, types.wildUpperBound(a), InferenceBound.UPPER);
