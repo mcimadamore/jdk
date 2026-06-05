@@ -348,17 +348,13 @@ public abstract sealed class AbstractInstruction
     public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
-        private FieldRefEntry fieldEntry;
-
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
         @Override
-        public FieldRefEntry field() {
-            if (fieldEntry == null)
-                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
-            return fieldEntry;
+        public cached FieldRefEntry field() {
+            return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
         }
 
         @Override
@@ -378,17 +374,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
-        MemberRefEntry methodEntry;
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
         @Override
-        public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
-            return methodEntry;
+        public cached MemberRefEntry method() {
+            return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
         }
 
         @Override
@@ -418,17 +411,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
-        InterfaceMethodRefEntry methodEntry;
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
         @Override
-        public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
-            return methodEntry;
+        public cached MemberRefEntry method() {
+            return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
         }
 
         @Override
@@ -458,17 +448,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
-        InvokeDynamicEntry indyEntry;
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
         @Override
-        public InvokeDynamicEntry invokedynamic() {
-            if (indyEntry == null)
-                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
-            return indyEntry;
+        public cached InvokeDynamicEntry invokedynamic() {
+            return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
         }
 
         @Override
@@ -488,17 +475,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
-        ClassEntry classEntry;
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, code, pos);
         }
 
         @Override
-        public ClassEntry className() {
-            if (classEntry == null)
-                classEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return classEntry;
+        public cached ClassEntry className() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override
@@ -543,7 +527,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public ClassEntry componentType() {
+        public cached ClassEntry componentType() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
@@ -574,7 +558,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public ClassEntry arrayType() {
+        public cached ClassEntry arrayType() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
@@ -595,17 +579,14 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
-        ClassEntry typeEntry;
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
         @Override
-        public ClassEntry type() {
-            if (typeEntry == null)
-                typeEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return typeEntry;
+        public cached ClassEntry type() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override
@@ -654,7 +635,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public LoadableConstantEntry constantEntry() {
+        public cached LoadableConstantEntry constantEntry() {
             return code.classReader.entryByIndex(op == Opcode.LDC
                                                   ? code.classReader.readU1(pos + 1)
                                                   : code.classReader.readU2(pos + 1),

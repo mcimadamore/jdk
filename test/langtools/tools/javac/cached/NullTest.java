@@ -1,6 +1,5 @@
 /*
  * @test /nodynamiccopyright/
- * @enablePreview
  * @summary Smoke test for cached methods returning null
  */
 public class NullTest {

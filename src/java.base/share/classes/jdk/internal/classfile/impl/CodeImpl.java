@@ -70,9 +70,6 @@ public final class CodeImpl
         }
     }
 
-    List<ExceptionCatch> exceptionTable;
-    List<Attribute<?>> attributes;
-
     // Inflated for iteration
     LabelImpl[] labels;
     int[] lineNumbers;
@@ -134,11 +131,8 @@ public final class CodeImpl
     // CodeAttribute
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
-        }
-        return attributes;
+    public cached List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
     }
 
     @Override
@@ -189,26 +183,23 @@ public final class CodeImpl
     }
 
     @Override
-    public List<ExceptionCatch> exceptionHandlers() {
-        if (exceptionTable == null) {
-            inflateMetadata();
-            exceptionTable = new ArrayList<>(exceptionHandlerCnt);
-            iterateExceptionHandlers(new ExceptionHandlerAction() {
-                @Override
-                public void accept(int s, int e, int h, int c) {
-                    ClassEntry catchTypeEntry = c == 0
-                                                             ? null
-                                                             : constantPool().entryByIndex(c, ClassEntry.class);
-                    exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
-                }
-            });
-            exceptionTable = Collections.unmodifiableList(exceptionTable);
-        }
-        return exceptionTable;
+    public cached List<ExceptionCatch> exceptionHandlers() {
+        inflateMetadata();
+        var exceptionTable = new ArrayList<ExceptionCatch>(exceptionHandlerCnt);
+        iterateExceptionHandlers(new ExceptionHandlerAction() {
+            @Override
+            public void accept(int s, int e, int h, int c) {
+                ClassEntry catchTypeEntry = c == 0
+                                                         ? null
+                                                         : constantPool().entryByIndex(c, ClassEntry.class);
+                exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
+            }
+        });
+        return Collections.unmodifiableList(exceptionTable);
     }
 
     private void generateUserAttributes(Consumer<? super CodeElement> consumer) {
-        for (var attr : attributes) {
+        for (var attr : attributes()) {
             if (attr instanceof CustomAttribute || attr instanceof UnknownAttribute) {
                 consumer.accept((CodeElement) attr);
             }

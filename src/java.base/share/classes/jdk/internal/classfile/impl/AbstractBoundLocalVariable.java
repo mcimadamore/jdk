@@ -31,8 +31,6 @@ public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;
-    private Utf8Entry nameEntry;
-    private Utf8Entry secondaryEntry;
 
     public AbstractBoundLocalVariable(CodeImpl code, int offset) {
         this.code = code;
@@ -43,20 +41,16 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    public Utf8Entry name() {
-        if (nameEntry == null)
-            nameEntry = code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
-        return nameEntry;
+    public cached Utf8Entry name() {
+        return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
     }
 
     protected int secondaryIndex() {
         return code.classReader.readU2(offset + 6);
     }
 
-    protected Utf8Entry secondaryEntry() {
-        if (secondaryEntry == null)
-            secondaryEntry = code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
-        return secondaryEntry;
+    protected cached Utf8Entry secondaryEntry() {
+        return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
     }
 
     public Label startScope() {

@@ -35,7 +35,6 @@ public final class BoundRecordComponentInfo
 
     private final ClassReader reader;
     private final int startPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public BoundRecordComponentInfo(ClassReader reader, int startPos) {
         this.reader = reader;
@@ -54,10 +53,7 @@ public final class BoundRecordComponentInfo
     }
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+    public cached List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
     }
 }

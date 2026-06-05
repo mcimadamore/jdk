@@ -1,6 +1,5 @@
 /*
  * @test /nodynamiccopyright/
- * @enablePreview
  * @summary Smoke test for static and instance cached methods
  */
 public class SmokeTest {

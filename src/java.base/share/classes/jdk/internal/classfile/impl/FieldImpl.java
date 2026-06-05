@@ -42,7 +42,6 @@ public final class FieldImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public FieldImpl(ClassReader reader, int startPos, int endPos, int attributesPos) {
         this.reader = reader;
@@ -52,7 +51,7 @@ public final class FieldImpl
     }
 
     @Override
-    public AccessFlags flags() {
+    public cached AccessFlags flags() {
         return new AccessFlagsImpl(AccessFlag.Location.FIELD, reader.readU2(startPos));
     }
 
@@ -75,11 +74,8 @@ public final class FieldImpl
     }
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+    public cached List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

@@ -879,7 +879,7 @@ public abstract sealed class AbstractPoolEntry {
     public abstract static sealed class AbstractDynamicConstantPoolEntry extends AbstractPoolEntry {
 
         private final int bsmIndex;
-        private BootstrapMethodEntryImpl bootstrapMethod;
+        private final BootstrapMethodEntryImpl bootstrapMethod;
         private final NameAndTypeEntryImpl nameAndType;
 
         AbstractDynamicConstantPoolEntry(ConstantPool cpm, int index, int hash, BootstrapMethodEntryImpl bootstrapMethod,
@@ -901,11 +901,10 @@ public abstract sealed class AbstractPoolEntry {
         /**
          * @return the bootstrapMethod
          */
-        public BootstrapMethodEntryImpl bootstrap() {
-            if (bootstrapMethod == null) {
-                bootstrapMethod = (BootstrapMethodEntryImpl) constantPool.bootstrapMethodEntry(bsmIndex);
-            }
-            return bootstrapMethod;
+        public cached BootstrapMethodEntryImpl bootstrap() {
+            return bootstrapMethod != null ?
+                    bootstrapMethod :
+                    (BootstrapMethodEntryImpl) constantPool.bootstrapMethodEntry(bsmIndex);
         }
 
         /**

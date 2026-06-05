@@ -1,6 +1,5 @@
 /*
  * @test /nodynamiccopyright/
- * @enablePreview
  * @summary Check declaration sites for cached methods.
  * @compile/fail/ref=CachedMethodDeclarations.out -XDrawDiagnostics CachedMethodDeclarations.java
  */

@@ -38,7 +38,6 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
@@ -49,7 +48,7 @@ public final class MethodImpl
     }
 
     @Override
-    public AccessFlags flags() {
+    public cached AccessFlags flags() {
         return new AccessFlagsImpl(AccessFlag.Location.METHOD, reader.readU2(startPos));
     }
 
@@ -89,11 +88,8 @@ public final class MethodImpl
     }
 
     @Override
-    public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+    public cached List<Attribute<?>> attributes() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

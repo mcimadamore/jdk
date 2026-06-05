@@ -33,12 +33,10 @@ public final class AccessFlagsImpl extends AbstractElement
 
     private final AccessFlag.Location location;
     private final int flagsMask;
-    private Set<AccessFlag> flags;
 
     public AccessFlagsImpl(AccessFlag.Location location, AccessFlag... flags) {
         this.location = location;
         this.flagsMask = Util.flagsToBits(location, flags);
-        this.flags = Set.of(flags);
     }
 
     public AccessFlagsImpl(AccessFlag.Location location, int mask) {
@@ -52,10 +50,8 @@ public final class AccessFlagsImpl extends AbstractElement
     }
 
     @Override
-    public Set<AccessFlag> flags() {
-        if (flags == null)
-            flags = AccessFlag.maskToAccessFlags(flagsMask, location);
-        return flags;
+    public cached Set<AccessFlag> flags() {
+        return AccessFlag.maskToAccessFlags(flagsMask, location);
     }
 
     @Override
