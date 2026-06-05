@@ -34,6 +34,7 @@ import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.JavaLangInvokeAccess.FieldVarHandleInfo;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
+import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
@@ -43,6 +44,8 @@ import static java.util.Objects.requireNonNull;
 /** Stable field accessor. */
 @TrustFinalFields
 public abstract class StableAccessor {
+    private static final String INIT_MODE_PROPERTY = "jdk.cachedMethods.initMode";
+    private static final InitMode INIT_MODE = InitMode.fromProperty(VM.getSavedProperty(INIT_MODE_PROPERTY));
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Object NULL_SENTINEL = new Object();
     private static final JavaLangInvokeAccess JLI = SharedSecrets.getJavaLangInvokeAccess();
@@ -105,6 +108,13 @@ public abstract class StableAccessor {
 
     @DontInline
     private Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
+        return INIT_MODE == InitMode.SYNCHRONIZED
+                ? slowGetOrInitSynchronized(actualBase, receiver)
+                : slowGetOrInitCas(actualBase, receiver);
+    }
+
+    @DontInline
+    private Object slowGetOrInitCas(Object actualBase, Object receiver) throws Throwable {
         if (initHandle == null) {
             throw new IllegalStateException("no init handle");
         }
@@ -114,6 +124,22 @@ public abstract class StableAccessor {
             return value;
         }
         return decode(UNSAFE.getReferenceStableVolatile(actualBase, offset));
+    }
+
+    @DontInline
+    private Object slowGetOrInitSynchronized(Object actualBase, Object receiver) throws Throwable {
+        synchronized (actualBase) {
+            Object cached = UNSAFE.getReference(actualBase, offset);
+            if (cached != null) {
+                return decode(cached);
+            }
+            if (initHandle == null) {
+                throw new IllegalStateException("no init handle");
+            }
+            Object value = initHandle.invokeExact(receiver);
+            UNSAFE.putReferenceVolatile(actualBase, offset, encode(value));
+            return value;
+        }
     }
 
     @ForceInline
@@ -127,6 +153,23 @@ public abstract class StableAccessor {
     @ForceInline
     private static Object decode(Object value) {
         return value == NULL_SENTINEL ? null : value;
+    }
+
+    private enum InitMode {
+        CAS,
+        SYNCHRONIZED;
+
+        private static InitMode fromProperty(String value) {
+            if (value == null) {
+                return CAS;
+            } else if (value.equalsIgnoreCase("cas") || value.equalsIgnoreCase("racy")) {
+                return CAS;
+            } else if (value.equalsIgnoreCase("synchronized") || value.equalsIgnoreCase("sync")) {
+                return SYNCHRONIZED;
+            }
+            throw new IllegalArgumentException("unsupported value for " + INIT_MODE_PROPERTY +
+                    ": " + value + " (expected cas/racy or synchronized/sync)");
+        }
     }
 
     @TrustFinalFields
