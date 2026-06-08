@@ -29,6 +29,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.util.concurrent.atomic.LongAdder;
 
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.JavaLangInvokeAccess.FieldVarHandleInfo;
@@ -45,10 +46,21 @@ import static java.util.Objects.requireNonNull;
 @TrustFinalFields
 public abstract class StableAccessor {
     private static final String INIT_MODE_PROPERTY = "jdk.cachedMethods.initMode";
+    private static final String LOG_STATS_PROPERTY = "jdk.cachedMethods.logStats";
     private static final InitMode INIT_MODE = InitMode.fromProperty(VM.getSavedProperty(INIT_MODE_PROPERTY));
+    private static final boolean PLAIN_INIT_MODE = INIT_MODE == InitMode.PLAIN;
+    private static final boolean LOG_STATS = Boolean.parseBoolean(VM.getSavedProperty(LOG_STATS_PROPERTY));
+    private static final LongAdder TOTAL_COUNT = LOG_STATS ? new LongAdder() : null;
+    private static final LongAdder HIT_COUNT = LOG_STATS ? new LongAdder() : null;
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Object NULL_SENTINEL = new Object();
     private static final JavaLangInvokeAccess JLI = SharedSecrets.getJavaLangInvokeAccess();
+
+    static {
+        if (LOG_STATS) {
+            Runtime.getRuntime().addShutdownHook(new Thread(StableAccessor::logStats));
+        }
+    }
 
     final long offset;
     final MethodHandle initHandle;
@@ -99,10 +111,12 @@ public abstract class StableAccessor {
     @ForceInline
     public final Object getOrInit(Object receiver) throws Throwable {
         Object actualBase = resolveBase(receiver);
-        Object cached = INIT_MODE == InitMode.PLAIN
+        recordAccess();
+        Object cached = PLAIN_INIT_MODE
                 ? UNSAFE.getReferenceStable(actualBase, offset)
                 : UNSAFE.getReferenceStableVolatile(actualBase, offset);
         if (cached != null) {
+            recordHit();
             return decode(cached);
         }
         return slowGetOrInit(actualBase, receiver);
@@ -171,6 +185,33 @@ public abstract class StableAccessor {
     @ForceInline
     private static Object decode(Object value) {
         return value == NULL_SENTINEL ? null : value;
+    }
+
+    @ForceInline
+    private static void recordAccess() {
+        if (LOG_STATS) {
+            TOTAL_COUNT.increment();
+        }
+    }
+
+    @ForceInline
+    private static void recordHit() {
+        if (LOG_STATS) {
+            HIT_COUNT.increment();
+        }
+    }
+
+    private static void logStats() {
+        long total = TOTAL_COUNT.sum();
+        long hits = HIT_COUNT.sum();
+        long misses = total - hits;
+        System.err.println("Cached method stats:");
+        System.err.println("  total: " + total);
+        System.err.println("  hits: " + hits);
+        System.err.println("  misses: " + misses);
+        if (total != 0) {
+            System.err.println("  hit ratio: " + ((double) hits / total));
+        }
     }
 
     private enum InitMode {
