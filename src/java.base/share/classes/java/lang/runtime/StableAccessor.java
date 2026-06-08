@@ -205,13 +205,9 @@ public abstract class StableAccessor {
         long total = TOTAL_COUNT.sum();
         long hits = HIT_COUNT.sum();
         long misses = total - hits;
-        System.err.println("Cached method stats:");
-        System.err.println("  total: " + total);
-        System.err.println("  hits: " + hits);
-        System.err.println("  misses: " + misses);
-        if (total != 0) {
-            System.err.println("  hit ratio: " + ((double) hits / total));
-        }
+        double hitRatio = total == 0 ? 0.0d : (double) hits / total;
+        System.err.printf("Cached method stats: total=%d hits=%d misses=%d hitRatio=%f%n",
+                total, hits, misses, hitRatio);
     }
 
     private enum InitMode {
