@@ -51,7 +51,7 @@ public final class FieldImpl
     }
 
     @Override
-    public cached AccessFlags flags() {
+    public AccessFlags flags() {
         return new AccessFlagsImpl(AccessFlag.Location.FIELD, reader.readU2(startPos));
     }
 

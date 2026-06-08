@@ -48,7 +48,7 @@ public final class MethodImpl
     }
 
     @Override
-    public cached AccessFlags flags() {
+    public AccessFlags flags() {
         return new AccessFlagsImpl(AccessFlag.Location.METHOD, reader.readU2(startPos));
     }
 

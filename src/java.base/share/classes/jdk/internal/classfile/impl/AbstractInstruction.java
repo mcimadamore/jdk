@@ -527,7 +527,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public cached ClassEntry componentType() {
+        public ClassEntry componentType() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
@@ -558,7 +558,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public cached ClassEntry arrayType() {
+        public ClassEntry arrayType() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
@@ -635,7 +635,7 @@ public abstract sealed class AbstractInstruction
         }
 
         @Override
-        public cached LoadableConstantEntry constantEntry() {
+        public LoadableConstantEntry constantEntry() {
             return code.classReader.entryByIndex(op == Opcode.LDC
                                                   ? code.classReader.readU1(pos + 1)
                                                   : code.classReader.readU2(pos + 1),
