@@ -99,7 +99,9 @@ public abstract class StableAccessor {
     @ForceInline
     public final Object getOrInit(Object receiver) throws Throwable {
         Object actualBase = resolveBase(receiver);
-        Object cached = UNSAFE.getReferenceStableVolatile(actualBase, offset);
+        Object cached = INIT_MODE == InitMode.PLAIN
+                ? UNSAFE.getReferenceStable(actualBase, offset)
+                : UNSAFE.getReferenceStableVolatile(actualBase, offset);
         if (cached != null) {
             return decode(cached);
         }
@@ -108,9 +110,11 @@ public abstract class StableAccessor {
 
     @DontInline
     private Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
-        return INIT_MODE == InitMode.SYNCHRONIZED
-                ? slowGetOrInitSynchronized(actualBase, receiver)
-                : slowGetOrInitCas(actualBase, receiver);
+        return switch (INIT_MODE) {
+            case CAS -> slowGetOrInitCas(actualBase, receiver);
+            case PLAIN -> slowGetOrInitPlain(actualBase, receiver);
+            case SYNCHRONIZED -> slowGetOrInitSynchronized(actualBase, receiver);
+        };
     }
 
     @DontInline
@@ -124,6 +128,20 @@ public abstract class StableAccessor {
             return value;
         }
         return decode(UNSAFE.getReferenceStableVolatile(actualBase, offset));
+    }
+
+    @DontInline
+    private Object slowGetOrInitPlain(Object actualBase, Object receiver) throws Throwable {
+        Object cached = UNSAFE.getReference(actualBase, offset);
+        if (cached != null) {
+            return decode(cached);
+        }
+        if (initHandle == null) {
+            throw new IllegalStateException("no init handle");
+        }
+        Object value = initHandle.invokeExact(receiver);
+        UNSAFE.putReference(actualBase, offset, encode(value));
+        return value;
     }
 
     @DontInline
@@ -157,6 +175,7 @@ public abstract class StableAccessor {
 
     private enum InitMode {
         CAS,
+        PLAIN,
         SYNCHRONIZED;
 
         private static InitMode fromProperty(String value) {
@@ -164,11 +183,13 @@ public abstract class StableAccessor {
                 return CAS;
             } else if (value.equalsIgnoreCase("cas") || value.equalsIgnoreCase("racy")) {
                 return CAS;
+            } else if (value.equalsIgnoreCase("plain")) {
+                return PLAIN;
             } else if (value.equalsIgnoreCase("synchronized") || value.equalsIgnoreCase("sync")) {
                 return SYNCHRONIZED;
             }
             throw new IllegalArgumentException("unsupported value for " + INIT_MODE_PROPERTY +
-                    ": " + value + " (expected cas/racy or synchronized/sync)");
+                    ": " + value + " (expected cas/racy, plain, or synchronized/sync)");
         }
     }
 
