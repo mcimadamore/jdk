@@ -797,7 +797,10 @@ public abstract sealed class VarHandle implements Constable
     void setRelease(Object... args);
 
     /**
-     * Returns the value of a variable, TODO
+     * Returns the value of a variable, or any previous <em>initialized value</em> of the variable,
+     * and ensures that subsequent loads are not reordered before this access.
+     *<p>
+     * In this context, an <em>initialized value</em> of a variable is any non-default value of its type {@code T}.
      *<p>
      * The method signature is of the form {@code (CT1 ct1, ..., CTn ctn)T}.
      *<p>
