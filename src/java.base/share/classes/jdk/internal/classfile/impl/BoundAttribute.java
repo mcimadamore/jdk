@@ -47,12 +47,14 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     private final AttributeMapper<T> mapper;
     final ClassReaderImpl classReader;
     final int payloadStart;
-    Utf8Entry name;
+    private final LazyConstant<Utf8Entry> name;
 
     BoundAttribute(ClassReader classReader, AttributeMapper<T> mapper, int payloadStart) {
         this.mapper = mapper;
         this.classReader = (ClassReaderImpl)classReader;
         this.payloadStart = payloadStart;
+        this.name = LazyConstant.of(
+                () -> this.classReader.readEntry(this.payloadStart - 6, Utf8Entry.class));
     }
 
     public int payloadLen() {
@@ -61,10 +63,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     @Override
     public Utf8Entry attributeName() {
-        if (name == null) {
-            name = classReader.readEntry(payloadStart - 6, Utf8Entry.class);
-        }
-        return name;
+        return name.get();
     }
 
     @Override
@@ -817,7 +816,8 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundAnnotationDefaultAttr
             extends BoundAttribute<AnnotationDefaultAttribute>
             implements AnnotationDefaultAttribute {
-        private AnnotationValue annotationValue;
+        private final LazyConstant<AnnotationValue> annotationValue = LazyConstant.of(
+                () -> AnnotationReader.readElementValue(classReader, payloadStart));
 
         public BoundAnnotationDefaultAttr(ClassReader cf, AttributeMapper<AnnotationDefaultAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -825,9 +825,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public AnnotationValue defaultValue() {
-            if (annotationValue == null)
-                annotationValue = AnnotationReader.readElementValue(classReader, payloadStart);
-            return annotationValue;
+            return annotationValue.get();
         }
     }
 

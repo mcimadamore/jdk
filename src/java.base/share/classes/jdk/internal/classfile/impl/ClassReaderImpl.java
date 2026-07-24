@@ -51,8 +51,8 @@ public final class ClassReaderImpl
     private final Function<Utf8Entry, AttributeMapper<?>> attributeMapper;
     private final int flags;
     private final int thisClassPos;
-    private ClassEntry thisClass;
-    private Optional<ClassEntry> superclass;
+    private final LazyConstant<ClassEntry> thisClass;
+    private final LazyConstant<Optional<ClassEntry>> superclass;
     private final int constantPoolCount;
     private final int[] cpOffset;
 
@@ -62,7 +62,7 @@ public final class ClassReaderImpl
 
     private ClassModel containedClass;
     private List<BootstrapMethodEntryImpl> bsmEntries;
-    private BootstrapMethodsAttribute bootstrapMethodsAttribute;
+    private final LazyConstant<BootstrapMethodsAttribute> bootstrapMethodsAttribute;
 
     ClassReaderImpl(byte[] classfileBytes,
                     ClassFileImpl context) {
@@ -114,6 +114,13 @@ public final class ClassReaderImpl
         this.thisClassPos = p + 2;
         p += 6;
         this.interfacesPos = p;
+        this.thisClass = LazyConstant.of(
+                () -> readEntry(this.thisClassPos, ClassEntry.class));
+        this.superclass = LazyConstant.of(
+                () -> Optional.ofNullable(readEntryOrNull(this.thisClassPos + 2, ClassEntry.class)));
+        this.bootstrapMethodsAttribute = LazyConstant.of(
+                () -> containedClass.findAttribute(Attributes.bootstrapMethods())
+                                    .orElse(new UnboundAttribute.EmptyBootstrapAttribute()));
     }
 
     public ClassFileImpl context() {
@@ -137,18 +144,12 @@ public final class ClassReaderImpl
 
     @Override
     public ClassEntry thisClassEntry() {
-        if (thisClass == null) {
-            thisClass = readEntry(thisClassPos, ClassEntry.class);
-        }
-        return thisClass;
+        return thisClass.get();
     }
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        if (superclass == null) {
-            superclass = Optional.ofNullable(readEntryOrNull(thisClassPos + 2, ClassEntry.class));
-        }
-        return superclass;
+        return superclass.get();
     }
 
     public int thisClassPos() {
@@ -273,14 +274,7 @@ public final class ClassReaderImpl
     }
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
-
-        if (bootstrapMethodsAttribute == null) {
-            bootstrapMethodsAttribute
-                    = containedClass.findAttribute(Attributes.bootstrapMethods())
-                                    .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
-        }
-
-        return bootstrapMethodsAttribute;
+        return bootstrapMethodsAttribute.get();
     }
 
     List<BootstrapMethodEntryImpl> bsmEntries() {

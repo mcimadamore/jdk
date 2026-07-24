@@ -879,14 +879,14 @@ public abstract sealed class AbstractPoolEntry {
     public abstract static sealed class AbstractDynamicConstantPoolEntry extends AbstractPoolEntry {
 
         private final int bsmIndex;
-        private BootstrapMethodEntryImpl bootstrapMethod;
+        private final LazyConstant<BootstrapMethodEntryImpl> bootstrapMethod;
         private final NameAndTypeEntryImpl nameAndType;
 
         AbstractDynamicConstantPoolEntry(ConstantPool cpm, int index, int hash, BootstrapMethodEntryImpl bootstrapMethod,
                                          NameAndTypeEntryImpl nameAndType) {
             super(cpm, index, hash);
             this.bsmIndex = bootstrapMethod.bsmIndex();
-            this.bootstrapMethod = bootstrapMethod;
+            this.bootstrapMethod = LazyConstant.of(() -> bootstrapMethod);
             this.nameAndType = nameAndType;
         }
 
@@ -894,7 +894,8 @@ public abstract sealed class AbstractPoolEntry {
                                          NameAndTypeEntryImpl nameAndType) {
             super(cpm, index, hash);
             this.bsmIndex = bsmIndex;
-            this.bootstrapMethod = null;
+            this.bootstrapMethod = LazyConstant.of(
+                    () -> (BootstrapMethodEntryImpl) constantPool.bootstrapMethodEntry(bsmIndex));
             this.nameAndType = nameAndType;
         }
 
@@ -902,10 +903,7 @@ public abstract sealed class AbstractPoolEntry {
          * @return the bootstrapMethod
          */
         public BootstrapMethodEntryImpl bootstrap() {
-            if (bootstrapMethod == null) {
-                bootstrapMethod = (BootstrapMethodEntryImpl) constantPool.bootstrapMethodEntry(bsmIndex);
-            }
-            return bootstrapMethod;
+            return bootstrapMethod.get();
         }
 
         /**

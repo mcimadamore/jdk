@@ -348,7 +348,8 @@ public abstract sealed class AbstractInstruction
     public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
-        private FieldRefEntry fieldEntry;
+        private final LazyConstant<FieldRefEntry> fieldEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, FieldRefEntry.class));
 
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
@@ -356,9 +357,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public FieldRefEntry field() {
-            if (fieldEntry == null)
-                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
-            return fieldEntry;
+            return fieldEntry.get();
         }
 
         @Override
@@ -378,7 +377,8 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
-        MemberRefEntry methodEntry;
+        private final LazyConstant<MemberRefEntry> methodEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, MemberRefEntry.class));
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
@@ -386,9 +386,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
-            return methodEntry;
+            return methodEntry.get();
         }
 
         @Override
@@ -418,7 +416,8 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
-        InterfaceMethodRefEntry methodEntry;
+        private final LazyConstant<InterfaceMethodRefEntry> methodEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class));
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
@@ -426,9 +425,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
-            return methodEntry;
+            return methodEntry.get();
         }
 
         @Override
@@ -458,7 +455,8 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
-        InvokeDynamicEntry indyEntry;
+        private final LazyConstant<InvokeDynamicEntry> indyEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class));
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
@@ -466,9 +464,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            if (indyEntry == null)
-                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
-            return indyEntry;
+            return indyEntry.get();
         }
 
         @Override
@@ -488,7 +484,8 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
-        ClassEntry classEntry;
+        private final LazyConstant<ClassEntry> classEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, ClassEntry.class));
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, code, pos);
@@ -496,9 +493,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public ClassEntry className() {
-            if (classEntry == null)
-                classEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return classEntry;
+            return classEntry.get();
         }
 
         @Override
@@ -595,7 +590,8 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
-        ClassEntry typeEntry;
+        private final LazyConstant<ClassEntry> typeEntry = LazyConstant.of(
+                () -> code.classReader.readEntry(pos + 1, ClassEntry.class));
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
@@ -603,9 +599,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public ClassEntry type() {
-            if (typeEntry == null)
-                typeEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return typeEntry;
+            return typeEntry.get();
         }
 
         @Override
