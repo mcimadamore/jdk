@@ -42,7 +42,6 @@ public final class FieldImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public FieldImpl(ClassReader reader, int startPos, int endPos, int attributesPos) {
         this.reader = reader;
@@ -74,12 +73,15 @@ public final class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
+    private final LazyConstant<List<Attribute<?>>> lazy_attributes_77 = LazyConstant.of(this::compute_attributes_77);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return lazy_attributes_77.get();
+    }
+
+    private List<Attribute<?>> compute_attributes_77() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

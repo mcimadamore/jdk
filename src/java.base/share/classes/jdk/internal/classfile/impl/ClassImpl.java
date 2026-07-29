@@ -42,8 +42,6 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -108,28 +106,34 @@ public final class ClassImpl
         return reader.superclassEntry();
     }
 
+    private final LazyConstant<List<ClassEntry>> lazy_interfaces_110 = LazyConstant.of(this::compute_interfaces_110);
+
     @Override
     public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
-            pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readEntry(pos, ClassEntry.class);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
-        }
-        return interfaces;
+        return lazy_interfaces_110.get();
     }
+
+    private List<ClassEntry> compute_interfaces_110() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readEntry(pos, ClassEntry.class);
+            pos += 2;
+        }
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+    }
+
+    private final LazyConstant<List<Attribute<?>>> lazy_attributes_123 = LazyConstant.of(this::compute_attributes_123);
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return lazy_attributes_123.get();
+    }
+
+    private List<Attribute<?>> compute_attributes_123() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     // ClassModel

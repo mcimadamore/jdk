@@ -31,32 +31,42 @@ public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;
-    private final LazyConstant<Utf8Entry> nameEntry;
-    private final LazyConstant<Utf8Entry> secondaryEntry;
 
     public AbstractBoundLocalVariable(CodeImpl code, int offset) {
         this.code = code;
         this.offset = offset;
-        this.nameEntry = LazyConstant.of(
-                () -> this.code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class));
-        this.secondaryEntry = LazyConstant.of(
-                () -> this.code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class));
     }
 
     protected int nameIndex() {
         return code.classReader.readU2(offset + 4);
     }
 
+    private final LazyConstant<Utf8Entry> lazy_name_43 = LazyConstant.of(this::compute_name_43);
+
     public Utf8Entry name() {
-        return nameEntry.get();
+
+        return lazy_name_43.get();
+
+    }
+
+    private Utf8Entry compute_name_43() {
+        return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
     }
 
     protected int secondaryIndex() {
         return code.classReader.readU2(offset + 6);
     }
 
+    private final LazyConstant<Utf8Entry> lazy_secondaryEntry_51 = LazyConstant.of(this::compute_secondaryEntry_51);
+
     protected Utf8Entry secondaryEntry() {
-        return secondaryEntry.get();
+
+        return lazy_secondaryEntry_51.get();
+
+    }
+
+    private Utf8Entry compute_secondaryEntry_51() {
+        return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
     }
 
     public Label startScope() {

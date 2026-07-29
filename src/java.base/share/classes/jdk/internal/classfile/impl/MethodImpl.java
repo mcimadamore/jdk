@@ -38,7 +38,6 @@ public final class MethodImpl
 
     private final ClassReader reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReader reader, int startPos, int endPos, int attrStart) {
@@ -88,12 +87,15 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
+    private final LazyConstant<List<Attribute<?>>> lazy_attributes_91 = LazyConstant.of(this::compute_attributes_91);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return lazy_attributes_91.get();
+    }
+
+    private List<Attribute<?>> compute_attributes_91() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

@@ -51,8 +51,6 @@ public final class ClassReaderImpl
     private final Function<Utf8Entry, AttributeMapper<?>> attributeMapper;
     private final int flags;
     private final int thisClassPos;
-    private final LazyConstant<ClassEntry> thisClass;
-    private final LazyConstant<Optional<ClassEntry>> superclass;
     private final int constantPoolCount;
     private final int[] cpOffset;
 
@@ -61,8 +59,6 @@ public final class ClassReaderImpl
     final PoolEntry[] cp;
 
     private ClassModel containedClass;
-    private List<BootstrapMethodEntryImpl> bsmEntries;
-    private final LazyConstant<BootstrapMethodsAttribute> bootstrapMethodsAttribute;
 
     ClassReaderImpl(byte[] classfileBytes,
                     ClassFileImpl context) {
@@ -114,13 +110,6 @@ public final class ClassReaderImpl
         this.thisClassPos = p + 2;
         p += 6;
         this.interfacesPos = p;
-        this.thisClass = LazyConstant.of(
-                () -> readEntry(this.thisClassPos, ClassEntry.class));
-        this.superclass = LazyConstant.of(
-                () -> Optional.ofNullable(readEntryOrNull(this.thisClassPos + 2, ClassEntry.class)));
-        this.bootstrapMethodsAttribute = LazyConstant.of(
-                () -> containedClass.findAttribute(Attributes.bootstrapMethods())
-                                    .orElse(new UnboundAttribute.EmptyBootstrapAttribute()));
     }
 
     public ClassFileImpl context() {
@@ -142,14 +131,26 @@ public final class ClassReaderImpl
         return flags;
     }
 
+    private final LazyConstant<ClassEntry> lazy_thisClassEntry_135 = LazyConstant.of(this::compute_thisClassEntry_135);
+
     @Override
     public ClassEntry thisClassEntry() {
-        return thisClass.get();
+        return lazy_thisClassEntry_135.get();
     }
+
+    private ClassEntry compute_thisClassEntry_135() {
+        return readEntry(thisClassPos, ClassEntry.class);
+    }
+
+    private final LazyConstant<Optional<ClassEntry>> lazy_superclassEntry_140 = LazyConstant.of(this::compute_superclassEntry_140);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return superclass.get();
+        return lazy_superclassEntry_140.get();
+    }
+
+    private Optional<ClassEntry> compute_superclassEntry_140() {
+        return Optional.ofNullable(readEntryOrNull(thisClassPos + 2, ClassEntry.class));
     }
 
     public int thisClassPos() {
@@ -273,22 +274,37 @@ public final class ClassReaderImpl
         }
     }
 
+    private final LazyConstant<BootstrapMethodsAttribute> lazy_bootstrapMethodsAttribute_264 = LazyConstant.of(this::compute_bootstrapMethodsAttribute_264);
+
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
-        return bootstrapMethodsAttribute.get();
+
+        return lazy_bootstrapMethodsAttribute_264.get();
+
     }
 
+    private BootstrapMethodsAttribute compute_bootstrapMethodsAttribute_264() {
+        return containedClass.findAttribute(Attributes.bootstrapMethods())
+                             .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
+    }
+
+    private final LazyConstant<List<BootstrapMethodEntryImpl>> lazy_bsmEntries_269 = LazyConstant.of(this::compute_bsmEntries_269);
+
     List<BootstrapMethodEntryImpl> bsmEntries() {
-        if (bsmEntries == null) {
-            bsmEntries = new ArrayList<>();
-            BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
-            List<BootstrapMethodEntry> list = attr.bootstrapMethods();
-            if (!list.isEmpty()) {
-                for (BootstrapMethodEntry bm : list) {
-                    AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
-                    List<LoadableConstantEntry> args = bm.arguments();
-                    int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
-                    bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
-                }
+
+        return lazy_bsmEntries_269.get();
+
+    }
+
+    private List<BootstrapMethodEntryImpl> compute_bsmEntries_269() {
+        var bsmEntries = new ArrayList<BootstrapMethodEntryImpl>();
+        BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
+        List<BootstrapMethodEntry> list = attr.bootstrapMethods();
+        if (!list.isEmpty()) {
+            for (BootstrapMethodEntry bm : list) {
+                AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
+                List<LoadableConstantEntry> args = bm.arguments();
+                int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
+                bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
             }
         }
         return bsmEntries;

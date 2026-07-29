@@ -35,7 +35,6 @@ public final class BoundRecordComponentInfo
 
     private final ClassReader reader;
     private final int startPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public BoundRecordComponentInfo(ClassReader reader, int startPos) {
         this.reader = reader;
@@ -53,11 +52,14 @@ public final class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
+    private final LazyConstant<List<Attribute<?>>> lazy_attributes_56 = LazyConstant.of(this::compute_attributes_56);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return lazy_attributes_56.get();
+    }
+
+    private List<Attribute<?>> compute_attributes_56() {
+        return BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
     }
 }
