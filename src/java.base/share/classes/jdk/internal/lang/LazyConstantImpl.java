@@ -45,12 +45,20 @@ import java.util.function.Supplier;
 @AOTSafeClassInitializer
 public final class LazyConstantImpl<T> implements LazyConstant<T> {
 
+    private static final String RECURSIVE_INVOCATION_MESSAGE =
+            "Recursive invocation of a LazyConstant's computing function: ";
+
     // Unsafe allows `LazyConstant` instances to be used early in the boot sequence
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     // Unsafe offset for access of the `constant` field
     private static final long CONSTANT_OFFSET =
             UNSAFE.objectFieldOffset(LazyConstantImpl.class, "constant");
+
+    // Unsafe offset for access of the `computingFunctionOrExceptionType` field
+    private static final long STATE_OFFSET =
+            UNSAFE.objectFieldOffset(LazyConstantImpl.class,
+                    "computingFunctionOrExceptionType");
 
     // Generally, fields annotated with `@Stable` are accessed by the JVM using special
     // memory semantics rules (see `parse.hpp` and `parse(1|2|3).cpp`).
@@ -65,13 +73,18 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
     @Stable
     private T constant;
 
-    // Underlying computing function to be used to compute the `constant` field.
-    // The field needs to be `volatile` as a lazy constant can be
-    // created by one thread and computed by another thread.
-    // After the function is successfully invoked, the field is set to
-    // `null` to allow the function to be collected. If the function fails, the field is
-    // set to the fully qualified name of the exception class. We are not storing the
-    // exception class as that would have pinned the class loader of the exception.
+    // This field tracks the initialization state:
+    //
+    // | Value      | Meaning                                      |
+    // | ---------- | -------------------------------------------- |
+    // | `Supplier` | Unset                                        |
+    // | `Thread`   | Being initialized by that thread             |
+    // | `null`     | Set                                          |
+    // | `String`   | Failed with the named exception type         |
+    //
+    // The field needs to be `volatile` as a lazy constant can be created by one
+    // thread and computed by another thread. Explicit memory semantics are used
+    // for all accesses after construction.
     private volatile Object computingFunctionOrExceptionType;
 
     private LazyConstantImpl(Supplier<? extends T> computingFunction) {
@@ -87,36 +100,53 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
 
     @DontInline
     private T getSlowPath() {
-        preventReentry();
-        synchronized (this) {
-            T t = getAcquire();
-            if (t == null) {
-                final Object cf = computingFunctionOrExceptionType;
-                // Don't use switch pattern matching here in order to improve startup time.
-                if (cf instanceof Supplier<?> computingFunction) {
-                    try {
-                        @SuppressWarnings("unchecked")
-                        final T newT = (T) computingFunction.get();
-                        t = newT;
-                        Objects.requireNonNull(t);
-                        setRelease(t);
-                        // Allow the underlying supplier to be collected after
-                        // a successful initialization
-                        computingFunctionOrExceptionType = null;
-                    } catch (Throwable ex) {
-                        // Release the original computing function and replace it with
-                        // an exception marker
-                        final String exceptionType = ex.getClass().getName().intern();
-                        computingFunctionOrExceptionType = exceptionType;
-                        throw unableToAccessConstant(exceptionType, ex);
-                    }
-                } else if (cf instanceof String exceptionType) {
-                    throw unableToAccessConstant(exceptionType, null);
-                } else {
-                    throw new InternalError("Cannot reach here");
+        final Thread current = Thread.currentThread();
+        Object state = getStateAcquire();
+        while (true) {
+            // Don't use switch pattern matching here in order to improve startup time.
+            if (state instanceof Supplier<?> computingFunction) {
+                final Object witness = UNSAFE.compareAndExchangeReference(
+                        this, STATE_OFFSET, state, current);
+                if (witness == state) {
+                    return initialize(computingFunction);
                 }
+                state = witness;
+            } else if (state instanceof Thread) {
+                if (state == current) {
+                    throw new RecursiveInitializationException();
+                }
+                Thread.onSpinWait();
+                state = getStateAcquire();
+            } else if (state instanceof String exceptionType) {
+                throw unableToAccessConstant(exceptionType, null);
+            } else {
+                assert state == null;
+                final T t = getAcquire();
+                assert t != null;
+                return t;
             }
+        }
+    }
+
+    private T initialize(Supplier<?> computingFunction) {
+        try {
+            @SuppressWarnings("unchecked")
+            final T t = (T) computingFunction.get();
+            Objects.requireNonNull(t);
+            setRelease(t);
+            // Release the underlying supplier after successful initialization.
+            setStateRelease(null);
             return t;
+        } catch (Throwable ex) {
+            if (ex instanceof RecursiveInitializationException) {
+                ex = new IllegalStateException(RECURSIVE_INVOCATION_MESSAGE +
+                        isolateToString(computingFunction));
+            }
+            // Release the original computing function and replace it with an
+            // exception marker.
+            final String exceptionType = ex.getClass().getName().intern();
+            setStateRelease(exceptionType);
+            throw unableToAccessConstant(exceptionType, ex);
         }
     }
 
@@ -144,13 +174,16 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
         } else if (t != null) {
             return t.toString();
         } else {
-            // Volatile read
-            final Object cf = computingFunctionOrExceptionType;
+            final Object cf = getStateAcquire();
             // There could be a race here
             if (cf != null) {
-                return (cf instanceof Supplier<?> supplier)
-                        ? "computing function=" + isolateToString(supplier)
-                        : "failed with=" + cf;
+                if (cf instanceof Supplier<?> supplier) {
+                    return "computing function=" + isolateToString(supplier);
+                } else if (cf instanceof Thread thread) {
+                    return "computing thread=" + isolateToString(thread);
+                } else {
+                    return "failed with=" + cf;
+                }
             }
             // As we know `computingFunction` is `null` or via a volatile read, we
             // can now be sure that this lazy constant is initialized
@@ -183,10 +216,17 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
         UNSAFE.putReferenceRelease(this, CONSTANT_OFFSET, newValue);
     }
 
-    private void preventReentry() {
-        if (Thread.holdsLock(this)) {
-            throw new IllegalStateException("Recursive invocation of a LazyConstant's computing function: " + isolateToString(computingFunctionOrExceptionType));
-        }
+    private Object getStateAcquire() {
+        return UNSAFE.getReferenceAcquire(this, STATE_OFFSET);
+    }
+
+    private void setStateRelease(Object state) {
+        UNSAFE.putReferenceRelease(this, STATE_OFFSET, state);
+    }
+
+    private static final class RecursiveInitializationException
+            extends IllegalStateException {
+        private static final long serialVersionUID = 1L;
     }
 
     public static String isolateToString(Object input) {
