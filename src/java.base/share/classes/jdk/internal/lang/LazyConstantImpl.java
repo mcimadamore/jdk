@@ -98,20 +98,27 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
         return (t != null) ? t : getSlowPath();
     }
 
-    @DontInline
     private T getSlowPath() {
         final Thread current = Thread.currentThread();
         Object state = getStateAcquire();
+
+        if (state instanceof Supplier<?> computingFunction) {
+            final Object witness = UNSAFE.compareAndExchangeReference(
+                    this, STATE_OFFSET, state, current);
+            if (witness == state) {
+                return initialize(computingFunction);
+            }
+            state = witness;
+        }
+
+        return awaitInitialization(state, current);
+    }
+
+    @DontInline
+    private T awaitInitialization(Object state, Thread current) {
         while (true) {
             // Don't use switch pattern matching here in order to improve startup time.
-            if (state instanceof Supplier<?> computingFunction) {
-                final Object witness = UNSAFE.compareAndExchangeReference(
-                        this, STATE_OFFSET, state, current);
-                if (witness == state) {
-                    return initialize(computingFunction);
-                }
-                state = witness;
-            } else if (state instanceof Thread) {
+            if (state instanceof Thread) {
                 if (state == current) {
                     throw new RecursiveInitializationException();
                 }
@@ -138,16 +145,21 @@ public final class LazyConstantImpl<T> implements LazyConstant<T> {
             setStateRelease(null);
             return t;
         } catch (Throwable ex) {
-            if (ex instanceof RecursiveInitializationException) {
-                ex = new IllegalStateException(RECURSIVE_INVOCATION_MESSAGE +
-                        isolateToString(computingFunction));
-            }
-            // Release the original computing function and replace it with an
-            // exception marker.
-            final String exceptionType = ex.getClass().getName().intern();
-            setStateRelease(exceptionType);
-            throw unableToAccessConstant(exceptionType, ex);
+            throw wrapThrowable(ex, computingFunction);
         }
+    }
+
+    @DontInline
+    private NoSuchElementException wrapThrowable(Throwable ex, Supplier<?> computingFunction) {
+        if (ex instanceof RecursiveInitializationException) {
+            ex = new IllegalStateException(RECURSIVE_INVOCATION_MESSAGE +
+                    isolateToString(computingFunction));
+        }
+        // Release the original computing function and replace it with an
+        // exception marker.
+        final String exceptionType = ex.getClass().getName().intern();
+        setStateRelease(exceptionType);
+        throw unableToAccessConstant(exceptionType, ex);
     }
 
     static NoSuchElementException unableToAccessConstant(String exceptionType, Throwable cause) {
