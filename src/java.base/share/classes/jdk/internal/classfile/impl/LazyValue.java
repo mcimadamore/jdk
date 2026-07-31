@@ -44,9 +44,7 @@ final class LazyValue<T> {
             return result;
         }
         T candidate = Objects.requireNonNull(supplier.get());
-        if (UNSAFE.compareAndSetReference(this, VALUE_OFFSET, null, candidate)) {
-            return candidate;
-        }
-        return getOrNull();
+        T witness = (T) UNSAFE.compareAndExchangeReference(this, VALUE_OFFSET, null, candidate);
+        return witness == null ? candidate : witness;
     }
 }
