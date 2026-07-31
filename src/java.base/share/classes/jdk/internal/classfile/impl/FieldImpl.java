@@ -73,11 +73,11 @@ public final class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
-    private final LazyConstant<List<Attribute<?>>> lazy_attributes_77 = LazyConstant.of(this::compute_attributes_77);
+    private final LazyValue<List<Attribute<?>>> lazy_attributes_77 = new LazyValue<>();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_77.get();
+        return lazy_attributes_77.orElseSet(this::compute_attributes_77);
     }
 
     private List<Attribute<?>> compute_attributes_77() {

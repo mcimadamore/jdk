@@ -58,11 +58,11 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyConstant<List<Attribute<?>>> lazy_attributes_62 = LazyConstant.of(this::compute_attributes_62);
+    private final LazyValue<List<Attribute<?>>> lazy_attributes_62 = new LazyValue<>();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_62.get();
+        return lazy_attributes_62.orElseSet(this::compute_attributes_62);
     }
 
     private List<Attribute<?>> compute_attributes_62() {

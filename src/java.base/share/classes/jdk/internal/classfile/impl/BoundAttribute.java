@@ -58,11 +58,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
-    private final LazyConstant<Utf8Entry> lazy_attributeName_62 = LazyConstant.of(this::compute_attributeName_62);
+    private final LazyValue<Utf8Entry> lazy_attributeName_62 = new LazyValue<>();
 
     @Override
     public Utf8Entry attributeName() {
-        return lazy_attributeName_62.get();
+        return lazy_attributeName_62.orElseSet(this::compute_attributeName_62);
     }
 
     private Utf8Entry compute_attributeName_62() {
@@ -204,11 +204,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
-        private final LazyConstant<List<StackMapFrameInfo>> lazy_entries_202 = LazyConstant.of(this::compute_entries_202);
+        private final LazyValue<List<StackMapFrameInfo>> lazy_entries_202 = new LazyValue<>();
 
         @Override
         public List<StackMapFrameInfo> entries() {
-            return lazy_entries_202.get();
+            return lazy_entries_202.orElseSet(this::compute_entries_202);
         }
 
         private List<StackMapFrameInfo> compute_entries_202() {
@@ -240,11 +240,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<LineNumberInfo>> lazy_lineNumbers_232 = LazyConstant.of(this::compute_lineNumbers_232);
+        private final LazyValue<List<LineNumberInfo>> lazy_lineNumbers_232 = new LazyValue<>();
 
         @Override
         public List<LineNumberInfo> lineNumbers() {
-            return lazy_lineNumbers_232.get();
+            return lazy_lineNumbers_232.orElseSet(this::compute_lineNumbers_232);
         }
 
         private List<LineNumberInfo> compute_lineNumbers_232() {
@@ -267,11 +267,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<CharacterRangeInfo>> lazy_characterRangeTable_253 = LazyConstant.of(this::compute_characterRangeTable_253);
+        private final LazyValue<List<CharacterRangeInfo>> lazy_characterRangeTable_253 = new LazyValue<>();
 
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
-            return lazy_characterRangeTable_253.get();
+            return lazy_characterRangeTable_253.orElseSet(this::compute_characterRangeTable_253);
         }
 
         private List<CharacterRangeInfo> compute_characterRangeTable_253() {
@@ -305,11 +305,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyConstant<List<LocalVariableInfo>> lazy_localVariables_285 = LazyConstant.of(this::compute_localVariables_285);
+        private final LazyValue<List<LocalVariableInfo>> lazy_localVariables_285 = new LazyValue<>();
 
         @Override
         public List<LocalVariableInfo> localVariables() {
-            return lazy_localVariables_285.get();
+            return lazy_localVariables_285.orElseSet(this::compute_localVariables_285);
         }
 
         private List<LocalVariableInfo> compute_localVariables_285() {
@@ -338,11 +338,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyConstant<List<LocalVariableTypeInfo>> lazy_localVariableTypes_312 = LazyConstant.of(this::compute_localVariableTypes_312);
+        private final LazyValue<List<LocalVariableTypeInfo>> lazy_localVariableTypes_312 = new LazyValue<>();
 
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
-            return lazy_localVariableTypes_312.get();
+            return lazy_localVariableTypes_312.orElseSet(this::compute_localVariableTypes_312);
         }
 
         private List<LocalVariableTypeInfo> compute_localVariableTypes_312() {
@@ -364,11 +364,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<MethodParameterInfo>> lazy_parameters_332 = LazyConstant.of(this::compute_parameters_332);
+        private final LazyValue<List<MethodParameterInfo>> lazy_parameters_332 = new LazyValue<>();
 
         @Override
         public List<MethodParameterInfo> parameters() {
-            return lazy_parameters_332.get();
+            return lazy_parameters_332.orElseSet(this::compute_parameters_332);
         }
 
         private List<MethodParameterInfo> compute_parameters_332() {
@@ -397,11 +397,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
-        private final LazyConstant<List<ModuleHashInfo>> lazy_hashes_359 = LazyConstant.of(this::compute_hashes_359);
+        private final LazyValue<List<ModuleHashInfo>> lazy_hashes_359 = new LazyValue<>();
 
         @Override
         public List<ModuleHashInfo> hashes() {
-            return lazy_hashes_359.get();
+            return lazy_hashes_359.orElseSet(this::compute_hashes_359);
         }
 
         private List<ModuleHashInfo> compute_hashes_359() {
@@ -428,11 +428,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<RecordComponentInfo>> lazy_components_384 = LazyConstant.of(this::compute_components_384);
+        private final LazyValue<List<RecordComponentInfo>> lazy_components_384 = new LazyValue<>();
 
         @Override
         public List<RecordComponentInfo> components() {
-            return lazy_components_384.get();
+            return lazy_components_384.orElseSet(this::compute_components_384);
         }
 
         private List<RecordComponentInfo> compute_components_384() {
@@ -577,11 +577,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<ClassEntry>> lazy_exceptions_527 = LazyConstant.of(this::compute_exceptions_527);
+        private final LazyValue<List<ClassEntry>> lazy_exceptions_527 = new LazyValue<>();
 
         @Override
         public List<ClassEntry> exceptions() {
-            return lazy_exceptions_527.get();
+            return lazy_exceptions_527.orElseSet(this::compute_exceptions_527);
         }
 
         private List<ClassEntry> compute_exceptions_527() {
@@ -727,11 +727,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<PackageEntry>> lazy_packages_671 = LazyConstant.of(this::compute_packages_671);
+        private final LazyValue<List<PackageEntry>> lazy_packages_671 = new LazyValue<>();
 
         @Override
         public List<PackageEntry> packages() {
-            return lazy_packages_671.get();
+            return lazy_packages_671.orElseSet(this::compute_packages_671);
         }
 
         private List<PackageEntry> compute_packages_671() {
@@ -746,11 +746,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<ClassEntry>> lazy_nestMembers_684 = LazyConstant.of(this::compute_nestMembers_684);
+        private final LazyValue<List<ClassEntry>> lazy_nestMembers_684 = new LazyValue<>();
 
         @Override
         public List<ClassEntry> nestMembers() {
-            return lazy_nestMembers_684.get();
+            return lazy_nestMembers_684.orElseSet(this::compute_nestMembers_684);
         }
 
         private List<ClassEntry> compute_nestMembers_684() {
@@ -773,11 +773,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
-        private final LazyConstant<List<BootstrapMethodEntry>> lazy_bootstrapMethods_705 = LazyConstant.of(this::compute_bootstrapMethods_705);
+        private final LazyValue<List<BootstrapMethodEntry>> lazy_bootstrapMethods_705 = new LazyValue<>();
 
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
-            return lazy_bootstrapMethods_705.get();
+            return lazy_bootstrapMethods_705.orElseSet(this::compute_bootstrapMethods_705);
         }
 
         private List<BootstrapMethodEntry> compute_bootstrapMethods_705() {
@@ -801,11 +801,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<InnerClassInfo>> lazy_classes_727 = LazyConstant.of(this::compute_classes_727);
+        private final LazyValue<List<InnerClassInfo>> lazy_classes_727 = new LazyValue<>();
 
         @Override
         public List<InnerClassInfo> classes() {
-            return lazy_classes_727.get();
+            return lazy_classes_727.orElseSet(this::compute_classes_727);
         }
 
         private List<InnerClassInfo> compute_classes_727() {
@@ -849,11 +849,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<AnnotationValue> lazy_defaultValue_769 = LazyConstant.of(this::compute_defaultValue_769);
+        private final LazyValue<AnnotationValue> lazy_defaultValue_769 = new LazyValue<>();
 
         @Override
         public AnnotationValue defaultValue() {
-            return lazy_defaultValue_769.get();
+            return lazy_defaultValue_769.orElseSet(this::compute_defaultValue_769);
         }
 
         private AnnotationValue compute_defaultValue_769() {
@@ -930,11 +930,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
-        private final LazyConstant<List<Annotation>> lazy_annotations_844 = LazyConstant.of(this::compute_annotations_844);
+        private final LazyValue<List<Annotation>> lazy_annotations_844 = new LazyValue<>();
 
         @Override
         public List<Annotation> annotations() {
-            return lazy_annotations_844.get();
+            return lazy_annotations_844.orElseSet(this::compute_annotations_844);
         }
 
         private List<Annotation> compute_annotations_844() {
@@ -951,11 +951,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
-        private final LazyConstant<List<Annotation>> lazy_annotations_859 = LazyConstant.of(this::compute_annotations_859);
+        private final LazyValue<List<Annotation>> lazy_annotations_859 = new LazyValue<>();
 
         @Override
         public List<Annotation> annotations() {
-            return lazy_annotations_859.get();
+            return lazy_annotations_859.orElseSet(this::compute_annotations_859);
         }
 
         private List<Annotation> compute_annotations_859() {
@@ -970,11 +970,11 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyConstant<List<ClassEntry>> lazy_permittedSubclasses_872 = LazyConstant.of(this::compute_permittedSubclasses_872);
+        private final LazyValue<List<ClassEntry>> lazy_permittedSubclasses_872 = new LazyValue<>();
 
         @Override
         public List<ClassEntry> permittedSubclasses() {
-            return lazy_permittedSubclasses_872.get();
+            return lazy_permittedSubclasses_872.orElseSet(this::compute_permittedSubclasses_872);
         }
 
         private List<ClassEntry> compute_permittedSubclasses_872() {

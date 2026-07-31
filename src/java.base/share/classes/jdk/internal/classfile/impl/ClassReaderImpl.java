@@ -131,22 +131,22 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private final LazyConstant<ClassEntry> lazy_thisClassEntry_135 = LazyConstant.of(this::compute_thisClassEntry_135);
+    private final LazyValue<ClassEntry> lazy_thisClassEntry_135 = new LazyValue<>();
 
     @Override
     public ClassEntry thisClassEntry() {
-        return lazy_thisClassEntry_135.get();
+        return lazy_thisClassEntry_135.orElseSet(this::compute_thisClassEntry_135);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private final LazyConstant<Optional<ClassEntry>> lazy_superclassEntry_140 = LazyConstant.of(this::compute_superclassEntry_140);
+    private final LazyValue<Optional<ClassEntry>> lazy_superclassEntry_140 = new LazyValue<>();
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return lazy_superclassEntry_140.get();
+        return lazy_superclassEntry_140.orElseSet(this::compute_superclassEntry_140);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -274,11 +274,11 @@ public final class ClassReaderImpl
         }
     }
 
-    private final LazyConstant<BootstrapMethodsAttribute> lazy_bootstrapMethodsAttribute_264 = LazyConstant.of(this::compute_bootstrapMethodsAttribute_264);
+    private final LazyValue<BootstrapMethodsAttribute> lazy_bootstrapMethodsAttribute_264 = new LazyValue<>();
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return lazy_bootstrapMethodsAttribute_264.get();
+        return lazy_bootstrapMethodsAttribute_264.orElseSet(this::compute_bootstrapMethodsAttribute_264);
 
     }
 
@@ -287,11 +287,11 @@ public final class ClassReaderImpl
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private final LazyConstant<List<BootstrapMethodEntryImpl>> lazy_bsmEntries_269 = LazyConstant.of(this::compute_bsmEntries_269);
+    private final LazyValue<List<BootstrapMethodEntryImpl>> lazy_bsmEntries_269 = new LazyValue<>();
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return lazy_bsmEntries_269.get();
+        return lazy_bsmEntries_269.orElseSet(this::compute_bsmEntries_269);
 
     }
 

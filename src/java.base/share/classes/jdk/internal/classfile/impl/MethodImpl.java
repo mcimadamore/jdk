@@ -87,11 +87,11 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private final LazyConstant<List<Attribute<?>>> lazy_attributes_91 = LazyConstant.of(this::compute_attributes_91);
+    private final LazyValue<List<Attribute<?>>> lazy_attributes_91 = new LazyValue<>();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_91.get();
+        return lazy_attributes_91.orElseSet(this::compute_attributes_91);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

@@ -130,11 +130,11 @@ public final class CodeImpl
 
     // CodeAttribute
 
-    private final LazyConstant<List<Attribute<?>>> lazy_attributes_134 = LazyConstant.of(this::compute_attributes_134);
+    private final LazyValue<List<Attribute<?>>> lazy_attributes_134 = new LazyValue<>();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_134.get();
+        return lazy_attributes_134.orElseSet(this::compute_attributes_134);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -188,11 +188,11 @@ public final class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyConstant<List<ExceptionCatch>> lazy_exceptionHandlers_186 = LazyConstant.of(this::compute_exceptionHandlers_186);
+    private final LazyValue<List<ExceptionCatch>> lazy_exceptionHandlers_186 = new LazyValue<>();
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return lazy_exceptionHandlers_186.get();
+        return lazy_exceptionHandlers_186.orElseSet(this::compute_exceptionHandlers_186);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

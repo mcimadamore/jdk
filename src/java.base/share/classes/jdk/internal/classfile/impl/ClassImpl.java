@@ -106,11 +106,11 @@ public final class ClassImpl
         return reader.superclassEntry();
     }
 
-    private final LazyConstant<List<ClassEntry>> lazy_interfaces_110 = LazyConstant.of(this::compute_interfaces_110);
+    private final LazyValue<List<ClassEntry>> lazy_interfaces_110 = new LazyValue<>();
 
     @Override
     public List<ClassEntry> interfaces() {
-        return lazy_interfaces_110.get();
+        return lazy_interfaces_110.orElseSet(this::compute_interfaces_110);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -125,11 +125,11 @@ public final class ClassImpl
         return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
-    private final LazyConstant<List<Attribute<?>>> lazy_attributes_123 = LazyConstant.of(this::compute_attributes_123);
+    private final LazyValue<List<Attribute<?>>> lazy_attributes_123 = new LazyValue<>();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_123.get();
+        return lazy_attributes_123.orElseSet(this::compute_attributes_123);
     }
 
     private List<Attribute<?>> compute_attributes_123() {

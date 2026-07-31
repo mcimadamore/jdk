@@ -351,11 +351,11 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyConstant<FieldRefEntry> lazy_field_356 = LazyConstant.of(this::compute_field_356);
+        private final LazyValue<FieldRefEntry> lazy_field_356 = new LazyValue<>();
 
         @Override
         public FieldRefEntry field() {
-            return lazy_field_356.get();
+            return lazy_field_356.orElseSet(this::compute_field_356);
         }
 
         private FieldRefEntry compute_field_356() {
@@ -384,11 +384,11 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyConstant<MemberRefEntry> lazy_method_383 = LazyConstant.of(this::compute_method_383);
+        private final LazyValue<MemberRefEntry> lazy_method_383 = new LazyValue<>();
 
         @Override
         public MemberRefEntry method() {
-            return lazy_method_383.get();
+            return lazy_method_383.orElseSet(this::compute_method_383);
         }
 
         private MemberRefEntry compute_method_383() {
@@ -427,11 +427,11 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyConstant<MemberRefEntry> lazy_method_420 = LazyConstant.of(this::compute_method_420);
+        private final LazyValue<MemberRefEntry> lazy_method_420 = new LazyValue<>();
 
         @Override
         public MemberRefEntry method() {
-            return lazy_method_420.get();
+            return lazy_method_420.orElseSet(this::compute_method_420);
         }
 
         private MemberRefEntry compute_method_420() {
@@ -470,11 +470,11 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyConstant<InvokeDynamicEntry> lazy_invokedynamic_457 = LazyConstant.of(this::compute_invokedynamic_457);
+        private final LazyValue<InvokeDynamicEntry> lazy_invokedynamic_457 = new LazyValue<>();
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return lazy_invokedynamic_457.get();
+            return lazy_invokedynamic_457.orElseSet(this::compute_invokedynamic_457);
         }
 
         private InvokeDynamicEntry compute_invokedynamic_457() {
@@ -503,11 +503,11 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyConstant<ClassEntry> lazy_className_484 = LazyConstant.of(this::compute_className_484);
+        private final LazyValue<ClassEntry> lazy_className_484 = new LazyValue<>();
 
         @Override
         public ClassEntry className() {
-            return lazy_className_484.get();
+            return lazy_className_484.orElseSet(this::compute_className_484);
         }
 
         private ClassEntry compute_className_484() {
@@ -613,11 +613,11 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyConstant<ClassEntry> lazy_type_588 = LazyConstant.of(this::compute_type_588);
+        private final LazyValue<ClassEntry> lazy_type_588 = new LazyValue<>();
 
         @Override
         public ClassEntry type() {
-            return lazy_type_588.get();
+            return lazy_type_588.orElseSet(this::compute_type_588);
         }
 
         private ClassEntry compute_type_588() {

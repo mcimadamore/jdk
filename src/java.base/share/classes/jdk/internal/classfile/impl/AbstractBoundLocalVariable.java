@@ -41,11 +41,11 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyConstant<Utf8Entry> lazy_name_43 = LazyConstant.of(this::compute_name_43);
+    private final LazyValue<Utf8Entry> lazy_name_43 = new LazyValue<>();
 
     public Utf8Entry name() {
 
-        return lazy_name_43.get();
+        return lazy_name_43.orElseSet(this::compute_name_43);
 
     }
 
@@ -57,11 +57,11 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyConstant<Utf8Entry> lazy_secondaryEntry_51 = LazyConstant.of(this::compute_secondaryEntry_51);
+    private final LazyValue<Utf8Entry> lazy_secondaryEntry_51 = new LazyValue<>();
 
     protected Utf8Entry secondaryEntry() {
 
-        return lazy_secondaryEntry_51.get();
+        return lazy_secondaryEntry_51.orElseSet(this::compute_secondaryEntry_51);
 
     }
 
