@@ -212,7 +212,8 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
 
         private List<StackMapFrameInfo> compute_entries_202() {
-            return new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method)).entries();
+            return new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method),
+                        StackMapDecoder.initFrameUnsets(method)).entries();
         }
 
         @Override
@@ -982,6 +983,24 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         }
     }
 
+    public static final class BoundLoadableDescriptorsAttribute extends BoundAttribute<LoadableDescriptorsAttribute>
+            implements LoadableDescriptorsAttribute {
+        private List<Utf8Entry> loadableDescriptors = null;
+
+        public BoundLoadableDescriptorsAttribute(ClassReader cf, AttributeMapper<LoadableDescriptorsAttribute> mapper, int pos) {
+            super(cf, mapper, pos);
+        }
+
+        @Override
+        public List<Utf8Entry> loadableDescriptors() {
+            if (loadableDescriptors == null) {
+                loadableDescriptors = readEntryList(payloadStart, Utf8Entry.class);
+            }
+            return loadableDescriptors;
+        }
+    }
+
+
     public abstract static sealed class BoundCodeAttribute
             extends BoundAttribute<CodeAttribute>
             implements CodeAttribute
@@ -1061,6 +1080,8 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
                 name.equalsString(NAME_INNER_CLASSES) ? innerClasses() : null;
             case 0x653f0551 ->
                 name.equalsString(NAME_LINE_NUMBER_TABLE) ? lineNumberTable() : null;
+           case 0x5f348b64 ->
+                name.equalsString(NAME_LOADABLE_DESCRIPTORS) ? loadableDescriptors() : null;
             case 0x64c75927 ->
                 name.equalsString(NAME_LOCAL_VARIABLE_TABLE) ? localVariableTable() : null;
             case 0x6697f98d ->
