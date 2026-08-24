@@ -52,11 +52,12 @@ public final class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
-    private final LazyValue<List<Attribute<?>>> lazy_attributes_56 = new LazyValue<>();
+    private List<Attribute<?>> attributes;
+    private static final LazyUpdater<BoundRecordComponentInfo, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(BoundRecordComponentInfo.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_56.orElseSet(this::compute_attributes_56);
+        return ATTRIBUTES.getOrCompute(this, BoundRecordComponentInfo::compute_attributes_56);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

@@ -73,7 +73,8 @@ public final class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
-    private final LazyValue<List<Attribute<?>>> lazy_attributes_77 = new LazyValue<>();
+    private List<Attribute<?>> attributes;
+    private static final LazyUpdater<FieldImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(FieldImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public int fieldFlags() {
@@ -82,7 +83,7 @@ public final class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_77.orElseSet(this::compute_attributes_77);
+        return ATTRIBUTES.getOrCompute(this, FieldImpl::compute_attributes_77);
     }
 
     private List<Attribute<?>> compute_attributes_77() {

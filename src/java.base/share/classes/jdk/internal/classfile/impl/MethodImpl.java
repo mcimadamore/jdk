@@ -87,11 +87,12 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private final LazyValue<List<Attribute<?>>> lazy_attributes_91 = new LazyValue<>();
+    private List<Attribute<?>> attributes;
+    private static final LazyUpdater<MethodImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(MethodImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_91.orElseSet(this::compute_attributes_91);
+        return ATTRIBUTES.getOrCompute(this, MethodImpl::compute_attributes_91);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

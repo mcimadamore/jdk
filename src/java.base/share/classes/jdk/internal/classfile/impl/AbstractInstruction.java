@@ -351,11 +351,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<FieldRefEntry> lazy_field_356 = new LazyValue<>();
+        private FieldRefEntry fieldEntry;
+        private static final LazyUpdater<BoundFieldInstruction, FieldRefEntry> FIELD_ENTRY = LazyUpdater.ofInstance(BoundFieldInstruction.class, "fieldEntry", FieldRefEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public FieldRefEntry field() {
-            return lazy_field_356.orElseSet(this::compute_field_356);
+            return FIELD_ENTRY.getOrCompute(this, BoundFieldInstruction::compute_field_356);
         }
 
         private FieldRefEntry compute_field_356() {
@@ -384,11 +385,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<MemberRefEntry> lazy_method_383 = new LazyValue<>();
+        private MemberRefEntry methodEntry;
+        private static final LazyUpdater<BoundInvokeInstruction, MemberRefEntry> METHOD_ENTRY = LazyUpdater.ofInstance(BoundInvokeInstruction.class, "methodEntry", MemberRefEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public MemberRefEntry method() {
-            return lazy_method_383.orElseSet(this::compute_method_383);
+            return METHOD_ENTRY.getOrCompute(this, BoundInvokeInstruction::compute_method_383);
         }
 
         private MemberRefEntry compute_method_383() {
@@ -427,11 +429,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<MemberRefEntry> lazy_method_420 = new LazyValue<>();
+        private InterfaceMethodRefEntry methodEntry;
+        private static final LazyUpdater<BoundInvokeInterfaceInstruction, MemberRefEntry> METHOD_ENTRY = LazyUpdater.ofInstance(BoundInvokeInterfaceInstruction.class, "methodEntry", InterfaceMethodRefEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public MemberRefEntry method() {
-            return lazy_method_420.orElseSet(this::compute_method_420);
+            return METHOD_ENTRY.getOrCompute(this, BoundInvokeInterfaceInstruction::compute_method_420);
         }
 
         private MemberRefEntry compute_method_420() {
@@ -470,11 +473,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<InvokeDynamicEntry> lazy_invokedynamic_457 = new LazyValue<>();
+        private InvokeDynamicEntry indyEntry;
+        private static final LazyUpdater<BoundInvokeDynamicInstruction, InvokeDynamicEntry> INDY_ENTRY = LazyUpdater.ofInstance(BoundInvokeDynamicInstruction.class, "indyEntry", InvokeDynamicEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return lazy_invokedynamic_457.orElseSet(this::compute_invokedynamic_457);
+            return INDY_ENTRY.getOrCompute(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
         }
 
         private InvokeDynamicEntry compute_invokedynamic_457() {
@@ -503,11 +507,12 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyValue<ClassEntry> lazy_className_484 = new LazyValue<>();
+        private ClassEntry classEntry;
+        private static final LazyUpdater<BoundNewObjectInstruction, ClassEntry> CLASS_ENTRY = LazyUpdater.ofInstance(BoundNewObjectInstruction.class, "classEntry", ClassEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public ClassEntry className() {
-            return lazy_className_484.orElseSet(this::compute_className_484);
+            return CLASS_ENTRY.getOrCompute(this, BoundNewObjectInstruction::compute_className_484);
         }
 
         private ClassEntry compute_className_484() {
@@ -613,11 +618,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<ClassEntry> lazy_type_588 = new LazyValue<>();
+        private ClassEntry typeEntry;
+        private static final LazyUpdater<BoundTypeCheckInstruction, ClassEntry> TYPE_ENTRY = LazyUpdater.ofInstance(BoundTypeCheckInstruction.class, "typeEntry", ClassEntry.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public ClassEntry type() {
-            return lazy_type_588.orElseSet(this::compute_type_588);
+            return TYPE_ENTRY.getOrCompute(this, BoundTypeCheckInstruction::compute_type_588);
         }
 
         private ClassEntry compute_type_588() {

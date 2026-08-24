@@ -41,11 +41,12 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyValue<Utf8Entry> lazy_name_43 = new LazyValue<>();
+    private Utf8Entry nameEntry;
+    private static final LazyUpdater<AbstractBoundLocalVariable, Utf8Entry> NAME_ENTRY = LazyUpdater.ofInstance(AbstractBoundLocalVariable.class, "nameEntry", Utf8Entry.class, java.lang.invoke.MethodHandles.lookup());
 
     public Utf8Entry name() {
 
-        return lazy_name_43.orElseSet(this::compute_name_43);
+        return NAME_ENTRY.getOrCompute(this, AbstractBoundLocalVariable::compute_name_43);
 
     }
 
@@ -57,11 +58,12 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyValue<Utf8Entry> lazy_secondaryEntry_51 = new LazyValue<>();
+    private Utf8Entry secondaryEntry;
+    private static final LazyUpdater<AbstractBoundLocalVariable, Utf8Entry> SECONDARY_ENTRY = LazyUpdater.ofInstance(AbstractBoundLocalVariable.class, "secondaryEntry", Utf8Entry.class, java.lang.invoke.MethodHandles.lookup());
 
     protected Utf8Entry secondaryEntry() {
 
-        return lazy_secondaryEntry_51.orElseSet(this::compute_secondaryEntry_51);
+        return SECONDARY_ENTRY.getOrCompute(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
 
     }
 

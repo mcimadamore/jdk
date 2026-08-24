@@ -58,11 +58,13 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
-    private final LazyValue<Utf8Entry> lazy_attributeName_62 = new LazyValue<>();
+    Utf8Entry name;
+    @SuppressWarnings("unchecked")
+    private static final LazyUpdater<BoundAttribute<?>, Utf8Entry> NAME = LazyUpdater.ofInstance((Class<BoundAttribute<?>>) (Class<?>) BoundAttribute.class, "name", Utf8Entry.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public Utf8Entry attributeName() {
-        return lazy_attributeName_62.orElseSet(this::compute_attributeName_62);
+        return NAME.getOrCompute(this, attribute -> attribute.compute_attributeName_62());
     }
 
     private Utf8Entry compute_attributeName_62() {
@@ -204,11 +206,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
-        private final LazyValue<List<StackMapFrameInfo>> lazy_entries_202 = new LazyValue<>();
+        List<StackMapFrameInfo> entries;
+        private static final LazyUpdater<BoundStackMapTableAttribute, List<StackMapFrameInfo>> ENTRIES = LazyUpdater.ofInstance(BoundStackMapTableAttribute.class, "entries", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<StackMapFrameInfo> entries() {
-            return lazy_entries_202.orElseSet(this::compute_entries_202);
+            return ENTRIES.getOrCompute(this, BoundStackMapTableAttribute::compute_entries_202);
         }
 
         private List<StackMapFrameInfo> compute_entries_202() {
@@ -241,11 +244,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<LineNumberInfo>> lazy_lineNumbers_232 = new LazyValue<>();
+        private List<LineNumberInfo> lineNumbers;
+        private static final LazyUpdater<BoundLineNumberTableAttribute, List<LineNumberInfo>> LINE_NUMBERS = LazyUpdater.ofInstance(BoundLineNumberTableAttribute.class, "lineNumbers", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<LineNumberInfo> lineNumbers() {
-            return lazy_lineNumbers_232.orElseSet(this::compute_lineNumbers_232);
+            return LINE_NUMBERS.getOrCompute(this, BoundLineNumberTableAttribute::compute_lineNumbers_232);
         }
 
         private List<LineNumberInfo> compute_lineNumbers_232() {
@@ -268,11 +272,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<CharacterRangeInfo>> lazy_characterRangeTable_253 = new LazyValue<>();
+        private List<CharacterRangeInfo> characterRangeTable;
+        private static final LazyUpdater<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> CHARACTER_RANGE_TABLE = LazyUpdater.ofInstance(BoundCharacterRangeTableAttribute.class, "characterRangeTable", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
-            return lazy_characterRangeTable_253.orElseSet(this::compute_characterRangeTable_253);
+            return CHARACTER_RANGE_TABLE.getOrCompute(this, BoundCharacterRangeTableAttribute::compute_characterRangeTable_253);
         }
 
         private List<CharacterRangeInfo> compute_characterRangeTable_253() {
@@ -306,11 +311,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyValue<List<LocalVariableInfo>> lazy_localVariables_285 = new LazyValue<>();
+        private List<LocalVariableInfo> localVars;
+        private static final LazyUpdater<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> LOCAL_VARIABLES = LazyUpdater.ofInstance(BoundLocalVariableTableAttribute.class, "localVars", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<LocalVariableInfo> localVariables() {
-            return lazy_localVariables_285.orElseSet(this::compute_localVariables_285);
+            return LOCAL_VARIABLES.getOrCompute(this, BoundLocalVariableTableAttribute::compute_localVariables_285);
         }
 
         private List<LocalVariableInfo> compute_localVariables_285() {
@@ -339,11 +345,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyValue<List<LocalVariableTypeInfo>> lazy_localVariableTypes_312 = new LazyValue<>();
+        private List<LocalVariableTypeInfo> localVars;
+        private static final LazyUpdater<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> LOCAL_VARIABLES = LazyUpdater.ofInstance(BoundLocalVariableTypeTableAttribute.class, "localVars", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
-            return lazy_localVariableTypes_312.orElseSet(this::compute_localVariableTypes_312);
+            return LOCAL_VARIABLES.getOrCompute(this, BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312);
         }
 
         private List<LocalVariableTypeInfo> compute_localVariableTypes_312() {
@@ -365,11 +372,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<MethodParameterInfo>> lazy_parameters_332 = new LazyValue<>();
+        private List<MethodParameterInfo> parameters;
+        private static final LazyUpdater<BoundMethodParametersAttribute, List<MethodParameterInfo>> PARAMETERS = LazyUpdater.ofInstance(BoundMethodParametersAttribute.class, "parameters", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<MethodParameterInfo> parameters() {
-            return lazy_parameters_332.orElseSet(this::compute_parameters_332);
+            return PARAMETERS.getOrCompute(this, BoundMethodParametersAttribute::compute_parameters_332);
         }
 
         private List<MethodParameterInfo> compute_parameters_332() {
@@ -398,11 +406,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
-        private final LazyValue<List<ModuleHashInfo>> lazy_hashes_359 = new LazyValue<>();
+        private List<ModuleHashInfo> hashes;
+        private static final LazyUpdater<BoundModuleHashesAttribute, List<ModuleHashInfo>> HASHES = LazyUpdater.ofInstance(BoundModuleHashesAttribute.class, "hashes", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<ModuleHashInfo> hashes() {
-            return lazy_hashes_359.orElseSet(this::compute_hashes_359);
+            return HASHES.getOrCompute(this, BoundModuleHashesAttribute::compute_hashes_359);
         }
 
         private List<ModuleHashInfo> compute_hashes_359() {
@@ -429,11 +438,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<RecordComponentInfo>> lazy_components_384 = new LazyValue<>();
+        private List<RecordComponentInfo> components;
+        private static final LazyUpdater<BoundRecordAttribute, List<RecordComponentInfo>> COMPONENTS = LazyUpdater.ofInstance(BoundRecordAttribute.class, "components", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<RecordComponentInfo> components() {
-            return lazy_components_384.orElseSet(this::compute_components_384);
+            return COMPONENTS.getOrCompute(this, BoundRecordAttribute::compute_components_384);
         }
 
         private List<RecordComponentInfo> compute_components_384() {
@@ -578,11 +588,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<ClassEntry>> lazy_exceptions_527 = new LazyValue<>();
+        private List<ClassEntry> exceptions;
+        private static final LazyUpdater<BoundExceptionsAttribute, List<ClassEntry>> EXCEPTIONS = LazyUpdater.ofInstance(BoundExceptionsAttribute.class, "exceptions", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<ClassEntry> exceptions() {
-            return lazy_exceptions_527.orElseSet(this::compute_exceptions_527);
+            return EXCEPTIONS.getOrCompute(this, BoundExceptionsAttribute::compute_exceptions_527);
         }
 
         private List<ClassEntry> compute_exceptions_527() {
@@ -728,11 +739,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<PackageEntry>> lazy_packages_671 = new LazyValue<>();
+        private List<PackageEntry> packages;
+        private static final LazyUpdater<BoundModulePackagesAttribute, List<PackageEntry>> PACKAGES = LazyUpdater.ofInstance(BoundModulePackagesAttribute.class, "packages", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<PackageEntry> packages() {
-            return lazy_packages_671.orElseSet(this::compute_packages_671);
+            return PACKAGES.getOrCompute(this, BoundModulePackagesAttribute::compute_packages_671);
         }
 
         private List<PackageEntry> compute_packages_671() {
@@ -747,11 +759,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<ClassEntry>> lazy_nestMembers_684 = new LazyValue<>();
+        private List<ClassEntry> members;
+        private static final LazyUpdater<BoundNestMembersAttribute, List<ClassEntry>> MEMBERS = LazyUpdater.ofInstance(BoundNestMembersAttribute.class, "members", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<ClassEntry> nestMembers() {
-            return lazy_nestMembers_684.orElseSet(this::compute_nestMembers_684);
+            return MEMBERS.getOrCompute(this, BoundNestMembersAttribute::compute_nestMembers_684);
         }
 
         private List<ClassEntry> compute_nestMembers_684() {
@@ -774,11 +787,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
-        private final LazyValue<List<BootstrapMethodEntry>> lazy_bootstrapMethods_705 = new LazyValue<>();
+        private List<BootstrapMethodEntry> bootstraps;
+        private static final LazyUpdater<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> BOOTSTRAPS = LazyUpdater.ofInstance(BoundBootstrapMethodsAttribute.class, "bootstraps", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
-            return lazy_bootstrapMethods_705.orElseSet(this::compute_bootstrapMethods_705);
+            return BOOTSTRAPS.getOrCompute(this, BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705);
         }
 
         private List<BootstrapMethodEntry> compute_bootstrapMethods_705() {
@@ -802,11 +816,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<InnerClassInfo>> lazy_classes_727 = new LazyValue<>();
+        private List<InnerClassInfo> classes;
+        private static final LazyUpdater<BoundInnerClassesAttribute, List<InnerClassInfo>> CLASSES = LazyUpdater.ofInstance(BoundInnerClassesAttribute.class, "classes", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<InnerClassInfo> classes() {
-            return lazy_classes_727.orElseSet(this::compute_classes_727);
+            return CLASSES.getOrCompute(this, BoundInnerClassesAttribute::compute_classes_727);
         }
 
         private List<InnerClassInfo> compute_classes_727() {
@@ -850,11 +865,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<AnnotationValue> lazy_defaultValue_769 = new LazyValue<>();
+        private AnnotationValue annotationValue;
+        private static final LazyUpdater<BoundAnnotationDefaultAttr, AnnotationValue> ANNOTATION_VALUE = LazyUpdater.ofInstance(BoundAnnotationDefaultAttr.class, "annotationValue", AnnotationValue.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public AnnotationValue defaultValue() {
-            return lazy_defaultValue_769.orElseSet(this::compute_defaultValue_769);
+            return ANNOTATION_VALUE.getOrCompute(this, BoundAnnotationDefaultAttr::compute_defaultValue_769);
         }
 
         private AnnotationValue compute_defaultValue_769() {
@@ -931,11 +947,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
-        private final LazyValue<List<Annotation>> lazy_annotations_844 = new LazyValue<>();
+        private List<Annotation> inflated;
+        private static final LazyUpdater<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> ANNOTATIONS = LazyUpdater.ofInstance(BoundRuntimeInvisibleAnnotationsAttribute.class, "inflated", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<Annotation> annotations() {
-            return lazy_annotations_844.orElseSet(this::compute_annotations_844);
+            return ANNOTATIONS.getOrCompute(this, BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844);
         }
 
         private List<Annotation> compute_annotations_844() {
@@ -952,11 +969,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
-        private final LazyValue<List<Annotation>> lazy_annotations_859 = new LazyValue<>();
+        private List<Annotation> inflated;
+        private static final LazyUpdater<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> ANNOTATIONS = LazyUpdater.ofInstance(BoundRuntimeVisibleAnnotationsAttribute.class, "inflated", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<Annotation> annotations() {
-            return lazy_annotations_859.orElseSet(this::compute_annotations_859);
+            return ANNOTATIONS.getOrCompute(this, BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859);
         }
 
         private List<Annotation> compute_annotations_859() {
@@ -971,11 +989,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<List<ClassEntry>> lazy_permittedSubclasses_872 = new LazyValue<>();
+        private List<ClassEntry> permittedSubclasses;
+        private static final LazyUpdater<BoundPermittedSubclassesAttribute, List<ClassEntry>> PERMITTED_SUBCLASSES = LazyUpdater.ofInstance(BoundPermittedSubclassesAttribute.class, "permittedSubclasses", List.class, java.lang.invoke.MethodHandles.lookup());
 
         @Override
         public List<ClassEntry> permittedSubclasses() {
-            return lazy_permittedSubclasses_872.orElseSet(this::compute_permittedSubclasses_872);
+            return PERMITTED_SUBCLASSES.getOrCompute(this, BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872);
         }
 
         private List<ClassEntry> compute_permittedSubclasses_872() {

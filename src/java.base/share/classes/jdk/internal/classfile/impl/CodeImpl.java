@@ -130,11 +130,12 @@ public final class CodeImpl
 
     // CodeAttribute
 
-    private final LazyValue<List<Attribute<?>>> lazy_attributes_134 = new LazyValue<>();
+    List<Attribute<?>> attributes;
+    private static final LazyUpdater<CodeImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(CodeImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_134.orElseSet(this::compute_attributes_134);
+        return ATTRIBUTES.getOrCompute(this, CodeImpl::compute_attributes_134);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -189,11 +190,12 @@ public final class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyValue<List<ExceptionCatch>> lazy_exceptionHandlers_186 = new LazyValue<>();
+    List<ExceptionCatch> exceptionTable;
+    private static final LazyUpdater<CodeImpl, List<ExceptionCatch>> EXCEPTION_TABLE = LazyUpdater.ofInstance(CodeImpl.class, "exceptionTable", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return lazy_exceptionHandlers_186.orElseSet(this::compute_exceptionHandlers_186);
+        return EXCEPTION_TABLE.getOrCompute(this, CodeImpl::compute_exceptionHandlers_186);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

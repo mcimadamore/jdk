@@ -58,11 +58,13 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyValue<List<Attribute<?>>> lazy_attributes_62 = new LazyValue<>();
+    private List<Attribute<?>> attributes;
+    @SuppressWarnings("unchecked")
+    private static final LazyUpdater<AbstractUnboundModel<?>, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance((Class<AbstractUnboundModel<?>>) (Class<?>) AbstractUnboundModel.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
 
     @Override
     public List<Attribute<?>> attributes() {
-        return lazy_attributes_62.orElseSet(this::compute_attributes_62);
+        return ATTRIBUTES.getOrCompute(this, model -> model.compute_attributes_62());
     }
 
     private List<Attribute<?>> compute_attributes_62() {
