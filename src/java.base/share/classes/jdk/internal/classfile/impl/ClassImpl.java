@@ -107,11 +107,11 @@ public final class ClassImpl
     }
 
     private List<ClassEntry> interfaces;
-    private static final LazyUpdater<ClassImpl, List<ClassEntry>> INTERFACES = LazyUpdater.ofInstance(ClassImpl.class, "interfaces", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassImpl, List<ClassEntry>> INTERFACES = LazyUpdater.ofInstance(ClassImpl.class, "interfaces", List.class, java.lang.invoke.MethodHandles.lookup(), ClassImpl::compute_interfaces_110);
 
     @Override
     public List<ClassEntry> interfaces() {
-        return INTERFACES.getOrCompute(this, ClassImpl::compute_interfaces_110);
+        return INTERFACES.getOrCompute(this);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -127,11 +127,11 @@ public final class ClassImpl
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<ClassImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(ClassImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(ClassImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup(), ClassImpl::compute_attributes_123);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, ClassImpl::compute_attributes_123);
+        return ATTRIBUTES.getOrCompute(this);
     }
 
     private List<Attribute<?>> compute_attributes_123() {

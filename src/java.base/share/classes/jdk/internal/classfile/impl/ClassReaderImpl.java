@@ -135,11 +135,11 @@ public final class ClassReaderImpl
     }
 
     private ClassEntry thisClass;
-    private static final LazyUpdater<ClassReaderImpl, ClassEntry> THIS_CLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "thisClass", ClassEntry.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassReaderImpl, ClassEntry> THIS_CLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "thisClass", ClassEntry.class, java.lang.invoke.MethodHandles.lookup(), ClassReaderImpl::compute_thisClassEntry_135);
 
     @Override
     public ClassEntry thisClassEntry() {
-        return THIS_CLASS.getOrCompute(this, ClassReaderImpl::compute_thisClassEntry_135);
+        return THIS_CLASS.getOrCompute(this);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
@@ -147,11 +147,11 @@ public final class ClassReaderImpl
     }
 
     private Optional<ClassEntry> superclass;
-    private static final LazyUpdater<ClassReaderImpl, Optional<ClassEntry>> SUPERCLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "superclass", Optional.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassReaderImpl, Optional<ClassEntry>> SUPERCLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "superclass", Optional.class, java.lang.invoke.MethodHandles.lookup(), ClassReaderImpl::compute_superclassEntry_140);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return SUPERCLASS.getOrCompute(this, ClassReaderImpl::compute_superclassEntry_140);
+        return SUPERCLASS.getOrCompute(this);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -284,11 +284,11 @@ public final class ClassReaderImpl
     }
 
     private BootstrapMethodsAttribute bootstrapMethodsAttribute;
-    private static final LazyUpdater<ClassReaderImpl, BootstrapMethodsAttribute> BOOTSTRAP_METHODS_ATTRIBUTE = LazyUpdater.ofInstance(ClassReaderImpl.class, "bootstrapMethodsAttribute", BootstrapMethodsAttribute.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassReaderImpl, BootstrapMethodsAttribute> BOOTSTRAP_METHODS_ATTRIBUTE = LazyUpdater.ofInstance(ClassReaderImpl.class, "bootstrapMethodsAttribute", BootstrapMethodsAttribute.class, java.lang.invoke.MethodHandles.lookup(), ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return BOOTSTRAP_METHODS_ATTRIBUTE.getOrCompute(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+        return BOOTSTRAP_METHODS_ATTRIBUTE.getOrCompute(this);
 
     }
 
@@ -298,11 +298,11 @@ public final class ClassReaderImpl
     }
 
     private List<BootstrapMethodEntryImpl> bsmEntries;
-    private static final LazyUpdater<ClassReaderImpl, List<BootstrapMethodEntryImpl>> BSM_ENTRIES = LazyUpdater.ofInstance(ClassReaderImpl.class, "bsmEntries", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<ClassReaderImpl, List<BootstrapMethodEntryImpl>> BSM_ENTRIES = LazyUpdater.ofInstance(ClassReaderImpl.class, "bsmEntries", List.class, java.lang.invoke.MethodHandles.lookup(), ClassReaderImpl::compute_bsmEntries_269);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return BSM_ENTRIES.getOrCompute(this, ClassReaderImpl::compute_bsmEntries_269);
+        return BSM_ENTRIES.getOrCompute(this);
 
     }
 

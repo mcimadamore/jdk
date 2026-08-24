@@ -74,7 +74,7 @@ public final class FieldImpl
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<FieldImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(FieldImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<FieldImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(FieldImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup(), FieldImpl::compute_attributes_77);
 
     @Override
     public int fieldFlags() {
@@ -83,7 +83,7 @@ public final class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, FieldImpl::compute_attributes_77);
+        return ATTRIBUTES.getOrCompute(this);
     }
 
     private List<Attribute<?>> compute_attributes_77() {

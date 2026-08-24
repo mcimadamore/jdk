@@ -53,11 +53,11 @@ public final class BoundRecordComponentInfo
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<BoundRecordComponentInfo, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(BoundRecordComponentInfo.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<BoundRecordComponentInfo, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(BoundRecordComponentInfo.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup(), BoundRecordComponentInfo::compute_attributes_56);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, BoundRecordComponentInfo::compute_attributes_56);
+        return ATTRIBUTES.getOrCompute(this);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

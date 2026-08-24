@@ -88,11 +88,11 @@ public final class MethodImpl
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<MethodImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(MethodImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyUpdater<MethodImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(MethodImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup(), MethodImpl::compute_attributes_91);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, MethodImpl::compute_attributes_91);
+        return ATTRIBUTES.getOrCompute(this);
     }
 
     private List<Attribute<?>> compute_attributes_91() {
