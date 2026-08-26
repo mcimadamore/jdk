@@ -98,11 +98,6 @@ final class LazyUpdater<R, X> {
         if (result != null) {
             return result;
         }
-        return getOrComputeSlow(base, receiver, computer);
-    }
-
-    @SuppressWarnings("unchecked")
-    X getOrComputeSlow(Object base, R receiver, Function<? super R, ? extends X> computer) {
         X candidate = Objects.requireNonNull(computer.apply(receiver));
         X witness = (X) UNSAFE.compareAndExchangeReference(base, fieldOffset, null, candidate);
         return witness == null ? candidate : witness;
