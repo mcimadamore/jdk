@@ -136,6 +136,16 @@ final class VarHandle$InputType$s {
         }
 #end[NonPlainAccess]
 
+#if[FlatValue]
+#else[FlatValue]
+        @ForceInline
+        static $type$ getStable(VarHandle ob, Object holder) {
+            FieldInstanceReadOnly handle = (FieldInstanceReadOnly)ob;
+            return UNSAFE.get$Type$Stable(Objects.requireNonNull(handle.receiverType.cast(holder)),
+                                 handle.fieldOffset);
+        }
+#end[FlatValue]
+
         static final VarForm FORM = new VarForm(FieldInstanceReadOnly.class, Object.class, $type$.class);
     }
 
@@ -502,6 +512,13 @@ final class VarHandle$InputType$s {
         }
 #end[NonPlainAccess]
 
+        @ForceInline
+        static $type$ getStable(VarHandle ob) {
+            FieldStaticReadOnly handle = (FieldStaticReadOnly) ob.onStaticFieldAccess(true);
+            return UNSAFE.get$Type$Stable(handle.base,
+                                 handle.fieldOffset);
+        }
+
         static final VarForm FORM = new VarForm(FieldStaticReadOnly.class, null, $type$.class);
     }
 
@@ -865,6 +882,13 @@ final class VarHandle$InputType$s {
                     value);
         }
 #if[CAS]
+
+        @ForceInline
+        static $type$ getStable(VarHandle ob, Object oarray, int index) {
+            $type$[] array = ($type$[]) oarray;
+            return UNSAFE.get$Type$Stable(array,
+                    (((long) Preconditions.checkIndex(index, array.length, Preconditions.AIOOBE_FORMATTER)) << SHIFT) + BASE);
+        }
 
         @ForceInline
         static boolean compareAndSet(VarHandle ob, Object oarray, int index, $type$ expected, $type$ value) {

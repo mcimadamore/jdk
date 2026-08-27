@@ -1153,7 +1153,8 @@ bool LoadNode::is_immutable_value(Node* adr) {
 //----------------------------LoadNode::make-----------------------------------
 // Polymorphic factory method:
 Node* LoadNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const TypePtr* adr_type, const Type* rt, BasicType bt, MemOrd mo,
-                     ControlDependency control_dependency, bool require_atomic_access, bool unaligned, bool mismatched, bool unsafe, uint8_t barrier_data) {
+                     ControlDependency control_dependency, bool require_atomic_access, bool unaligned, bool mismatched, bool unsafe, uint8_t barrier_data,
+                     bool stable_access) {
   Compile* C = gvn.C;
   assert(adr->is_top() || C->get_alias_index(gvn.type(adr)->is_ptr(), true) == C->get_alias_index(adr_type, true), "adr and adr_type must agree");
 
@@ -1206,6 +1207,9 @@ Node* LoadNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const TypeP
   }
   if (unsafe) {
     load->set_unsafe_access();
+  }
+  if (stable_access) {
+    load->set_stable_access();
   }
   load->set_barrier_data(barrier_data);
   if (load->Opcode() == Op_LoadN) {
@@ -2361,7 +2365,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     const bool off_beyond_header = (off >= min_base_off);
 
     // Try to constant-fold a stable array element.
-    if (FoldStableValues && !is_mismatched_access() && ary->is_stable()) {
+    if (FoldStableValues && !is_mismatched_access() && (ary->is_stable() || is_stable_access())) {
       // Make sure the reference is not into the header and the offset is constant
       ciObject* aobj = ary->const_oop();
       if (aobj != nullptr && off_beyond_header && adr->is_AddP() && off != Type::OffsetBot) {
@@ -2455,7 +2459,8 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     // Optimize loads from constant fields.
     ciObject* const_oop = tinst->const_oop();
     if (!is_mismatched_access() && off != Type::OffsetBot && const_oop != nullptr && const_oop->is_instance()) {
-      const Type* con_type = Type::make_constant_from_field(const_oop->as_instance(), off, is_unsigned(), bt);
+      const Type* con_type = Type::make_constant_from_field(const_oop->as_instance(), off,
+                                                            is_unsigned(), bt, is_stable_access());
       if (con_type != nullptr) {
         return con_type;
       }
@@ -2487,6 +2492,13 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
         return TypeInstPtr::make(klass->java_mirror());
       }
     }
+
+    // TODO fold stable off-heap accesses here
+    // if (is_stable_access()) {
+      // SafeFetch
+      // ciContstant(...)
+      // Type::make_from_constant
+    // }
   }
 
   const TypeKlassPtr *tkls = tp->isa_klassptr();

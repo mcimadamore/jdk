@@ -224,6 +224,24 @@ final class ArrayVarHandle extends VarHandle {
     }
 
     @ForceInline
+    static Object getStable(VarHandle ob, Object oarray, int index) {
+        ArrayVarHandle handle = (ArrayVarHandle) ob;
+        Object[] array = (Object[]) handle.arrayType.cast(oarray);
+        Class<?> arrayType = oarray.getClass();
+        if (ValueClass.isFlatArray(array)) {
+            VarHandles.checkAtomicFlatArray(array);
+            int aoffset = (int) UNSAFE.arrayInstanceBaseOffset(array);
+            int ascale = UNSAFE.arrayInstanceIndexScale(array);
+            int ashift = Integer.numberOfTrailingZeros(ascale);
+            int layout = UNSAFE.arrayLayout(array);
+            return UNSAFE.getFlatValueVolatile(array,
+                    (((long) Preconditions.checkIndex(index, array.length, Preconditions.AIOOBE_FORMATTER)) << ashift) + aoffset, layout, arrayType.componentType());
+        }
+        return UNSAFE.getReferenceStable(array,
+                (((long) Preconditions.checkIndex(index, array.length, Preconditions.AIOOBE_FORMATTER)) << REFERENCE_SHIFT) + REFERENCE_BASE);
+    }
+
+    @ForceInline
     static void setRelease(VarHandle ob, Object oarray, int index, Object value) {
         ArrayVarHandle handle = (ArrayVarHandle) ob;
         Object[] array = (Object[]) handle.arrayType.cast(oarray);

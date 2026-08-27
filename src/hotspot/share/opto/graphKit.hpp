@@ -566,7 +566,7 @@ class GraphKit : public Phase {
   Node* make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
                   MemNode::MemOrd mo, LoadNode::ControlDependency control_dependency = LoadNode::DependsOnlyOnTest,
                   bool require_atomic_access = false, bool unaligned = false,
-                  bool mismatched = false, bool unsafe = false, uint8_t barrier_data = 0);
+                  bool mismatched = false, bool unsafe = false, uint8_t barrier_data = 0, bool stable_access = false);
 
   // Create & transform a StoreNode and store the effect into the
   // parser's memory state.
@@ -904,7 +904,7 @@ class GraphKit : public Phase {
   void add_parse_predicates(int nargs = 0);
   void add_parse_predicate(Deoptimization::DeoptReason reason, int nargs);
 
-  Node* make_constant_from_field(ciField* field, Node* obj);
+  Node* make_constant_from_field(ciField* field, Node* obj, bool stable_access = false);
   Node* load_mirror_from_klass(Node* klass);
 
   // Vector API support (implemented in vectorIntrinsics.cpp)

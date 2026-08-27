@@ -734,6 +734,15 @@ bool C2Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
   case vmIntrinsics::_putLongOpaque:
   case vmIntrinsics::_putFloatOpaque:
   case vmIntrinsics::_putDoubleOpaque:
+  case vmIntrinsics::_getReferenceStable:
+  case vmIntrinsics::_getBooleanStable:
+  case vmIntrinsics::_getByteStable:
+  case vmIntrinsics::_getShortStable:
+  case vmIntrinsics::_getCharStable:
+  case vmIntrinsics::_getIntStable:
+  case vmIntrinsics::_getLongStable:
+  case vmIntrinsics::_getFloatStable:
+  case vmIntrinsics::_getDoubleStable:
   case vmIntrinsics::_getShortUnaligned:
   case vmIntrinsics::_getCharUnaligned:
   case vmIntrinsics::_getIntUnaligned:
