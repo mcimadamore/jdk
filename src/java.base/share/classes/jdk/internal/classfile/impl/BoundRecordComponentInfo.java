@@ -28,6 +28,7 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassReader;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyCache;
 import java.util.List;
 
 public final class BoundRecordComponentInfo
@@ -53,11 +54,13 @@ public final class BoundRecordComponentInfo
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<BoundRecordComponentInfo, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(BoundRecordComponentInfo.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<BoundRecordComponentInfo, List<Attribute<?>>> ATTRIBUTES =
+            LazyCache.ofField(BoundRecordComponentInfo.class, "attributes",
+                    BoundRecordComponentInfo::compute_attributes_56);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, BoundRecordComponentInfo::compute_attributes_56);
+        return ATTRIBUTES.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

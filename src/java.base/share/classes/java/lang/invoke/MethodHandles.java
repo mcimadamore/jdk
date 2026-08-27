@@ -7703,6 +7703,334 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
     }
 
     /**
+     * Creates a method handle which reads a variable, and, if its value is the
+     * default value for its type, computes and stores a non-default value.
+     * The returned method handle has the same type as the {@code initializer}.
+     *
+     * @param target the variable to update
+     * @param initializer a method handle whose type is the GET access mode type
+     *                    of {@code target}
+     * @param stable whether the fast-path read should use stable semantics
+     * @return the lazy update method handle
+     * @throws IllegalArgumentException if the initializer type does not match
+     *                                  the target GET access mode type
+     * @throws UnsupportedOperationException if a required access mode is not
+     *                                       supported, or stable access was requested
+     * @throws NullPointerException if {@code target} or {@code initializer} is null
+     */
+    public static MethodHandle lazyUpdater(VarHandle target,
+                                           MethodHandle initializer,
+                                           boolean stable) {
+        lazyUpdaterChecks(target, initializer, stable,
+                VarHandle.AccessMode.GET, VarHandle.AccessMode.SET);
+        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET);
+        MethodHandle setter = target.toMethodHandle(VarHandle.AccessMode.SET);
+        MethodHandle checkedInitializer = checkLazyInitializer(initializer);
+        MethodHandle slow = lazyPlainSlowPath(setter, checkedInitializer);
+        return lazyFastPath(getter, slow);
+    }
+
+    /**
+     * Creates a method handle which reads a variable with volatile semantics,
+     * and, if its value is the default value for its type, computes a
+     * non-default candidate and atomically publishes it. If another invocation
+     * wins the publication race, its value is returned.
+     * The returned method handle has the same type as the {@code initializer}.
+     *
+     * @param target the variable to update
+     * @param initializer a method handle whose type is the GET access mode type
+     *                    of {@code target}
+     * @param stable whether the fast-path read should use stable volatile semantics
+     * @return the lazy update method handle
+     * @throws IllegalArgumentException if the initializer type does not match
+     *                                  the target GET access mode type
+     * @throws UnsupportedOperationException if a required access mode is not
+     *                                       supported, or stable access was requested
+     * @throws NullPointerException if {@code target} or {@code initializer} is null
+     */
+    public static MethodHandle lazyUpdaterVolatile(VarHandle target,
+                                                   MethodHandle initializer,
+                                                   boolean stable) {
+        lazyUpdaterChecks(target, initializer, stable,
+                VarHandle.AccessMode.GET_VOLATILE,
+                VarHandle.AccessMode.COMPARE_AND_EXCHANGE);
+        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET_VOLATILE);
+        MethodHandle compareAndExchange =
+                target.toMethodHandle(VarHandle.AccessMode.COMPARE_AND_EXCHANGE);
+        MethodHandle checkedInitializer = checkLazyInitializer(initializer);
+        MethodHandle slow = lazyVolatileSlowPath(compareAndExchange, checkedInitializer);
+        return lazyFastPath(getter, slow);
+    }
+
+    /**
+     * Creates a method handle which reads a variable with volatile semantics,
+     * and, if its value is the default value for its type, acquires a supplied
+     * monitor, re-reads the variable, and computes and publishes a non-default
+     * value if it is still unset.
+     * <p>
+     * The returned method handle accepts an additional leading {@code Object}
+     * coordinate denoting the monitor, followed by the target coordinates.
+     * The monitor coordinate is not passed to the initializer.
+     *
+     * @param target the variable to update
+     * @param initializer a method handle whose type is the GET access mode type
+     *                    of {@code target}
+     * @param stable whether the fast-path read should use stable volatile semantics
+     * @return the synchronized lazy update method handle
+     * @throws IllegalArgumentException if the initializer type does not match
+     *                                  the target GET access mode type
+     * @throws UnsupportedOperationException if a required access mode is not
+     *                                       supported, or stable access was requested
+     * @throws NullPointerException if {@code target} or {@code initializer} is null
+     */
+    public static MethodHandle lazyUpdaterSynchronized(VarHandle target,
+                                                       MethodHandle initializer,
+                                                       boolean stable) {
+        lazyUpdaterChecks(target, initializer, stable,
+                VarHandle.AccessMode.GET_VOLATILE,
+                VarHandle.AccessMode.SET_VOLATILE);
+        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET_VOLATILE);
+        MethodHandle setter = target.toMethodHandle(VarHandle.AccessMode.SET_VOLATILE);
+        MethodHandle checkedInitializer = checkLazyInitializer(initializer);
+        MethodHandle slow = LazyUpdaterHelpers.synchronizedSlowPath(
+                getter, setter, checkedInitializer);
+        MethodHandle fastGetter = dropArguments(getter, 0, Object.class);
+        return lazyFastPath(fastGetter, slow);
+    }
+
+    private static void lazyUpdaterChecks(VarHandle target,
+                                          MethodHandle initializer,
+                                          boolean stable,
+                                          VarHandle.AccessMode... requiredModes) {
+        Objects.requireNonNull(target);
+        Objects.requireNonNull(initializer);
+        if (stable) {
+            // Stable VarHandle access modes are not present yet. Keep this
+            // explicit rather than silently weakening the requested semantics.
+            throw new UnsupportedOperationException("Stable VarHandle access is not available");
+        }
+        MethodType expected = target.accessModeType(VarHandle.AccessMode.GET);
+        if (initializer.type() != expected) {
+            throw misMatchedTypes("initializer and target GET access mode", initializer.type(), expected);
+        }
+        for (VarHandle.AccessMode mode : requiredModes) {
+            if (!target.isAccessModeSupported(mode)) {
+                throw new UnsupportedOperationException("Unsupported access mode: " + mode);
+            }
+        }
+    }
+
+    private static MethodHandle checkLazyInitializer(MethodHandle initializer) {
+        return filterReturnValue(initializer,
+                LazyUpdaterHelpers.requireNonDefault(initializer.type().returnType()));
+    }
+
+    private static MethodHandle lazyFastPath(MethodHandle getter, MethodHandle slow) {
+        MethodType getterType = getter.type();
+        Class<?> valueType = getterType.returnType();
+        List<Class<?>> coordinates = getterType.parameterList();
+
+        MethodHandle test = dropArguments(
+                LazyUpdaterHelpers.isDefault(valueType), 1, coordinates);
+        MethodHandle fast = dropArguments(identity(valueType), 1, coordinates);
+        MethodHandle slowWithObservedValue = dropArguments(slow, 0, valueType);
+        MethodHandle branch = guardWithTest(test, slowWithObservedValue, fast);
+        return foldArguments(branch, getter);
+    }
+
+    private static MethodHandle lazyPlainSlowPath(MethodHandle setter,
+                                                  MethodHandle initializer) {
+        MethodType initializerType = initializer.type();
+        Class<?> valueType = initializerType.returnType();
+        List<Class<?>> coordinates = initializerType.parameterList();
+        MethodType candidateAndCoordinates =
+                methodType(valueType, valueType).appendParameterTypes(coordinates);
+
+        MethodHandle returnCandidate = dropArguments(identity(valueType), 1, coordinates);
+        int coordinateCount = coordinates.size();
+        int[] reorder = new int[coordinateCount + 1];
+        for (int i = 0; i < coordinateCount; i++) {
+            reorder[i] = i + 1;
+        }
+        reorder[coordinateCount] = 0;
+        MethodHandle reorderedSetter = permuteArguments(setter,
+                candidateAndCoordinates.changeReturnType(void.class), reorder);
+        MethodHandle storeAndReturn = foldArguments(returnCandidate, reorderedSetter);
+        return foldArguments(storeAndReturn, initializer);
+    }
+
+    private static MethodHandle lazyVolatileSlowPath(MethodHandle compareAndExchange,
+                                                     MethodHandle initializer) {
+        MethodType initializerType = initializer.type();
+        Class<?> valueType = initializerType.returnType();
+        List<Class<?>> coordinates = initializerType.parameterList();
+        int coordinateCount = coordinates.size();
+
+        compareAndExchange = insertArguments(compareAndExchange, coordinateCount,
+                LazyUpdaterHelpers.defaultValue(valueType));
+        MethodType candidateAndCoordinates =
+                methodType(valueType, valueType).appendParameterTypes(coordinates);
+        int[] reorder = new int[coordinateCount + 1];
+        for (int i = 0; i < coordinateCount; i++) {
+            reorder[i] = i + 1;
+        }
+        reorder[coordinateCount] = 0;
+        compareAndExchange = permuteArguments(compareAndExchange,
+                candidateAndCoordinates, reorder);
+
+        MethodHandle choosePublished = LazyUpdaterHelpers.choosePublished(valueType);
+        choosePublished = dropArguments(choosePublished, 2, coordinates);
+        MethodHandle publish = foldArguments(choosePublished, compareAndExchange);
+        return foldArguments(publish, initializer);
+    }
+
+    private static final class LazyUpdaterHelpers {
+        private static final MethodHandle SYNC_INVOKER;
+
+        static {
+            try {
+                SYNC_INVOKER = Lookup.IMPL_LOOKUP.findStatic(
+                        LazyUpdaterHelpers.class,
+                        "invokeSynchronized",
+                        methodType(Object.class,
+                                SynchronizedLazyUpdater.class,
+                                Object.class,
+                                Object[].class));
+            } catch (ReflectiveOperationException ex) {
+                throw new ExceptionInInitializerError(ex);
+            }
+        }
+
+        static MethodHandle synchronizedSlowPath(MethodHandle getter,
+                                                 MethodHandle setter,
+                                                 MethodHandle initializer) {
+            SynchronizedLazyUpdater updater =
+                    new SynchronizedLazyUpdater(getter, setter, initializer);
+            MethodHandle slow = SYNC_INVOKER.bindTo(updater)
+                    .asCollector(Object[].class, getter.type().parameterCount());
+            return slow.asType(methodType(getter.type().returnType(), Object.class)
+                    .appendParameterTypes(getter.type().parameterList()));
+        }
+
+        static MethodHandle isDefault(Class<?> type) {
+            return helper("isDefault", boolean.class, type);
+        }
+
+        static MethodHandle requireNonDefault(Class<?> type) {
+            return helper("requireNonDefault", type, type);
+        }
+
+        static Object defaultValue(Class<?> type) {
+            return type.isPrimitive() ? Wrapper.forPrimitiveType(type).zero() : null;
+        }
+
+        static MethodHandle choosePublished(Class<?> type) {
+            MethodHandle id = identity(type);
+            MethodType type2 = methodType(type, type, type);
+            MethodHandle candidate = permuteArguments(id, type2, 1);
+            MethodHandle witness = permuteArguments(id, type2, 0);
+            MethodHandle test = dropArguments(isDefault(type), 1, type);
+            return guardWithTest(test, candidate, witness);
+        }
+
+        private static MethodHandle helper(String name,
+                                           Class<?> returnType,
+                                           Class<?> parameterType) {
+            Class<?> helperType = parameterType.isPrimitive()
+                    ? parameterType
+                    : Object.class;
+            try {
+                MethodHandle helper = Lookup.IMPL_LOOKUP.findStatic(
+                        LazyUpdaterHelpers.class,
+                        name,
+                        methodType(returnType.isPrimitive() ? returnType : Object.class,
+                                helperType));
+                return helper.asType(methodType(returnType, parameterType));
+            } catch (ReflectiveOperationException ex) {
+                throw new InternalError(ex);
+            }
+        }
+
+        private static boolean isDefault(Object value) { return value == null; }
+        private static boolean isDefault(boolean value) { return !value; }
+        private static boolean isDefault(byte value) { return value == 0; }
+        private static boolean isDefault(short value) { return value == 0; }
+        private static boolean isDefault(char value) { return value == 0; }
+        private static boolean isDefault(int value) { return value == 0; }
+        private static boolean isDefault(long value) { return value == 0; }
+        private static boolean isDefault(float value) {
+            return Float.floatToRawIntBits(value) == 0;
+        }
+        private static boolean isDefault(double value) {
+            return Double.doubleToRawLongBits(value) == 0;
+        }
+
+        private static Object requireNonDefault(Object value) {
+            return Objects.requireNonNull(value, "initializer returned the default value");
+        }
+        private static boolean requireNonDefault(boolean value) {
+            if (!value) throw defaultValueException();
+            return value;
+        }
+        private static byte requireNonDefault(byte value) {
+            if (value == 0) throw defaultValueException();
+            return value;
+        }
+        private static short requireNonDefault(short value) {
+            if (value == 0) throw defaultValueException();
+            return value;
+        }
+        private static char requireNonDefault(char value) {
+            if (value == 0) throw defaultValueException();
+            return value;
+        }
+        private static int requireNonDefault(int value) {
+            if (value == 0) throw defaultValueException();
+            return value;
+        }
+        private static long requireNonDefault(long value) {
+            if (value == 0) throw defaultValueException();
+            return value;
+        }
+        private static float requireNonDefault(float value) {
+            if (Float.floatToRawIntBits(value) == 0) throw defaultValueException();
+            return value;
+        }
+        private static double requireNonDefault(double value) {
+            if (Double.doubleToRawLongBits(value) == 0) throw defaultValueException();
+            return value;
+        }
+
+        private static IllegalStateException defaultValueException() {
+            return new IllegalStateException("initializer returned the default value");
+        }
+
+        private static Object invokeSynchronized(SynchronizedLazyUpdater updater,
+                                                 Object lock,
+                                                 Object[] coordinates) throws Throwable {
+            synchronized (Objects.requireNonNull(lock)) {
+                return updater.update(coordinates);
+            }
+        }
+
+        private record SynchronizedLazyUpdater(MethodHandle getter,
+                                               MethodHandle setter,
+                                               MethodHandle initializer) {
+            Object update(Object[] coordinates) throws Throwable {
+                Object current = getter.invokeWithArguments(coordinates);
+                if (!Objects.equals(current, defaultValue(getter.type().returnType()))) {
+                    return current;
+                }
+                Object value = initializer.invokeWithArguments(coordinates);
+                Object[] setterArguments = Arrays.copyOf(coordinates, coordinates.length + 1);
+                setterArguments[coordinates.length] = value;
+                setter.invokeWithArguments(setterArguments);
+                return value;
+            }
+        }
+    }
+
+    /**
      * Adapts a target var handle by pre-processing incoming and outgoing values using a pair of filter functions.
      * <p>
      * When calling e.g. {@link VarHandle#set(Object...)} on the resulting var handle, the incoming value (of type {@code T}, where

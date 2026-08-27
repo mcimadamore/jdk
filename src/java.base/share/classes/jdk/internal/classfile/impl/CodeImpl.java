@@ -32,6 +32,7 @@ import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.attribute.UnknownAttribute;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.*;
+import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -131,11 +132,12 @@ public final class CodeImpl
     // CodeAttribute
 
     List<Attribute<?>> attributes;
-    private static final LazyUpdater<CodeImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(CodeImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<CodeImpl, List<Attribute<?>>> ATTRIBUTES =
+            LazyCache.ofField(CodeImpl.class, "attributes", CodeImpl::compute_attributes_134);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, CodeImpl::compute_attributes_134);
+        return ATTRIBUTES.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -191,11 +193,13 @@ public final class CodeImpl
     }
 
     List<ExceptionCatch> exceptionTable;
-    private static final LazyUpdater<CodeImpl, List<ExceptionCatch>> EXCEPTION_TABLE = LazyUpdater.ofInstance(CodeImpl.class, "exceptionTable", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<CodeImpl, List<ExceptionCatch>> EXCEPTION_TABLE =
+            LazyCache.ofField(CodeImpl.class, "exceptionTable",
+                    CodeImpl::compute_exceptionHandlers_186);
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return EXCEPTION_TABLE.getOrCompute(this, CodeImpl::compute_exceptionHandlers_186);
+        return EXCEPTION_TABLE.get(this);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

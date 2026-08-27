@@ -28,6 +28,7 @@ import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
+import java.lang.invoke.LazyCache;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -107,11 +108,12 @@ public final class ClassImpl
     }
 
     private List<ClassEntry> interfaces;
-    private static final LazyUpdater<ClassImpl, List<ClassEntry>> INTERFACES = LazyUpdater.ofInstance(ClassImpl.class, "interfaces", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassImpl, List<ClassEntry>> INTERFACES =
+            LazyCache.ofField(ClassImpl.class, "interfaces", ClassImpl::compute_interfaces_110);
 
     @Override
     public List<ClassEntry> interfaces() {
-        return INTERFACES.getOrCompute(this, ClassImpl::compute_interfaces_110);
+        return INTERFACES.get(this);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -127,11 +129,12 @@ public final class ClassImpl
     }
 
     private List<Attribute<?>> attributes;
-    private static final LazyUpdater<ClassImpl, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance(ClassImpl.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassImpl, List<Attribute<?>>> ATTRIBUTES =
+            LazyCache.ofField(ClassImpl.class, "attributes", ClassImpl::compute_attributes_123);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, ClassImpl::compute_attributes_123);
+        return ATTRIBUTES.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_123() {

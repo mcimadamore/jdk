@@ -28,6 +28,7 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.AttributedElement;
 import java.lang.classfile.ClassFileElement;
 import java.lang.classfile.CompoundElement;
+import java.lang.invoke.LazyCache;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -60,11 +61,13 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
 
     private List<Attribute<?>> attributes;
     @SuppressWarnings("unchecked")
-    private static final LazyUpdater<AbstractUnboundModel<?>, List<Attribute<?>>> ATTRIBUTES = LazyUpdater.ofInstance((Class<AbstractUnboundModel<?>>) (Class<?>) AbstractUnboundModel.class, "attributes", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<AbstractUnboundModel<?>, List<Attribute<?>>> ATTRIBUTES =
+            LazyCache.ofField((Class<AbstractUnboundModel<?>>) (Class<?>) AbstractUnboundModel.class,
+                    "attributes", model -> model.compute_attributes_62());
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.getOrCompute(this, model -> model.compute_attributes_62());
+        return ATTRIBUTES.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_62() {

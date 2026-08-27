@@ -32,6 +32,7 @@ import java.lang.classfile.constantpool.ConstantPoolException;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,11 +136,13 @@ public final class ClassReaderImpl
     }
 
     private ClassEntry thisClass;
-    private static final LazyUpdater<ClassReaderImpl, ClassEntry> THIS_CLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "thisClass", ClassEntry.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassReaderImpl, ClassEntry> THIS_CLASS =
+            LazyCache.ofField(ClassReaderImpl.class, "thisClass",
+                    ClassReaderImpl::compute_thisClassEntry_135);
 
     @Override
     public ClassEntry thisClassEntry() {
-        return THIS_CLASS.getOrCompute(this, ClassReaderImpl::compute_thisClassEntry_135);
+        return THIS_CLASS.get(this);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
@@ -147,11 +150,13 @@ public final class ClassReaderImpl
     }
 
     private Optional<ClassEntry> superclass;
-    private static final LazyUpdater<ClassReaderImpl, Optional<ClassEntry>> SUPERCLASS = LazyUpdater.ofInstance(ClassReaderImpl.class, "superclass", Optional.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassReaderImpl, Optional<ClassEntry>> SUPERCLASS =
+            LazyCache.ofField(ClassReaderImpl.class, "superclass",
+                    ClassReaderImpl::compute_superclassEntry_140);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return SUPERCLASS.getOrCompute(this, ClassReaderImpl::compute_superclassEntry_140);
+        return SUPERCLASS.get(this);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -284,11 +289,13 @@ public final class ClassReaderImpl
     }
 
     private BootstrapMethodsAttribute bootstrapMethodsAttribute;
-    private static final LazyUpdater<ClassReaderImpl, BootstrapMethodsAttribute> BOOTSTRAP_METHODS_ATTRIBUTE = LazyUpdater.ofInstance(ClassReaderImpl.class, "bootstrapMethodsAttribute", BootstrapMethodsAttribute.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassReaderImpl, BootstrapMethodsAttribute> BOOTSTRAP_METHODS_ATTRIBUTE =
+            LazyCache.ofField(ClassReaderImpl.class, "bootstrapMethodsAttribute",
+                    ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return BOOTSTRAP_METHODS_ATTRIBUTE.getOrCompute(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+        return BOOTSTRAP_METHODS_ATTRIBUTE.get(this);
 
     }
 
@@ -298,11 +305,13 @@ public final class ClassReaderImpl
     }
 
     private List<BootstrapMethodEntryImpl> bsmEntries;
-    private static final LazyUpdater<ClassReaderImpl, List<BootstrapMethodEntryImpl>> BSM_ENTRIES = LazyUpdater.ofInstance(ClassReaderImpl.class, "bsmEntries", List.class, java.lang.invoke.MethodHandles.lookup());
+    private static final LazyCache<ClassReaderImpl, List<BootstrapMethodEntryImpl>> BSM_ENTRIES =
+            LazyCache.ofField(ClassReaderImpl.class, "bsmEntries",
+                    ClassReaderImpl::compute_bsmEntries_269);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return BSM_ENTRIES.getOrCompute(this, ClassReaderImpl::compute_bsmEntries_269);
+        return BSM_ENTRIES.get(this);
 
     }
 
