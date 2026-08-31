@@ -7715,15 +7715,18 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
      * @throws IllegalArgumentException if the initializer type does not match
      *                                  the target GET access mode type
      * @throws UnsupportedOperationException if a required access mode is not
-     *                                       supported, or stable access was requested
+     *                                       supported
      * @throws NullPointerException if {@code target} or {@code initializer} is null
      */
     public static MethodHandle lazyUpdater(VarHandle target,
                                            MethodHandle initializer,
                                            boolean stable) {
-        lazyUpdaterChecks(target, initializer, stable,
-                VarHandle.AccessMode.GET, VarHandle.AccessMode.SET);
-        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET);
+        VarHandle.AccessMode getterMode = stable
+                ? VarHandle.AccessMode.GET_STABLE
+                : VarHandle.AccessMode.GET;
+        lazyUpdaterChecks(target, initializer,
+                getterMode, VarHandle.AccessMode.SET);
+        MethodHandle getter = target.toMethodHandle(getterMode);
         MethodHandle setter = target.toMethodHandle(VarHandle.AccessMode.SET);
         MethodHandle checkedInitializer = checkLazyInitializer(initializer);
         MethodHandle slow = lazyPlainSlowPath(setter, checkedInitializer);
@@ -7740,21 +7743,23 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
      * @param target the variable to update
      * @param initializer a method handle whose type is the GET access mode type
      *                    of {@code target}
-     * @param stable whether the fast-path read should use stable volatile semantics
+     * @param stable whether the fast-path read should use stable semantics
      * @return the lazy update method handle
      * @throws IllegalArgumentException if the initializer type does not match
      *                                  the target GET access mode type
      * @throws UnsupportedOperationException if a required access mode is not
-     *                                       supported, or stable access was requested
+     *                                       supported
      * @throws NullPointerException if {@code target} or {@code initializer} is null
      */
     public static MethodHandle lazyUpdaterVolatile(VarHandle target,
                                                    MethodHandle initializer,
                                                    boolean stable) {
-        lazyUpdaterChecks(target, initializer, stable,
-                VarHandle.AccessMode.GET_VOLATILE,
+        VarHandle.AccessMode getterMode = stable
+                ? VarHandle.AccessMode.GET_STABLE
+                : VarHandle.AccessMode.GET_VOLATILE;
+        lazyUpdaterChecks(target, initializer, getterMode,
                 VarHandle.AccessMode.COMPARE_AND_EXCHANGE);
-        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET_VOLATILE);
+        MethodHandle getter = target.toMethodHandle(getterMode);
         MethodHandle compareAndExchange =
                 target.toMethodHandle(VarHandle.AccessMode.COMPARE_AND_EXCHANGE);
         MethodHandle checkedInitializer = checkLazyInitializer(initializer);
@@ -7775,18 +7780,22 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
      * @param target the variable to update
      * @param initializer a method handle whose type is the GET access mode type
      *                    of {@code target}
-     * @param stable whether the fast-path read should use stable volatile semantics
+     * @param stable whether the fast-path read should use stable semantics
      * @return the synchronized lazy update method handle
      * @throws IllegalArgumentException if the initializer type does not match
      *                                  the target GET access mode type
      * @throws UnsupportedOperationException if a required access mode is not
-     *                                       supported, or stable access was requested
+     *                                       supported
      * @throws NullPointerException if {@code target} or {@code initializer} is null
      */
     public static MethodHandle lazyUpdaterSynchronized(VarHandle target,
                                                        MethodHandle initializer,
                                                        boolean stable) {
-        lazyUpdaterChecks(target, initializer, stable,
+        VarHandle.AccessMode fastGetterMode = stable
+                ? VarHandle.AccessMode.GET_STABLE
+                : VarHandle.AccessMode.GET_VOLATILE;
+        lazyUpdaterChecks(target, initializer,
+                fastGetterMode,
                 VarHandle.AccessMode.GET_VOLATILE,
                 VarHandle.AccessMode.SET_VOLATILE);
         MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET_VOLATILE);
@@ -7794,21 +7803,16 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         MethodHandle checkedInitializer = checkLazyInitializer(initializer);
         MethodHandle slow = LazyUpdaterHelpers.synchronizedSlowPath(
                 getter, setter, checkedInitializer);
-        MethodHandle fastGetter = dropArguments(getter, 0, Object.class);
+        MethodHandle fastGetter = dropArguments(
+                target.toMethodHandle(fastGetterMode), 0, Object.class);
         return lazyFastPath(fastGetter, slow);
     }
 
     private static void lazyUpdaterChecks(VarHandle target,
                                           MethodHandle initializer,
-                                          boolean stable,
                                           VarHandle.AccessMode... requiredModes) {
         Objects.requireNonNull(target);
         Objects.requireNonNull(initializer);
-        if (stable) {
-            // Stable VarHandle access modes are not present yet. Keep this
-            // explicit rather than silently weakening the requested semantics.
-            throw new UnsupportedOperationException("Stable VarHandle access is not available");
-        }
         MethodType expected = target.accessModeType(VarHandle.AccessMode.GET);
         if (initializer.type() != expected) {
             throw misMatchedTypes("initializer and target GET access mode", initializer.type(), expected);

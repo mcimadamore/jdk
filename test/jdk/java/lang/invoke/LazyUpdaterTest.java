@@ -11,6 +11,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * version 2 for more details (a copy is included in the LICENSE file that
  * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 /*
@@ -82,7 +90,7 @@ public class LazyUpdaterTest {
         VarHandle plainTarget = lookup.findVarHandle(Box.class, "plain", Object.class);
         MethodHandle plainInitializer = lookup.findStatic(LazyUpdaterTest.class,
                 "plainValue", MethodType.methodType(Object.class, Box.class));
-        MethodHandle plain = MethodHandles.lazyUpdater(plainTarget, plainInitializer, false);
+        MethodHandle plain = MethodHandles.lazyUpdater(plainTarget, plainInitializer, true);
         assertEquals("plain", (Object) plain.invokeExact(box));
         assertEquals("plain", box.plain);
 
@@ -90,7 +98,7 @@ public class LazyUpdaterTest {
         MethodHandle atomicInitializer = lookup.findStatic(LazyUpdaterTest.class,
                 "atomicValue", MethodType.methodType(Object.class, Box.class));
         MethodHandle atomic = MethodHandles.lazyUpdaterVolatile(
-                atomicTarget, atomicInitializer, false);
+                atomicTarget, atomicInitializer, true);
         assertEquals("atomic", (Object) atomic.invokeExact(box));
         assertEquals("atomic", box.atomic);
 
@@ -98,7 +106,7 @@ public class LazyUpdaterTest {
         MethodHandle lockedInitializer = lookup.findStatic(LazyUpdaterTest.class,
                 "lockedValue", MethodType.methodType(Object.class, Box.class));
         MethodHandle locked = MethodHandles.lazyUpdaterSynchronized(
-                lockedTarget, lockedInitializer, false);
+                lockedTarget, lockedInitializer, true);
         assertEquals(MethodType.methodType(Object.class, Object.class, Box.class),
                 locked.type());
         assertEquals("locked", (Object) locked.invokeExact((Object) box, box));
@@ -126,9 +134,6 @@ public class LazyUpdaterTest {
         expectThrows(IllegalStateException.class, () -> {
             int ignored = (int) rejecting.invokeExact(new Box());
         });
-
-        expectThrows(UnsupportedOperationException.class,
-                () -> MethodHandles.lazyUpdater(plainTarget, plainInitializer, true));
     }
 
     private static void testConvenienceCaches() {
