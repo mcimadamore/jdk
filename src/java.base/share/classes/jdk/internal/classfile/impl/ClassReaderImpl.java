@@ -32,7 +32,7 @@ import java.lang.classfile.constantpool.ConstantPoolException;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,28 +135,24 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private ClassEntry thisClass;
-    private static final LazyCache<ClassReaderImpl, ClassEntry> THIS_CLASS =
-            LazyCache.ofField(ClassReaderImpl.class, "thisClass",
-                    ClassReaderImpl::compute_thisClassEntry_135);
+    private final LazyValue<ClassReaderImpl, ClassEntry> thisClass =
+            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_thisClassEntry_135);
 
     @Override
     public ClassEntry thisClassEntry() {
-        return THIS_CLASS.get(this);
+        return thisClass.get(this);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private Optional<ClassEntry> superclass;
-    private static final LazyCache<ClassReaderImpl, Optional<ClassEntry>> SUPERCLASS =
-            LazyCache.ofField(ClassReaderImpl.class, "superclass",
-                    ClassReaderImpl::compute_superclassEntry_140);
+    private final LazyValue<ClassReaderImpl, Optional<ClassEntry>> superclass =
+            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_superclassEntry_140);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return SUPERCLASS.get(this);
+        return superclass.get(this);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -288,14 +284,12 @@ public final class ClassReaderImpl
         }
     }
 
-    private BootstrapMethodsAttribute bootstrapMethodsAttribute;
-    private static final LazyCache<ClassReaderImpl, BootstrapMethodsAttribute> BOOTSTRAP_METHODS_ATTRIBUTE =
-            LazyCache.ofField(ClassReaderImpl.class, "bootstrapMethodsAttribute",
-                    ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+    private final LazyValue<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute =
+            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return BOOTSTRAP_METHODS_ATTRIBUTE.get(this);
+        return bootstrapMethodsAttribute.get(this);
 
     }
 
@@ -304,14 +298,12 @@ public final class ClassReaderImpl
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private List<BootstrapMethodEntryImpl> bsmEntries;
-    private static final LazyCache<ClassReaderImpl, List<BootstrapMethodEntryImpl>> BSM_ENTRIES =
-            LazyCache.ofField(ClassReaderImpl.class, "bsmEntries",
-                    ClassReaderImpl::compute_bsmEntries_269);
+    private final LazyValue<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries =
+            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_bsmEntries_269);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return BSM_ENTRIES.get(this);
+        return bsmEntries.get(this);
 
     }
 

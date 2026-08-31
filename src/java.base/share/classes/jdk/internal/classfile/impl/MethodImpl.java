@@ -27,7 +27,7 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.MethodTypeDesc;
-import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyValue;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -88,13 +88,12 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private List<Attribute<?>> attributes;
-    private static final LazyCache<MethodImpl, List<Attribute<?>>> ATTRIBUTES =
-            LazyCache.ofField(MethodImpl.class, "attributes", MethodImpl::compute_attributes_91);
+    private final LazyValue<MethodImpl, List<Attribute<?>>> attributes =
+            LazyValue.of(LazyValue.Policy.PLAIN, MethodImpl::compute_attributes_91);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.get(this);
+        return attributes.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

@@ -28,7 +28,7 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.*;
-import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,15 +59,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
-    Utf8Entry name;
-    @SuppressWarnings("unchecked")
-    private static final LazyCache<BoundAttribute<?>, Utf8Entry> NAME =
-            LazyCache.ofField((Class<BoundAttribute<?>>) (Class<?>) BoundAttribute.class,
-                    "name", attribute -> attribute.compute_attributeName_62());
+    private final LazyValue<BoundAttribute<?>, Utf8Entry> name =
+            LazyValue.of(LazyValue.Policy.PLAIN, attribute -> attribute.compute_attributeName_62());
 
     @Override
     public Utf8Entry attributeName() {
-        return NAME.get(this);
+        return name.get(this);
     }
 
     private Utf8Entry compute_attributeName_62() {
@@ -209,14 +206,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
-        List<StackMapFrameInfo> entries;
-        private static final LazyCache<BoundStackMapTableAttribute, List<StackMapFrameInfo>> ENTRIES =
-                LazyCache.ofField(BoundStackMapTableAttribute.class, "entries",
-                        BoundStackMapTableAttribute::compute_entries_202);
+        private final LazyValue<BoundStackMapTableAttribute, List<StackMapFrameInfo>> entries =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundStackMapTableAttribute::compute_entries_202);
 
         @Override
         public List<StackMapFrameInfo> entries() {
-            return ENTRIES.get(this);
+            return entries.get(this);
         }
 
         private List<StackMapFrameInfo> compute_entries_202() {
@@ -249,14 +244,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<LineNumberInfo> lineNumbers;
-        private static final LazyCache<BoundLineNumberTableAttribute, List<LineNumberInfo>> LINE_NUMBERS =
-                LazyCache.ofField(BoundLineNumberTableAttribute.class, "lineNumbers",
-                        BoundLineNumberTableAttribute::compute_lineNumbers_232);
+        private final LazyValue<BoundLineNumberTableAttribute, List<LineNumberInfo>> lineNumbers =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundLineNumberTableAttribute::compute_lineNumbers_232);
 
         @Override
         public List<LineNumberInfo> lineNumbers() {
-            return LINE_NUMBERS.get(this);
+            return lineNumbers.get(this);
         }
 
         private List<LineNumberInfo> compute_lineNumbers_232() {
@@ -279,14 +272,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<CharacterRangeInfo> characterRangeTable;
-        private static final LazyCache<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> CHARACTER_RANGE_TABLE =
-                LazyCache.ofField(BoundCharacterRangeTableAttribute.class, "characterRangeTable",
-                        BoundCharacterRangeTableAttribute::compute_characterRangeTable_253);
+        private final LazyValue<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> characterRangeTable =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundCharacterRangeTableAttribute::compute_characterRangeTable_253);
 
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
-            return CHARACTER_RANGE_TABLE.get(this);
+            return characterRangeTable.get(this);
         }
 
         private List<CharacterRangeInfo> compute_characterRangeTable_253() {
@@ -320,14 +311,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private List<LocalVariableInfo> localVars;
-        private static final LazyCache<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> LOCAL_VARIABLES =
-                LazyCache.ofField(BoundLocalVariableTableAttribute.class, "localVars",
-                        BoundLocalVariableTableAttribute::compute_localVariables_285);
+        private final LazyValue<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> localVars =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundLocalVariableTableAttribute::compute_localVariables_285);
 
         @Override
         public List<LocalVariableInfo> localVariables() {
-            return LOCAL_VARIABLES.get(this);
+            return localVars.get(this);
         }
 
         private List<LocalVariableInfo> compute_localVariables_285() {
@@ -356,14 +345,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private List<LocalVariableTypeInfo> localVars;
-        private static final LazyCache<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> LOCAL_VARIABLES =
-                LazyCache.ofField(BoundLocalVariableTypeTableAttribute.class, "localVars",
-                        BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312);
+        private final LazyValue<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> localVars =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312);
 
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
-            return LOCAL_VARIABLES.get(this);
+            return localVars.get(this);
         }
 
         private List<LocalVariableTypeInfo> compute_localVariableTypes_312() {
@@ -385,14 +372,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<MethodParameterInfo> parameters;
-        private static final LazyCache<BoundMethodParametersAttribute, List<MethodParameterInfo>> PARAMETERS =
-                LazyCache.ofField(BoundMethodParametersAttribute.class, "parameters",
-                        BoundMethodParametersAttribute::compute_parameters_332);
+        private final LazyValue<BoundMethodParametersAttribute, List<MethodParameterInfo>> parameters =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundMethodParametersAttribute::compute_parameters_332);
 
         @Override
         public List<MethodParameterInfo> parameters() {
-            return PARAMETERS.get(this);
+            return parameters.get(this);
         }
 
         private List<MethodParameterInfo> compute_parameters_332() {
@@ -421,14 +406,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
-        private List<ModuleHashInfo> hashes;
-        private static final LazyCache<BoundModuleHashesAttribute, List<ModuleHashInfo>> HASHES =
-                LazyCache.ofField(BoundModuleHashesAttribute.class, "hashes",
-                        BoundModuleHashesAttribute::compute_hashes_359);
+        private final LazyValue<BoundModuleHashesAttribute, List<ModuleHashInfo>> hashes =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundModuleHashesAttribute::compute_hashes_359);
 
         @Override
         public List<ModuleHashInfo> hashes() {
-            return HASHES.get(this);
+            return hashes.get(this);
         }
 
         private List<ModuleHashInfo> compute_hashes_359() {
@@ -455,14 +438,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<RecordComponentInfo> components;
-        private static final LazyCache<BoundRecordAttribute, List<RecordComponentInfo>> COMPONENTS =
-                LazyCache.ofField(BoundRecordAttribute.class, "components",
-                        BoundRecordAttribute::compute_components_384);
+        private final LazyValue<BoundRecordAttribute, List<RecordComponentInfo>> components =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundRecordAttribute::compute_components_384);
 
         @Override
         public List<RecordComponentInfo> components() {
-            return COMPONENTS.get(this);
+            return components.get(this);
         }
 
         private List<RecordComponentInfo> compute_components_384() {
@@ -607,14 +588,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<ClassEntry> exceptions;
-        private static final LazyCache<BoundExceptionsAttribute, List<ClassEntry>> EXCEPTIONS =
-                LazyCache.ofField(BoundExceptionsAttribute.class, "exceptions",
-                        BoundExceptionsAttribute::compute_exceptions_527);
+        private final LazyValue<BoundExceptionsAttribute, List<ClassEntry>> exceptions =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundExceptionsAttribute::compute_exceptions_527);
 
         @Override
         public List<ClassEntry> exceptions() {
-            return EXCEPTIONS.get(this);
+            return exceptions.get(this);
         }
 
         private List<ClassEntry> compute_exceptions_527() {
@@ -760,14 +739,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<PackageEntry> packages;
-        private static final LazyCache<BoundModulePackagesAttribute, List<PackageEntry>> PACKAGES =
-                LazyCache.ofField(BoundModulePackagesAttribute.class, "packages",
-                        BoundModulePackagesAttribute::compute_packages_671);
+        private final LazyValue<BoundModulePackagesAttribute, List<PackageEntry>> packages =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundModulePackagesAttribute::compute_packages_671);
 
         @Override
         public List<PackageEntry> packages() {
-            return PACKAGES.get(this);
+            return packages.get(this);
         }
 
         private List<PackageEntry> compute_packages_671() {
@@ -782,14 +759,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<ClassEntry> members;
-        private static final LazyCache<BoundNestMembersAttribute, List<ClassEntry>> MEMBERS =
-                LazyCache.ofField(BoundNestMembersAttribute.class, "members",
-                        BoundNestMembersAttribute::compute_nestMembers_684);
+        private final LazyValue<BoundNestMembersAttribute, List<ClassEntry>> members =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundNestMembersAttribute::compute_nestMembers_684);
 
         @Override
         public List<ClassEntry> nestMembers() {
-            return MEMBERS.get(this);
+            return members.get(this);
         }
 
         private List<ClassEntry> compute_nestMembers_684() {
@@ -812,14 +787,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
-        private List<BootstrapMethodEntry> bootstraps;
-        private static final LazyCache<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> BOOTSTRAPS =
-                LazyCache.ofField(BoundBootstrapMethodsAttribute.class, "bootstraps",
-                        BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705);
+        private final LazyValue<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> bootstraps =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705);
 
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
-            return BOOTSTRAPS.get(this);
+            return bootstraps.get(this);
         }
 
         private List<BootstrapMethodEntry> compute_bootstrapMethods_705() {
@@ -843,14 +816,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<InnerClassInfo> classes;
-        private static final LazyCache<BoundInnerClassesAttribute, List<InnerClassInfo>> CLASSES =
-                LazyCache.ofField(BoundInnerClassesAttribute.class, "classes",
-                        BoundInnerClassesAttribute::compute_classes_727);
+        private final LazyValue<BoundInnerClassesAttribute, List<InnerClassInfo>> classes =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundInnerClassesAttribute::compute_classes_727);
 
         @Override
         public List<InnerClassInfo> classes() {
-            return CLASSES.get(this);
+            return classes.get(this);
         }
 
         private List<InnerClassInfo> compute_classes_727() {
@@ -894,14 +865,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private AnnotationValue annotationValue;
-        private static final LazyCache<BoundAnnotationDefaultAttr, AnnotationValue> ANNOTATION_VALUE =
-                LazyCache.ofField(BoundAnnotationDefaultAttr.class, "annotationValue",
-                        BoundAnnotationDefaultAttr::compute_defaultValue_769);
+        private final LazyValue<BoundAnnotationDefaultAttr, AnnotationValue> annotationValue =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundAnnotationDefaultAttr::compute_defaultValue_769);
 
         @Override
         public AnnotationValue defaultValue() {
-            return ANNOTATION_VALUE.get(this);
+            return annotationValue.get(this);
         }
 
         private AnnotationValue compute_defaultValue_769() {
@@ -978,14 +947,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
-        private List<Annotation> inflated;
-        private static final LazyCache<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> ANNOTATIONS =
-                LazyCache.ofField(BoundRuntimeInvisibleAnnotationsAttribute.class, "inflated",
-                        BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844);
+        private final LazyValue<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> inflated =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844);
 
         @Override
         public List<Annotation> annotations() {
-            return ANNOTATIONS.get(this);
+            return inflated.get(this);
         }
 
         private List<Annotation> compute_annotations_844() {
@@ -1002,14 +969,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
-        private List<Annotation> inflated;
-        private static final LazyCache<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> ANNOTATIONS =
-                LazyCache.ofField(BoundRuntimeVisibleAnnotationsAttribute.class, "inflated",
-                        BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859);
+        private final LazyValue<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> inflated =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859);
 
         @Override
         public List<Annotation> annotations() {
-            return ANNOTATIONS.get(this);
+            return inflated.get(this);
         }
 
         private List<Annotation> compute_annotations_859() {
@@ -1024,14 +989,12 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private List<ClassEntry> permittedSubclasses;
-        private static final LazyCache<BoundPermittedSubclassesAttribute, List<ClassEntry>> PERMITTED_SUBCLASSES =
-                LazyCache.ofField(BoundPermittedSubclassesAttribute.class, "permittedSubclasses",
-                        BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872);
+        private final LazyValue<BoundPermittedSubclassesAttribute, List<ClassEntry>> permittedSubclasses =
+                LazyValue.of(LazyValue.Policy.PLAIN, BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872);
 
         @Override
         public List<ClassEntry> permittedSubclasses() {
-            return PERMITTED_SUBCLASSES.get(this);
+            return permittedSubclasses.get(this);
         }
 
         private List<ClassEntry> compute_permittedSubclasses_872() {

@@ -32,7 +32,7 @@ import java.lang.classfile.FieldElement;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.reflect.AccessFlag;
-import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyValue;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -74,9 +74,8 @@ public final class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
-    private List<Attribute<?>> attributes;
-    private static final LazyCache<FieldImpl, List<Attribute<?>>> ATTRIBUTES =
-            LazyCache.ofField(FieldImpl.class, "attributes", FieldImpl::compute_attributes_77);
+    private final LazyValue<FieldImpl, List<Attribute<?>>> attributes =
+            LazyValue.of(LazyValue.Policy.PLAIN, FieldImpl::compute_attributes_77);
 
     @Override
     public int fieldFlags() {
@@ -85,7 +84,7 @@ public final class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return ATTRIBUTES.get(this);
+        return attributes.get(this);
     }
 
     private List<Attribute<?>> compute_attributes_77() {
