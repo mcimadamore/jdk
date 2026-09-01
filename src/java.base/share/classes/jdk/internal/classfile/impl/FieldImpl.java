@@ -84,7 +84,7 @@ public final /*value*/ class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(FieldImpl::compute_attributes_77, this);
+        return attributes.get(this, FieldImpl::compute_attributes_77);
     }
 
     private List<Attribute<?>> compute_attributes_77() {

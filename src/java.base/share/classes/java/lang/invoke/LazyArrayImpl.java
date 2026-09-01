@@ -50,7 +50,7 @@ final class LazyArrayImpl {
 
         @Override
         @ForceInline
-        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
+        public T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
             Object value = values[index];
             if (value == null) {
                 value = Objects.requireNonNull(computer.compute(argument, index));
@@ -82,7 +82,7 @@ final class LazyArrayImpl {
 
         @Override
         @ForceInline
-        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
+        public T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);
@@ -117,7 +117,7 @@ final class LazyArrayImpl {
 
         @Override
         @ForceInline
-        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
+        public T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);

@@ -93,7 +93,7 @@ public final /*value*/ class MethodImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(MethodImpl::compute_attributes_91, this);
+        return attributes.get(this, MethodImpl::compute_attributes_91);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

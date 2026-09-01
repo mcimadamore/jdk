@@ -47,7 +47,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
 
     public Utf8Entry name() {
 
-        return nameEntry.get(AbstractBoundLocalVariable::compute_name_43, this);
+        return nameEntry.get(this, AbstractBoundLocalVariable::compute_name_43);
 
     }
 
@@ -64,7 +64,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
 
     protected Utf8Entry secondaryEntry() {
 
-        return secondaryEntry.get(AbstractBoundLocalVariable::compute_secondaryEntry_51, this);
+        return secondaryEntry.get(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
 
     }
 

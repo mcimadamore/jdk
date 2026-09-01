@@ -12,6 +12,7 @@
 package java.lang.invoke;
 
 import java.util.Objects;
+import java.util.function.IntFunction;
 
 /**
  * An array of independently lazily computed values.
@@ -47,7 +48,18 @@ public interface LazyArray<A, T> {
      * @param index the element index
      * @return the lazy value
      */
-    T get(Computer<? super A, ? extends T> computer, A argument, int index);
+    T get(A argument, int index, Computer<? super A, ? extends T> computer);
+
+    /**
+     * Returns the value at {@code index}, computing it with {@code computer} when needed.
+     *
+     * @param index the element index
+     * @param computer the element computing function
+     * @return the lazy value
+     */
+    default T get(int index, IntFunction<? extends T> computer) {
+        return get(null, index, (ignored, i) -> computer.apply(i));
+    }
 
     /**
      * Creates a lazy array with the {@link LazyValue.Policy#ONCE} policy.

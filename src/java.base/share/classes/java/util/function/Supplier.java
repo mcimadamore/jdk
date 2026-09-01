@@ -74,6 +74,6 @@ public interface Supplier<T> {
      */
     static <T> Supplier<T> ofLazy(LazyValue.Policy policy, Supplier<? extends T> supplier) {
         LazyValue<Void, T> lazy = LazyValue.of(policy);
-        return () -> lazy.get(ignored -> supplier.get(), null);
+        return () -> lazy.get(() -> supplier.get());
     }
 }

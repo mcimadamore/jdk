@@ -46,7 +46,7 @@ final class LazyValueImpl {
 
         @Override
         @ForceInline
-        public T get(Function<? super A, ? extends T> computer, A argument) {
+        public T get(A argument, Function<? super A, ? extends T> computer) {
             T value = this.value;
             if (value != null) {
                 return value;
@@ -74,7 +74,7 @@ final class LazyValueImpl {
 
         @Override
         @ForceInline
-        public T get(Function<? super A, ? extends T> computer, A argument) {
+        public T get(A argument, Function<? super A, ? extends T> computer) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 @SuppressWarnings("unchecked")
@@ -109,7 +109,7 @@ final class LazyValueImpl {
 
         @Override
         @ForceInline
-        public T get(Function<? super A, ? extends T> computer, A argument) {
+        public T get(A argument, Function<? super A, ? extends T> computer) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 if (value instanceof Failed failed) {

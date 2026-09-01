@@ -58,7 +58,7 @@ public final /*value*/ class BoundRecordComponentInfo
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(BoundRecordComponentInfo::compute_attributes_56, this);
+        return attributes.get(this, BoundRecordComponentInfo::compute_attributes_56);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

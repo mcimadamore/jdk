@@ -136,7 +136,7 @@ public final /*value*/ class CodeImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(CodeImpl::compute_attributes_134, this);
+        return attributes.get(this, CodeImpl::compute_attributes_134);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -196,7 +196,7 @@ public final /*value*/ class CodeImpl
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return exceptionTable.get(CodeImpl::compute_exceptionHandlers_186, this);
+        return exceptionTable.get(this, CodeImpl::compute_exceptionHandlers_186);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

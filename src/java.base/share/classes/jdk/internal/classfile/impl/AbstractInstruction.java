@@ -357,7 +357,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public FieldRefEntry field() {
-            return fieldEntry.get(BoundFieldInstruction::compute_field_356, this);
+            return fieldEntry.get(this, BoundFieldInstruction::compute_field_356);
         }
 
         private FieldRefEntry compute_field_356() {
@@ -391,7 +391,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(BoundInvokeInstruction::compute_method_383, this);
+            return methodEntry.get(this, BoundInvokeInstruction::compute_method_383);
         }
 
         private MemberRefEntry compute_method_383() {
@@ -435,7 +435,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(BoundInvokeInterfaceInstruction::compute_method_420, this);
+            return methodEntry.get(this, BoundInvokeInterfaceInstruction::compute_method_420);
         }
 
         private MemberRefEntry compute_method_420() {
@@ -479,7 +479,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return indyEntry.get(BoundInvokeDynamicInstruction::compute_invokedynamic_457, this);
+            return indyEntry.get(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
         }
 
         private InvokeDynamicEntry compute_invokedynamic_457() {
@@ -513,7 +513,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public ClassEntry className() {
-            return classEntry.get(BoundNewObjectInstruction::compute_className_484, this);
+            return classEntry.get(this, BoundNewObjectInstruction::compute_className_484);
         }
 
         private ClassEntry compute_className_484() {
@@ -624,7 +624,7 @@ public abstract sealed class AbstractInstruction
 
         @Override
         public ClassEntry type() {
-            return typeEntry.get(BoundTypeCheckInstruction::compute_type_588, this);
+            return typeEntry.get(this, BoundTypeCheckInstruction::compute_type_588);
         }
 
         private ClassEntry compute_type_588() {

@@ -64,7 +64,7 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(model -> model.compute_attributes_62(), this);
+        return attributes.get(this, model -> model.compute_attributes_62());
     }
 
     private List<Attribute<?>> compute_attributes_62() {

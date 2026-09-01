@@ -112,7 +112,7 @@ public final /*value*/ class ClassImpl
 
     @Override
     public List<ClassEntry> interfaces() {
-        return interfaces.get(ClassImpl::compute_interfaces_110, this);
+        return interfaces.get(this, ClassImpl::compute_interfaces_110);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -132,7 +132,7 @@ public final /*value*/ class ClassImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(ClassImpl::compute_attributes_123, this);
+        return attributes.get(this, ClassImpl::compute_attributes_123);
     }
 
     private List<Attribute<?>> compute_attributes_123() {

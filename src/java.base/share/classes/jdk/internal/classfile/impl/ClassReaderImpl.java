@@ -140,7 +140,7 @@ public final class ClassReaderImpl
 
     @Override
     public ClassEntry thisClassEntry() {
-        return thisClass.get(ClassReaderImpl::compute_thisClassEntry_135, this);
+        return thisClass.get(this, ClassReaderImpl::compute_thisClassEntry_135);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
@@ -152,7 +152,7 @@ public final class ClassReaderImpl
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return superclass.get(ClassReaderImpl::compute_superclassEntry_140, this);
+        return superclass.get(this, ClassReaderImpl::compute_superclassEntry_140);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -289,7 +289,7 @@ public final class ClassReaderImpl
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return bootstrapMethodsAttribute.get(ClassReaderImpl::compute_bootstrapMethodsAttribute_264, this);
+        return bootstrapMethodsAttribute.get(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
 
     }
 
@@ -303,7 +303,7 @@ public final class ClassReaderImpl
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return bsmEntries.get(ClassReaderImpl::compute_bsmEntries_269, this);
+        return bsmEntries.get(this, ClassReaderImpl::compute_bsmEntries_269);
 
     }
 

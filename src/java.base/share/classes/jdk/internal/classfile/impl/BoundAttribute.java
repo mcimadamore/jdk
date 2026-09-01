@@ -64,7 +64,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
     @Override
     public Utf8Entry attributeName() {
-        return name.get(attribute -> attribute.compute_attributeName_62(), this);
+        return name.get(this, attribute -> attribute.compute_attributeName_62());
     }
 
     private Utf8Entry compute_attributeName_62() {
@@ -211,7 +211,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<StackMapFrameInfo> entries() {
-            return entries.get(BoundStackMapTableAttribute::compute_entries_202, this);
+            return entries.get(this, BoundStackMapTableAttribute::compute_entries_202);
         }
 
         private List<StackMapFrameInfo> compute_entries_202() {
@@ -249,7 +249,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<LineNumberInfo> lineNumbers() {
-            return lineNumbers.get(BoundLineNumberTableAttribute::compute_lineNumbers_232, this);
+            return lineNumbers.get(this, BoundLineNumberTableAttribute::compute_lineNumbers_232);
         }
 
         private List<LineNumberInfo> compute_lineNumbers_232() {
@@ -277,7 +277,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
-            return characterRangeTable.get(BoundCharacterRangeTableAttribute::compute_characterRangeTable_253, this);
+            return characterRangeTable.get(this, BoundCharacterRangeTableAttribute::compute_characterRangeTable_253);
         }
 
         private List<CharacterRangeInfo> compute_characterRangeTable_253() {
@@ -316,7 +316,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<LocalVariableInfo> localVariables() {
-            return localVars.get(BoundLocalVariableTableAttribute::compute_localVariables_285, this);
+            return localVars.get(this, BoundLocalVariableTableAttribute::compute_localVariables_285);
         }
 
         private List<LocalVariableInfo> compute_localVariables_285() {
@@ -350,7 +350,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
-            return localVars.get(BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312, this);
+            return localVars.get(this, BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312);
         }
 
         private List<LocalVariableTypeInfo> compute_localVariableTypes_312() {
@@ -377,7 +377,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<MethodParameterInfo> parameters() {
-            return parameters.get(BoundMethodParametersAttribute::compute_parameters_332, this);
+            return parameters.get(this, BoundMethodParametersAttribute::compute_parameters_332);
         }
 
         private List<MethodParameterInfo> compute_parameters_332() {
@@ -411,7 +411,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<ModuleHashInfo> hashes() {
-            return hashes.get(BoundModuleHashesAttribute::compute_hashes_359, this);
+            return hashes.get(this, BoundModuleHashesAttribute::compute_hashes_359);
         }
 
         private List<ModuleHashInfo> compute_hashes_359() {
@@ -443,7 +443,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<RecordComponentInfo> components() {
-            return components.get(BoundRecordAttribute::compute_components_384, this);
+            return components.get(this, BoundRecordAttribute::compute_components_384);
         }
 
         private List<RecordComponentInfo> compute_components_384() {
@@ -593,7 +593,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<ClassEntry> exceptions() {
-            return exceptions.get(BoundExceptionsAttribute::compute_exceptions_527, this);
+            return exceptions.get(this, BoundExceptionsAttribute::compute_exceptions_527);
         }
 
         private List<ClassEntry> compute_exceptions_527() {
@@ -744,7 +744,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<PackageEntry> packages() {
-            return packages.get(BoundModulePackagesAttribute::compute_packages_671, this);
+            return packages.get(this, BoundModulePackagesAttribute::compute_packages_671);
         }
 
         private List<PackageEntry> compute_packages_671() {
@@ -764,7 +764,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<ClassEntry> nestMembers() {
-            return members.get(BoundNestMembersAttribute::compute_nestMembers_684, this);
+            return members.get(this, BoundNestMembersAttribute::compute_nestMembers_684);
         }
 
         private List<ClassEntry> compute_nestMembers_684() {
@@ -792,7 +792,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
-            return bootstraps.get(BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705, this);
+            return bootstraps.get(this, BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705);
         }
 
         private List<BootstrapMethodEntry> compute_bootstrapMethods_705() {
@@ -821,7 +821,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<InnerClassInfo> classes() {
-            return classes.get(BoundInnerClassesAttribute::compute_classes_727, this);
+            return classes.get(this, BoundInnerClassesAttribute::compute_classes_727);
         }
 
         private List<InnerClassInfo> compute_classes_727() {
@@ -870,7 +870,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public AnnotationValue defaultValue() {
-            return annotationValue.get(BoundAnnotationDefaultAttr::compute_defaultValue_769, this);
+            return annotationValue.get(this, BoundAnnotationDefaultAttr::compute_defaultValue_769);
         }
 
         private AnnotationValue compute_defaultValue_769() {
@@ -952,7 +952,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<Annotation> annotations() {
-            return inflated.get(BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844, this);
+            return inflated.get(this, BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844);
         }
 
         private List<Annotation> compute_annotations_844() {
@@ -974,7 +974,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<Annotation> annotations() {
-            return inflated.get(BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859, this);
+            return inflated.get(this, BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859);
         }
 
         private List<Annotation> compute_annotations_859() {
@@ -994,7 +994,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
 
         @Override
         public List<ClassEntry> permittedSubclasses() {
-            return permittedSubclasses.get(BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872, this);
+            return permittedSubclasses.get(this, BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872);
         }
 
         private List<ClassEntry> compute_permittedSubclasses_872() {

@@ -13,6 +13,7 @@ package java.lang.invoke;
 
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * A value computed lazily from an argument supplied at access time.
@@ -75,7 +76,17 @@ public interface LazyValue<A, T> {
      * @param argument the computing-function argument
      * @return the lazy value
      */
-    T get(Function<? super A, ? extends T> computer, A argument);
+    T get(A argument, Function<? super A, ? extends T> computer);
+
+    /**
+     * Returns the value, computing it with {@code supplier} when needed.
+     *
+     * @param supplier the computing supplier
+     * @return the lazy value
+     */
+    default T get(Supplier<? extends T> supplier) {
+        return get(null, ignored -> supplier.get());
+    }
 
     /**
      * Creates a lazy value with the {@link Policy#ONCE} policy.

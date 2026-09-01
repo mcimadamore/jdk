@@ -142,9 +142,9 @@ public class LazyUpdaterTest {
         LazyValue<Box, String> atomic = LazyValue.of(LazyValue.Policy.CAS);
         LazyValue<Box, String> once = LazyValue.of(LazyValue.Policy.ONCE);
         Box box = new Box();
-        assertEquals("plain", plain.get(plainComputer, box));
-        assertEquals("atomic", atomic.get(atomicComputer, box));
-        assertEquals("once", once.get(onceComputer, box));
+        assertEquals("plain", plain.get(box, plainComputer));
+        assertEquals("atomic", atomic.get(box, atomicComputer));
+        assertEquals("once", once.get(box, onceComputer));
 
         AtomicInteger attempts = new AtomicInteger();
         Function<Box, String> retryComputer = receiver -> {
@@ -154,8 +154,8 @@ public class LazyUpdaterTest {
             return "retried";
         };
         LazyValue<Box, String> retry = LazyValue.of(LazyValue.Policy.CAS);
-        expectThrows(TestException.class, () -> retry.get(retryComputer, box));
-        assertEquals("retried", retry.get(retryComputer, box));
+        expectThrows(TestException.class, () -> retry.get(box, retryComputer));
+        assertEquals("retried", retry.get(box, retryComputer));
         assertEquals(2, attempts.get());
 
         AtomicInteger nullAttempts = new AtomicInteger();
@@ -164,12 +164,12 @@ public class LazyUpdaterTest {
             return null;
         };
         LazyValue<Box, String> nullResult = LazyValue.of(LazyValue.Policy.CAS);
-        expectThrows(NullPointerException.class, () -> nullResult.get(nullComputer, box));
-        expectThrows(NullPointerException.class, () -> nullResult.get(nullComputer, box));
+        expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
+        expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
         assertEquals(2, nullAttempts.get());
 
         LazyArray<Void, Integer> array = LazyArray.of(LazyValue.Policy.CAS, 3);
-        assertEquals(3, array.get((ignored, index) -> index + 1, null, 2));
+        assertEquals(3, array.get(2, index -> index + 1));
 
         Supplier<String> supplier = Supplier.ofLazy(() -> "supplier");
         assertEquals("supplier", supplier.get());
@@ -187,8 +187,8 @@ public class LazyUpdaterTest {
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-            Future<String> first = executor.submit(() -> cache.get(computer, box));
-            Future<String> second = executor.submit(() -> cache.get(computer, box));
+            Future<String> first = executor.submit(() -> cache.get(box, computer));
+            Future<String> second = executor.submit(() -> cache.get(box, computer));
             String firstValue = first.get();
             String secondValue = second.get();
             assertEquals(firstValue, secondValue);
@@ -209,7 +209,7 @@ public class LazyUpdaterTest {
             @SuppressWarnings("unchecked")
             Future<String>[] futures = new Future[8];
             for (int i = 0; i < futures.length; i++) {
-                futures[i] = executor.submit(() -> cache.get(computer, box));
+                futures[i] = executor.submit(() -> cache.get(box, computer));
             }
             for (Future<String> future : futures) {
                 assertEquals("once", future.get());
