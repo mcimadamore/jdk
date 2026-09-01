@@ -28,7 +28,7 @@ import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.invoke.LazyValue;
 
-public class AbstractBoundLocalVariable
+public abstract /*value*/ class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;

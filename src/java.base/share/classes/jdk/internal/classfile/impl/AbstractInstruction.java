@@ -85,7 +85,7 @@ public abstract sealed class AbstractInstruction
     @Override
     public abstract void writeTo(DirectCodeBuilder writer);
 
-    public abstract static sealed class BoundInstruction extends AbstractInstruction {
+    public abstract static sealed /*value*/ class BoundInstruction extends AbstractInstruction {
         final CodeImpl code;
         final int pos;
 
@@ -106,7 +106,7 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final class BoundLoadInstruction
+    public static final /* value */ class BoundLoadInstruction
             extends BoundInstruction implements LoadInstruction {
 
         public BoundLoadInstruction(Opcode op, CodeImpl code, int pos) {
@@ -134,7 +134,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundStoreInstruction
+    public static final /* value */ class BoundStoreInstruction
             extends BoundInstruction implements StoreInstruction {
 
         public BoundStoreInstruction(Opcode op, CodeImpl code, int pos) {
@@ -162,7 +162,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundIncrementInstruction
+    public static final /* value */ class BoundIncrementInstruction
             extends BoundInstruction implements IncrementInstruction {
 
         public BoundIncrementInstruction(Opcode op, CodeImpl code, int pos) {
@@ -186,7 +186,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundBranchInstruction
+    public static final /* value */ class BoundBranchInstruction
             extends BoundInstruction implements BranchInstruction {
 
         public BoundBranchInstruction(Opcode op, CodeImpl code, int pos) {
@@ -223,7 +223,7 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final class BoundLookupSwitchInstruction
+    public static final /* value */ class BoundLookupSwitchInstruction
             extends BoundInstruction implements LookupSwitchInstruction {
 
         // will always need size, cache everything to there
@@ -276,7 +276,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundTableSwitchInstruction
+    public static final /* value */ class BoundTableSwitchInstruction
             extends BoundInstruction implements TableSwitchInstruction {
 
         private final int afterPad;
@@ -345,7 +345,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundFieldInstruction
+    public static final /*value*/ class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
@@ -379,7 +379,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundInvokeInstruction
+    public static final /*value*/ class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
@@ -423,7 +423,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundInvokeInterfaceInstruction
+    public static final /*value*/ class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
@@ -467,7 +467,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundInvokeDynamicInstruction
+    public static final /*value*/ class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
@@ -501,7 +501,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundNewObjectInstruction
+    public static final /*value*/ class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
@@ -535,7 +535,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundNewPrimitiveArrayInstruction
+    public static final /* value */ class BoundNewPrimitiveArrayInstruction
             extends BoundInstruction implements NewPrimitiveArrayInstruction {
 
         public BoundNewPrimitiveArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -554,7 +554,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundNewReferenceArrayInstruction
+    public static final /* value */ class BoundNewReferenceArrayInstruction
             extends BoundInstruction implements NewReferenceArrayInstruction {
 
         public BoundNewReferenceArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -580,7 +580,7 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final class BoundNewMultidimensionalArrayInstruction
+    public static final /* value */ class BoundNewMultidimensionalArrayInstruction
             extends BoundInstruction implements NewMultiArrayInstruction {
 
         public BoundNewMultidimensionalArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -612,7 +612,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundTypeCheckInstruction
+    public static final /*value*/ class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
@@ -646,7 +646,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundArgumentConstantInstruction
+    public static final /* value */ class BoundArgumentConstantInstruction
             extends BoundInstruction implements ConstantInstruction.ArgumentConstantInstruction {
 
         public BoundArgumentConstantInstruction(Opcode op, CodeImpl code, int pos) {
@@ -669,7 +669,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundLoadConstantInstruction
+    public static final /* value */ class BoundLoadConstantInstruction
             extends BoundInstruction implements ConstantInstruction.LoadConstantInstruction {
 
         public BoundLoadConstantInstruction(Opcode op, CodeImpl code, int pos) {
@@ -705,7 +705,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundJsrInstruction
+    public static final /* value */ class BoundJsrInstruction
             extends BoundInstruction implements DiscontinuedInstruction.JsrInstruction {
 
         public BoundJsrInstruction(Opcode op, CodeImpl code, int pos) {
@@ -735,7 +735,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final class BoundRetInstruction
+    public static final /* value */ class BoundRetInstruction
             extends BoundInstruction implements DiscontinuedInstruction.RetInstruction {
 
         public BoundRetInstruction(Opcode op, CodeImpl code, int pos) {

@@ -31,7 +31,7 @@ import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.invoke.LazyValue;
 import java.util.List;
 
-public final class BoundRecordComponentInfo
+public final /*value*/ class BoundRecordComponentInfo
         implements RecordComponentInfo {
 
     private final ClassReader reader;

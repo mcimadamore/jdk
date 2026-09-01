@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public final class MethodImpl
+public final /*value*/ class MethodImpl
         extends AbstractElement
         implements MethodModel, MethodInfo, Util.Writable {
 
