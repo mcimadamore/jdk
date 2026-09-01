@@ -75,7 +75,7 @@ public final /*value*/ class FieldImpl
     }
 
     private final LazyValue<FieldImpl, List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN, FieldImpl::compute_attributes_77);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public int fieldFlags() {
@@ -84,7 +84,7 @@ public final /*value*/ class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this);
+        return attributes.get(FieldImpl::compute_attributes_77, this);
     }
 
     private List<Attribute<?>> compute_attributes_77() {

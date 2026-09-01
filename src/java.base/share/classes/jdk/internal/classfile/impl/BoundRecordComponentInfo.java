@@ -54,11 +54,11 @@ public final /*value*/ class BoundRecordComponentInfo
     }
 
     private final LazyValue<BoundRecordComponentInfo, List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN, BoundRecordComponentInfo::compute_attributes_56);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this);
+        return attributes.get(BoundRecordComponentInfo::compute_attributes_56, this);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

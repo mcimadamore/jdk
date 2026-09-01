@@ -23,40 +23,34 @@ import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 final class LazyArrayImpl {
     private LazyArrayImpl() { }
 
-    static <A, T> LazyArray<A, T> ofPlain(int size,
-                                          LazyArray.Computer<? super A, ? extends T> computer) {
-        return OfPlain.of(size, computer);
+    static <A, T> LazyArray<A, T> ofPlain(int size) {
+        return OfPlain.of(size);
     }
 
-    static <A, T> LazyArray<A, T> ofCas(int size,
-                                        LazyArray.Computer<? super A, ? extends T> computer) {
-        return OfCas.of(size, computer);
+    static <A, T> LazyArray<A, T> ofCas(int size) {
+        return OfCas.of(size);
     }
 
-    static <A, T> LazyArray<A, T> ofOnce(int size,
-                                         LazyArray.Computer<? super A, ? extends T> computer) {
-        return OfOnce.of(size, computer);
+    static <A, T> LazyArray<A, T> ofOnce(int size) {
+        return OfOnce.of(size);
     }
 
     @TrustFinalFields
     static final class OfPlain<A, T> implements LazyArray<A, T> {
-        private final LazyArray.Computer<? super A, ? extends T> computer;
         private final Object[] values;
 
-        private OfPlain(int size, LazyArray.Computer<? super A, ? extends T> computer) {
+        private OfPlain(int size) {
             if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
-            this.computer = computer;
             values = new Object[size];
         }
 
-        static <A, T> LazyArray<A, T> of(int size,
-                                          LazyArray.Computer<? super A, ? extends T> computer) {
-            return new OfPlain<>(size, computer);
+        static <A, T> LazyArray<A, T> of(int size) {
+            return new OfPlain<>(size);
         }
 
         @Override
         @ForceInline
-        public T get(A argument, int index) {
+        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
             Object value = values[index];
             if (value == null) {
                 value = Objects.requireNonNull(computer.compute(argument, index));
@@ -74,24 +68,21 @@ final class LazyArrayImpl {
         private static final long ARRAY_BASE = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
         private static final int ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(Unsafe.ARRAY_OBJECT_INDEX_SCALE);
 
-        private final LazyArray.Computer<? super A, ? extends T> computer;
         @Stable
         private final Object[] values;
 
-        private OfCas(int size, LazyArray.Computer<? super A, ? extends T> computer) {
+        private OfCas(int size) {
             if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
-            this.computer = computer;
             values = new Object[size];
         }
 
-        static <A, T> LazyArray<A, T> of(int size,
-                                          LazyArray.Computer<? super A, ? extends T> computer) {
-            return new OfCas<>(size, computer);
+        static <A, T> LazyArray<A, T> of(int size) {
+            return new OfCas<>(size);
         }
 
         @Override
         @ForceInline
-        public T get(A argument, int index) {
+        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);
@@ -112,24 +103,21 @@ final class LazyArrayImpl {
         private static final long ARRAY_BASE = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
         private static final int ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(Unsafe.ARRAY_OBJECT_INDEX_SCALE);
 
-        private final LazyArray.Computer<? super A, ? extends T> computer;
         @Stable
         private final Object[] values;
 
-        private OfOnce(int size, LazyArray.Computer<? super A, ? extends T> computer) {
+        private OfOnce(int size) {
             if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
-            this.computer = computer;
             values = new Object[size];
         }
 
-        static <A, T> LazyArray<A, T> of(int size,
-                                          LazyArray.Computer<? super A, ? extends T> computer) {
-            return new OfOnce<>(size, computer);
+        static <A, T> LazyArray<A, T> of(int size) {
+            return new OfOnce<>(size);
         }
 
         @Override
         @ForceInline
-        public T get(A argument, int index) {
+        public T get(LazyArray.Computer<? super A, ? extends T> computer, A argument, int index) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);

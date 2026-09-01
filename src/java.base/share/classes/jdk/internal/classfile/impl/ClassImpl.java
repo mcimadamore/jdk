@@ -108,11 +108,11 @@ public final /*value*/ class ClassImpl
     }
 
     private final LazyValue<ClassImpl, List<ClassEntry>> interfaces =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassImpl::compute_interfaces_110);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<ClassEntry> interfaces() {
-        return interfaces.get(this);
+        return interfaces.get(ClassImpl::compute_interfaces_110, this);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -128,11 +128,11 @@ public final /*value*/ class ClassImpl
     }
 
     private final LazyValue<ClassImpl, List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassImpl::compute_attributes_123);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this);
+        return attributes.get(ClassImpl::compute_attributes_123, this);
     }
 
     private List<Attribute<?>> compute_attributes_123() {

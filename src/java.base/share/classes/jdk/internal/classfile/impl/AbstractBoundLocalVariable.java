@@ -43,11 +43,11 @@ public abstract /*value*/ class AbstractBoundLocalVariable
     }
 
     private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> nameEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN, AbstractBoundLocalVariable::compute_name_43);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     public Utf8Entry name() {
 
-        return nameEntry.get(this);
+        return nameEntry.get(AbstractBoundLocalVariable::compute_name_43, this);
 
     }
 
@@ -60,11 +60,11 @@ public abstract /*value*/ class AbstractBoundLocalVariable
     }
 
     private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> secondaryEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN, AbstractBoundLocalVariable::compute_secondaryEntry_51);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     protected Utf8Entry secondaryEntry() {
 
-        return secondaryEntry.get(this);
+        return secondaryEntry.get(AbstractBoundLocalVariable::compute_secondaryEntry_51, this);
 
     }
 

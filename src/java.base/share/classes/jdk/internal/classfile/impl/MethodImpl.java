@@ -89,11 +89,11 @@ public final /*value*/ class MethodImpl
     }
 
     private final LazyValue<MethodImpl, List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN, MethodImpl::compute_attributes_91);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this);
+        return attributes.get(MethodImpl::compute_attributes_91, this);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

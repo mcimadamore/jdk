@@ -132,11 +132,11 @@ public final /*value*/ class CodeImpl
     // CodeAttribute
 
     private final LazyValue<CodeImpl, List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN, CodeImpl::compute_attributes_134);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this);
+        return attributes.get(CodeImpl::compute_attributes_134, this);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -192,11 +192,11 @@ public final /*value*/ class CodeImpl
     }
 
     private final LazyValue<CodeImpl, List<ExceptionCatch>> exceptionTable =
-            LazyValue.of(LazyValue.Policy.PLAIN, CodeImpl::compute_exceptionHandlers_186);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return exceptionTable.get(this);
+        return exceptionTable.get(CodeImpl::compute_exceptionHandlers_186, this);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

@@ -136,11 +136,11 @@ public final class ClassReaderImpl
     }
 
     private final LazyValue<ClassReaderImpl, ClassEntry> thisClass =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_thisClassEntry_135);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public ClassEntry thisClassEntry() {
-        return thisClass.get(this);
+        return thisClass.get(ClassReaderImpl::compute_thisClassEntry_135, this);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
@@ -148,11 +148,11 @@ public final class ClassReaderImpl
     }
 
     private final LazyValue<ClassReaderImpl, Optional<ClassEntry>> superclass =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_superclassEntry_140);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return superclass.get(this);
+        return superclass.get(ClassReaderImpl::compute_superclassEntry_140, this);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -285,11 +285,11 @@ public final class ClassReaderImpl
     }
 
     private final LazyValue<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return bootstrapMethodsAttribute.get(this);
+        return bootstrapMethodsAttribute.get(ClassReaderImpl::compute_bootstrapMethodsAttribute_264, this);
 
     }
 
@@ -299,11 +299,11 @@ public final class ClassReaderImpl
     }
 
     private final LazyValue<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries =
-            LazyValue.of(LazyValue.Policy.PLAIN, ClassReaderImpl::compute_bsmEntries_269);
+            LazyValue.of(LazyValue.Policy.PLAIN);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return bsmEntries.get(this);
+        return bsmEntries.get(ClassReaderImpl::compute_bsmEntries_269, this);
 
     }
 

@@ -28,84 +28,76 @@ public interface LazyValue<A, T> {
         /** Computations and publications use plain accesses and may race. */
         PLAIN() {
             @Override
-            <A, T> LazyValue<A, T> make(Function<? super A, ? extends T> computer) {
-                return LazyValueImpl.ofPlain(computer);
+            <A, T> LazyValue<A, T> make() {
+                return LazyValueImpl.ofPlain();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size,
-                                              LazyArray.Computer<? super A, ? extends T> computer) {
-                return LazyArrayImpl.ofPlain(size, computer);
+            <A, T> LazyArray<A, T> makeArray(int size) {
+                return LazyArrayImpl.ofPlain(size);
             }
         },
         /** Computations may race, but only one successful outcome is published. */
         CAS() {
             @Override
-            <A, T> LazyValue<A, T> make(Function<? super A, ? extends T> computer) {
-                return LazyValueImpl.ofCas(computer);
+            <A, T> LazyValue<A, T> make() {
+                return LazyValueImpl.ofCas();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size,
-                                              LazyArray.Computer<? super A, ? extends T> computer) {
-                return LazyArrayImpl.ofCas(size, computer);
+            <A, T> LazyArray<A, T> makeArray(int size) {
+                return LazyArrayImpl.ofCas(size);
             }
         },
         /** One outcome is computed under synchronization and is then remembered. */
         ONCE() {
             @Override
-            <A, T> LazyValue<A, T> make(Function<? super A, ? extends T> computer) {
-                return LazyValueImpl.ofOnce(computer);
+            <A, T> LazyValue<A, T> make() {
+                return LazyValueImpl.ofOnce();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size,
-                                              LazyArray.Computer<? super A, ? extends T> computer) {
-                return LazyArrayImpl.ofOnce(size, computer);
+            <A, T> LazyArray<A, T> makeArray(int size) {
+                return LazyArrayImpl.ofOnce(size);
             }
         };
 
-        abstract <A, T> LazyValue<A, T> make(Function<? super A, ? extends T> computer);
+        abstract <A, T> LazyValue<A, T> make();
 
-        abstract <A, T> LazyArray<A, T> makeArray(int size,
-                                                   LazyArray.Computer<? super A, ? extends T> computer);
+        abstract <A, T> LazyArray<A, T> makeArray(int size);
     }
 
     /**
-     * Returns the value, computing it from {@code argument} when needed.
+     * Returns the value, computing it with {@code computer} from {@code argument} when needed.
      * Subsequent arguments are ignored after an outcome is published.
      *
+     * @param computer the computing function
      * @param argument the computing-function argument
      * @return the lazy value
      */
-    T get(A argument);
+    T get(Function<? super A, ? extends T> computer, A argument);
 
     /**
      * Creates a lazy value with the {@link Policy#ONCE} policy.
      *
-     * @param computer the computing function
      * @param <A> the computing-function argument type
      * @param <T> the value type
      * @return the lazy value
      */
-    static <A, T> LazyValue<A, T> of(Function<? super A, ? extends T> computer) {
-        Objects.requireNonNull(computer);
-        return Policy.ONCE.make(computer);
+    static <A, T> LazyValue<A, T> of() {
+        return Policy.ONCE.make();
     }
 
     /**
      * Creates a lazy value with the supplied policy.
      *
      * @param policy the lazy-update policy
-     * @param computer the computing function
      * @param <A> the computing-function argument type
      * @param <T> the value type
      * @return the lazy value
      */
-    static <A, T> LazyValue<A, T> of(Policy policy,
-                                     Function<? super A, ? extends T> computer) {
+    static <A, T> LazyValue<A, T> of(Policy policy) {
         Objects.requireNonNull(policy);
-        Objects.requireNonNull(computer);
-        return policy.make(computer);
+        return policy.make();
     }
 }

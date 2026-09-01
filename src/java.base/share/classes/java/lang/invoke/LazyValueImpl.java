@@ -24,42 +24,37 @@ import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 final class LazyValueImpl {
     private LazyValueImpl() { }
 
-    static <A, T> LazyValue<A, T> ofPlain(Function<? super A, ? extends T> computer) {
-        return OfPlain.of(computer);
+    static <A, T> LazyValue<A, T> ofPlain() {
+        return OfPlain.of();
     }
 
-    static <A, T> LazyValue<A, T> ofCas(Function<? super A, ? extends T> computer) {
-        return OfCas.of(computer);
+    static <A, T> LazyValue<A, T> ofCas() {
+        return OfCas.of();
     }
 
-    static <A, T> LazyValue<A, T> ofOnce(Function<? super A, ? extends T> computer) {
-        return OfOnce.of(computer);
+    static <A, T> LazyValue<A, T> ofOnce() {
+        return OfOnce.of();
     }
 
     @TrustFinalFields
     static final class OfPlain<A, T> implements LazyValue<A, T> {
-        private final Function<? super A, ? extends T> computer;
         private T value;
 
-        private OfPlain(Function<? super A, ? extends T> computer) {
-            this.computer = computer;
-        }
-
-        static <A, T> LazyValue<A, T> of(Function<? super A, ? extends T> computer) {
-            return new OfPlain<>(computer);
+        static <A, T> LazyValue<A, T> of() {
+            return new OfPlain<>();
         }
 
         @Override
         @ForceInline
-        public T get(A argument) {
+        public T get(Function<? super A, ? extends T> computer, A argument) {
             T value = this.value;
             if (value != null) {
                 return value;
             }
-            return getSlow(argument);
+            return getSlow(computer, argument);
         }
 
-        private T getSlow(A argument) {
+        private T getSlow(Function<? super A, ? extends T> computer, A argument) {
             T value = Objects.requireNonNull(computer.apply(argument));
             return this.value = value;
         }
@@ -70,31 +65,26 @@ final class LazyValueImpl {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfCas.class, "value");
 
-        private final Function<? super A, ? extends T> computer;
         @Stable
         private Object value;
 
-        private OfCas(Function<? super A, ? extends T> computer) {
-            this.computer = computer;
-        }
-
-        static <A, T> LazyValue<A, T> of(Function<? super A, ? extends T> computer) {
-            return new OfCas<>(computer);
+        static <A, T> LazyValue<A, T> of() {
+            return new OfCas<>();
         }
 
         @Override
         @ForceInline
-        public T get(A argument) {
+        public T get(Function<? super A, ? extends T> computer, A argument) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 @SuppressWarnings("unchecked")
                 T result = (T) value;
                 return result;
             }
-            return getSlow(argument);
+            return getSlow(computer, argument);
         }
 
-        private T getSlow(A argument) {
+        private T getSlow(Function<? super A, ? extends T> computer, A argument) {
             Object candidate = Objects.requireNonNull(computer.apply(argument));
             Object witness = UNSAFE.compareAndExchangeReference(
                     this, VALUE_OFFSET, null, candidate);
@@ -110,21 +100,16 @@ final class LazyValueImpl {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfOnce.class, "value");
 
-        private final Function<? super A, ? extends T> computer;
         @Stable
         private Object value;
 
-        private OfOnce(Function<? super A, ? extends T> computer) {
-            this.computer = computer;
-        }
-
-        static <A, T> LazyValue<A, T> of(Function<? super A, ? extends T> computer) {
-            return new OfOnce<>(computer);
+        static <A, T> LazyValue<A, T> of() {
+            return new OfOnce<>();
         }
 
         @Override
         @ForceInline
-        public T get(A argument) {
+        public T get(Function<? super A, ? extends T> computer, A argument) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 if (value instanceof Failed failed) {
@@ -134,10 +119,10 @@ final class LazyValueImpl {
                 T result = (T) value;
                 return result;
             }
-            return getSlow(argument);
+            return getSlow(computer, argument);
         }
 
-        private T getSlow(A argument) {
+        private T getSlow(Function<? super A, ? extends T> computer, A argument) {
             Object value;
             synchronized (this) {
                 value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
