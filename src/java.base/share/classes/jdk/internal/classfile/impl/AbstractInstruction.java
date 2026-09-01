@@ -352,7 +352,7 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<BoundFieldInstruction, FieldRefEntry> fieldEntry =
+        private final LazyValue< FieldRefEntry> fieldEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -386,7 +386,7 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<BoundInvokeInstruction, MemberRefEntry> methodEntry =
+        private final LazyValue< MemberRefEntry> methodEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -430,7 +430,7 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<BoundInvokeInterfaceInstruction, MemberRefEntry> methodEntry =
+        private final LazyValue< MemberRefEntry> methodEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -474,7 +474,7 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<BoundInvokeDynamicInstruction, InvokeDynamicEntry> indyEntry =
+        private final LazyValue< InvokeDynamicEntry> indyEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -508,7 +508,7 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyValue<BoundNewObjectInstruction, ClassEntry> classEntry =
+        private final LazyValue< ClassEntry> classEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -619,7 +619,7 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue<BoundTypeCheckInstruction, ClassEntry> typeEntry =
+        private final LazyValue< ClassEntry> typeEntry =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override

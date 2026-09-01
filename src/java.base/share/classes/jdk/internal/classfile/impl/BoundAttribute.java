@@ -59,7 +59,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
-    private final LazyValue<BoundAttribute<?>, Utf8Entry> name =
+    private final LazyValue< Utf8Entry> name =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
@@ -206,7 +206,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
-        private final LazyValue<BoundStackMapTableAttribute, List<StackMapFrameInfo>> entries =
+        private final LazyValue< List<StackMapFrameInfo>> entries =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -244,7 +244,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundLineNumberTableAttribute, List<LineNumberInfo>> lineNumbers =
+        private final LazyValue< List<LineNumberInfo>> lineNumbers =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -272,7 +272,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> characterRangeTable =
+        private final LazyValue< List<CharacterRangeInfo>> characterRangeTable =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -311,7 +311,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyValue<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> localVars =
+        private final LazyValue< List<LocalVariableInfo>> localVars =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -345,7 +345,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyValue<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> localVars =
+        private final LazyValue< List<LocalVariableTypeInfo>> localVars =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -372,7 +372,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundMethodParametersAttribute, List<MethodParameterInfo>> parameters =
+        private final LazyValue< List<MethodParameterInfo>> parameters =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -406,7 +406,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
-        private final LazyValue<BoundModuleHashesAttribute, List<ModuleHashInfo>> hashes =
+        private final LazyValue< List<ModuleHashInfo>> hashes =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -438,7 +438,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundRecordAttribute, List<RecordComponentInfo>> components =
+        private final LazyValue< List<RecordComponentInfo>> components =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -588,7 +588,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundExceptionsAttribute, List<ClassEntry>> exceptions =
+        private final LazyValue< List<ClassEntry>> exceptions =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -739,7 +739,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundModulePackagesAttribute, List<PackageEntry>> packages =
+        private final LazyValue< List<PackageEntry>> packages =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -759,7 +759,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundNestMembersAttribute, List<ClassEntry>> members =
+        private final LazyValue< List<ClassEntry>> members =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -787,7 +787,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
-        private final LazyValue<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> bootstraps =
+        private final LazyValue< List<BootstrapMethodEntry>> bootstraps =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -816,7 +816,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundInnerClassesAttribute, List<InnerClassInfo>> classes =
+        private final LazyValue< List<InnerClassInfo>> classes =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -865,7 +865,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundAnnotationDefaultAttr, AnnotationValue> annotationValue =
+        private final LazyValue< AnnotationValue> annotationValue =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -947,7 +947,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
-        private final LazyValue<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> inflated =
+        private final LazyValue< List<Annotation>> inflated =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -969,7 +969,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
-        private final LazyValue<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> inflated =
+        private final LazyValue< List<Annotation>> inflated =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override
@@ -989,7 +989,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyValue<BoundPermittedSubclassesAttribute, List<ClassEntry>> permittedSubclasses =
+        private final LazyValue< List<ClassEntry>> permittedSubclasses =
                 LazyValue.of(LazyValue.Policy.PLAIN);
 
         @Override

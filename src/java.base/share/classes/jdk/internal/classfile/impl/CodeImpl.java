@@ -131,7 +131,7 @@ public final /*value*/ class CodeImpl
 
     // CodeAttribute
 
-    private final LazyValue<CodeImpl, List<Attribute<?>>> attributes =
+    private final LazyValue< List<Attribute<?>>> attributes =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
@@ -191,7 +191,7 @@ public final /*value*/ class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyValue<CodeImpl, List<ExceptionCatch>> exceptionTable =
+    private final LazyValue< List<ExceptionCatch>> exceptionTable =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override

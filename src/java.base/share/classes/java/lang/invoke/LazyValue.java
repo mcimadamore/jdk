@@ -18,10 +18,9 @@ import java.util.function.Supplier;
 /**
  * A value computed lazily from an argument supplied at access time.
  *
- * @param <A> the computing-function argument type
  * @param <T> the value type
  */
-public interface LazyValue<A, T> {
+public interface LazyValue<T> {
     /**
      * Lazy-update policy.
      */
@@ -29,43 +28,43 @@ public interface LazyValue<A, T> {
         /** Computations and publications use plain accesses and may race. */
         PLAIN() {
             @Override
-            <A, T> LazyValue<A, T> make() {
+            <T> LazyValue<T> make() {
                 return LazyValueImpl.ofPlain();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size) {
+            <T> LazyArray<T> makeArray(int size) {
                 return LazyArrayImpl.ofPlain(size);
             }
         },
         /** Computations may race, but only one successful outcome is published. */
         CAS() {
             @Override
-            <A, T> LazyValue<A, T> make() {
+            <T> LazyValue<T> make() {
                 return LazyValueImpl.ofCas();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size) {
+            <T> LazyArray<T> makeArray(int size) {
                 return LazyArrayImpl.ofCas(size);
             }
         },
         /** One outcome is computed under synchronization and is then remembered. */
         ONCE() {
             @Override
-            <A, T> LazyValue<A, T> make() {
+            <T> LazyValue<T> make() {
                 return LazyValueImpl.ofOnce();
             }
 
             @Override
-            <A, T> LazyArray<A, T> makeArray(int size) {
+            <T> LazyArray<T> makeArray(int size) {
                 return LazyArrayImpl.ofOnce(size);
             }
         };
 
-        abstract <A, T> LazyValue<A, T> make();
+        abstract <T> LazyValue<T> make();
 
-        abstract <A, T> LazyArray<A, T> makeArray(int size);
+        abstract <T> LazyArray<T> makeArray(int size);
     }
 
     /**
@@ -74,9 +73,10 @@ public interface LazyValue<A, T> {
      *
      * @param computer the computing function
      * @param argument the computing-function argument
+     * @param <A> the computing-function argument type
      * @return the lazy value
      */
-    T get(A argument, Function<? super A, ? extends T> computer);
+    <A> T get(A argument, Function<? super A, ? extends T> computer);
 
     /**
      * Returns the value, computing it with {@code supplier} when needed.
@@ -91,11 +91,10 @@ public interface LazyValue<A, T> {
     /**
      * Creates a lazy value with the {@link Policy#ONCE} policy.
      *
-     * @param <A> the computing-function argument type
      * @param <T> the value type
      * @return the lazy value
      */
-    static <A, T> LazyValue<A, T> of() {
+    static <T> LazyValue<T> of() {
         return Policy.ONCE.make();
     }
 
@@ -103,11 +102,10 @@ public interface LazyValue<A, T> {
      * Creates a lazy value with the supplied policy.
      *
      * @param policy the lazy-update policy
-     * @param <A> the computing-function argument type
      * @param <T> the value type
      * @return the lazy value
      */
-    static <A, T> LazyValue<A, T> of(Policy policy) {
+    static <T> LazyValue<T> of(Policy policy) {
         Objects.requireNonNull(policy);
         return policy.make();
     }

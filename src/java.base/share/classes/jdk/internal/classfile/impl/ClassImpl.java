@@ -107,7 +107,7 @@ public final /*value*/ class ClassImpl
         return reader.superclassEntry();
     }
 
-    private final LazyValue<ClassImpl, List<ClassEntry>> interfaces =
+    private final LazyValue< List<ClassEntry>> interfaces =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
@@ -127,7 +127,7 @@ public final /*value*/ class ClassImpl
         return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
-    private final LazyValue<ClassImpl, List<Attribute<?>>> attributes =
+    private final LazyValue< List<Attribute<?>>> attributes =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override

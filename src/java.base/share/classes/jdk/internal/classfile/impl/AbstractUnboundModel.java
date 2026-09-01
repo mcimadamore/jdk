@@ -59,7 +59,7 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyValue<AbstractUnboundModel<?>, List<Attribute<?>>> attributes =
+    private final LazyValue< List<Attribute<?>>> attributes =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override

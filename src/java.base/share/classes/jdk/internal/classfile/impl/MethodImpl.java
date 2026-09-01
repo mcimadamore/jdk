@@ -88,7 +88,7 @@ public final /*value*/ class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private final LazyValue<MethodImpl, List<Attribute<?>>> attributes =
+    private final LazyValue< List<Attribute<?>>> attributes =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override

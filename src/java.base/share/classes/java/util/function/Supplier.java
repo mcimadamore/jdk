@@ -64,7 +64,7 @@ public interface Supplier<T> {
     /**
      * Returns a supplier which computes its value lazily with {@code policy}.
      *
-     * <p>This method is equivalent to creating a {@code LazyValue<Void, T>}
+     * <p>This method is equivalent to creating a {@code LazyValue< T>}
      * and invoking it with {@code null}.
      *
      * @param supplier the computing supplier
@@ -73,7 +73,7 @@ public interface Supplier<T> {
      * @return a lazy supplier
      */
     static <T> Supplier<T> ofLazy(LazyValue.Policy policy, Supplier<? extends T> supplier) {
-        LazyValue<Void, T> lazy = LazyValue.of(policy);
+        LazyValue< T> lazy = LazyValue.of(policy);
         return () -> lazy.get(() -> supplier.get());
     }
 }

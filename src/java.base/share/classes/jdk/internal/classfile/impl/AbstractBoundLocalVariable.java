@@ -42,7 +42,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> nameEntry =
+    private final LazyValue< Utf8Entry> nameEntry =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     public Utf8Entry name() {
@@ -59,7 +59,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> secondaryEntry =
+    private final LazyValue< Utf8Entry> secondaryEntry =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     protected Utf8Entry secondaryEntry() {

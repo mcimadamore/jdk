@@ -17,10 +17,9 @@ import java.util.function.IntFunction;
 /**
  * An array of independently lazily computed values.
  *
- * @param <A> the computing-function argument type
  * @param <T> the element type
  */
-public interface LazyArray<A, T> {
+public interface LazyArray<T> {
     /**
      * A function which computes an array element.
      *
@@ -46,9 +45,10 @@ public interface LazyArray<A, T> {
      * @param computer the element computing function
      * @param argument the computing-function argument
      * @param index the element index
+     * @param <A> the computing-function argument type
      * @return the lazy value
      */
-    T get(A argument, int index, Computer<? super A, ? extends T> computer);
+    <A> T get(A argument, int index, Computer<? super A, ? extends T> computer);
 
     /**
      * Returns the value at {@code index}, computing it with {@code computer} when needed.
@@ -65,12 +65,11 @@ public interface LazyArray<A, T> {
      * Creates a lazy array with the {@link LazyValue.Policy#ONCE} policy.
      *
      * @param size the array size
-     * @param <A> the computing-function argument type
      * @param <T> the element type
      * @return the lazy array
      */
-    static <A, T> LazyArray<A, T> of(int size) {
-        return LazyArray.<A, T>of(LazyValue.Policy.ONCE, size);
+    static <T> LazyArray<T> of(int size) {
+        return LazyArray.<T>of(LazyValue.Policy.ONCE, size);
     }
 
     /**
@@ -78,11 +77,10 @@ public interface LazyArray<A, T> {
      *
      * @param policy the lazy-update policy
      * @param size the array size
-     * @param <A> the computing-function argument type
      * @param <T> the element type
      * @return the lazy array
      */
-    static <A, T> LazyArray<A, T> of(LazyValue.Policy policy, int size) {
+    static <T> LazyArray<T> of(LazyValue.Policy policy, int size) {
         Objects.requireNonNull(policy);
         return policy.makeArray(size);
     }

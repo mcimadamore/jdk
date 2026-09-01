@@ -53,7 +53,7 @@ public final /*value*/ class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
-    private final LazyValue<BoundRecordComponentInfo, List<Attribute<?>>> attributes =
+    private final LazyValue< List<Attribute<?>>> attributes =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override

@@ -135,7 +135,7 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private final LazyValue<ClassReaderImpl, ClassEntry> thisClass =
+    private final LazyValue< ClassEntry> thisClass =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
@@ -147,7 +147,7 @@ public final class ClassReaderImpl
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private final LazyValue<ClassReaderImpl, Optional<ClassEntry>> superclass =
+    private final LazyValue< Optional<ClassEntry>> superclass =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
@@ -284,7 +284,7 @@ public final class ClassReaderImpl
         }
     }
 
-    private final LazyValue<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute =
+    private final LazyValue< BootstrapMethodsAttribute> bootstrapMethodsAttribute =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
@@ -298,7 +298,7 @@ public final class ClassReaderImpl
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private final LazyValue<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries =
+    private final LazyValue< List<BootstrapMethodEntryImpl>> bsmEntries =
             LazyValue.of(LazyValue.Policy.PLAIN);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {

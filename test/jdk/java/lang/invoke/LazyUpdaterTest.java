@@ -138,9 +138,9 @@ public class LazyUpdaterTest {
         Function<Box, String> plainComputer = box -> "plain";
         Function<Box, String> atomicComputer = box -> "atomic";
         Function<Box, String> onceComputer = box -> "once";
-        LazyValue<Box, String> plain = LazyValue.of(LazyValue.Policy.PLAIN);
-        LazyValue<Box, String> atomic = LazyValue.of(LazyValue.Policy.CAS);
-        LazyValue<Box, String> once = LazyValue.of(LazyValue.Policy.ONCE);
+        LazyValue< String> plain = LazyValue.of(LazyValue.Policy.PLAIN);
+        LazyValue< String> atomic = LazyValue.of(LazyValue.Policy.CAS);
+        LazyValue< String> once = LazyValue.of(LazyValue.Policy.ONCE);
         Box box = new Box();
         assertEquals("plain", plain.get(box, plainComputer));
         assertEquals("atomic", atomic.get(box, atomicComputer));
@@ -153,7 +153,7 @@ public class LazyUpdaterTest {
             }
             return "retried";
         };
-        LazyValue<Box, String> retry = LazyValue.of(LazyValue.Policy.CAS);
+        LazyValue< String> retry = LazyValue.of(LazyValue.Policy.CAS);
         expectThrows(TestException.class, () -> retry.get(box, retryComputer));
         assertEquals("retried", retry.get(box, retryComputer));
         assertEquals(2, attempts.get());
@@ -163,12 +163,12 @@ public class LazyUpdaterTest {
             nullAttempts.incrementAndGet();
             return null;
         };
-        LazyValue<Box, String> nullResult = LazyValue.of(LazyValue.Policy.CAS);
+        LazyValue< String> nullResult = LazyValue.of(LazyValue.Policy.CAS);
         expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
         expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
         assertEquals(2, nullAttempts.get());
 
-        LazyArray<Void, Integer> array = LazyArray.of(LazyValue.Policy.CAS, 3);
+        LazyArray< Integer> array = LazyArray.of(LazyValue.Policy.CAS, 3);
         assertEquals(3, array.get(2, index -> index + 1));
 
         Supplier<String> supplier = Supplier.ofLazy(() -> "supplier");
@@ -183,7 +183,7 @@ public class LazyUpdaterTest {
                     await(barrier);
                     return "candidate-" + id;
                 };
-        LazyValue<Box, String> cache = LazyValue.of(LazyValue.Policy.CAS);
+        LazyValue< String> cache = LazyValue.of(LazyValue.Policy.CAS);
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
@@ -202,7 +202,7 @@ public class LazyUpdaterTest {
                     computations.incrementAndGet();
                     return "once";
                 };
-        LazyValue<Box, String> cache = LazyValue.of(LazyValue.Policy.ONCE);
+        LazyValue< String> cache = LazyValue.of(LazyValue.Policy.ONCE);
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(4)) {
