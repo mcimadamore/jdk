@@ -39,7 +39,7 @@ final class LazyValueImpl {
     @TrustFinalFields
     static final class OfPlain<A, T> implements LazyValue<A, T> {
         private final Function<? super A, ? extends T> computer;
-        private Object value;
+        private T value;
 
         private OfPlain(Function<? super A, ? extends T> computer) {
             this.computer = computer;
@@ -52,14 +52,16 @@ final class LazyValueImpl {
         @Override
         @ForceInline
         public T get(A argument) {
-            Object value = this.value;
-            if (value == null) {
-                value = Objects.requireNonNull(computer.apply(argument));
-                this.value = value;
+            T value = this.value;
+            if (value != null) {
+                return value;
             }
-            @SuppressWarnings("unchecked")
-            T result = (T) value;
-            return result;
+            return getSlow(argument);
+        }
+
+        private T getSlow(A argument) {
+            T value = Objects.requireNonNull(computer.apply(argument));
+            return this.value = value;
         }
     }
 
@@ -84,12 +86,19 @@ final class LazyValueImpl {
         @ForceInline
         public T get(A argument) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
-            if (value == null) {
-                Object candidate = Objects.requireNonNull(computer.apply(argument));
-                Object witness = UNSAFE.compareAndExchangeReference(
-                        this, VALUE_OFFSET, null, candidate);
-                value = witness == null ? candidate : witness;
+            if (value != null) {
+                @SuppressWarnings("unchecked")
+                T result = (T) value;
+                return result;
             }
+            return getSlow(argument);
+        }
+
+        private T getSlow(A argument) {
+            Object candidate = Objects.requireNonNull(computer.apply(argument));
+            Object witness = UNSAFE.compareAndExchangeReference(
+                    this, VALUE_OFFSET, null, candidate);
+            Object value = witness == null ? candidate : witness;
             @SuppressWarnings("unchecked")
             T result = (T) value;
             return result;
@@ -117,17 +126,28 @@ final class LazyValueImpl {
         @ForceInline
         public T get(A argument) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
-            if (value == null) {
-                synchronized (this) {
-                    value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
-                    if (value == null) {
-                        try {
-                            value = Objects.requireNonNull(computer.apply(argument));
-                        } catch (Throwable ex) {
-                            value = new Failed(ex);
-                        }
-                        UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
+            if (value != null) {
+                if (value instanceof Failed failed) {
+                    throw uncaughtException(failed.exception);
+                }
+                @SuppressWarnings("unchecked")
+                T result = (T) value;
+                return result;
+            }
+            return getSlow(argument);
+        }
+
+        private T getSlow(A argument) {
+            Object value;
+            synchronized (this) {
+                value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
+                if (value == null) {
+                    try {
+                        value = Objects.requireNonNull(computer.apply(argument));
+                    } catch (Throwable ex) {
+                        value = new Failed(ex);
                     }
+                    UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
                 }
             }
             if (value instanceof Failed failed) {
