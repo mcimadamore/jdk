@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 import jdk.internal.vm.annotation.TrustFinalFields;
@@ -54,6 +55,7 @@ final class LazyValueUseSiteImpl {
             return getSlow(computer, argument);
         }
 
+        @DontInline
         private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
             T value = Objects.requireNonNull(computer.apply(argument));
             return this.value = value;
@@ -84,6 +86,7 @@ final class LazyValueUseSiteImpl {
             return getSlow(computer, argument);
         }
 
+        @DontInline
         private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
             Object candidate = Objects.requireNonNull(computer.apply(argument));
             Object witness = UNSAFE.compareAndExchangeReference(
@@ -122,6 +125,7 @@ final class LazyValueUseSiteImpl {
             return getSlow(computer, argument);
         }
 
+        @DontInline
         private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
             Object value;
             synchronized (this) {

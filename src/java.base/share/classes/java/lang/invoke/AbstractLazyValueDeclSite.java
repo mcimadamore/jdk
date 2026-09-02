@@ -14,6 +14,7 @@ package java.lang.invoke;
 import java.util.Objects;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
@@ -46,13 +47,20 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
      * @return the lazy value
      */
     @ForceInline
+    @SuppressWarnings("unchecked")
     public final T getPlain(A argument) {
         Object value = this.value;
         if (value == null) {
-            value = Objects.requireNonNull(compute(argument));
-            this.value = value;
+            return getPlainSlow(argument);
         }
-        return cast(value);
+        return (T)value;
+    }
+
+    @DontInline
+    private T getPlainSlow(A argument) {
+        T value = Objects.requireNonNull(compute(argument));
+        this.value = value;
+        return value;
     }
 
     /**
@@ -61,15 +69,22 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
      * @return the lazy value
      */
     @ForceInline
+    @SuppressWarnings("unchecked")
     public final T getCas(A argument) {
         Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
         if (value == null) {
-            Object candidate = Objects.requireNonNull(compute(argument));
-            Object witness = UNSAFE.compareAndExchangeReference(
-                    this, VALUE_OFFSET, null, candidate);
-            value = witness == null ? candidate : witness;
+            return getCasSlow(argument);
         }
-        return cast(value);
+        return (T)value;
+    }
+
+    @SuppressWarnings("unchecked")
+    @DontInline
+    private T getCasSlow(A argument) {
+        Object candidate = Objects.requireNonNull(compute(argument));
+        Object witness = UNSAFE.compareAndExchangeReference(
+                this, VALUE_OFFSET, null, candidate);
+        return (T)(witness == null ? candidate : witness);
     }
 
     /**
@@ -78,29 +93,36 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
      * @return the lazy value
      */
     @ForceInline
+    @SuppressWarnings("unchecked")
     public final T getOnce(A argument) {
         Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
         if (value == null) {
-            synchronized (this) {
-                value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
-                if (value == null) {
-                    try {
-                        value = Objects.requireNonNull(compute(argument));
-                    } catch (Throwable ex) {
-                        value = new Failed(ex);
-                    }
-                    UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
+            return getOnceSlow(argument);
+        }
+        if (value instanceof Failed failed) {
+            throw uncaughtException(failed.exception);
+        }
+        return (T)value;
+    }
+
+    @SuppressWarnings("unchecked")
+    @DontInline
+    private T getOnceSlow(A argument) {
+        Object value;
+        synchronized (this) {
+            value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
+            if (value == null) {
+                try {
+                    value = Objects.requireNonNull(compute(argument));
+                } catch (Throwable ex) {
+                    value = new Failed(ex);
                 }
+                UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
             }
         }
         if (value instanceof Failed failed) {
             throw uncaughtException(failed.exception);
         }
-        return cast(value);
-    }
-
-    @SuppressWarnings("unchecked")
-    private T cast(Object value) {
         return (T) value;
     }
 

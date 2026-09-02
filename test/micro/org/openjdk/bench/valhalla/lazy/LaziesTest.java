@@ -17,6 +17,7 @@ package org.openjdk.bench.valhalla.lazy;
 
 import java.lang.LazyConstant;
 import java.lang.invoke.AbstractLazyValueDeclSite;
+import java.lang.invoke.AbstractLazyValueUseSite;
 import java.lang.invoke.LazyCache;
 import java.lang.invoke.LazyValueDeclSite;
 import java.lang.invoke.LazyValueUseSite;
@@ -24,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+
+import jdk.internal.misc.Unsafe;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -36,7 +39,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
 @BenchmarkMode(Mode.AverageTime)
-@Fork(jvmArgs = "--enable-preview")
+@Fork(jvmArgs = {
+        "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+        "--enable-preview"
+})
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Thread)
 public class LaziesTest {
@@ -60,7 +66,7 @@ public class LaziesTest {
     public Holder[] createAndAccess(Blackhole bh) {
         Holder[] holders = create();
         for (Holder holder : holders) {
-            bh.consume(holder.get());
+            bh.consume(holder.get().get(0).intValue());
         }
         return holders;
     }
@@ -70,7 +76,7 @@ public class LaziesTest {
         Holder[] holders = create();
         for (int access = 0; access < ACCESS_COUNT; access++) {
             for (Holder holder : holders) {
-                bh.consume(holder.get());
+                bh.consume(holder.get().get(access).intValue());
             }
         }
         return holders;
@@ -83,6 +89,18 @@ public class LaziesTest {
                 return new ControlHolder(seed);
             }
         },
+//        DIRECT_ERASED {
+//            @Override
+//            Holder create(int seed) {
+//                return new ErasedControlHolder(seed);
+//            }
+//        },
+//        DIRECT_UNSAFE {
+//            @Override
+//            Holder create(int seed) {
+//                return new UnsafeControlHolder(seed);
+//            }
+//        },
         LAZY_CACHE {
             @Override
             Holder create(int seed) {
@@ -93,6 +111,12 @@ public class LaziesTest {
             @Override
             Holder create(int seed) {
                 return new UseSiteHolder(seed);
+            }
+        },
+        LAZY_VALUE_USE_SITE_ABSTRACT {
+            @Override
+            Holder create(int seed) {
+                return new AbstractUseSiteHolder(seed);
             }
         },
         LAZY_VALUE_DECL_SITE {
@@ -169,6 +193,49 @@ public class LaziesTest {
         }
     }
 
+    public static final class ErasedControlHolder implements Holder {
+        private final int seed;
+        private Object value;
+
+        ErasedControlHolder(int seed) {
+            this.seed = seed;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public List<Integer> get() {
+            Object value = this.value;
+            if (value == null) {
+                this.value = value = computeValues(seed);
+            }
+            return (List<Integer>) value;
+        }
+    }
+
+    public static final class UnsafeControlHolder implements Holder {
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        private static final long VALUE_OFFSET =
+                UNSAFE.objectFieldOffset(UnsafeControlHolder.class, "value");
+
+        private final int seed;
+        private List<Integer> value;
+
+        UnsafeControlHolder(int seed) {
+            this.seed = seed;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public List<Integer> get() {
+            Object value = UNSAFE.getReference(this, VALUE_OFFSET);
+            if (value == null) {
+                value = computeValues(seed);
+                UNSAFE.putReference(this, VALUE_OFFSET, value);
+            }
+            return (List<Integer>) value;
+        }
+    }
+
     public static final class UseSiteHolder implements Holder {
         private final int seed;
         private final LazyValueUseSite<List<Integer>> value =
@@ -200,6 +267,25 @@ public class LaziesTest {
         @Override
         public List<Integer> get() {
             return value.get(this);
+        }
+
+        private List<Integer> compute() {
+            return computeValues(seed);
+        }
+    }
+
+    public static final class AbstractUseSiteHolder implements Holder {
+        private final int seed;
+        private final AbstractLazyValueUseSite<List<Integer>> value =
+                AbstractLazyValueUseSite.of(AbstractLazyValueUseSite.Policy.PLAIN);
+
+        AbstractUseSiteHolder(int seed) {
+            this.seed = seed;
+        }
+
+        @Override
+        public List<Integer> get() {
+            return value.get(this, AbstractUseSiteHolder::compute);
         }
 
         private List<Integer> compute() {
