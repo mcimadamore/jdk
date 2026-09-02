@@ -14,14 +14,29 @@ package java.lang.invoke;
 import java.util.Objects;
 import java.util.function.Function;
 
-import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 import jdk.internal.vm.annotation.TrustFinalFields;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
+import static java.lang.invoke.MethodType.methodType;
 
 final class LazyValueImpl {
+    private static final MethodHandle COMPUTE;
+    private static final MethodHandle COMPUTE_ONCE;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.Lookup.IMPL_LOOKUP;
+            COMPUTE = lookup.findStatic(LazyValueImpl.class, "compute",
+                    methodType(Object.class, Object.class, Function.class));
+            COMPUTE_ONCE = lookup.findStatic(LazyValueImpl.class, "computeOnce",
+                    methodType(Object.class, Object.class, Function.class));
+        } catch (ReflectiveOperationException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
     private LazyValueImpl() { }
 
     static <T> LazyValue<T> ofPlain() {
@@ -36,9 +51,43 @@ final class LazyValueImpl {
         return OfOnce.of();
     }
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static Object compute(Object argument, Function computer) {
+        return Objects.requireNonNull(computer.apply(argument));
+    }
+
+    private static Object computeOnce(Object argument, Function<?, ?> computer) {
+        try {
+            @SuppressWarnings({ "rawtypes", "unchecked" })
+            Object value = ((Function) computer).apply(argument);
+            return Objects.requireNonNull(value);
+        } catch (Throwable ex) {
+            return new Failed(ex);
+        }
+    }
+
+    private static MethodHandle updater(Class<?> holder, LazyValue.Policy policy) {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.Lookup.IMPL_LOOKUP;
+            VarHandle target = lookup.findVarHandle(holder, "value", Object.class);
+            target = MethodHandles.dropCoordinates(target, 1, Object.class, Function.class);
+            MethodHandle initializer = MethodHandles.dropArguments(
+                    policy == LazyValue.Policy.ONCE ? COMPUTE_ONCE : COMPUTE, 0, holder);
+            return switch (policy) {
+                case PLAIN -> MethodHandles.lazyUpdater(target, initializer, false);
+                case CAS -> MethodHandles.lazyUpdaterVolatile(target, initializer, true);
+                case ONCE -> MethodHandles.lazyUpdaterSynchronized(target, initializer, true);
+            };
+        } catch (ReflectiveOperationException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
     @TrustFinalFields
     static final class OfPlain<T> implements LazyValue<T> {
-        private T value;
+        private static final MethodHandle UPDATER = updater(OfPlain.class, LazyValue.Policy.PLAIN);
+
+        private Object value;
 
         static <T> LazyValue<T> of() {
             return new OfPlain<>();
@@ -47,23 +96,20 @@ final class LazyValueImpl {
         @Override
         @ForceInline
         public <A> T get(A argument, Function<? super A, ? extends T> computer) {
-            T value = this.value;
-            if (value != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                T value = (T) (Object) UPDATER.invokeExact(
+                        this, (Object) argument, (Function) computer);
                 return value;
+            } catch (Throwable ex) {
+                throw uncaughtException(ex);
             }
-            return getSlow(computer, argument);
-        }
-
-        private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
-            T value = Objects.requireNonNull(computer.apply(argument));
-            return this.value = value;
         }
     }
 
     @TrustFinalFields
     static final class OfCas<T> implements LazyValue<T> {
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfCas.class, "value");
+        private static final MethodHandle UPDATER = updater(OfCas.class, LazyValue.Policy.CAS);
 
         @Stable
         private Object value;
@@ -75,30 +121,20 @@ final class LazyValueImpl {
         @Override
         @ForceInline
         public <A> T get(A argument, Function<? super A, ? extends T> computer) {
-            Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
-            if (value != null) {
+            try {
                 @SuppressWarnings("unchecked")
-                T result = (T) value;
-                return result;
+                T value = (T) (Object) UPDATER.invokeExact(
+                        this, (Object) argument, (Function) computer);
+                return value;
+            } catch (Throwable ex) {
+                throw uncaughtException(ex);
             }
-            return getSlow(computer, argument);
-        }
-
-        private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
-            Object candidate = Objects.requireNonNull(computer.apply(argument));
-            Object witness = UNSAFE.compareAndExchangeReference(
-                    this, VALUE_OFFSET, null, candidate);
-            Object value = witness == null ? candidate : witness;
-            @SuppressWarnings("unchecked")
-            T result = (T) value;
-            return result;
         }
     }
 
     @TrustFinalFields
     static final class OfOnce<T> implements LazyValue<T> {
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfOnce.class, "value");
+        private static final MethodHandle UPDATER = updater(OfOnce.class, LazyValue.Policy.ONCE);
 
         @Stable
         private Object value;
@@ -110,39 +146,20 @@ final class LazyValueImpl {
         @Override
         @ForceInline
         public <A> T get(A argument, Function<? super A, ? extends T> computer) {
-            Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
-            if (value != null) {
+            try {
+                Object value = (Object) UPDATER.invokeExact(
+                        (Object) this, this, (Object) argument, (Function) computer);
                 if (value instanceof Failed failed) {
                     throw uncaughtException(failed.exception);
                 }
                 @SuppressWarnings("unchecked")
                 T result = (T) value;
                 return result;
+            } catch (Throwable ex) {
+                throw uncaughtException(ex);
             }
-            return getSlow(computer, argument);
         }
-
-        private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
-            Object value;
-            synchronized (this) {
-                value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
-                if (value == null) {
-                    try {
-                        value = Objects.requireNonNull(computer.apply(argument));
-                    } catch (Throwable ex) {
-                        value = new Failed(ex);
-                    }
-                    UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
-                }
-            }
-            if (value instanceof Failed failed) {
-                throw uncaughtException(failed.exception);
-            }
-            @SuppressWarnings("unchecked")
-            T result = (T) value;
-            return result;
-        }
-
-        private record Failed(Throwable exception) { }
     }
+
+    private record Failed(Throwable exception) { }
 }
