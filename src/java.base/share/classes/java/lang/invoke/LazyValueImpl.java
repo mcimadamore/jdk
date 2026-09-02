@@ -52,10 +52,12 @@ final class LazyValueImpl {
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
+    @ForceInline
     private static Object compute(Object argument, Function computer) {
         return Objects.requireNonNull(computer.apply(argument));
     }
 
+    @ForceInline
     private static Object computeOnce(Object argument, Function<?, ?> computer) {
         try {
             @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -95,12 +97,12 @@ final class LazyValueImpl {
 
         @Override
         @ForceInline
+        @SuppressWarnings("unchecked")
         public <A> T get(A argument, Function<? super A, ? extends T> computer) {
             try {
-                @SuppressWarnings("unchecked")
-                T value = (T) (Object) UPDATER.invokeExact(
-                        this, (Object) argument, (Function) computer);
-                return value;
+                Object value = (Object) UPDATER.invokeExact(
+                        this, argument, computer);
+                return (T)value;
             } catch (Throwable ex) {
                 throw uncaughtException(ex);
             }
