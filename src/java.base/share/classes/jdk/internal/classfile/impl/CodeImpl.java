@@ -32,7 +32,6 @@ import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.attribute.UnknownAttribute;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.*;
-import java.lang.invoke.LazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +42,7 @@ import java.util.function.Consumer;
 import static jdk.internal.classfile.impl.StackMapGenerator.*;
 import static jdk.internal.classfile.impl.RawBytecodeHelper.*;
 
-public final /*value*/ class CodeImpl
+public final class CodeImpl
         extends BoundAttribute.BoundCodeAttribute
         implements LabelContext {
 
@@ -70,6 +69,9 @@ public final /*value*/ class CodeImpl
             }
         }
     }
+
+    List<ExceptionCatch> exceptionTable;
+    List<Attribute<?>> attributes;
 
     // Inflated for iteration
     LabelImpl[] labels;
@@ -131,16 +133,12 @@ public final /*value*/ class CodeImpl
 
     // CodeAttribute
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, CodeImpl::compute_attributes_134);
-    }
-
-    private List<Attribute<?>> compute_attributes_134() {
-        return BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
+        if (attributes == null) {
+            attributes = BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
+        }
+        return attributes;
     }
 
     @Override
@@ -191,31 +189,27 @@ public final /*value*/ class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyValue< List<ExceptionCatch>> exceptionTable =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return exceptionTable.get(this, CodeImpl::compute_exceptionHandlers_186);
-    }
-
-    private List<ExceptionCatch> compute_exceptionHandlers_186() {
-        inflateMetadata();
-        var exceptionTable = new ArrayList<ExceptionCatch>(exceptionHandlerCnt);
-        iterateExceptionHandlers(new ExceptionHandlerAction() {
-            @Override
-            public void accept(int s, int e, int h, int c) {
-                ClassEntry catchTypeEntry = c == 0
-                                                         ? null
-                                                         : constantPool().entryByIndex(c, ClassEntry.class);
-                exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
-            }
-        });
-        return Collections.unmodifiableList(exceptionTable);
+        if (exceptionTable == null) {
+            inflateMetadata();
+            exceptionTable = new ArrayList<>(exceptionHandlerCnt);
+            iterateExceptionHandlers(new ExceptionHandlerAction() {
+                @Override
+                public void accept(int s, int e, int h, int c) {
+                    ClassEntry catchTypeEntry = c == 0
+                                                             ? null
+                                                             : constantPool().entryByIndex(c, ClassEntry.class);
+                    exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
+                }
+            });
+            exceptionTable = Collections.unmodifiableList(exceptionTable);
+        }
+        return exceptionTable;
     }
 
     private void generateUserAttributes(Consumer<? super CodeElement> consumer) {
-        for (var attr : attributes()) {
+        for (var attr : attributes) {
             if (attr instanceof CustomAttribute || attr instanceof UnknownAttribute) {
                 consumer.accept((CodeElement) attr);
             }

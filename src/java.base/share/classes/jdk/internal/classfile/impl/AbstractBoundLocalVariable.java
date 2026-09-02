@@ -26,12 +26,13 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyValue;
 
-public abstract /*value*/ class AbstractBoundLocalVariable
+public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;
+    private Utf8Entry nameEntry;
+    private Utf8Entry secondaryEntry;
 
     public AbstractBoundLocalVariable(CodeImpl code, int offset) {
         this.code = code;
@@ -42,34 +43,20 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyValue< Utf8Entry> nameEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     public Utf8Entry name() {
-
-        return nameEntry.get(this, AbstractBoundLocalVariable::compute_name_43);
-
-    }
-
-    private Utf8Entry compute_name_43() {
-        return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
+        if (nameEntry == null)
+            nameEntry = code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
+        return nameEntry;
     }
 
     protected int secondaryIndex() {
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyValue< Utf8Entry> secondaryEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     protected Utf8Entry secondaryEntry() {
-
-        return secondaryEntry.get(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
-
-    }
-
-    private Utf8Entry compute_secondaryEntry_51() {
-        return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
+        if (secondaryEntry == null)
+            secondaryEntry = code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
+        return secondaryEntry;
     }
 
     public Label startScope() {

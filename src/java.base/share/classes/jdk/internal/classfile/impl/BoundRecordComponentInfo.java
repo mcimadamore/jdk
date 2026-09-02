@@ -28,14 +28,14 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassReader;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyValue;
 import java.util.List;
 
-public final /*value*/ class BoundRecordComponentInfo
+public final class BoundRecordComponentInfo
         implements RecordComponentInfo {
 
     private final ClassReader reader;
     private final int startPos, attributesPos;
+    private List<Attribute<?>> attributes;
 
     public BoundRecordComponentInfo(ClassReader reader, int startPos) {
         this.reader = reader;
@@ -53,15 +53,11 @@ public final /*value*/ class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, BoundRecordComponentInfo::compute_attributes_56);
-    }
-
-    private List<Attribute<?>> compute_attributes_56() {
-        return BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
+        if (attributes == null) {
+            attributes = BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
+        }
+        return attributes;
     }
 }

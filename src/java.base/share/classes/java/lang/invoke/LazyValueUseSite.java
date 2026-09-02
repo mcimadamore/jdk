@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  *
  * @param <T> the value type
  */
-public interface LazyValue<T> {
+public interface LazyValueUseSite<T> {
     /**
      * Lazy-update policy.
      */
@@ -28,43 +28,27 @@ public interface LazyValue<T> {
         /** Computations and publications use plain accesses and may race. */
         PLAIN() {
             @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofPlain();
-            }
-
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofPlain(size);
+            <T> LazyValueUseSite<T> make() {
+                return LazyValueUseSiteImpl.ofPlain();
             }
         },
         /** Computations may race, but only one successful outcome is published. */
         CAS() {
             @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofCas();
-            }
-
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofCas(size);
+            <T> LazyValueUseSite<T> make() {
+                return LazyValueUseSiteImpl.ofCas();
             }
         },
         /** One outcome is computed under synchronization and is then remembered. */
         ONCE() {
             @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofOnce();
-            }
-
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofOnce(size);
+            <T> LazyValueUseSite<T> make() {
+                return LazyValueUseSiteImpl.ofOnce();
             }
         };
 
-        abstract <T> LazyValue<T> make();
+        abstract <T> LazyValueUseSite<T> make();
 
-        abstract <T> LazyArray<T> makeArray(int size);
     }
 
     /**
@@ -94,7 +78,7 @@ public interface LazyValue<T> {
      * @param <T> the value type
      * @return the lazy value
      */
-    static <T> LazyValue<T> of() {
+    static <T> LazyValueUseSite<T> of() {
         return Policy.ONCE.make();
     }
 
@@ -105,7 +89,7 @@ public interface LazyValue<T> {
      * @param <T> the value type
      * @return the lazy value
      */
-    static <T> LazyValue<T> of(Policy policy) {
+    static <T> LazyValueUseSite<T> of(Policy policy) {
         Objects.requireNonNull(policy);
         return policy.make();
     }

@@ -28,7 +28,6 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.AttributedElement;
 import java.lang.classfile.ClassFileElement;
 import java.lang.classfile.CompoundElement;
-import java.lang.invoke.LazyValue;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -39,6 +38,7 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         implements CompoundElement<E>, AttributedElement
         permits BufferedCodeBuilder.Model, BufferedFieldBuilder.Model, BufferedMethodBuilder.Model {
     final List<E> elements;
+    private List<Attribute<?>> attributes;
 
     public AbstractUnboundModel(List<E> elements) {
         this.elements = Collections.unmodifiableList(elements);
@@ -59,21 +59,16 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, model -> model.compute_attributes_62());
-    }
-
-    private List<Attribute<?>> compute_attributes_62() {
-        return elements.stream()
-                       .<Attribute<?>>mapMulti((e, sink) -> {
-                           if (e instanceof Attribute<?> attr) {
-                               sink.accept(attr);
-                           }
-                       })
-                       .toList();
+        if (attributes == null)
+            attributes = elements.stream()
+                                 .<Attribute<?>>mapMulti((e, sink) -> {
+                                     if (e instanceof Attribute<?> attr) {
+                                         sink.accept(attr);
+                                     }
+                                 })
+                                 .toList();
+        return attributes;
     }
 }

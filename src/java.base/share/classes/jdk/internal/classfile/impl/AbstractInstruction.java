@@ -31,7 +31,6 @@ import java.lang.classfile.TypeKind;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
 import java.lang.constant.ConstantDesc;
-import java.lang.invoke.LazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -85,7 +84,7 @@ public abstract sealed class AbstractInstruction
     @Override
     public abstract void writeTo(DirectCodeBuilder writer);
 
-    public abstract static sealed /*value*/ class BoundInstruction extends AbstractInstruction {
+    public abstract static sealed class BoundInstruction extends AbstractInstruction {
         final CodeImpl code;
         final int pos;
 
@@ -106,12 +105,13 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final /* value */ class BoundLoadInstruction
+    public static final class BoundLoadInstruction
             extends BoundInstruction implements LoadInstruction {
 
         public BoundLoadInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
+
 
         @Override
         public TypeKind typeKind() {
@@ -134,7 +134,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundStoreInstruction
+    public static final class BoundStoreInstruction
             extends BoundInstruction implements StoreInstruction {
 
         public BoundStoreInstruction(Opcode op, CodeImpl code, int pos) {
@@ -162,7 +162,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundIncrementInstruction
+    public static final class BoundIncrementInstruction
             extends BoundInstruction implements IncrementInstruction {
 
         public BoundIncrementInstruction(Opcode op, CodeImpl code, int pos) {
@@ -186,7 +186,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundBranchInstruction
+    public static final class BoundBranchInstruction
             extends BoundInstruction implements BranchInstruction {
 
         public BoundBranchInstruction(Opcode op, CodeImpl code, int pos) {
@@ -223,7 +223,7 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final /* value */ class BoundLookupSwitchInstruction
+    public static final class BoundLookupSwitchInstruction
             extends BoundInstruction implements LookupSwitchInstruction {
 
         // will always need size, cache everything to there
@@ -276,7 +276,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundTableSwitchInstruction
+    public static final class BoundTableSwitchInstruction
             extends BoundInstruction implements TableSwitchInstruction {
 
         private final int afterPad;
@@ -345,23 +345,20 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundFieldInstruction
+    public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
+
+        private FieldRefEntry fieldEntry;
 
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
-        private final LazyValue< FieldRefEntry> fieldEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public FieldRefEntry field() {
-            return fieldEntry.get(this, BoundFieldInstruction::compute_field_356);
-        }
-
-        private FieldRefEntry compute_field_356() {
-            return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
+            if (fieldEntry == null)
+                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
+            return fieldEntry;
         }
 
         @Override
@@ -379,23 +376,19 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundInvokeInstruction
+    public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
+        MemberRefEntry methodEntry;
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInstruction::compute_method_383);
-        }
-
-        private MemberRefEntry compute_method_383() {
-            return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
+            if (methodEntry == null)
+                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
+            return methodEntry;
         }
 
         @Override
@@ -423,23 +416,19 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundInvokeInterfaceInstruction
+    public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
+        InterfaceMethodRefEntry methodEntry;
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInterfaceInstruction::compute_method_420);
-        }
-
-        private MemberRefEntry compute_method_420() {
-            return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
+            if (methodEntry == null)
+                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
+            return methodEntry;
         }
 
         @Override
@@ -467,23 +456,19 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundInvokeDynamicInstruction
+    public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
+        InvokeDynamicEntry indyEntry;
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
-        private final LazyValue< InvokeDynamicEntry> indyEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return indyEntry.get(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
-        }
-
-        private InvokeDynamicEntry compute_invokedynamic_457() {
-            return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
+            if (indyEntry == null)
+                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
+            return indyEntry;
         }
 
         @Override
@@ -501,23 +486,19 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundNewObjectInstruction
+    public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
+        ClassEntry classEntry;
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyValue< ClassEntry> classEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public ClassEntry className() {
-            return classEntry.get(this, BoundNewObjectInstruction::compute_className_484);
-        }
-
-        private ClassEntry compute_className_484() {
-            return code.classReader.readEntry(pos + 1, ClassEntry.class);
+            if (classEntry == null)
+                classEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
+            return classEntry;
         }
 
         @Override
@@ -535,7 +516,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundNewPrimitiveArrayInstruction
+    public static final class BoundNewPrimitiveArrayInstruction
             extends BoundInstruction implements NewPrimitiveArrayInstruction {
 
         public BoundNewPrimitiveArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -554,7 +535,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundNewReferenceArrayInstruction
+    public static final class BoundNewReferenceArrayInstruction
             extends BoundInstruction implements NewReferenceArrayInstruction {
 
         public BoundNewReferenceArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -580,7 +561,7 @@ public abstract sealed class AbstractInstruction
         }
     }
 
-    public static final /* value */ class BoundNewMultidimensionalArrayInstruction
+    public static final class BoundNewMultidimensionalArrayInstruction
             extends BoundInstruction implements NewMultiArrayInstruction {
 
         public BoundNewMultidimensionalArrayInstruction(Opcode op, CodeImpl code, int pos) {
@@ -612,23 +593,19 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /*value*/ class BoundTypeCheckInstruction
+    public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
+        ClassEntry typeEntry;
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
-        private final LazyValue< ClassEntry> typeEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
-
         @Override
         public ClassEntry type() {
-            return typeEntry.get(this, BoundTypeCheckInstruction::compute_type_588);
-        }
-
-        private ClassEntry compute_type_588() {
-            return code.classReader.readEntry(pos + 1, ClassEntry.class);
+            if (typeEntry == null)
+                typeEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
+            return typeEntry;
         }
 
         @Override
@@ -646,7 +623,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundArgumentConstantInstruction
+    public static final class BoundArgumentConstantInstruction
             extends BoundInstruction implements ConstantInstruction.ArgumentConstantInstruction {
 
         public BoundArgumentConstantInstruction(Opcode op, CodeImpl code, int pos) {
@@ -669,7 +646,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundLoadConstantInstruction
+    public static final class BoundLoadConstantInstruction
             extends BoundInstruction implements ConstantInstruction.LoadConstantInstruction {
 
         public BoundLoadConstantInstruction(Opcode op, CodeImpl code, int pos) {
@@ -705,7 +682,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundJsrInstruction
+    public static final class BoundJsrInstruction
             extends BoundInstruction implements DiscontinuedInstruction.JsrInstruction {
 
         public BoundJsrInstruction(Opcode op, CodeImpl code, int pos) {
@@ -735,7 +712,7 @@ public abstract sealed class AbstractInstruction
 
     }
 
-    public static final /* value */ class BoundRetInstruction
+    public static final class BoundRetInstruction
             extends BoundInstruction implements DiscontinuedInstruction.RetInstruction {
 
         public BoundRetInstruction(Opcode op, CodeImpl code, int pos) {

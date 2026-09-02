@@ -27,18 +27,18 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.MethodTypeDesc;
-import java.lang.invoke.LazyValue;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public final /*value*/ class MethodImpl
+public final class MethodImpl
         extends AbstractElement
         implements MethodModel, MethodInfo, Util.Writable {
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
+    private List<Attribute<?>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReaderImpl reader, int startPos, int endPos, int attrStart) {
@@ -88,16 +88,12 @@ public final /*value*/ class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, MethodImpl::compute_attributes_91);
-    }
-
-    private List<Attribute<?>> compute_attributes_91() {
-        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        if (attributes == null) {
+            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        }
+        return attributes;
     }
 
     @Override

@@ -21,26 +21,26 @@ import jdk.internal.vm.annotation.TrustFinalFields;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 
-final class LazyValueImpl {
-    private LazyValueImpl() { }
+final class LazyValueUseSiteImpl {
+    private LazyValueUseSiteImpl() { }
 
-    static <T> LazyValue<T> ofPlain() {
+    static <T> LazyValueUseSite<T> ofPlain() {
         return OfPlain.of();
     }
 
-    static <T> LazyValue<T> ofCas() {
+    static <T> LazyValueUseSite<T> ofCas() {
         return OfCas.of();
     }
 
-    static <T> LazyValue<T> ofOnce() {
+    static <T> LazyValueUseSite<T> ofOnce() {
         return OfOnce.of();
     }
 
     @TrustFinalFields
-    static final class OfPlain<T> implements LazyValue<T> {
+    static final class OfPlain<T> implements LazyValueUseSite<T> {
         private T value;
 
-        static <T> LazyValue<T> of() {
+        static <T> LazyValueUseSite<T> of() {
             return new OfPlain<>();
         }
 
@@ -61,14 +61,14 @@ final class LazyValueImpl {
     }
 
     @TrustFinalFields
-    static final class OfCas<T> implements LazyValue<T> {
+    static final class OfCas<T> implements LazyValueUseSite<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfCas.class, "value");
 
         @Stable
         private Object value;
 
-        static <T> LazyValue<T> of() {
+        static <T> LazyValueUseSite<T> of() {
             return new OfCas<>();
         }
 
@@ -96,14 +96,14 @@ final class LazyValueImpl {
     }
 
     @TrustFinalFields
-    static final class OfOnce<T> implements LazyValue<T> {
+    static final class OfOnce<T> implements LazyValueUseSite<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfOnce.class, "value");
 
         @Stable
         private Object value;
 
-        static <T> LazyValue<T> of() {
+        static <T> LazyValueUseSite<T> of() {
             return new OfOnce<>();
         }
 

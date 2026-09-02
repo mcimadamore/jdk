@@ -32,17 +32,17 @@ import java.lang.classfile.FieldElement;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.reflect.AccessFlag;
-import java.lang.invoke.LazyValue;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public final /*value*/ class FieldImpl
+public final class FieldImpl
         extends AbstractElement
         implements FieldModel, WritableField {
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
+    private List<Attribute<?>> attributes;
 
     public FieldImpl(ClassReaderImpl reader, int startPos, int endPos, int attributesPos) {
         this.reader = reader;
@@ -74,9 +74,6 @@ public final /*value*/ class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public int fieldFlags() {
         return reader.readU2(startPos);
@@ -84,11 +81,10 @@ public final /*value*/ class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, FieldImpl::compute_attributes_77);
-    }
-
-    private List<Attribute<?>> compute_attributes_77() {
-        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        if (attributes == null) {
+            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        }
+        return attributes;
     }
 
     @Override

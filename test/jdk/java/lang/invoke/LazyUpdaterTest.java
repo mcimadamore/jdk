@@ -23,12 +23,12 @@
 
 /*
  * @test
- * @summary Tests lazy updater method handle combinators and lazy values
+ * @summary Tests lazy updater method handle combinators and convenience caches
  * @run main LazyUpdaterTest
  */
 
-import java.lang.invoke.LazyArray;
-import java.lang.invoke.LazyValue;
+import java.lang.invoke.LazyArrayCache;
+import java.lang.invoke.LazyCache;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -38,8 +38,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class LazyUpdaterTest {
     static final class Box {
@@ -48,6 +46,10 @@ public class LazyUpdaterTest {
         private volatile Object locked;
         private int number;
 
+        private String cachePlain;
+        private volatile String cacheAtomic;
+        private volatile String cacheLocked;
+        private volatile String retry;
     }
 
     private static Object plainValue(Box box) {
@@ -76,7 +78,7 @@ public class LazyUpdaterTest {
 
     public static void main(String[] args) throws Throwable {
         testMethodHandleCombinators();
-        testLazyValues();
+        testConvenienceCaches();
         testVolatileRace();
         testSynchronizedComputation();
     }
@@ -134,82 +136,77 @@ public class LazyUpdaterTest {
         });
     }
 
-    private static void testLazyValues() {
-        Function<Box, String> plainComputer = box -> "plain";
-        Function<Box, String> atomicComputer = box -> "atomic";
-        Function<Box, String> onceComputer = box -> "once";
-        LazyValue< String> plain = LazyValue.of(LazyValue.Policy.PLAIN);
-        LazyValue< String> atomic = LazyValue.of(LazyValue.Policy.CAS);
-        LazyValue< String> once = LazyValue.of(LazyValue.Policy.ONCE);
+    private static void testConvenienceCaches() {
+        LazyCache<Box, String> plain = LazyCache.ofField(
+                Box.class, "cachePlain", box -> "cache-plain");
+        LazyCache<Box, String> atomic = LazyCache.ofField(
+                Box.class, "cacheAtomic", box -> "cache-atomic");
+        LazyCache<Box, String> locked = LazyCache.ofField(
+                Box.class, "cacheLocked", box -> "cache-locked");
+        LazyCache<Box, Integer> number = LazyCache.ofField(
+                Box.class, "number", receiver -> 42);
+
         Box box = new Box();
-        assertEquals("plain", plain.get(box, plainComputer));
-        assertEquals("atomic", atomic.get(box, atomicComputer));
-        assertEquals("once", once.get(box, onceComputer));
+        assertEquals("cache-plain", plain.get(box));
+        assertEquals("cache-atomic", atomic.getVolatile(box));
+        assertEquals("cache-locked", locked.getSynchronized(box, box));
+        assertEquals(42, number.getVolatile(box));
+        assertEquals(42, box.number);
 
         AtomicInteger attempts = new AtomicInteger();
-        Function<Box, String> retryComputer = receiver -> {
+        LazyCache<Box, String> retry = LazyCache.ofField(Box.class, "retry", receiver -> {
             if (attempts.getAndIncrement() == 0) {
                 throw new TestException();
             }
             return "retried";
-        };
-        LazyValue< String> retry = LazyValue.of(LazyValue.Policy.CAS);
-        expectThrows(TestException.class, () -> retry.get(box, retryComputer));
-        assertEquals("retried", retry.get(box, retryComputer));
+        });
+        expectThrows(TestException.class, () -> retry.getVolatile(box));
+        assertEquals("retried", retry.getVolatile(box));
         assertEquals(2, attempts.get());
 
-        AtomicInteger nullAttempts = new AtomicInteger();
-        Function<Box, String> nullComputer = receiver -> {
-            nullAttempts.incrementAndGet();
-            return null;
-        };
-        LazyValue< String> nullResult = LazyValue.of(LazyValue.Policy.CAS);
-        expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
-        expectThrows(NullPointerException.class, () -> nullResult.get(box, nullComputer));
-        assertEquals(2, nullAttempts.get());
-
-        LazyArray< Integer> array = LazyArray.of(LazyValue.Policy.CAS, 3);
-        assertEquals(3, array.get(2, index -> index + 1));
-
-        Supplier<String> supplier = Supplier.ofLazy(() -> "supplier");
-        assertEquals("supplier", supplier.get());
+        LazyArrayCache<int[], Integer> array = LazyArrayCache.of(
+                int[].class, (values, index) -> index + 1);
+        int[] values = new int[3];
+        assertEquals(3, array.getVolatile(values, 2));
+        assertEquals(3, values[2]);
     }
 
     private static void testVolatileRace() throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
         AtomicInteger computations = new AtomicInteger();
-        Function<Box, String> computer = box -> {
+        LazyCache<Box, String> cache = LazyCache.ofField(
+                Box.class, "cacheAtomic", box -> {
                     int id = computations.incrementAndGet();
                     await(barrier);
                     return "candidate-" + id;
-                };
-        LazyValue< String> cache = LazyValue.of(LazyValue.Policy.CAS);
+                });
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-            Future<String> first = executor.submit(() -> cache.get(box, computer));
-            Future<String> second = executor.submit(() -> cache.get(box, computer));
+            Future<String> first = executor.submit(() -> cache.getVolatile(box));
+            Future<String> second = executor.submit(() -> cache.getVolatile(box));
             String firstValue = first.get();
             String secondValue = second.get();
             assertEquals(firstValue, secondValue);
+            assertEquals(firstValue, box.cacheAtomic);
             assertEquals(2, computations.get());
         }
     }
 
     private static void testSynchronizedComputation() throws Exception {
         AtomicInteger computations = new AtomicInteger();
-        Function<Box, String> computer = box -> {
+        LazyCache<Box, String> cache = LazyCache.ofField(
+                Box.class, "cacheLocked", box -> {
                     computations.incrementAndGet();
                     return "once";
-                };
-        LazyValue< String> cache = LazyValue.of(LazyValue.Policy.ONCE);
+                });
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(4)) {
             @SuppressWarnings("unchecked")
             Future<String>[] futures = new Future[8];
             for (int i = 0; i < futures.length; i++) {
-                futures[i] = executor.submit(() -> cache.get(box, computer));
+                futures[i] = executor.submit(() -> cache.getSynchronized(box, box));
             }
             for (Future<String> future : futures) {
                 assertEquals("once", future.get());

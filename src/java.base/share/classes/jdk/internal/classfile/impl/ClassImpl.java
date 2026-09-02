@@ -28,7 +28,6 @@ import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
-import java.lang.invoke.LazyValue;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -36,13 +35,15 @@ import java.util.function.Consumer;
 
 import jdk.internal.access.SharedSecrets;
 
-public final /*value*/ class ClassImpl
+public final class ClassImpl
         extends AbstractElement
         implements ClassModel {
     final ClassReaderImpl reader;
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
+    private List<Attribute<?>> attributes;
+    private List<ClassEntry> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -107,36 +108,28 @@ public final /*value*/ class ClassImpl
         return reader.superclassEntry();
     }
 
-    private final LazyValue< List<ClassEntry>> interfaces =
-            LazyValue.of(LazyValue.Policy.PLAIN);
-
     @Override
     public List<ClassEntry> interfaces() {
-        return interfaces.get(this, ClassImpl::compute_interfaces_110);
-    }
-
-    private List<ClassEntry> compute_interfaces_110() {
-        int pos = reader.thisClassPos() + 4;
-        int cnt = reader.readU2(pos);
-        pos += 2;
-        var arr = new Object[cnt];
-        for (int i = 0; i < cnt; ++i) {
-            arr[i] = reader.readEntry(pos, ClassEntry.class);
+        if (interfaces == null) {
+            int pos = reader.thisClassPos() + 4;
+            int cnt = reader.readU2(pos);
             pos += 2;
+            var arr = new Object[cnt];
+            for (int i = 0; i < cnt; ++i) {
+                arr[i] = reader.readEntry(pos, ClassEntry.class);
+                pos += 2;
+            }
+            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
         }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+        return interfaces;
     }
-
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, ClassImpl::compute_attributes_123);
-    }
-
-    private List<Attribute<?>> compute_attributes_123() {
-        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        if (attributes == null) {
+            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        }
+        return attributes;
     }
 
     // ClassModel
