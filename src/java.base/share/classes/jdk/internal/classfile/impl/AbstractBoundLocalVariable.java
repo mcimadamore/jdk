@@ -42,12 +42,17 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyValue< Utf8Entry> nameEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> nameEntry =
+            new LazyValue<>() {
+                @Override
+                protected Utf8Entry compute(AbstractBoundLocalVariable receiver) {
+                    return receiver.compute_name_43();
+                }
+            };
 
     public Utf8Entry name() {
 
-        return nameEntry.get(this, AbstractBoundLocalVariable::compute_name_43);
+        return nameEntry.getPlain(this);
 
     }
 
@@ -59,12 +64,17 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyValue< Utf8Entry> secondaryEntry =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<AbstractBoundLocalVariable, Utf8Entry> secondaryEntry =
+            new LazyValue<>() {
+                @Override
+                protected Utf8Entry compute(AbstractBoundLocalVariable receiver) {
+                    return receiver.compute_secondaryEntry_51();
+                }
+            };
 
     protected Utf8Entry secondaryEntry() {
 
-        return secondaryEntry.get(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
+        return secondaryEntry.getPlain(this);
 
     }
 

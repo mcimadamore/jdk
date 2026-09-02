@@ -131,12 +131,17 @@ public final /*value*/ class CodeImpl
 
     // CodeAttribute
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<CodeImpl, List<Attribute<?>>> attributes =
+            new LazyValue<>() {
+                @Override
+                protected List<Attribute<?>> compute(CodeImpl receiver) {
+                    return receiver.compute_attributes_134();
+                }
+            };
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, CodeImpl::compute_attributes_134);
+        return attributes.getPlain(this);
     }
 
     private List<Attribute<?>> compute_attributes_134() {
@@ -191,12 +196,17 @@ public final /*value*/ class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyValue< List<ExceptionCatch>> exceptionTable =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<CodeImpl, List<ExceptionCatch>> exceptionTable =
+            new LazyValue<>() {
+                @Override
+                protected List<ExceptionCatch> compute(CodeImpl receiver) {
+                    return receiver.compute_exceptionHandlers_186();
+                }
+            };
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        return exceptionTable.get(this, CodeImpl::compute_exceptionHandlers_186);
+        return exceptionTable.getPlain(this);
     }
 
     private List<ExceptionCatch> compute_exceptionHandlers_186() {

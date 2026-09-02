@@ -12,101 +12,97 @@
 package java.lang.invoke;
 
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Supplier;
+
+import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.ForceInline;
+
+import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 
 /**
  * A value computed lazily from an argument supplied at access time.
  *
+ * @param <A> the computing-function argument type
  * @param <T> the value type
  */
-public interface LazyValue<T> {
+public abstract class LazyValue<A, T> {
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(LazyValue.class, "value");
+
+    private Object value;
+
+    /** Creates an uninitialized lazy value. */
+    protected LazyValue() { }
+
     /**
-     * Lazy-update policy.
+     * Computes the value from {@code argument}.
+     * @param argument the computing argument
+     * @return the computed value
      */
-    enum Policy {
-        /** Computations and publications use plain accesses and may race. */
-        PLAIN() {
-            @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofPlain();
-            }
+    protected abstract T compute(A argument);
 
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofPlain(size);
-            }
-        },
-        /** Computations may race, but only one successful outcome is published. */
-        CAS() {
-            @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofCas();
-            }
-
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofCas(size);
-            }
-        },
-        /** One outcome is computed under synchronization and is then remembered. */
-        ONCE() {
-            @Override
-            <T> LazyValue<T> make() {
-                return LazyValueImpl.ofOnce();
-            }
-
-            @Override
-            <T> LazyArray<T> makeArray(int size) {
-                return LazyArrayImpl.ofOnce(size);
-            }
-        };
-
-        abstract <T> LazyValue<T> make();
-
-        abstract <T> LazyArray<T> makeArray(int size);
+    /**
+     * Returns the value, computing and publishing it with plain accesses when needed.
+     * @param argument the computing argument
+     * @return the lazy value
+     */
+    @ForceInline
+    public final T getPlain(A argument) {
+        Object value = this.value;
+        if (value == null) {
+            value = Objects.requireNonNull(compute(argument));
+            this.value = value;
+        }
+        return cast(value);
     }
 
     /**
-     * Returns the value, computing it with {@code computer} from {@code argument} when needed.
-     * Subsequent arguments are ignored after an outcome is published.
-     *
-     * @param computer the computing function
-     * @param argument the computing-function argument
-     * @param <A> the computing-function argument type
+     * Returns the value, allowing computations to race but publishing one outcome.
+     * @param argument the computing argument
      * @return the lazy value
      */
-    <A> T get(A argument, Function<? super A, ? extends T> computer);
-
-    /**
-     * Returns the value, computing it with {@code supplier} when needed.
-     *
-     * @param supplier the computing supplier
-     * @return the lazy value
-     */
-    default T get(Supplier<? extends T> supplier) {
-        return get(null, ignored -> supplier.get());
+    @ForceInline
+    public final T getCas(A argument) {
+        Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
+        if (value == null) {
+            Object candidate = Objects.requireNonNull(compute(argument));
+            Object witness = UNSAFE.compareAndExchangeReference(
+                    this, VALUE_OFFSET, null, candidate);
+            value = witness == null ? candidate : witness;
+        }
+        return cast(value);
     }
 
     /**
-     * Creates a lazy value with the {@link Policy#ONCE} policy.
-     *
-     * @param <T> the value type
+     * Returns the value, computing one successful or failed outcome.
+     * @param argument the computing argument
      * @return the lazy value
      */
-    static <T> LazyValue<T> of() {
-        return Policy.ONCE.make();
+    @ForceInline
+    public final T getOnce(A argument) {
+        Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
+        if (value == null) {
+            synchronized (this) {
+                value = UNSAFE.getReferenceVolatile(this, VALUE_OFFSET);
+                if (value == null) {
+                    try {
+                        value = Objects.requireNonNull(compute(argument));
+                    } catch (Throwable ex) {
+                        value = new Failed(ex);
+                    }
+                    UNSAFE.putReferenceVolatile(this, VALUE_OFFSET, value);
+                }
+            }
+        }
+        if (value instanceof Failed failed) {
+            throw uncaughtException(failed.exception);
+        }
+        return cast(value);
     }
 
-    /**
-     * Creates a lazy value with the supplied policy.
-     *
-     * @param policy the lazy-update policy
-     * @param <T> the value type
-     * @return the lazy value
-     */
-    static <T> LazyValue<T> of(Policy policy) {
-        Objects.requireNonNull(policy);
-        return policy.make();
+    @SuppressWarnings("unchecked")
+    private T cast(Object value) {
+        return (T) value;
     }
+
+    private record Failed(Throwable exception) { }
 }

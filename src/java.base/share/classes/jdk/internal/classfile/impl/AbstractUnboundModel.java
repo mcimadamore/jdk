@@ -59,12 +59,17 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<AbstractUnboundModel<E>, List<Attribute<?>>> attributes =
+            new LazyValue<>() {
+                @Override
+                protected List<Attribute<?>> compute(AbstractUnboundModel<E> receiver) {
+                    return receiver.compute_attributes_62();
+                }
+            };
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, model -> model.compute_attributes_62());
+        return attributes.getPlain(this);
     }
 
     private List<Attribute<?>> compute_attributes_62() {

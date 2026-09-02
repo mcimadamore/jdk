@@ -12,77 +12,111 @@
 package java.lang.invoke;
 
 import java.util.Objects;
-import java.util.function.IntFunction;
+
+import jdk.internal.misc.Unsafe;
+import jdk.internal.vm.annotation.ForceInline;
+
+import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 
 /**
  * An array of independently lazily computed values.
  *
+ * @param <A> the computing-function argument type
  * @param <T> the element type
  */
-public interface LazyArray<T> {
-    /**
-     * A function which computes an array element.
-     *
-     * @param <A> the computing-function argument type
-     * @param <T> the element type
-     */
-    @FunctionalInterface
-    interface Computer<A, T> {
-        /**
-         * Computes an element.
-         *
-         * @param argument the computing-function argument
-         * @param index the element index
-         * @return the computed element
-         */
-        T compute(A argument, int index);
-    }
+public abstract class LazyArray<A, T> {
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static final long ARRAY_BASE = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+    private static final int ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+
+    private final Object[] values;
 
     /**
-     * Returns the value at {@code index}, computing it with {@code computer} from {@code argument} when needed.
-     * Subsequent arguments are ignored after an outcome is published for that index.
-     *
-     * @param computer the element computing function
-     * @param argument the computing-function argument
-     * @param index the element index
-     * @param <A> the computing-function argument type
-     * @return the lazy value
-     */
-    <A> T get(A argument, int index, Computer<? super A, ? extends T> computer);
-
-    /**
-     * Returns the value at {@code index}, computing it with {@code computer} when needed.
-     *
-     * @param index the element index
-     * @param computer the element computing function
-     * @return the lazy value
-     */
-    default T get(int index, IntFunction<? extends T> computer) {
-        return get(null, index, (ignored, i) -> computer.apply(i));
-    }
-
-    /**
-     * Creates a lazy array with the {@link LazyValue.Policy#ONCE} policy.
-     *
+     * Creates an uninitialized lazy array with {@code size} elements.
      * @param size the array size
-     * @param <T> the element type
-     * @return the lazy array
      */
-    static <T> LazyArray<T> of(int size) {
-        return LazyArray.<T>of(LazyValue.Policy.ONCE, size);
+    protected LazyArray(int size) {
+        if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
+        values = new Object[size];
     }
 
     /**
-     * Creates a lazy array with the supplied policy.
-     *
-     * @param policy the lazy-update policy
-     * @param size the array size
-     * @param <T> the element type
-     * @return the lazy array
+     * Computes the element at {@code index} from {@code argument}.
+     * @param argument the computing argument
+     * @param index the element index
+     * @return the computed element
      */
-    static <T> LazyArray<T> of(LazyValue.Policy policy, int size) {
-        Objects.requireNonNull(policy);
-        return policy.makeArray(size);
+    protected abstract T compute(A argument, int index);
+
+    /**
+     * Returns an element, computing and publishing it with plain accesses when needed.
+     * @param argument the computing argument
+     * @param index the element index
+     * @return the lazy element
+     */
+    @ForceInline
+    public final T getPlain(A argument, int index) {
+        Object value = values[index];
+        if (value == null) {
+            value = Objects.requireNonNull(compute(argument, index));
+            values[index] = value;
+        }
+        return cast(value);
     }
 
+    /**
+     * Returns an element, allowing computations to race but publishing one outcome.
+     * @param argument the computing argument
+     * @param index the element index
+     * @return the lazy element
+     */
+    @ForceInline
+    public final T getCas(A argument, int index) {
+        Objects.checkIndex(index, values.length);
+        long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
+        Object value = UNSAFE.getReferenceStable(values, offset);
+        if (value == null) {
+            Object candidate = Objects.requireNonNull(compute(argument, index));
+            Object witness = UNSAFE.compareAndExchangeReference(values, offset, null, candidate);
+            value = witness == null ? candidate : witness;
+        }
+        return cast(value);
+    }
+
+    /**
+     * Returns an element, computing one successful or failed outcome.
+     * @param argument the computing argument
+     * @param index the element index
+     * @return the lazy element
+     */
+    @ForceInline
+    public final T getOnce(A argument, int index) {
+        Objects.checkIndex(index, values.length);
+        long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
+        Object value = UNSAFE.getReferenceStable(values, offset);
+        if (value == null) {
+            synchronized (this) {
+                value = UNSAFE.getReferenceVolatile(values, offset);
+                if (value == null) {
+                    try {
+                        value = Objects.requireNonNull(compute(argument, index));
+                    } catch (Throwable ex) {
+                        value = new Failed(ex);
+                    }
+                    UNSAFE.putReferenceVolatile(values, offset, value);
+                }
+            }
+        }
+        if (value instanceof Failed failed) {
+            throw uncaughtException(failed.exception);
+        }
+        return cast(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private T cast(Object value) {
+        return (T) value;
+    }
+
+    private record Failed(Throwable exception) { }
 }

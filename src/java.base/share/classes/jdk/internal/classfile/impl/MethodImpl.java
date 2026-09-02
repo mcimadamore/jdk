@@ -88,12 +88,17 @@ public final /*value*/ class MethodImpl
         return parameterSlots[paramNo];
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<MethodImpl, List<Attribute<?>>> attributes =
+            new LazyValue<>() {
+                @Override
+                protected List<Attribute<?>> compute(MethodImpl receiver) {
+                    return receiver.compute_attributes_91();
+                }
+            };
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, MethodImpl::compute_attributes_91);
+        return attributes.getPlain(this);
     }
 
     private List<Attribute<?>> compute_attributes_91() {

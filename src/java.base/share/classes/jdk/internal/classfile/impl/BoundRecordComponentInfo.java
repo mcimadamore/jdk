@@ -53,12 +53,17 @@ public final /*value*/ class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<BoundRecordComponentInfo, List<Attribute<?>>> attributes =
+            new LazyValue<>() {
+                @Override
+                protected List<Attribute<?>> compute(BoundRecordComponentInfo receiver) {
+                    return receiver.compute_attributes_56();
+                }
+            };
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, BoundRecordComponentInfo::compute_attributes_56);
+        return attributes.getPlain(this);
     }
 
     private List<Attribute<?>> compute_attributes_56() {

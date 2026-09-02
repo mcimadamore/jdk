@@ -352,12 +352,17 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< FieldRefEntry> fieldEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundFieldInstruction, FieldRefEntry> fieldEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected FieldRefEntry compute(BoundFieldInstruction receiver) {
+                        return receiver.compute_field_356();
+                    }
+                };
 
         @Override
         public FieldRefEntry field() {
-            return fieldEntry.get(this, BoundFieldInstruction::compute_field_356);
+            return fieldEntry.getPlain(this);
         }
 
         private FieldRefEntry compute_field_356() {
@@ -386,12 +391,17 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundInvokeInstruction, MemberRefEntry> methodEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected MemberRefEntry compute(BoundInvokeInstruction receiver) {
+                        return receiver.compute_method_383();
+                    }
+                };
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInstruction::compute_method_383);
+            return methodEntry.getPlain(this);
         }
 
         private MemberRefEntry compute_method_383() {
@@ -430,12 +440,17 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundInvokeInterfaceInstruction, MemberRefEntry> methodEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected MemberRefEntry compute(BoundInvokeInterfaceInstruction receiver) {
+                        return receiver.compute_method_420();
+                    }
+                };
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInterfaceInstruction::compute_method_420);
+            return methodEntry.getPlain(this);
         }
 
         private MemberRefEntry compute_method_420() {
@@ -474,12 +489,17 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< InvokeDynamicEntry> indyEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundInvokeDynamicInstruction, InvokeDynamicEntry> indyEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected InvokeDynamicEntry compute(BoundInvokeDynamicInstruction receiver) {
+                        return receiver.compute_invokedynamic_457();
+                    }
+                };
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return indyEntry.get(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
+            return indyEntry.getPlain(this);
         }
 
         private InvokeDynamicEntry compute_invokedynamic_457() {
@@ -508,12 +528,17 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyValue< ClassEntry> classEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundNewObjectInstruction, ClassEntry> classEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected ClassEntry compute(BoundNewObjectInstruction receiver) {
+                        return receiver.compute_className_484();
+                    }
+                };
 
         @Override
         public ClassEntry className() {
-            return classEntry.get(this, BoundNewObjectInstruction::compute_className_484);
+            return classEntry.getPlain(this);
         }
 
         private ClassEntry compute_className_484() {
@@ -619,12 +644,17 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< ClassEntry> typeEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyValue<BoundTypeCheckInstruction, ClassEntry> typeEntry =
+                new LazyValue<>() {
+                    @Override
+                    protected ClassEntry compute(BoundTypeCheckInstruction receiver) {
+                        return receiver.compute_type_588();
+                    }
+                };
 
         @Override
         public ClassEntry type() {
-            return typeEntry.get(this, BoundTypeCheckInstruction::compute_type_588);
+            return typeEntry.getPlain(this);
         }
 
         private ClassEntry compute_type_588() {

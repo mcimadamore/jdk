@@ -135,24 +135,34 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private final LazyValue< ClassEntry> thisClass =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<ClassReaderImpl, ClassEntry> thisClass =
+            new LazyValue<>() {
+                @Override
+                protected ClassEntry compute(ClassReaderImpl receiver) {
+                    return receiver.compute_thisClassEntry_135();
+                }
+            };
 
     @Override
     public ClassEntry thisClassEntry() {
-        return thisClass.get(this, ClassReaderImpl::compute_thisClassEntry_135);
+        return thisClass.getPlain(this);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private final LazyValue< Optional<ClassEntry>> superclass =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<ClassReaderImpl, Optional<ClassEntry>> superclass =
+            new LazyValue<>() {
+                @Override
+                protected Optional<ClassEntry> compute(ClassReaderImpl receiver) {
+                    return receiver.compute_superclassEntry_140();
+                }
+            };
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return superclass.get(this, ClassReaderImpl::compute_superclassEntry_140);
+        return superclass.getPlain(this);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -284,12 +294,17 @@ public final class ClassReaderImpl
         }
     }
 
-    private final LazyValue< BootstrapMethodsAttribute> bootstrapMethodsAttribute =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute =
+            new LazyValue<>() {
+                @Override
+                protected BootstrapMethodsAttribute compute(ClassReaderImpl receiver) {
+                    return receiver.compute_bootstrapMethodsAttribute_264();
+                }
+            };
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return bootstrapMethodsAttribute.get(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+        return bootstrapMethodsAttribute.getPlain(this);
 
     }
 
@@ -298,12 +313,17 @@ public final class ClassReaderImpl
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private final LazyValue< List<BootstrapMethodEntryImpl>> bsmEntries =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries =
+            new LazyValue<>() {
+                @Override
+                protected List<BootstrapMethodEntryImpl> compute(ClassReaderImpl receiver) {
+                    return receiver.compute_bsmEntries_269();
+                }
+            };
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return bsmEntries.get(this, ClassReaderImpl::compute_bsmEntries_269);
+        return bsmEntries.getPlain(this);
 
     }
 

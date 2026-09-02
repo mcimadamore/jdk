@@ -74,8 +74,13 @@ public final /*value*/ class FieldImpl
         return reader.readEntry(startPos + 4, Utf8Entry.class);
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyValue<FieldImpl, List<Attribute<?>>> attributes =
+            new LazyValue<>() {
+                @Override
+                protected List<Attribute<?>> compute(FieldImpl receiver) {
+                    return receiver.compute_attributes_77();
+                }
+            };
 
     @Override
     public int fieldFlags() {
@@ -84,7 +89,7 @@ public final /*value*/ class FieldImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, FieldImpl::compute_attributes_77);
+        return attributes.getPlain(this);
     }
 
     private List<Attribute<?>> compute_attributes_77() {
