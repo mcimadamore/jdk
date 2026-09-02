@@ -7767,47 +7767,6 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         return lazyFastPath(getter, slow);
     }
 
-    /**
-     * Creates a method handle which reads a variable with volatile semantics,
-     * and, if its value is the default value for its type, acquires a supplied
-     * monitor, re-reads the variable, and computes and publishes a non-default
-     * value if it is still unset.
-     * <p>
-     * The returned method handle accepts an additional leading {@code Object}
-     * coordinate denoting the monitor, followed by the target coordinates.
-     * The monitor coordinate is not passed to the initializer.
-     *
-     * @param target the variable to update
-     * @param initializer a method handle whose type is the GET access mode type
-     *                    of {@code target}
-     * @param stable whether the fast-path read should use stable semantics
-     * @return the synchronized lazy update method handle
-     * @throws IllegalArgumentException if the initializer type does not match
-     *                                  the target GET access mode type
-     * @throws UnsupportedOperationException if a required access mode is not
-     *                                       supported
-     * @throws NullPointerException if {@code target} or {@code initializer} is null
-     */
-    public static MethodHandle lazyUpdaterSynchronized(VarHandle target,
-                                                       MethodHandle initializer,
-                                                       boolean stable) {
-        VarHandle.AccessMode fastGetterMode = stable
-                ? VarHandle.AccessMode.GET_STABLE
-                : VarHandle.AccessMode.GET_VOLATILE;
-        lazyUpdaterChecks(target, initializer,
-                fastGetterMode,
-                VarHandle.AccessMode.GET_VOLATILE,
-                VarHandle.AccessMode.SET_VOLATILE);
-        MethodHandle getter = target.toMethodHandle(VarHandle.AccessMode.GET_VOLATILE);
-        MethodHandle setter = target.toMethodHandle(VarHandle.AccessMode.SET_VOLATILE);
-        MethodHandle checkedInitializer = checkLazyInitializer(initializer);
-        MethodHandle slow = LazyUpdaterHelpers.synchronizedSlowPath(
-                getter, setter, checkedInitializer);
-        MethodHandle fastGetter = dropArguments(
-                target.toMethodHandle(fastGetterMode), 0, Object.class);
-        return lazyFastPath(fastGetter, slow);
-    }
-
     private static void lazyUpdaterChecks(VarHandle target,
                                           MethodHandle initializer,
                                           VarHandle.AccessMode... requiredModes) {
@@ -7889,33 +7848,6 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
     }
 
     private static final class LazyUpdaterHelpers {
-        private static final MethodHandle SYNC_INVOKER;
-
-        static {
-            try {
-                SYNC_INVOKER = Lookup.IMPL_LOOKUP.findStatic(
-                        LazyUpdaterHelpers.class,
-                        "invokeSynchronized",
-                        methodType(Object.class,
-                                SynchronizedLazyUpdater.class,
-                                Object.class,
-                                Object[].class));
-            } catch (ReflectiveOperationException ex) {
-                throw new ExceptionInInitializerError(ex);
-            }
-        }
-
-        static MethodHandle synchronizedSlowPath(MethodHandle getter,
-                                                 MethodHandle setter,
-                                                 MethodHandle initializer) {
-            SynchronizedLazyUpdater updater =
-                    new SynchronizedLazyUpdater(getter, setter, initializer);
-            MethodHandle slow = SYNC_INVOKER.bindTo(updater)
-                    .asCollector(Object[].class, getter.type().parameterCount());
-            return slow.asType(methodType(getter.type().returnType(), Object.class)
-                    .appendParameterTypes(getter.type().parameterList()));
-        }
-
         static MethodHandle isDefault(Class<?> type) {
             return helper("isDefault", boolean.class, type);
         }
@@ -8009,29 +7941,6 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
             return new IllegalStateException("initializer returned the default value");
         }
 
-        private static Object invokeSynchronized(SynchronizedLazyUpdater updater,
-                                                 Object lock,
-                                                 Object[] coordinates) throws Throwable {
-            synchronized (Objects.requireNonNull(lock)) {
-                return updater.update(coordinates);
-            }
-        }
-
-        private record SynchronizedLazyUpdater(MethodHandle getter,
-                                               MethodHandle setter,
-                                               MethodHandle initializer) {
-            Object update(Object[] coordinates) throws Throwable {
-                Object current = getter.invokeWithArguments(coordinates);
-                if (!Objects.equals(current, defaultValue(getter.type().returnType()))) {
-                    return current;
-                }
-                Object value = initializer.invokeWithArguments(coordinates);
-                Object[] setterArguments = Arrays.copyOf(coordinates, coordinates.length + 1);
-                setterArguments[coordinates.length] = value;
-                setter.invokeWithArguments(setterArguments);
-                return value;
-            }
-        }
     }
 
     /**

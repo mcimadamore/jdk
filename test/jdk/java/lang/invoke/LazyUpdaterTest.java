@@ -45,7 +45,6 @@ public class LazyUpdaterTest {
     static final class Box {
         private Object plain;
         private volatile Object atomic;
-        private volatile Object locked;
         private int number;
 
     }
@@ -56,10 +55,6 @@ public class LazyUpdaterTest {
 
     private static Object atomicValue(Box box) {
         return "atomic";
-    }
-
-    private static Object lockedValue(Box box) {
-        return "locked";
     }
 
     private static int numberValue(Box box) {
@@ -79,6 +74,7 @@ public class LazyUpdaterTest {
         testLazyValues();
         testVolatileRace();
         testSynchronizedComputation();
+        testStickyFailure();
     }
 
     private static void testMethodHandleCombinators() throws Throwable {
@@ -99,16 +95,6 @@ public class LazyUpdaterTest {
                 atomicTarget, atomicInitializer, true);
         assertEquals("atomic", (Object) atomic.invokeExact(box));
         assertEquals("atomic", box.atomic);
-
-        VarHandle lockedTarget = lookup.findVarHandle(Box.class, "locked", Object.class);
-        MethodHandle lockedInitializer = lookup.findStatic(LazyUpdaterTest.class,
-                "lockedValue", MethodType.methodType(Object.class, Box.class));
-        MethodHandle locked = MethodHandles.lazyUpdaterSynchronized(
-                lockedTarget, lockedInitializer, true);
-        assertEquals(MethodType.methodType(Object.class, Object.class, Box.class),
-                locked.type());
-        assertEquals("locked", (Object) locked.invokeExact((Object) box, box));
-        assertEquals("locked", box.locked);
 
         VarHandle numberTarget = lookup.findVarHandle(Box.class, "number", int.class);
         MethodHandle numberInitializer = lookup.findStatic(LazyUpdaterTest.class,
@@ -215,6 +201,19 @@ public class LazyUpdaterTest {
                 assertEquals("once", future.get());
             }
         }
+        assertEquals(1, computations.get());
+    }
+
+    private static void testStickyFailure() {
+        AtomicInteger computations = new AtomicInteger();
+        LazyValue<String> cache = LazyValue.of(LazyValue.Policy.ONCE);
+        Function<Box, String> computer = box -> {
+            computations.incrementAndGet();
+            throw new TestException();
+        };
+
+        expectThrows(TestException.class, () -> cache.get(new Box(), computer));
+        expectThrows(TestException.class, () -> cache.get(new Box(), computer));
         assertEquals(1, computations.get());
     }
 

@@ -68,26 +68,28 @@ final class LazyValueImpl {
         }
     }
 
-    private static MethodHandle updater(Class<?> holder, LazyValue.Policy policy) {
+    private static VarHandle valueHandle(Class<?> holder) {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.Lookup.IMPL_LOOKUP;
-            VarHandle target = lookup.findVarHandle(holder, "value", Object.class);
-            target = MethodHandles.dropCoordinates(target, 1, Object.class, Function.class);
-            MethodHandle initializer = MethodHandles.dropArguments(
-                    policy == LazyValue.Policy.ONCE ? COMPUTE_ONCE : COMPUTE, 0, holder);
-            return switch (policy) {
-                case PLAIN -> MethodHandles.lazyUpdater(target, initializer, false);
-                case CAS -> MethodHandles.lazyUpdaterVolatile(target, initializer, true);
-                case ONCE -> MethodHandles.lazyUpdaterSynchronized(target, initializer, true);
-            };
+            return MethodHandles.Lookup.IMPL_LOOKUP.findVarHandle(holder, "value", Object.class);
         } catch (ReflectiveOperationException ex) {
             throw new ExceptionInInitializerError(ex);
         }
     }
 
+    private static MethodHandle updater(VarHandle target, Class<?> holder, LazyValue.Policy policy) {
+        target = MethodHandles.dropCoordinates(target, 1, Object.class, Function.class);
+        MethodHandle initializer = MethodHandles.dropArguments(
+                policy == LazyValue.Policy.ONCE ? COMPUTE_ONCE : COMPUTE, 0, holder);
+        return switch (policy) {
+            case PLAIN -> MethodHandles.lazyUpdater(target, initializer, false);
+            case CAS, ONCE -> MethodHandles.lazyUpdaterVolatile(target, initializer, true);
+        };
+    }
+
     @TrustFinalFields
     static final class OfPlain<T> implements LazyValue<T> {
-        private static final MethodHandle UPDATER = updater(OfPlain.class, LazyValue.Policy.PLAIN);
+        private static final MethodHandle UPDATER = updater(
+                valueHandle(OfPlain.class), OfPlain.class, LazyValue.Policy.PLAIN);
 
         private Object value;
 
@@ -111,7 +113,8 @@ final class LazyValueImpl {
 
     @TrustFinalFields
     static final class OfCas<T> implements LazyValue<T> {
-        private static final MethodHandle UPDATER = updater(OfCas.class, LazyValue.Policy.CAS);
+        private static final MethodHandle UPDATER = updater(
+                valueHandle(OfCas.class), OfCas.class, LazyValue.Policy.CAS);
 
         @Stable
         private Object value;
@@ -136,7 +139,9 @@ final class LazyValueImpl {
 
     @TrustFinalFields
     static final class OfOnce<T> implements LazyValue<T> {
-        private static final MethodHandle UPDATER = updater(OfOnce.class, LazyValue.Policy.ONCE);
+        private static final VarHandle VALUE = valueHandle(OfOnce.class);
+        private static final MethodHandle UPDATER = updater(
+                VALUE, OfOnce.class, LazyValue.Policy.ONCE);
 
         @Stable
         private Object value;
@@ -148,18 +153,32 @@ final class LazyValueImpl {
         @Override
         @ForceInline
         public <A> T get(A argument, Function<? super A, ? extends T> computer) {
-            try {
-                Object value = (Object) UPDATER.invokeExact(
-                        (Object) this, this, (Object) argument, (Function) computer);
-                if (value instanceof Failed failed) {
-                    throw uncaughtException(failed.exception);
-                }
-                @SuppressWarnings("unchecked")
-                T result = (T) value;
-                return result;
-            } catch (Throwable ex) {
-                throw uncaughtException(ex);
+            Object value = VALUE.getStable(this);
+            if (value == null) {
+                value = getSlow(argument, computer);
             }
+            return unwrap(value);
+        }
+
+        private <A> Object getSlow(A argument, Function<? super A, ? extends T> computer) {
+            Object value;
+            synchronized (this) {
+                try {
+                    value = (Object) UPDATER.invokeExact(
+                            this, (Object) argument, (Function) computer);
+                } catch (Throwable ex) {
+                    throw uncaughtException(ex);
+                }
+            }
+            return value;
+        }
+
+        @SuppressWarnings("unchecked")
+        private T unwrap(Object value) {
+            if (value instanceof Failed failed) {
+                throw uncaughtException(failed.exception);
+            }
+            return (T) value;
         }
     }
 

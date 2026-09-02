@@ -21,6 +21,7 @@ import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 import static java.lang.invoke.MethodType.methodType;
 
 final class LazyArrayImpl {
+    private static final VarHandle ELEMENT = MethodHandles.arrayElementVarHandle(Object[].class);
     private static final MethodHandle COMPUTE;
     private static final MethodHandle COMPUTE_ONCE;
 
@@ -68,8 +69,8 @@ final class LazyArrayImpl {
     private static MethodHandle updater(Class<?> holder, LazyValue.Policy policy) {
         try {
             MethodHandles.Lookup lookup = MethodHandles.Lookup.IMPL_LOOKUP;
-            VarHandle target = MethodHandles.arrayElementVarHandle(Object[].class);
             MethodHandle values = lookup.findGetter(holder, "values", Object[].class);
+            VarHandle target = ELEMENT;
             target = MethodHandles.filterCoordinates(target, 0, values);
             target = MethodHandles.dropCoordinates(target, 1, Object.class);
             target = MethodHandles.dropCoordinates(target, 3, LazyArray.Computer.class);
@@ -77,8 +78,7 @@ final class LazyArrayImpl {
                     policy == LazyValue.Policy.ONCE ? COMPUTE_ONCE : COMPUTE, 0, holder);
             return switch (policy) {
                 case PLAIN -> MethodHandles.lazyUpdater(target, initializer, false);
-                case CAS -> MethodHandles.lazyUpdaterVolatile(target, initializer, true);
-                case ONCE -> MethodHandles.lazyUpdaterSynchronized(target, initializer, true);
+                case CAS, ONCE -> MethodHandles.lazyUpdaterVolatile(target, initializer, true);
             };
         } catch (ReflectiveOperationException ex) {
             throw new ExceptionInInitializerError(ex);
@@ -163,18 +163,33 @@ final class LazyArrayImpl {
         @Override
         @ForceInline
         public <A> T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
-            try {
-                Object value = (Object) UPDATER.invokeExact(
-                        (Object) this, this, (Object) argument, index, (LazyArray.Computer) computer);
-                if (value instanceof Failed failed) {
-                    throw uncaughtException(failed.exception);
-                }
-                @SuppressWarnings("unchecked")
-                T result = (T) value;
-                return result;
-            } catch (Throwable ex) {
-                throw uncaughtException(ex);
+            Object value = ELEMENT.getStable(values, index);
+            if (value == null) {
+                value = getSlow(argument, index, computer);
             }
+            return unwrap(value);
+        }
+
+        private <A> Object getSlow(A argument, int index,
+                                   LazyArray.Computer<? super A, ? extends T> computer) {
+            Object value;
+            synchronized (this) {
+                try {
+                    value = (Object) UPDATER.invokeExact(
+                            this, (Object) argument, index, (LazyArray.Computer) computer);
+                } catch (Throwable ex) {
+                    throw uncaughtException(ex);
+                }
+            }
+            return value;
+        }
+
+        @SuppressWarnings("unchecked")
+        private T unwrap(Object value) {
+            if (value instanceof Failed failed) {
+                throw uncaughtException(failed.exception);
+            }
+            return (T) value;
         }
     }
 
