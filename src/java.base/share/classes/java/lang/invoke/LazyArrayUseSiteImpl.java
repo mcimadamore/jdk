@@ -69,11 +69,11 @@ final class LazyArrayUseSiteImpl {
         public <A> T get(A argument, int index,
                          Computer<? super A, ? extends T> computer) {
             Object value = values[index];
-            if (value == null) {
-                values[index] = value = Objects.requireNonNull(
-                        computer.compute(argument, index));
+            if (value != null) {
+                return (T) value;
             }
-            return (T) value;
+            return (T) (values[index] = Objects.requireNonNull(
+                    computer.compute(argument, index)));
         }
     }
 
