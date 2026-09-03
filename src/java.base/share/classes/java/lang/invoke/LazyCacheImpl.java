@@ -17,7 +17,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
 
@@ -65,7 +64,6 @@ final class LazyCacheImpl<R, T> implements LazyCache<R, T> {
         return (T)value;
     }
 
-    @DontInline
     private T getSlow(R receiver) {
         T value = requireInitialized(computer.apply(receiver));
         putPlainValue(receiver, value);
@@ -84,7 +82,6 @@ final class LazyCacheImpl<R, T> implements LazyCache<R, T> {
     }
 
     @SuppressWarnings("unchecked")
-    @DontInline
     private T getVolatileSlow(R receiver) {
         Object candidate = requireInitialized(computer.apply(receiver));
         Object witness = compareAndExchangeValue(receiver, candidate);
@@ -103,7 +100,6 @@ final class LazyCacheImpl<R, T> implements LazyCache<R, T> {
     }
 
     @SuppressWarnings("unchecked")
-    @DontInline
     private T getSynchronizedSlow(Object lock, R receiver) {
         Object value;
         synchronized (Objects.requireNonNull(lock)) {

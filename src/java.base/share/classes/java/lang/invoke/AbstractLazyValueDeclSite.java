@@ -14,7 +14,6 @@ package java.lang.invoke;
 import java.util.Objects;
 
 import jdk.internal.misc.Unsafe;
-import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
@@ -56,7 +55,6 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
         return (T)value;
     }
 
-    @DontInline
     private T getPlainSlow(A argument) {
         T value = Objects.requireNonNull(compute(argument));
         this.value = value;
@@ -79,7 +77,6 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
     }
 
     @SuppressWarnings("unchecked")
-    @DontInline
     private T getCasSlow(A argument) {
         Object candidate = Objects.requireNonNull(compute(argument));
         Object witness = UNSAFE.compareAndExchangeReference(
@@ -106,7 +103,6 @@ public abstract class AbstractLazyValueDeclSite<A, T> {
     }
 
     @SuppressWarnings("unchecked")
-    @DontInline
     private T getOnceSlow(A argument) {
         Object value;
         synchronized (this) {

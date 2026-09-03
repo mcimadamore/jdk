@@ -19,6 +19,7 @@ import java.lang.LazyConstant;
 import java.lang.invoke.AbstractLazyValueDeclSite;
 import java.lang.invoke.AbstractLazyValueUseSite;
 import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyCacheUseSite;
 import java.lang.invoke.LazyValueDeclSite;
 import java.lang.invoke.LazyValueUseSite;
 import java.util.ArrayList;
@@ -30,11 +31,15 @@ import jdk.internal.misc.Unsafe;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
@@ -44,17 +49,33 @@ import org.openjdk.jmh.infra.Blackhole;
         "--enable-preview"
 })
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@State(Scope.Thread)
 public class LaziesTest {
-    private static final int HOLDER_COUNT = 256;
+    private static final int HOLDER_COUNT = 1024;
     private static final int VALUE_COUNT = 16;
-    private static final int ACCESS_COUNT = 16;
-
-    @Param
-    public Variant variant;
 
     @Benchmark
-    public Holder[] create() {
+    @OperationsPerInvocation(HOLDER_COUNT)
+    public Holder[] allocate(CreateState state) {
+        return createHolders(state.variant);
+    }
+
+    @Benchmark
+    @OperationsPerInvocation(HOLDER_COUNT)
+    public void coldAccess(ColdAccessState state, Blackhole bh) {
+        for (Holder holder : state.holders) {
+            bh.consume(holder.get().size());
+        }
+    }
+
+    @Benchmark
+    @OperationsPerInvocation(HOLDER_COUNT)
+    public void hotAccess(HotAccessState state, Blackhole bh) {
+        for (Holder holder : state.holders) {
+            bh.consume(holder.get().size());
+        }
+    }
+
+    private static Holder[] createHolders(Variant variant) {
         Holder[] holders = new Holder[HOLDER_COUNT];
         for (int i = 0; i < holders.length; i++) {
             holders[i] = variant.create(i);
@@ -62,26 +83,42 @@ public class LaziesTest {
         return holders;
     }
 
-    @Benchmark
-    public Holder[] createAndAccess(Blackhole bh) {
-        Holder[] holders = create();
-        for (Holder holder : holders) {
-            bh.consume(holder.get().get(0).intValue());
-        }
-        return holders;
+    @State(Scope.Thread)
+    public static class CreateState {
+        @Param
+        public Variant variant;
     }
 
-    @Benchmark
-    public Holder[] createAndRepeatedAccess(Blackhole bh) {
-        Holder[] holders = create();
-        for (int access = 0; access < ACCESS_COUNT; access++) {
+    @State(Scope.Thread)
+    public static class ColdAccessState {
+        @Param
+        public Variant variant;
+
+        private Holder[] holders;
+
+        @Setup(Level.Invocation)
+        public void setup() {
+            holders = createHolders(variant);
+        }
+    }
+
+    @State(Scope.Thread)
+    public static class HotAccessState {
+        @Param
+        public Variant variant;
+
+        private Holder[] holders;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            holders = createHolders(variant);
             for (Holder holder : holders) {
-                bh.consume(holder.get().get(access).intValue());
+                holder.get();
             }
         }
-        return holders;
     }
 
+    // some control versions are commented out
     public enum Variant {
         DIRECT {
             @Override
@@ -107,30 +144,36 @@ public class LaziesTest {
                 return new LazyCacheHolder(seed);
             }
         },
+//        LAZY_CACHE_USE_SITE {
+//            @Override
+//            Holder create(int seed) {
+//                return new LazyCacheUseSiteHolder(seed);
+//            }
+//        },
         LAZY_VALUE_USE_SITE {
             @Override
             Holder create(int seed) {
                 return new UseSiteHolder(seed);
             }
         },
-        LAZY_VALUE_USE_SITE_ABSTRACT {
-            @Override
-            Holder create(int seed) {
-                return new AbstractUseSiteHolder(seed);
-            }
-        },
+//        LAZY_VALUE_USE_SITE_ABSTRACT {
+//            @Override
+//            Holder create(int seed) {
+//                return new AbstractUseSiteHolder(seed);
+//            }
+//        },
         LAZY_VALUE_DECL_SITE {
             @Override
             Holder create(int seed) {
                 return new DeclSiteHolder(seed);
             }
         },
-        LAZY_VALUE_DECL_SITE_ABSTRACT {
-            @Override
-            Holder create(int seed) {
-                return new AbstractHolder(seed);
-            }
-        },
+//        LAZY_VALUE_DECL_SITE_ABSTRACT {
+//            @Override
+//            Holder create(int seed) {
+//                return new AbstractHolder(seed);
+//            }
+//        },
         LAZY_CONSTANT {
             @Override
             Holder create(int seed) {
@@ -145,6 +188,7 @@ public class LaziesTest {
         List<Integer> get();
     }
 
+    @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     private static List<Integer> computeValues(int seed) {
         SplittableRandom random = new SplittableRandom(seed);
         ArrayList<Integer> values = new ArrayList<>(VALUE_COUNT);
@@ -186,6 +230,28 @@ public class LaziesTest {
         @Override
         public List<Integer> get() {
             return CACHE.get(this);
+        }
+
+        private List<Integer> compute() {
+            return computeValues(seed);
+        }
+    }
+
+    public static final class LazyCacheUseSiteHolder implements Holder {
+        private static final LazyCacheUseSite<LazyCacheUseSiteHolder, List<Integer>> CACHE =
+                LazyCacheUseSite.ofField(LazyCacheUseSiteHolder.class, "value",
+                        LazyCacheUseSite.Policy.PLAIN);
+
+        private final int seed;
+        private List<Integer> value;
+
+        LazyCacheUseSiteHolder(int seed) {
+            this.seed = seed;
+        }
+
+        @Override
+        public List<Integer> get() {
+            return CACHE.get(this, LazyCacheUseSiteHolder::compute);
         }
 
         private List<Integer> compute() {
