@@ -18,7 +18,8 @@ package org.openjdk.bench.valhalla.lazy;
 import java.lang.LazyConstant;
 import java.lang.invoke.AbstractLazyValueDeclSite;
 import java.lang.invoke.AbstractLazyValueUseSite;
-import java.lang.invoke.LazyCache;
+import java.lang.invoke.LazyArrayCache;
+import java.lang.invoke.LazyCacheDeclSite;
 import java.lang.invoke.LazyCacheUseSite;
 import java.lang.invoke.LazyValueDeclSite;
 import java.lang.invoke.LazyValueUseSite;
@@ -138,10 +139,16 @@ public class LaziesTest {
 //                return new UnsafeControlHolder(seed);
 //            }
 //        },
-        LAZY_CACHE {
+        LAZY_CACHE_DECL_SITE {
             @Override
             Holder create(int seed) {
-                return new LazyCacheHolder(seed);
+                return new LazyCacheDeclSiteHolder(seed);
+            }
+        },
+        LAZY_ARRAY_CACHE {
+            @Override
+            Holder create(int seed) {
+                return new LazyArrayCacheHolder();
             }
         },
 //        LAZY_CACHE_USE_SITE {
@@ -156,12 +163,12 @@ public class LaziesTest {
                 return new UseSiteHolder(seed);
             }
         },
-//        LAZY_VALUE_USE_SITE_ABSTRACT {
-//            @Override
-//            Holder create(int seed) {
-//                return new AbstractUseSiteHolder(seed);
-//            }
-//        },
+        LAZY_VALUE_USE_SITE_ABSTRACT {
+            @Override
+            Holder create(int seed) {
+                return new AbstractUseSiteHolder(seed);
+            }
+        },
         LAZY_VALUE_DECL_SITE {
             @Override
             Holder create(int seed) {
@@ -216,14 +223,15 @@ public class LaziesTest {
         }
     }
 
-    public static final class LazyCacheHolder implements Holder {
-        private static final LazyCache<LazyCacheHolder, List<Integer>> CACHE =
-                LazyCache.ofField(LazyCacheHolder.class, "value", LazyCacheHolder::compute);
+    public static final class LazyCacheDeclSiteHolder implements Holder {
+        private static final LazyCacheDeclSite<LazyCacheDeclSiteHolder, List<Integer>> CACHE =
+                LazyCacheDeclSite.ofField(LazyCacheDeclSiteHolder.class, "value",
+                        LazyCacheDeclSiteHolder::compute);
 
         private final int seed;
         private List<Integer> value;
 
-        LazyCacheHolder(int seed) {
+        LazyCacheDeclSiteHolder(int seed) {
             this.seed = seed;
         }
 
@@ -234,6 +242,20 @@ public class LaziesTest {
 
         private List<Integer> compute() {
             return computeValues(seed);
+        }
+    }
+
+    public static final class LazyArrayCacheHolder implements Holder {
+        private static final LazyArrayCache<List[], List<Integer>> CACHE =
+                LazyArrayCache.of(List[].class,
+                        (array, index) -> computeValues(index));
+
+        @SuppressWarnings("unchecked")
+        private final List<Integer>[] value = (List<Integer>[]) new List<?>[1];
+
+        @Override
+        public List<Integer> get() {
+            return CACHE.get(value, 0);
         }
     }
 

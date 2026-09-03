@@ -15,6 +15,7 @@
 
 package org.openjdk.bench.valhalla.lazy;
 
+import java.lang.invoke.AbstractLazyValueUseSite;
 import java.lang.invoke.LazyArrayCache;
 import java.lang.invoke.LazyArrayDeclSite;
 import java.lang.invoke.LazyArrayUseSite;
@@ -146,6 +147,12 @@ public class LaziesArrayTest {
                 return new UseSiteHolder();
             }
         },
+        LAZY_ARRAY_USE_SITE_ABSTRACT {
+            @Override
+            Holder create() {
+                return new AbstractUseSiteHolder();
+            }
+        },
         LAZY_ARRAY_DECL_SITE {
             @Override
             Holder create() {
@@ -205,6 +212,39 @@ public class LaziesArrayTest {
 
         private List<Integer> compute(int index) {
             return computeValues(index);
+        }
+    }
+
+    public static final class AbstractUseSiteHolder implements Holder {
+        private final Value[] values = new Value[ARRAY_SIZE];
+
+        AbstractUseSiteHolder() {
+            for (int index = 0; index < ARRAY_SIZE; index++) {
+                values[index] = new Value(index);
+            }
+        }
+
+        @Override
+        public List<Integer> get(int index) {
+            return values[index].get();
+        }
+
+        private static final class Value {
+            private final int index;
+            private final AbstractLazyValueUseSite<List<Integer>> value =
+                    AbstractLazyValueUseSite.of(AbstractLazyValueUseSite.Policy.PLAIN);
+
+            Value(int index) {
+                this.index = index;
+            }
+
+            List<Integer> get() {
+                return value.get(this, Value::compute);
+            }
+
+            private List<Integer> compute() {
+                return computeValues(index);
+            }
         }
     }
 

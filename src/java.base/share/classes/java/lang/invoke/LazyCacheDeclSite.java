@@ -32,12 +32,13 @@ import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 
 /**
- * A non-owning cache backed by an instance field.
+ * A non-owning cache backed by an instance field, with a computing function
+ * supplied at the declaration site.
  *
  * @param <R> the receiver type
  * @param <T> the field value type
  */
-public interface LazyCache<R, T> {
+public interface LazyCacheDeclSite<R, T> {
     /**
      * Returns the cached value, computing and storing it with plain semantics if unset.
      *
@@ -74,12 +75,12 @@ public interface LazyCache<R, T> {
      * @return the cache
      */
     @CallerSensitive
-    static <R, T> LazyCache<R, T> ofField(Class<R> owner,
-                                          String name,
-                                          Function<? super R, ? extends T> computer) {
+    static <R, T> LazyCacheDeclSite<R, T> ofField(Class<R> owner,
+                                                  String name,
+                                                  Function<? super R, ? extends T> computer) {
         Objects.requireNonNull(owner);
         Objects.requireNonNull(name);
         Objects.requireNonNull(computer);
-        return LazyCacheImpl.ofField(owner, name, computer, Reflection.getCallerClass());
+        return LazyCacheDeclSiteImpl.ofField(owner, name, computer, Reflection.getCallerClass());
     }
 }
