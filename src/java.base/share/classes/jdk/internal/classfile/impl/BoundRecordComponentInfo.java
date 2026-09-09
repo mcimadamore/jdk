@@ -30,7 +30,7 @@ import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.util.List;
 
-public final /*value*/ class BoundRecordComponentInfo
+public final class BoundRecordComponentInfo
         implements RecordComponentInfo {
 
     private final ClassReader reader;

@@ -42,7 +42,7 @@ import java.util.function.Consumer;
 import static jdk.internal.classfile.impl.StackMapGenerator.*;
 import static jdk.internal.classfile.impl.RawBytecodeHelper.*;
 
-public final /*value*/ class CodeImpl
+public final class CodeImpl
         extends BoundAttribute.BoundCodeAttribute
         implements LabelContext {
 

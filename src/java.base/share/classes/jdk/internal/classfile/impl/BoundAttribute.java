@@ -39,7 +39,7 @@ import jdk.internal.access.SharedSecrets;
 
 import static java.lang.classfile.Attributes.*;
 
-public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
+public abstract sealed class BoundAttribute<T extends Attribute<T>>
         extends AbstractElement
         implements Attribute<T>, Util.Writable {
 
@@ -186,7 +186,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundStackMapTableAttribute
+    public static final class BoundStackMapTableAttribute
             extends BoundAttribute<StackMapTableAttribute>
             implements StackMapTableAttribute {
         final MethodModel method;
@@ -221,7 +221,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundLineNumberTableAttribute
+    public static final class BoundLineNumberTableAttribute
             extends BoundAttribute<LineNumberTableAttribute>
             implements LineNumberTableAttribute {
 
@@ -244,7 +244,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundCharacterRangeTableAttribute extends BoundAttribute<CharacterRangeTableAttribute> implements CharacterRangeTableAttribute {
+    public static final class BoundCharacterRangeTableAttribute extends BoundAttribute<CharacterRangeTableAttribute> implements CharacterRangeTableAttribute {
 
         public BoundCharacterRangeTableAttribute(ClassReader cf, AttributeMapper<CharacterRangeTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -268,7 +268,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundLocalVariableTableAttribute
+    public static final class BoundLocalVariableTableAttribute
             extends BoundAttribute<LocalVariableTableAttribute>
             implements LocalVariableTableAttribute {
         private final CodeImpl codeAttribute;
@@ -295,7 +295,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundLocalVariableTypeTableAttribute
+    public static final class BoundLocalVariableTypeTableAttribute
             extends BoundAttribute<LocalVariableTypeTableAttribute>
             implements LocalVariableTypeTableAttribute {
         private final CodeImpl codeAttribute;
@@ -322,7 +322,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundMethodParametersAttribute extends BoundAttribute<MethodParametersAttribute>
+    public static final class BoundMethodParametersAttribute extends BoundAttribute<MethodParametersAttribute>
             implements MethodParametersAttribute {
 
         public BoundMethodParametersAttribute(ClassReader cf, AttributeMapper<MethodParametersAttribute> mapper, int pos) {
@@ -344,7 +344,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundModuleHashesAttribute extends BoundAttribute<ModuleHashesAttribute>
+    public static final class BoundModuleHashesAttribute extends BoundAttribute<ModuleHashesAttribute>
             implements ModuleHashesAttribute {
 
         public BoundModuleHashesAttribute(ClassReader cf, AttributeMapper<ModuleHashesAttribute> mapper, int pos) {
@@ -374,7 +374,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundRecordAttribute extends BoundAttribute<RecordAttribute>
+    public static final class BoundRecordAttribute extends BoundAttribute<RecordAttribute>
             implements RecordAttribute {
 
         public BoundRecordAttribute(ClassReader cf, AttributeMapper<RecordAttribute> mapper, int pos) {
@@ -517,7 +517,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundExceptionsAttribute extends BoundAttribute<ExceptionsAttribute>
+    public static final class BoundExceptionsAttribute extends BoundAttribute<ExceptionsAttribute>
             implements ExceptionsAttribute {
 
         public BoundExceptionsAttribute(ClassReader cf, AttributeMapper<ExceptionsAttribute> mapper, int pos) {
@@ -661,7 +661,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundModulePackagesAttribute extends BoundAttribute<ModulePackagesAttribute>
+    public static final class BoundModulePackagesAttribute extends BoundAttribute<ModulePackagesAttribute>
             implements ModulePackagesAttribute {
 
         public BoundModulePackagesAttribute(ClassReader cf, AttributeMapper<ModulePackagesAttribute> mapper, int pos) {
@@ -674,7 +674,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundNestMembersAttribute extends BoundAttribute<NestMembersAttribute>
+    public static final class BoundNestMembersAttribute extends BoundAttribute<NestMembersAttribute>
             implements NestMembersAttribute {
 
         public BoundNestMembersAttribute(ClassReader cf, AttributeMapper<NestMembersAttribute> mapper, int pos) {
@@ -687,7 +687,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundBootstrapMethodsAttribute extends BoundAttribute<BootstrapMethodsAttribute>
+    public static final class BoundBootstrapMethodsAttribute extends BoundAttribute<BootstrapMethodsAttribute>
             implements BootstrapMethodsAttribute {
 
         private final int size;
@@ -717,7 +717,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundInnerClassesAttribute extends BoundAttribute<InnerClassesAttribute>
+    public static final class BoundInnerClassesAttribute extends BoundAttribute<InnerClassesAttribute>
             implements InnerClassesAttribute {
 
         public BoundInnerClassesAttribute(ClassReader cf, AttributeMapper<InnerClassesAttribute> mapper, int pos) {
@@ -758,7 +758,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundAnnotationDefaultAttr
+    public static final class BoundAnnotationDefaultAttr
             extends BoundAttribute<AnnotationDefaultAttribute>
             implements AnnotationDefaultAttribute {
 
@@ -832,7 +832,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundRuntimeInvisibleAnnotationsAttribute
+    public static final class BoundRuntimeInvisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeInvisibleAnnotationsAttribute>
             implements RuntimeInvisibleAnnotationsAttribute {
 
@@ -847,7 +847,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundRuntimeVisibleAnnotationsAttribute
+    public static final class BoundRuntimeVisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeVisibleAnnotationsAttribute>
             implements RuntimeVisibleAnnotationsAttribute {
 
@@ -862,7 +862,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         }
     }
 
-    public static final /*value*/ class BoundPermittedSubclassesAttribute extends BoundAttribute<PermittedSubclassesAttribute>
+    public static final class BoundPermittedSubclassesAttribute extends BoundAttribute<PermittedSubclassesAttribute>
             implements PermittedSubclassesAttribute {
 
         public BoundPermittedSubclassesAttribute(ClassReader cf, AttributeMapper<PermittedSubclassesAttribute> mapper, int pos) {
@@ -893,7 +893,7 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
     }
 
 
-    public abstract static sealed /*value*/ class BoundCodeAttribute
+    public abstract static sealed class BoundCodeAttribute
             extends BoundAttribute<CodeAttribute>
             implements CodeAttribute
             permits CodeImpl {

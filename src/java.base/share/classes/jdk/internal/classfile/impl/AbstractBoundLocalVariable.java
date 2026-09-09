@@ -27,7 +27,7 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
 
-public abstract /*value*/ class AbstractBoundLocalVariable
+public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;

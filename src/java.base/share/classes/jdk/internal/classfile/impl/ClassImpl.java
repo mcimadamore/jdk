@@ -35,7 +35,7 @@ import java.util.function.Consumer;
 
 import jdk.internal.access.SharedSecrets;
 
-public final /*value*/ class ClassImpl
+public final class ClassImpl
         extends AbstractElement
         implements ClassModel {
     final ClassReaderImpl reader;

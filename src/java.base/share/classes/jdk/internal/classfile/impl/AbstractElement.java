@@ -24,7 +24,7 @@
  */
 package jdk.internal.classfile.impl;
 
-public abstract /*value*/ class AbstractElement {
+public abstract class AbstractElement {
     public AbstractElement() { }
 
     public void writeTo(DirectCodeBuilder builder) {
