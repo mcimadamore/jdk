@@ -32,7 +32,7 @@ import java.lang.classfile.constantpool.ConstantPoolException;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyValue;
+import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,24 +135,24 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private final LazyValue< ClassEntry> thisClass =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< ClassEntry> thisClass =
+            LazyCache.ofRetry();
 
     @Override
     public ClassEntry thisClassEntry() {
-        return thisClass.get(this, ClassReaderImpl::compute_thisClassEntry_135);
+        return thisClass.getOrCompute(this, ClassReaderImpl::compute_thisClassEntry_135);
     }
 
     private ClassEntry compute_thisClassEntry_135() {
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private final LazyValue< Optional<ClassEntry>> superclass =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< Optional<ClassEntry>> superclass =
+            LazyCache.ofRetry();
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        return superclass.get(this, ClassReaderImpl::compute_superclassEntry_140);
+        return superclass.getOrCompute(this, ClassReaderImpl::compute_superclassEntry_140);
     }
 
     private Optional<ClassEntry> compute_superclassEntry_140() {
@@ -284,12 +284,12 @@ public final class ClassReaderImpl
         }
     }
 
-    private final LazyValue< BootstrapMethodsAttribute> bootstrapMethodsAttribute =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< BootstrapMethodsAttribute> bootstrapMethodsAttribute =
+            LazyCache.ofRetry();
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
 
-        return bootstrapMethodsAttribute.get(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
+        return bootstrapMethodsAttribute.getOrCompute(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
 
     }
 
@@ -298,12 +298,12 @@ public final class ClassReaderImpl
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private final LazyValue< List<BootstrapMethodEntryImpl>> bsmEntries =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< List<BootstrapMethodEntryImpl>> bsmEntries =
+            LazyCache.ofRetry();
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
 
-        return bsmEntries.get(this, ClassReaderImpl::compute_bsmEntries_269);
+        return bsmEntries.getOrCompute(this, ClassReaderImpl::compute_bsmEntries_269);
 
     }
 

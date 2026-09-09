@@ -11,7 +11,6 @@
 
 package java.lang.invoke;
 
-import java.util.Objects;
 import java.util.function.IntFunction;
 
 /**
@@ -19,7 +18,7 @@ import java.util.function.IntFunction;
  *
  * @param <T> the element type
  */
-public interface LazyArray<T> {
+public interface LazyArrayCache<T> {
     /**
      * A function which computes an array element.
      *
@@ -48,7 +47,7 @@ public interface LazyArray<T> {
      * @param <A> the computing-function argument type
      * @return the lazy value
      */
-    <A> T get(A argument, int index, Computer<? super A, ? extends T> computer);
+    <A> T getOrCompute(A argument, int index, Computer<? super A, ? extends T> computer);
 
     /**
      * Returns the value at {@code index}, computing it with {@code computer} when needed.
@@ -57,32 +56,29 @@ public interface LazyArray<T> {
      * @param computer the element computing function
      * @return the lazy value
      */
-    default T get(int index, IntFunction<? extends T> computer) {
-        return get(null, index, (ignored, i) -> computer.apply(i));
+    default T getOrCompute(int index, IntFunction<? extends T> computer) {
+        return getOrCompute(null, index, (ignored, i) -> computer.apply(i));
     }
 
     /**
-     * Creates a lazy array with the {@link LazyValue.Policy#ONCE} policy.
+     * Creates a lazy array which retries failed computations and permits racing computations.
      *
      * @param size the array size
      * @param <T> the element type
      * @return the lazy array
      */
-    static <T> LazyArray<T> of(int size) {
-        return LazyArray.<T>of(LazyValue.Policy.ONCE, size);
+    static <T> LazyArrayCache<T> ofRetry(int size) {
+        return LazyArrayCacheImpl.ofRetry(size);
     }
 
     /**
-     * Creates a lazy array with the supplied policy.
-     *
-     * @param policy the lazy-update policy
+     * Creates a lazy array which computes and remembers one successful or failed outcome per index.
      * @param size the array size
      * @param <T> the element type
      * @return the lazy array
      */
-    static <T> LazyArray<T> of(LazyValue.Policy policy, int size) {
-        Objects.requireNonNull(policy);
-        return policy.makeArray(size);
+    static <T> LazyArrayCache<T> ofOnce(int size) {
+        return LazyArrayCacheImpl.ofOnce(size);
     }
 
 }

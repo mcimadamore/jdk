@@ -21,60 +21,32 @@ import jdk.internal.vm.annotation.TrustFinalFields;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 
-final class LazyValueImpl {
-    private LazyValueImpl() { }
+final class LazyCacheImpl {
+    private LazyCacheImpl() { }
 
-    static <T> LazyValue<T> ofPlain() {
-        return OfPlain.of();
+    static <T> LazyCache<T> ofRetry() {
+        return OfRetry.of();
     }
 
-    static <T> LazyValue<T> ofCas() {
-        return OfCas.of();
-    }
-
-    static <T> LazyValue<T> ofOnce() {
+    static <T> LazyCache<T> ofOnce() {
         return OfOnce.of();
     }
 
     @TrustFinalFields
-    static final class OfPlain<T> implements LazyValue<T> {
-        private T value;
-
-        static <T> LazyValue<T> of() {
-            return new OfPlain<>();
-        }
-
-        @Override
-        @ForceInline
-        public <A> T get(A argument, Function<? super A, ? extends T> computer) {
-            T value = this.value;
-            if (value != null) {
-                return value;
-            }
-            return getSlow(computer, argument);
-        }
-
-        private <A> T getSlow(Function<? super A, ? extends T> computer, A argument) {
-            T value = Objects.requireNonNull(computer.apply(argument));
-            return this.value = value;
-        }
-    }
-
-    @TrustFinalFields
-    static final class OfCas<T> implements LazyValue<T> {
+    static final class OfRetry<T> implements LazyCache<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfCas.class, "value");
+        private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfRetry.class, "value");
 
         @Stable
         private Object value;
 
-        static <T> LazyValue<T> of() {
-            return new OfCas<>();
+        static <T> LazyCache<T> of() {
+            return new OfRetry<>();
         }
 
         @Override
         @ForceInline
-        public <A> T get(A argument, Function<? super A, ? extends T> computer) {
+        public <A> T getOrCompute(A argument, Function<? super A, ? extends T> computer) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 @SuppressWarnings("unchecked")
@@ -96,20 +68,20 @@ final class LazyValueImpl {
     }
 
     @TrustFinalFields
-    static final class OfOnce<T> implements LazyValue<T> {
+    static final class OfOnce<T> implements LazyCache<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET = UNSAFE.objectFieldOffset(OfOnce.class, "value");
 
         @Stable
         private Object value;
 
-        static <T> LazyValue<T> of() {
+        static <T> LazyCache<T> of() {
             return new OfOnce<>();
         }
 
         @Override
         @ForceInline
-        public <A> T get(A argument, Function<? super A, ? extends T> computer) {
+        public <A> T getOrCompute(A argument, Function<? super A, ? extends T> computer) {
             Object value = UNSAFE.getReferenceStable(this, VALUE_OFFSET);
             if (value != null) {
                 if (value instanceof Failed failed) {

@@ -31,7 +31,7 @@ import java.lang.classfile.TypeKind;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
 import java.lang.constant.ConstantDesc;
-import java.lang.invoke.LazyValue;
+import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -352,12 +352,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< FieldRefEntry> fieldEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< FieldRefEntry> fieldEntry =
+                LazyCache.ofRetry();
 
         @Override
         public FieldRefEntry field() {
-            return fieldEntry.get(this, BoundFieldInstruction::compute_field_356);
+            return fieldEntry.getOrCompute(this, BoundFieldInstruction::compute_field_356);
         }
 
         private FieldRefEntry compute_field_356() {
@@ -386,12 +386,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< MemberRefEntry> methodEntry =
+                LazyCache.ofRetry();
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInstruction::compute_method_383);
+            return methodEntry.getOrCompute(this, BoundInvokeInstruction::compute_method_383);
         }
 
         private MemberRefEntry compute_method_383() {
@@ -430,12 +430,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< MemberRefEntry> methodEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< MemberRefEntry> methodEntry =
+                LazyCache.ofRetry();
 
         @Override
         public MemberRefEntry method() {
-            return methodEntry.get(this, BoundInvokeInterfaceInstruction::compute_method_420);
+            return methodEntry.getOrCompute(this, BoundInvokeInterfaceInstruction::compute_method_420);
         }
 
         private MemberRefEntry compute_method_420() {
@@ -474,12 +474,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< InvokeDynamicEntry> indyEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< InvokeDynamicEntry> indyEntry =
+                LazyCache.ofRetry();
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            return indyEntry.get(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
+            return indyEntry.getOrCompute(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
         }
 
         private InvokeDynamicEntry compute_invokedynamic_457() {
@@ -508,12 +508,12 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyValue< ClassEntry> classEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< ClassEntry> classEntry =
+                LazyCache.ofRetry();
 
         @Override
         public ClassEntry className() {
-            return classEntry.get(this, BoundNewObjectInstruction::compute_className_484);
+            return classEntry.getOrCompute(this, BoundNewObjectInstruction::compute_className_484);
         }
 
         private ClassEntry compute_className_484() {
@@ -619,12 +619,12 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyValue< ClassEntry> typeEntry =
-                LazyValue.of(LazyValue.Policy.PLAIN);
+        private final LazyCache< ClassEntry> typeEntry =
+                LazyCache.ofRetry();
 
         @Override
         public ClassEntry type() {
-            return typeEntry.get(this, BoundTypeCheckInstruction::compute_type_588);
+            return typeEntry.getOrCompute(this, BoundTypeCheckInstruction::compute_type_588);
         }
 
         private ClassEntry compute_type_588() {

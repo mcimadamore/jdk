@@ -20,50 +20,19 @@ import jdk.internal.vm.annotation.TrustFinalFields;
 
 import static java.lang.invoke.MethodHandleStatics.uncaughtException;
 
-final class LazyArrayImpl {
-    private LazyArrayImpl() { }
+final class LazyArrayCacheImpl {
+    private LazyArrayCacheImpl() { }
 
-    static <T> LazyArray<T> ofPlain(int size) {
-        return OfPlain.of(size);
+    static <T> LazyArrayCache<T> ofRetry(int size) {
+        return OfRetry.of(size);
     }
 
-    static <T> LazyArray<T> ofCas(int size) {
-        return OfCas.of(size);
-    }
-
-    static <T> LazyArray<T> ofOnce(int size) {
+    static <T> LazyArrayCache<T> ofOnce(int size) {
         return OfOnce.of(size);
     }
 
     @TrustFinalFields
-    static final class OfPlain<T> implements LazyArray<T> {
-        private final Object[] values;
-
-        private OfPlain(int size) {
-            if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
-            values = new Object[size];
-        }
-
-        static <T> LazyArray<T> of(int size) {
-            return new OfPlain<>(size);
-        }
-
-        @Override
-        @ForceInline
-        public <A> T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
-            Object value = values[index];
-            if (value == null) {
-                value = Objects.requireNonNull(computer.compute(argument, index));
-                values[index] = value;
-            }
-            @SuppressWarnings("unchecked")
-            T result = (T) value;
-            return result;
-        }
-    }
-
-    @TrustFinalFields
-    static final class OfCas<T> implements LazyArray<T> {
+    static final class OfRetry<T> implements LazyArrayCache<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long ARRAY_BASE = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
         private static final int ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(Unsafe.ARRAY_OBJECT_INDEX_SCALE);
@@ -71,18 +40,18 @@ final class LazyArrayImpl {
         @Stable
         private final Object[] values;
 
-        private OfCas(int size) {
+        private OfRetry(int size) {
             if (size < 0) throw new IllegalArgumentException("Negative size: " + size);
             values = new Object[size];
         }
 
-        static <T> LazyArray<T> of(int size) {
-            return new OfCas<>(size);
+        static <T> LazyArrayCache<T> of(int size) {
+            return new OfRetry<>(size);
         }
 
         @Override
         @ForceInline
-        public <A> T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
+        public <A> T getOrCompute(A argument, int index, LazyArrayCache.Computer<? super A, ? extends T> computer) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);
@@ -98,7 +67,7 @@ final class LazyArrayImpl {
     }
 
     @TrustFinalFields
-    static final class OfOnce<T> implements LazyArray<T> {
+    static final class OfOnce<T> implements LazyArrayCache<T> {
         private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long ARRAY_BASE = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
         private static final int ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(Unsafe.ARRAY_OBJECT_INDEX_SCALE);
@@ -111,13 +80,13 @@ final class LazyArrayImpl {
             values = new Object[size];
         }
 
-        static <T> LazyArray<T> of(int size) {
+        static <T> LazyArrayCache<T> of(int size) {
             return new OfOnce<>(size);
         }
 
         @Override
         @ForceInline
-        public <A> T get(A argument, int index, LazyArray.Computer<? super A, ? extends T> computer) {
+        public <A> T getOrCompute(A argument, int index, LazyArrayCache.Computer<? super A, ? extends T> computer) {
             Objects.checkIndex(index, values.length);
             long offset = ARRAY_BASE + ((long) index << ARRAY_SHIFT);
             Object value = UNSAFE.getReferenceStable(values, offset);

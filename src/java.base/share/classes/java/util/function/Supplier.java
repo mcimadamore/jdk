@@ -24,7 +24,7 @@
  */
 package java.util.function;
 
-import java.lang.invoke.LazyValue;
+import java.lang.invoke.LazyCache;
 
 /**
  * Represents a supplier of results.
@@ -51,29 +51,14 @@ public interface Supplier<T> {
 
     /**
      * Returns a supplier which computes its value lazily with the
-     * {@link LazyValue.Policy#ONCE} policy.
+     * {@link LazyCache#ofOnce} policy.
      *
      * @param supplier the computing supplier
      * @param <T> the supplied type
      * @return a lazy supplier
      */
     static <T> Supplier<T> ofLazy(Supplier<? extends T> supplier) {
-        return ofLazy(LazyValue.Policy.ONCE, supplier);
-    }
-
-    /**
-     * Returns a supplier which computes its value lazily with {@code policy}.
-     *
-     * <p>This method is equivalent to creating a {@code LazyValue< T>}
-     * and invoking it with {@code null}.
-     *
-     * @param supplier the computing supplier
-     * @param policy the lazy-update policy
-     * @param <T> the supplied type
-     * @return a lazy supplier
-     */
-    static <T> Supplier<T> ofLazy(LazyValue.Policy policy, Supplier<? extends T> supplier) {
-        LazyValue< T> lazy = LazyValue.of(policy);
-        return () -> lazy.get(() -> supplier.get());
+        LazyCache< T> lazy = LazyCache.ofOnce();
+        return () -> lazy.getOrCompute(() -> supplier.get());
     }
 }

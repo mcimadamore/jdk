@@ -28,7 +28,7 @@ import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
-import java.lang.invoke.LazyValue;
+import java.lang.invoke.LazyCache;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -107,12 +107,12 @@ public final /*value*/ class ClassImpl
         return reader.superclassEntry();
     }
 
-    private final LazyValue< List<ClassEntry>> interfaces =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< List<ClassEntry>> interfaces =
+            LazyCache.ofRetry();
 
     @Override
     public List<ClassEntry> interfaces() {
-        return interfaces.get(this, ClassImpl::compute_interfaces_110);
+        return interfaces.getOrCompute(this, ClassImpl::compute_interfaces_110);
     }
 
     private List<ClassEntry> compute_interfaces_110() {
@@ -127,12 +127,12 @@ public final /*value*/ class ClassImpl
         return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
-    private final LazyValue< List<Attribute<?>>> attributes =
-            LazyValue.of(LazyValue.Policy.PLAIN);
+    private final LazyCache< List<Attribute<?>>> attributes =
+            LazyCache.ofRetry();
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.get(this, ClassImpl::compute_attributes_123);
+        return attributes.getOrCompute(this, ClassImpl::compute_attributes_123);
     }
 
     private List<Attribute<?>> compute_attributes_123() {
