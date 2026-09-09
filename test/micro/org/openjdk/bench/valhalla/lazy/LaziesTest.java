@@ -51,7 +51,7 @@ public class LaziesTest {
     @Benchmark
     @OperationsPerInvocation(HOLDER_COUNT)
     public Holder[] allocate(CreateState state) {
-        return createHolders(state.variant, state.mode);
+        return createHolders(state.configuration);
     }
 
     @Benchmark
@@ -70,10 +70,10 @@ public class LaziesTest {
         }
     }
 
-    private static Holder[] createHolders(Variant variant, LazyMode mode) {
+    private static Holder[] createHolders(Configuration configuration) {
         Holder[] holders = new Holder[HOLDER_COUNT];
         for (int i = 0; i < holders.length; i++) {
-            holders[i] = variant.create(i, mode);
+            holders[i] = configuration.create(i);
         }
         return holders;
     }
@@ -81,52 +81,76 @@ public class LaziesTest {
     @State(Scope.Thread)
     public static class CreateState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
     }
 
     @State(Scope.Thread)
     public static class ColdAccessState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
 
         private Holder[] holders;
 
         @Setup(Level.Invocation)
         public void setup() {
-            holders = createHolders(variant, mode);
+            holders = createHolders(configuration);
         }
     }
 
     @State(Scope.Thread)
     public static class HotAccessState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
 
         private Holder[] holders;
 
         @Setup(Level.Trial)
         public void setup() {
-            holders = createHolders(variant, mode);
+            holders = createHolders(configuration);
             for (Holder holder : holders) {
                 holder.get();
             }
         }
     }
 
-    public enum Variant {
+    public enum Configuration {
+        DIRECT(Variant.DIRECT, null),
+        CACHED_METHOD(Variant.CACHED_METHOD, null),
+        LAZY_CACHE_DECL_SITE_PLAIN(Variant.LAZY_CACHE_DECL_SITE, LazyMode.PLAIN),
+        LAZY_CACHE_DECL_SITE_CAS(Variant.LAZY_CACHE_DECL_SITE, LazyMode.CAS),
+        LAZY_CACHE_DECL_SITE_SYNCHRONIZED(Variant.LAZY_CACHE_DECL_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_VALUE_USE_SITE_PLAIN(Variant.LAZY_VALUE_USE_SITE, LazyMode.PLAIN),
+        LAZY_VALUE_USE_SITE_CAS(Variant.LAZY_VALUE_USE_SITE, LazyMode.CAS),
+        LAZY_VALUE_USE_SITE_SYNCHRONIZED(Variant.LAZY_VALUE_USE_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_VALUE_DECL_SITE_PLAIN(Variant.LAZY_VALUE_DECL_SITE, LazyMode.PLAIN),
+        LAZY_VALUE_DECL_SITE_CAS(Variant.LAZY_VALUE_DECL_SITE, LazyMode.CAS),
+        LAZY_VALUE_DECL_SITE_SYNCHRONIZED(Variant.LAZY_VALUE_DECL_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_CONSTANT(Variant.LAZY_CONSTANT, null);
+
+        private final Variant variant;
+        private final LazyMode mode;
+
+        Configuration(Variant variant, LazyMode mode) {
+            this.variant = variant;
+            this.mode = mode;
+        }
+
+        Holder create(int seed) {
+            return variant.create(seed, mode);
+        }
+    }
+
+    private enum Variant {
         DIRECT {
             @Override
             Holder create(int seed, LazyMode mode) {
                 return new ControlHolder(seed);
+            }
+        },
+        CACHED_METHOD {
+            @Override
+            Holder create(int seed, LazyMode mode) {
+                return new CachedMethodHolder(seed);
             }
         },
         LAZY_CACHE_DECL_SITE {
@@ -196,6 +220,19 @@ public class LaziesTest {
                 this.value = value = computeValues(seed);
             }
             return value;
+        }
+    }
+
+    public static final class CachedMethodHolder implements Holder {
+        private final int seed;
+
+        CachedMethodHolder(int seed) {
+            this.seed = seed;
+        }
+
+        @Override
+        public cached List<Integer> get() {
+            return computeValues(seed);
         }
     }
 

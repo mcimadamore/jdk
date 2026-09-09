@@ -49,7 +49,7 @@ public class LaziesArrayTest {
     @Benchmark
     @OperationsPerInvocation(HOLDER_COUNT)
     public Holder[] allocate(AllocateState state) {
-        return createHolders(state.variant, state.mode);
+        return createHolders(state.configuration);
     }
 
     @Benchmark
@@ -72,10 +72,10 @@ public class LaziesArrayTest {
         }
     }
 
-    private static Holder[] createHolders(Variant variant, LazyMode mode) {
+    private static Holder[] createHolders(Configuration configuration) {
         Holder[] holders = new Holder[HOLDER_COUNT];
         for (int i = 0; i < holders.length; i++) {
-            holders[i] = variant.create(mode);
+            holders[i] = configuration.create();
         }
         return holders;
     }
@@ -93,41 +93,32 @@ public class LaziesArrayTest {
     @State(Scope.Thread)
     public static class AllocateState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
     }
 
     @State(Scope.Thread)
     public static class ColdAccessState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
 
         private Holder[] holders;
 
         @Setup(Level.Invocation)
         public void setup() {
-            holders = createHolders(variant, mode);
+            holders = createHolders(configuration);
         }
     }
 
     @State(Scope.Thread)
     public static class HotAccessState {
         @Param
-        public Variant variant;
-
-        @Param
-        public LazyMode mode;
+        public Configuration configuration;
 
         private Holder[] holders;
 
         @Setup(Level.Trial)
         public void setup() {
-            holders = createHolders(variant, mode);
+            holders = createHolders(configuration);
             for (Holder holder : holders) {
                 for (int index = 0; index < ARRAY_SIZE; index++) {
                     holder.get(index);
@@ -136,7 +127,33 @@ public class LaziesArrayTest {
         }
     }
 
-    public enum Variant {
+    public enum Configuration {
+        DIRECT(Variant.DIRECT, null),
+        LAZY_ARRAY_CACHE_PLAIN(Variant.LAZY_ARRAY_CACHE, LazyMode.PLAIN),
+        LAZY_ARRAY_CACHE_CAS(Variant.LAZY_ARRAY_CACHE, LazyMode.CAS),
+        LAZY_ARRAY_CACHE_SYNCHRONIZED(Variant.LAZY_ARRAY_CACHE, LazyMode.SYNCHRONIZED),
+        LAZY_ARRAY_USE_SITE_PLAIN(Variant.LAZY_ARRAY_USE_SITE, LazyMode.PLAIN),
+        LAZY_ARRAY_USE_SITE_CAS(Variant.LAZY_ARRAY_USE_SITE, LazyMode.CAS),
+        LAZY_ARRAY_USE_SITE_SYNCHRONIZED(Variant.LAZY_ARRAY_USE_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_ARRAY_DECL_SITE_PLAIN(Variant.LAZY_ARRAY_DECL_SITE, LazyMode.PLAIN),
+        LAZY_ARRAY_DECL_SITE_CAS(Variant.LAZY_ARRAY_DECL_SITE, LazyMode.CAS),
+        LAZY_ARRAY_DECL_SITE_SYNCHRONIZED(Variant.LAZY_ARRAY_DECL_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_LIST(Variant.LAZY_LIST, null);
+
+        private final Variant variant;
+        private final LazyMode mode;
+
+        Configuration(Variant variant, LazyMode mode) {
+            this.variant = variant;
+            this.mode = mode;
+        }
+
+        Holder create() {
+            return variant.create(mode);
+        }
+    }
+
+    private enum Variant {
         DIRECT {
             @Override
             Holder create(LazyMode mode) {

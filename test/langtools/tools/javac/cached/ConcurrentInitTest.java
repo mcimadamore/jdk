@@ -1,11 +1,8 @@
 /*
  * @test /nodynamiccopyright/
  * @enablePreview
- * @summary Test cached method initialization modes under contention
- * @run main/othervm ConcurrentInitTest cas
- * @run main/othervm -Djdk.cachedMethods.initMode=cas ConcurrentInitTest cas
- * @run main/othervm -Djdk.cachedMethods.initMode=plain ConcurrentInitTest plain
- * @run main/othervm -Djdk.cachedMethods.initMode=synchronized ConcurrentInitTest synchronized
+ * @summary Test cached method initialization under contention
+ * @run main/othervm ConcurrentInitTest
  */
 
 import java.util.concurrent.CyclicBarrier;
@@ -16,7 +13,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class ConcurrentInitTest {
     static final int THREADS = 8;
 
-    static volatile Mode mode;
     static CyclicBarrier staticBarrier;
     static CyclicBarrier instanceBarrier;
     static AtomicInteger staticInitCount = new AtomicInteger();
@@ -33,17 +29,14 @@ public class ConcurrentInitTest {
     }
 
     public static void main(String[] args) throws Exception {
-        mode = args.length == 0 ? Mode.CAS : Mode.valueOf(args[0].toUpperCase());
-        int expectedInitCount = mode == Mode.SYNCHRONIZED ? 1 : THREADS;
-
         staticBarrier = new CyclicBarrier(THREADS);
-        assertResults(runConcurrently(() -> Test.m_s()), 101);
-        assertEquals(expectedInitCount, staticInitCount.get());
+        assertResults(runConcurrently(() -> Test.m_s()));
+        assertEquals(THREADS, staticInitCount.get());
 
         Test test = new Test(42);
         instanceBarrier = new CyclicBarrier(THREADS);
-        assertResults(runConcurrently(() -> test.m_i()), 43);
-        assertEquals(expectedInitCount, instanceInitCount.get());
+        assertResults(runConcurrently(() -> test.m_i()));
+        assertEquals(THREADS, instanceInitCount.get());
     }
 
     static int initStatic() {
@@ -60,11 +53,7 @@ public class ConcurrentInitTest {
 
     static void waitForContenders(CyclicBarrier barrier) {
         try {
-            if (mode == Mode.SYNCHRONIZED) {
-                Thread.sleep(100);
-            } else {
-                barrier.await(30, TimeUnit.SECONDS);
-            }
+            barrier.await(30, TimeUnit.SECONDS);
         } catch (Exception ex) {
             throw new AssertionError(ex);
         }
@@ -105,15 +94,9 @@ public class ConcurrentInitTest {
         return results;
     }
 
-    static void assertResults(int[] values, int minValue) {
+    static void assertResults(int[] values) {
         for (int value : values) {
-            if (mode == Mode.PLAIN) {
-                if (value < minValue || value >= minValue + THREADS) {
-                    throw new AssertionError(value);
-                }
-            } else {
-                assertEquals(values[0], value);
-            }
+            assertEquals(values[0], value);
         }
     }
 
@@ -127,9 +110,4 @@ public class ConcurrentInitTest {
         int getAsInt() throws Throwable;
     }
 
-    enum Mode {
-        CAS,
-        PLAIN,
-        SYNCHRONIZED
-    }
 }

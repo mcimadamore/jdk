@@ -29,13 +29,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
-import java.util.concurrent.atomic.LongAdder;
-
 import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.JavaLangInvokeAccess.FieldVarHandleInfo;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.misc.VM;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
@@ -45,22 +42,9 @@ import static java.util.Objects.requireNonNull;
 /** Stable field accessor. */
 @TrustFinalFields
 public abstract class StableAccessor {
-    private static final String INIT_MODE_PROPERTY = "jdk.cachedMethods.initMode";
-    private static final String LOG_STATS_PROPERTY = "jdk.cachedMethods.logStats";
-    private static final InitMode INIT_MODE = InitMode.fromProperty(VM.getSavedProperty(INIT_MODE_PROPERTY));
-    private static final boolean PLAIN_INIT_MODE = INIT_MODE == InitMode.PLAIN;
-    private static final boolean LOG_STATS = Boolean.parseBoolean(VM.getSavedProperty(LOG_STATS_PROPERTY));
-    private static final LongAdder TOTAL_COUNT = LOG_STATS ? new LongAdder() : null;
-    private static final LongAdder HIT_COUNT = LOG_STATS ? new LongAdder() : null;
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Object NULL_SENTINEL = new Object();
     private static final JavaLangInvokeAccess JLI = SharedSecrets.getJavaLangInvokeAccess();
-
-    static {
-        if (LOG_STATS) {
-            Runtime.getRuntime().addShutdownHook(new Thread(StableAccessor::logStats));
-        }
-    }
 
     final long offset;
     final MethodHandle initHandle;
@@ -111,10 +95,8 @@ public abstract class StableAccessor {
     @ForceInline
     public final Object getOrInit(Object receiver) throws Throwable {
         Object actualBase = resolveBase(receiver);
-        recordAccess();
         Object cached = UNSAFE.getReferenceStable(actualBase, offset);
         if (cached != null) {
-            recordHit();
             return decode(cached);
         }
         return slowGetOrInit(actualBase, receiver);
@@ -122,54 +104,12 @@ public abstract class StableAccessor {
 
     @DontInline
     private Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
-        return switch (INIT_MODE) {
-            case CAS -> slowGetOrInitCas(actualBase, receiver);
-            case PLAIN -> slowGetOrInitPlain(actualBase, receiver);
-            case SYNCHRONIZED -> slowGetOrInitSynchronized(actualBase, receiver);
-        };
-    }
-
-    @DontInline
-    private Object slowGetOrInitCas(Object actualBase, Object receiver) throws Throwable {
-        if (initHandle == null) {
-            throw new IllegalStateException("no init handle");
-        }
         Object value = initHandle.invokeExact(receiver);
         Object encoded = encode(value);
         if (UNSAFE.compareAndSetReference(actualBase, offset, null, encoded)) {
             return value;
         }
         return decode(UNSAFE.getReferenceStable(actualBase, offset));
-    }
-
-    @DontInline
-    private Object slowGetOrInitPlain(Object actualBase, Object receiver) throws Throwable {
-        Object cached = UNSAFE.getReference(actualBase, offset);
-        if (cached != null) {
-            return decode(cached);
-        }
-        if (initHandle == null) {
-            throw new IllegalStateException("no init handle");
-        }
-        Object value = initHandle.invokeExact(receiver);
-        UNSAFE.putReference(actualBase, offset, encode(value));
-        return value;
-    }
-
-    @DontInline
-    private Object slowGetOrInitSynchronized(Object actualBase, Object receiver) throws Throwable {
-        synchronized (actualBase) {
-            Object cached = UNSAFE.getReference(actualBase, offset);
-            if (cached != null) {
-                return decode(cached);
-            }
-            if (initHandle == null) {
-                throw new IllegalStateException("no init handle");
-            }
-            Object value = initHandle.invokeExact(receiver);
-            UNSAFE.putReferenceVolatile(actualBase, offset, encode(value));
-            return value;
-        }
     }
 
     @ForceInline
@@ -183,49 +123,6 @@ public abstract class StableAccessor {
     @ForceInline
     private static Object decode(Object value) {
         return value == NULL_SENTINEL ? null : value;
-    }
-
-    @ForceInline
-    private static void recordAccess() {
-        if (LOG_STATS) {
-            TOTAL_COUNT.increment();
-        }
-    }
-
-    @ForceInline
-    private static void recordHit() {
-        if (LOG_STATS) {
-            HIT_COUNT.increment();
-        }
-    }
-
-    private static void logStats() {
-        long total = TOTAL_COUNT.sum();
-        long hits = HIT_COUNT.sum();
-        long misses = total - hits;
-        double hitRatio = total == 0 ? 0.0d : (double) hits / total;
-        System.err.printf("Cached method stats: total=%d hits=%d misses=%d hitRatio=%f%n",
-                total, hits, misses, hitRatio);
-    }
-
-    private enum InitMode {
-        CAS,
-        PLAIN,
-        SYNCHRONIZED;
-
-        private static InitMode fromProperty(String value) {
-            if (value == null) {
-                return CAS;
-            } else if (value.equalsIgnoreCase("cas") || value.equalsIgnoreCase("racy")) {
-                return CAS;
-            } else if (value.equalsIgnoreCase("plain")) {
-                return PLAIN;
-            } else if (value.equalsIgnoreCase("synchronized") || value.equalsIgnoreCase("sync")) {
-                return SYNCHRONIZED;
-            }
-            throw new IllegalArgumentException("unsupported value for " + INIT_MODE_PROPERTY +
-                    ": " + value + " (expected cas/racy, plain, or synchronized/sync)");
-        }
     }
 
     @TrustFinalFields
