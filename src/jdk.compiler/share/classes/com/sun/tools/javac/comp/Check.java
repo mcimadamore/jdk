@@ -1205,6 +1205,9 @@ public class Check {
             if (((flags|implicit) & Flags.ABSTRACT) == 0 ||
                 ((flags) & Flags.DEFAULT) != 0)
                 implicit |= sym.owner.flags_field & STRICTFP;
+            if ((flags & ABSTRACT) == 0) {
+                mask |= CACHED;
+            }
             break;
         case TYP:
             if (sym.owner.kind.matches(KindSelector.VAL_MTH) ||
@@ -1312,6 +1315,10 @@ public class Check {
                  && checkDisjoint(pos, flags,
                                 SEALED,
                            FINAL | NON_SEALED)
+                  && checkDisjoint(pos, flags,
+                                 SEALED,
+                                 ANNOTATION)
+                // @@@: the generated diagnostic here is messy, because CACHED is shared with UNION
                  && checkDisjoint(pos, flags,
                                 SEALED,
                                 ANNOTATION)
@@ -1320,7 +1327,10 @@ public class Check {
                                 ANNOTATION)
                 && checkDisjoint(pos, flags,
                                 VALUE_CLASS,
-                                INTERFACE) ) {
+                                INTERFACE)
+                && checkDisjoint(pos, flags,
+                                CACHED,
+                                ABSTRACT | DEFAULT | NATIVE)) {
             // skip
         }
         return flags & (mask | ~ExtendedStandardFlags) | implicit;

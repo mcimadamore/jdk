@@ -15,7 +15,6 @@
 
 package org.openjdk.bench.valhalla.lazy;
 
-import java.lang.invoke.AbstractLazyValueUseSite;
 import java.lang.invoke.LazyArrayCache;
 import java.lang.invoke.LazyArrayDeclSite;
 import java.lang.invoke.LazyArrayUseSite;
@@ -50,7 +49,7 @@ public class LaziesArrayTest {
     @Benchmark
     @OperationsPerInvocation(HOLDER_COUNT)
     public Holder[] allocate(AllocateState state) {
-        return createHolders(state.variant);
+        return createHolders(state.variant, state.mode);
     }
 
     @Benchmark
@@ -73,10 +72,10 @@ public class LaziesArrayTest {
         }
     }
 
-    private static Holder[] createHolders(Variant variant) {
+    private static Holder[] createHolders(Variant variant, LazyMode mode) {
         Holder[] holders = new Holder[HOLDER_COUNT];
         for (int i = 0; i < holders.length; i++) {
-            holders[i] = variant.create();
+            holders[i] = variant.create(mode);
         }
         return holders;
     }
@@ -95,6 +94,9 @@ public class LaziesArrayTest {
     public static class AllocateState {
         @Param
         public Variant variant;
+
+        @Param
+        public LazyMode mode;
     }
 
     @State(Scope.Thread)
@@ -102,11 +104,14 @@ public class LaziesArrayTest {
         @Param
         public Variant variant;
 
+        @Param
+        public LazyMode mode;
+
         private Holder[] holders;
 
         @Setup(Level.Invocation)
         public void setup() {
-            holders = createHolders(variant);
+            holders = createHolders(variant, mode);
         }
     }
 
@@ -115,11 +120,14 @@ public class LaziesArrayTest {
         @Param
         public Variant variant;
 
+        @Param
+        public LazyMode mode;
+
         private Holder[] holders;
 
         @Setup(Level.Trial)
         public void setup() {
-            holders = createHolders(variant);
+            holders = createHolders(variant, mode);
             for (Holder holder : holders) {
                 for (int index = 0; index < ARRAY_SIZE; index++) {
                     holder.get(index);
@@ -131,42 +139,46 @@ public class LaziesArrayTest {
     public enum Variant {
         DIRECT {
             @Override
-            Holder create() {
+            Holder create(LazyMode mode) {
                 return new DirectHolder();
             }
         },
         LAZY_ARRAY_CACHE {
             @Override
-            Holder create() {
-                return new CacheHolder();
+            Holder create(LazyMode mode) {
+                return switch (mode) {
+                    case PLAIN -> new PlainCacheHolder();
+                    case CAS -> new CasCacheHolder();
+                    case SYNCHRONIZED -> new SynchronizedCacheHolder();
+                };
             }
         },
         LAZY_ARRAY_USE_SITE {
             @Override
-            Holder create() {
-                return new UseSiteHolder();
-            }
-        },
-        LAZY_ARRAY_USE_SITE_ABSTRACT {
-            @Override
-            Holder create() {
-                return new AbstractUseSiteHolder();
+            Holder create(LazyMode mode) {
+                return new UseSiteHolder(mode);
             }
         },
         LAZY_ARRAY_DECL_SITE {
             @Override
-            Holder create() {
-                return new DeclSiteHolder();
+            Holder create(LazyMode mode) {
+                return new DeclSiteHolder(mode);
             }
         },
         LAZY_LIST {
             @Override
-            Holder create() {
+            Holder create(LazyMode mode) {
                 return new LazyListHolder();
             }
         };
 
-        abstract Holder create();
+        abstract Holder create(LazyMode mode);
+    }
+
+    public enum LazyMode {
+        PLAIN,
+        CAS,
+        SYNCHRONIZED
     }
 
     public interface Holder {
@@ -187,23 +199,46 @@ public class LaziesArrayTest {
         }
     }
 
-    public static final class CacheHolder implements Holder {
-        private static final LazyArrayCache<List[], List<Integer>> CACHE =
+    public abstract static class CacheHolder implements Holder {
+        protected static final LazyArrayCache<List[], List<Integer>> CACHE =
                 LazyArrayCache.of(List[].class,
                         (array, index) -> computeValues(index));
 
         @SuppressWarnings("unchecked")
-        private final List<Integer>[] values = (List<Integer>[]) new List<?>[ARRAY_SIZE];
+        protected final List<Integer>[] values = (List<Integer>[]) new List<?>[ARRAY_SIZE];
+    }
 
+    public static final class PlainCacheHolder extends CacheHolder {
         @Override
         public List<Integer> get(int index) {
             return CACHE.get(values, index);
         }
     }
 
+    public static final class CasCacheHolder extends CacheHolder {
+        @Override
+        public List<Integer> get(int index) {
+            return CACHE.getVolatile(values, index);
+        }
+    }
+
+    public static final class SynchronizedCacheHolder extends CacheHolder {
+        @Override
+        public List<Integer> get(int index) {
+            return CACHE.getSynchronized(this, values, index);
+        }
+    }
+
     public static final class UseSiteHolder implements Holder {
-        private final LazyArrayUseSite<List<Integer>> values =
-                LazyArrayUseSite.of(ARRAY_SIZE, LazyArrayUseSite.Policy.PLAIN);
+        private final LazyArrayUseSite<List<Integer>> values;
+
+        UseSiteHolder(LazyMode mode) {
+            values = LazyArrayUseSite.of(ARRAY_SIZE, switch (mode) {
+                case PLAIN -> LazyArrayUseSite.Policy.PLAIN;
+                case CAS -> LazyArrayUseSite.Policy.CAS;
+                case SYNCHRONIZED -> LazyArrayUseSite.Policy.ONCE;
+            });
+        }
 
         @Override
         public List<Integer> get(int index) {
@@ -215,43 +250,16 @@ public class LaziesArrayTest {
         }
     }
 
-    public static final class AbstractUseSiteHolder implements Holder {
-        private final Value[] values = new Value[ARRAY_SIZE];
-
-        AbstractUseSiteHolder() {
-            for (int index = 0; index < ARRAY_SIZE; index++) {
-                values[index] = new Value(index);
-            }
-        }
-
-        @Override
-        public List<Integer> get(int index) {
-            return values[index].get();
-        }
-
-        private static final class Value {
-            private final int index;
-            private final AbstractLazyValueUseSite<List<Integer>> value =
-                    AbstractLazyValueUseSite.of(AbstractLazyValueUseSite.Policy.PLAIN);
-
-            Value(int index) {
-                this.index = index;
-            }
-
-            List<Integer> get() {
-                return value.get(this, Value::compute);
-            }
-
-            private List<Integer> compute() {
-                return computeValues(index);
-            }
-        }
-    }
-
     public static final class DeclSiteHolder implements Holder {
-        private final LazyArrayDeclSite<DeclSiteHolder, List<Integer>> values =
-                LazyArrayDeclSite.of(ARRAY_SIZE, DeclSiteHolder::compute,
-                        LazyArrayDeclSite.Policy.PLAIN);
+        private final LazyArrayDeclSite<DeclSiteHolder, List<Integer>> values;
+
+        DeclSiteHolder(LazyMode mode) {
+            values = LazyArrayDeclSite.of(ARRAY_SIZE, DeclSiteHolder::compute, switch (mode) {
+                case PLAIN -> LazyArrayDeclSite.Policy.PLAIN;
+                case CAS -> LazyArrayDeclSite.Policy.CAS;
+                case SYNCHRONIZED -> LazyArrayDeclSite.Policy.ONCE;
+            });
+        }
 
         @Override
         public List<Integer> get(int index) {

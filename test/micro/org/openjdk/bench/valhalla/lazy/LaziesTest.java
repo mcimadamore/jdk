@@ -16,19 +16,13 @@
 package org.openjdk.bench.valhalla.lazy;
 
 import java.lang.LazyConstant;
-import java.lang.invoke.AbstractLazyValueDeclSite;
-import java.lang.invoke.AbstractLazyValueUseSite;
-import java.lang.invoke.LazyArrayCache;
 import java.lang.invoke.LazyCacheDeclSite;
-import java.lang.invoke.LazyCacheUseSite;
 import java.lang.invoke.LazyValueDeclSite;
 import java.lang.invoke.LazyValueUseSite;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-
-import jdk.internal.misc.Unsafe;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -57,7 +51,7 @@ public class LaziesTest {
     @Benchmark
     @OperationsPerInvocation(HOLDER_COUNT)
     public Holder[] allocate(CreateState state) {
-        return createHolders(state.variant);
+        return createHolders(state.variant, state.mode);
     }
 
     @Benchmark
@@ -76,10 +70,10 @@ public class LaziesTest {
         }
     }
 
-    private static Holder[] createHolders(Variant variant) {
+    private static Holder[] createHolders(Variant variant, LazyMode mode) {
         Holder[] holders = new Holder[HOLDER_COUNT];
         for (int i = 0; i < holders.length; i++) {
-            holders[i] = variant.create(i);
+            holders[i] = variant.create(i, mode);
         }
         return holders;
     }
@@ -88,6 +82,9 @@ public class LaziesTest {
     public static class CreateState {
         @Param
         public Variant variant;
+
+        @Param
+        public LazyMode mode;
     }
 
     @State(Scope.Thread)
@@ -95,11 +92,14 @@ public class LaziesTest {
         @Param
         public Variant variant;
 
+        @Param
+        public LazyMode mode;
+
         private Holder[] holders;
 
         @Setup(Level.Invocation)
         public void setup() {
-            holders = createHolders(variant);
+            holders = createHolders(variant, mode);
         }
     }
 
@@ -108,87 +108,63 @@ public class LaziesTest {
         @Param
         public Variant variant;
 
+        @Param
+        public LazyMode mode;
+
         private Holder[] holders;
 
         @Setup(Level.Trial)
         public void setup() {
-            holders = createHolders(variant);
+            holders = createHolders(variant, mode);
             for (Holder holder : holders) {
                 holder.get();
             }
         }
     }
 
-    // some control versions are commented out
     public enum Variant {
         DIRECT {
             @Override
-            Holder create(int seed) {
+            Holder create(int seed, LazyMode mode) {
                 return new ControlHolder(seed);
             }
         },
-//        DIRECT_ERASED {
-//            @Override
-//            Holder create(int seed) {
-//                return new ErasedControlHolder(seed);
-//            }
-//        },
-//        DIRECT_UNSAFE {
-//            @Override
-//            Holder create(int seed) {
-//                return new UnsafeControlHolder(seed);
-//            }
-//        },
         LAZY_CACHE_DECL_SITE {
             @Override
-            Holder create(int seed) {
-                return new LazyCacheDeclSiteHolder(seed);
+            Holder create(int seed, LazyMode mode) {
+                return switch (mode) {
+                    case PLAIN -> new PlainLazyCacheDeclSiteHolder(seed);
+                    case CAS -> new CasLazyCacheDeclSiteHolder(seed);
+                    case SYNCHRONIZED -> new SynchronizedLazyCacheDeclSiteHolder(seed);
+                };
             }
         },
-        LAZY_ARRAY_CACHE {
-            @Override
-            Holder create(int seed) {
-                return new LazyArrayCacheHolder();
-            }
-        },
-//        LAZY_CACHE_USE_SITE {
-//            @Override
-//            Holder create(int seed) {
-//                return new LazyCacheUseSiteHolder(seed);
-//            }
-//        },
         LAZY_VALUE_USE_SITE {
             @Override
-            Holder create(int seed) {
-                return new UseSiteHolder(seed);
-            }
-        },
-        LAZY_VALUE_USE_SITE_ABSTRACT {
-            @Override
-            Holder create(int seed) {
-                return new AbstractUseSiteHolder(seed);
+            Holder create(int seed, LazyMode mode) {
+                return new UseSiteHolder(seed, mode);
             }
         },
         LAZY_VALUE_DECL_SITE {
             @Override
-            Holder create(int seed) {
-                return new DeclSiteHolder(seed);
+            Holder create(int seed, LazyMode mode) {
+                return new DeclSiteHolder(seed, mode);
             }
         },
-//        LAZY_VALUE_DECL_SITE_ABSTRACT {
-//            @Override
-//            Holder create(int seed) {
-//                return new AbstractHolder(seed);
-//            }
-//        },
         LAZY_CONSTANT {
             @Override
-            Holder create(int seed) {
+            Holder create(int seed, LazyMode mode) {
                 return new LazyConstantHolder(seed);
             }
         };
 
-        abstract Holder create(int seed);
+        abstract Holder create(int seed, LazyMode mode);
+    }
+
+    public enum LazyMode {
+        PLAIN,
+        CAS,
+        SYNCHRONIZED
     }
 
     public interface Holder {
@@ -223,8 +199,8 @@ public class LaziesTest {
         }
     }
 
-    public static final class LazyCacheDeclSiteHolder implements Holder {
-        private static final LazyCacheDeclSite<LazyCacheDeclSiteHolder, List<Integer>> CACHE =
+    public abstract static class LazyCacheDeclSiteHolder implements Holder {
+        protected static final LazyCacheDeclSite<LazyCacheDeclSiteHolder, List<Integer>> CACHE =
                 LazyCacheDeclSite.ofField(LazyCacheDeclSiteHolder.class, "value",
                         LazyCacheDeclSiteHolder::compute);
 
@@ -235,102 +211,55 @@ public class LaziesTest {
             this.seed = seed;
         }
 
+        private List<Integer> compute() {
+            return computeValues(seed);
+        }
+    }
+
+    public static final class PlainLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
+        PlainLazyCacheDeclSiteHolder(int seed) {
+            super(seed);
+        }
+
         @Override
         public List<Integer> get() {
             return CACHE.get(this);
         }
-
-        private List<Integer> compute() {
-            return computeValues(seed);
-        }
     }
 
-    public static final class LazyArrayCacheHolder implements Holder {
-        private static final LazyArrayCache<List[], List<Integer>> CACHE =
-                LazyArrayCache.of(List[].class,
-                        (array, index) -> computeValues(index));
-
-        @SuppressWarnings("unchecked")
-        private final List<Integer>[] value = (List<Integer>[]) new List<?>[1];
-
-        @Override
-        public List<Integer> get() {
-            return CACHE.get(value, 0);
-        }
-    }
-
-    public static final class LazyCacheUseSiteHolder implements Holder {
-        private static final LazyCacheUseSite<LazyCacheUseSiteHolder, List<Integer>> CACHE =
-                LazyCacheUseSite.ofField(LazyCacheUseSiteHolder.class, "value",
-                        LazyCacheUseSite.Policy.PLAIN);
-
-        private final int seed;
-        private List<Integer> value;
-
-        LazyCacheUseSiteHolder(int seed) {
-            this.seed = seed;
+    public static final class CasLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
+        CasLazyCacheDeclSiteHolder(int seed) {
+            super(seed);
         }
 
         @Override
         public List<Integer> get() {
-            return CACHE.get(this, LazyCacheUseSiteHolder::compute);
-        }
-
-        private List<Integer> compute() {
-            return computeValues(seed);
+            return CACHE.getVolatile(this);
         }
     }
 
-    public static final class ErasedControlHolder implements Holder {
-        private final int seed;
-        private Object value;
-
-        ErasedControlHolder(int seed) {
-            this.seed = seed;
+    public static final class SynchronizedLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
+        SynchronizedLazyCacheDeclSiteHolder(int seed) {
+            super(seed);
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public List<Integer> get() {
-            Object value = this.value;
-            if (value == null) {
-                this.value = value = computeValues(seed);
-            }
-            return (List<Integer>) value;
-        }
-    }
-
-    public static final class UnsafeControlHolder implements Holder {
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-        private static final long VALUE_OFFSET =
-                UNSAFE.objectFieldOffset(UnsafeControlHolder.class, "value");
-
-        private final int seed;
-        private List<Integer> value;
-
-        UnsafeControlHolder(int seed) {
-            this.seed = seed;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public List<Integer> get() {
-            Object value = UNSAFE.getReference(this, VALUE_OFFSET);
-            if (value == null) {
-                value = computeValues(seed);
-                UNSAFE.putReference(this, VALUE_OFFSET, value);
-            }
-            return (List<Integer>) value;
+            return CACHE.getSynchronized(this, this);
         }
     }
 
     public static final class UseSiteHolder implements Holder {
         private final int seed;
-        private final LazyValueUseSite<List<Integer>> value =
-                LazyValueUseSite.of(LazyValueUseSite.Policy.PLAIN);
+        private final LazyValueUseSite<List<Integer>> value;
 
-        UseSiteHolder(int seed) {
+        UseSiteHolder(int seed, LazyMode mode) {
             this.seed = seed;
+            value = LazyValueUseSite.of(switch (mode) {
+                case PLAIN -> LazyValueUseSite.Policy.PLAIN;
+                case CAS -> LazyValueUseSite.Policy.CAS;
+                case SYNCHRONIZED -> LazyValueUseSite.Policy.ONCE;
+            });
         }
 
         @Override
@@ -345,11 +274,15 @@ public class LaziesTest {
 
     public static final class DeclSiteHolder implements Holder {
         private final int seed;
-        private final LazyValueDeclSite<DeclSiteHolder, List<Integer>> value =
-                LazyValueDeclSite.of(LazyValueDeclSite.Policy.PLAIN, DeclSiteHolder::compute);
+        private final LazyValueDeclSite<DeclSiteHolder, List<Integer>> value;
 
-        DeclSiteHolder(int seed) {
+        DeclSiteHolder(int seed, LazyMode mode) {
             this.seed = seed;
+            value = LazyValueDeclSite.of(switch (mode) {
+                case PLAIN -> LazyValueDeclSite.Policy.PLAIN;
+                case CAS -> LazyValueDeclSite.Policy.CAS;
+                case SYNCHRONIZED -> LazyValueDeclSite.Policy.ONCE;
+            }, DeclSiteHolder::compute);
         }
 
         @Override
@@ -359,47 +292,6 @@ public class LaziesTest {
 
         private List<Integer> compute() {
             return computeValues(seed);
-        }
-    }
-
-    public static final class AbstractUseSiteHolder implements Holder {
-        private final int seed;
-        private final AbstractLazyValueUseSite<List<Integer>> value =
-                AbstractLazyValueUseSite.of(AbstractLazyValueUseSite.Policy.PLAIN);
-
-        AbstractUseSiteHolder(int seed) {
-            this.seed = seed;
-        }
-
-        @Override
-        public List<Integer> get() {
-            return value.get(this, AbstractUseSiteHolder::compute);
-        }
-
-        private List<Integer> compute() {
-            return computeValues(seed);
-        }
-    }
-
-    public static final class AbstractHolder implements Holder {
-        private static final class Value
-                extends AbstractLazyValueDeclSite<AbstractHolder, List<Integer>> {
-            @Override
-            protected List<Integer> compute(AbstractHolder holder) {
-                return computeValues(holder.seed);
-            }
-        }
-
-        private final int seed;
-        private final Value value = new Value();
-
-        AbstractHolder(int seed) {
-            this.seed = seed;
-        }
-
-        @Override
-        public List<Integer> get() {
-            return value.getPlain(this);
         }
     }
 
