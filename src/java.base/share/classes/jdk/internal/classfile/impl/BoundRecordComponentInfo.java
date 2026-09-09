@@ -28,7 +28,6 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassReader;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyCache;
 import java.util.List;
 
 public final /*value*/ class BoundRecordComponentInfo
@@ -53,15 +52,8 @@ public final /*value*/ class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
-    private final LazyCache< List<Attribute<?>>> attributes =
-            LazyCache.ofRetry();
-
     @Override
-    public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, BoundRecordComponentInfo::compute_attributes_56);
-    }
-
-    private List<Attribute<?>> compute_attributes_56() {
+    public cached List<Attribute<?>> attributes() {
         return BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
     }
 }

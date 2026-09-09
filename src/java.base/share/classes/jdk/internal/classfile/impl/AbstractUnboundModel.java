@@ -28,7 +28,6 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.AttributedElement;
 import java.lang.classfile.ClassFileElement;
 import java.lang.classfile.CompoundElement;
-import java.lang.invoke.LazyCache;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -59,15 +58,8 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
-    private final LazyCache< List<Attribute<?>>> attributes =
-            LazyCache.ofRetry();
-
     @Override
-    public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, model -> model.compute_attributes_62());
-    }
-
-    private List<Attribute<?>> compute_attributes_62() {
+    public cached List<Attribute<?>> attributes() {
         return elements.stream()
                        .<Attribute<?>>mapMulti((e, sink) -> {
                            if (e instanceof Attribute<?> attr) {

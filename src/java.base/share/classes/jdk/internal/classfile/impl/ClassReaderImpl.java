@@ -32,7 +32,6 @@ import java.lang.classfile.constantpool.ConstantPoolException;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,27 +134,13 @@ public final class ClassReaderImpl
         return flags;
     }
 
-    private final LazyCache< ClassEntry> thisClass =
-            LazyCache.ofRetry();
-
     @Override
-    public ClassEntry thisClassEntry() {
-        return thisClass.getOrCompute(this, ClassReaderImpl::compute_thisClassEntry_135);
-    }
-
-    private ClassEntry compute_thisClassEntry_135() {
+    public cached ClassEntry thisClassEntry() {
         return readEntry(thisClassPos, ClassEntry.class);
     }
 
-    private final LazyCache< Optional<ClassEntry>> superclass =
-            LazyCache.ofRetry();
-
     @Override
-    public Optional<ClassEntry> superclassEntry() {
-        return superclass.getOrCompute(this, ClassReaderImpl::compute_superclassEntry_140);
-    }
-
-    private Optional<ClassEntry> compute_superclassEntry_140() {
+    public cached Optional<ClassEntry> superclassEntry() {
         return Optional.ofNullable(readEntryOrNull(thisClassPos + 2, ClassEntry.class));
     }
 
@@ -284,30 +269,12 @@ public final class ClassReaderImpl
         }
     }
 
-    private final LazyCache< BootstrapMethodsAttribute> bootstrapMethodsAttribute =
-            LazyCache.ofRetry();
-
-    BootstrapMethodsAttribute bootstrapMethodsAttribute() {
-
-        return bootstrapMethodsAttribute.getOrCompute(this, ClassReaderImpl::compute_bootstrapMethodsAttribute_264);
-
-    }
-
-    private BootstrapMethodsAttribute compute_bootstrapMethodsAttribute_264() {
+    cached BootstrapMethodsAttribute bootstrapMethodsAttribute() {
         return containedClass.findAttribute(Attributes.bootstrapMethods())
                              .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
     }
 
-    private final LazyCache< List<BootstrapMethodEntryImpl>> bsmEntries =
-            LazyCache.ofRetry();
-
-    List<BootstrapMethodEntryImpl> bsmEntries() {
-
-        return bsmEntries.getOrCompute(this, ClassReaderImpl::compute_bsmEntries_269);
-
-    }
-
-    private List<BootstrapMethodEntryImpl> compute_bsmEntries_269() {
+    cached List<BootstrapMethodEntryImpl> bsmEntries() {
         var bsmEntries = new ArrayList<BootstrapMethodEntryImpl>();
         BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
         List<BootstrapMethodEntry> list = attr.bootstrapMethods();

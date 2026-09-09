@@ -305,6 +305,12 @@ public class Flags {
     public static final long UNION = 1L<<39;
 
     /**
+     * Flag is set for 'cached' methods.
+     */
+    @Use({FlagTarget.METHOD})
+    public static final long CACHED = 1L<<39; // MethodSymbols
+
+    /**
      * Flags an erroneous TypeSymbol as viable for recovery.
      * TypeSymbols only.
      */
@@ -556,8 +562,6 @@ public class Flags {
                                             VOLATILE | TRANSIENT | ENUM,
         ConstructorFlags                  = AccessFlags,
         InterfaceMethodFlags              = ABSTRACT | PUBLIC,
-        MethodFlags                       = AccessFlags | ABSTRACT | STATIC | NATIVE |
-                                            SYNCHRONIZED | FINAL | STRICTFP,
         RecordMethodFlags                 = AccessFlags | ABSTRACT | STATIC |
                                             SYNCHRONIZED | FINAL | STRICTFP;
     @NotFlag
@@ -572,6 +576,8 @@ public class Flags {
         ValueFieldFlags                   = (long) VarFlags | STRICT | FINAL,
         ModifierFlags                     = ((long)StandardFlags & ~INTERFACE) | DEFAULT | SEALED | NON_SEALED | VALUE_CLASS,
         InterfaceMethodMask               = ABSTRACT | PRIVATE | STATIC | PUBLIC | STRICTFP | DEFAULT,
+        MethodFlags                       = AccessFlags | ABSTRACT | STATIC | NATIVE |
+                                            SYNCHRONIZED | FINAL | STRICTFP | CACHED,
         AnnotationTypeElementMask         = ABSTRACT | PUBLIC,
         LocalVarFlags                     = FINAL | PARAMETER,
         ReceiverParamFlags                = PARAMETER;

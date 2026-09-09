@@ -32,7 +32,6 @@ import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.attribute.UnknownAttribute;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.*;
-import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -131,15 +130,8 @@ public final /*value*/ class CodeImpl
 
     // CodeAttribute
 
-    private final LazyCache< List<Attribute<?>>> attributes =
-            LazyCache.ofRetry();
-
     @Override
-    public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, CodeImpl::compute_attributes_134);
-    }
-
-    private List<Attribute<?>> compute_attributes_134() {
+    public cached List<Attribute<?>> attributes() {
         return BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
     }
 
@@ -191,15 +183,8 @@ public final /*value*/ class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
-    private final LazyCache< List<ExceptionCatch>> exceptionTable =
-            LazyCache.ofRetry();
-
     @Override
-    public List<ExceptionCatch> exceptionHandlers() {
-        return exceptionTable.getOrCompute(this, CodeImpl::compute_exceptionHandlers_186);
-    }
-
-    private List<ExceptionCatch> compute_exceptionHandlers_186() {
+    public cached List<ExceptionCatch> exceptionHandlers() {
         inflateMetadata();
         var exceptionTable = new ArrayList<ExceptionCatch>(exceptionHandlerCnt);
         iterateExceptionHandlers(new ExceptionHandlerAction() {

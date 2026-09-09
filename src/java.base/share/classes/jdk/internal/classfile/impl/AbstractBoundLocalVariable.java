@@ -26,7 +26,6 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.lang.invoke.LazyCache;
 
 public abstract /*value*/ class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
@@ -42,16 +41,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
-    private final LazyCache< Utf8Entry> nameEntry =
-            LazyCache.ofRetry();
-
-    public Utf8Entry name() {
-
-        return nameEntry.getOrCompute(this, AbstractBoundLocalVariable::compute_name_43);
-
-    }
-
-    private Utf8Entry compute_name_43() {
+    public cached Utf8Entry name() {
         return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
     }
 
@@ -59,16 +49,7 @@ public abstract /*value*/ class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 6);
     }
 
-    private final LazyCache< Utf8Entry> secondaryEntry =
-            LazyCache.ofRetry();
-
-    protected Utf8Entry secondaryEntry() {
-
-        return secondaryEntry.getOrCompute(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
-
-    }
-
-    private Utf8Entry compute_secondaryEntry_51() {
+    protected cached Utf8Entry secondaryEntry() {
         return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
     }
 

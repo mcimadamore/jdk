@@ -1673,6 +1673,13 @@ public class JavaCompiler {
 
             compileStates.put(env, CompileState.TRANSPATTERNS);
 
+            if (shouldStop(CompileState.TRANSCONSTANTMETHODS))
+                return;
+
+            env.tree = TransCachedMethods.instance(context).translateTopLevelClass(env, env.tree, localMake);
+
+            compileStates.put(env, CompileState.TRANSCONSTANTMETHODS);
+
             if (shouldStop(CompileState.LOWER))
                 return;
 

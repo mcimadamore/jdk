@@ -28,7 +28,6 @@ import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
-import java.lang.invoke.LazyCache;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -107,15 +106,8 @@ public final /*value*/ class ClassImpl
         return reader.superclassEntry();
     }
 
-    private final LazyCache< List<ClassEntry>> interfaces =
-            LazyCache.ofRetry();
-
     @Override
-    public List<ClassEntry> interfaces() {
-        return interfaces.getOrCompute(this, ClassImpl::compute_interfaces_110);
-    }
-
-    private List<ClassEntry> compute_interfaces_110() {
+    public cached List<ClassEntry> interfaces() {
         int pos = reader.thisClassPos() + 4;
         int cnt = reader.readU2(pos);
         pos += 2;
@@ -127,15 +119,8 @@ public final /*value*/ class ClassImpl
         return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
     }
 
-    private final LazyCache< List<Attribute<?>>> attributes =
-            LazyCache.ofRetry();
-
     @Override
-    public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, ClassImpl::compute_attributes_123);
-    }
-
-    private List<Attribute<?>> compute_attributes_123() {
+    public cached List<Attribute<?>> attributes() {
         return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 

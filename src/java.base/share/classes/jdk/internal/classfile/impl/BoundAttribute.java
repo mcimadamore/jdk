@@ -28,7 +28,6 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.*;
-import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,15 +58,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
-    private final LazyCache< Utf8Entry> name =
-            LazyCache.ofRetry();
-
     @Override
-    public Utf8Entry attributeName() {
-        return name.getOrCompute(this, attribute -> attribute.compute_attributeName_62());
-    }
-
-    private Utf8Entry compute_attributeName_62() {
+    public cached Utf8Entry attributeName() {
         return classReader.readEntry(payloadStart - 6, Utf8Entry.class);
     }
 
@@ -206,15 +198,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
-        private final LazyCache< List<StackMapFrameInfo>> entries =
-                LazyCache.ofRetry();
-
         @Override
-        public List<StackMapFrameInfo> entries() {
-            return entries.getOrCompute(this, BoundStackMapTableAttribute::compute_entries_202);
-        }
-
-        private List<StackMapFrameInfo> compute_entries_202() {
+        public cached List<StackMapFrameInfo> entries() {
             return new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method),
                         StackMapDecoder.initFrameUnsets(method)).entries();
         }
@@ -244,15 +229,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<LineNumberInfo>> lineNumbers =
-                LazyCache.ofRetry();
-
         @Override
-        public List<LineNumberInfo> lineNumbers() {
-            return lineNumbers.getOrCompute(this, BoundLineNumberTableAttribute::compute_lineNumbers_232);
-        }
-
-        private List<LineNumberInfo> compute_lineNumbers_232() {
+        public cached List<LineNumberInfo> lineNumbers() {
             int nLn = classReader.readU2(payloadStart);
             LineNumberInfo[] elements = new LineNumberInfo[nLn];
             int p = payloadStart + 2;
@@ -272,15 +250,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<CharacterRangeInfo>> characterRangeTable =
-                LazyCache.ofRetry();
-
         @Override
-        public List<CharacterRangeInfo> characterRangeTable() {
-            return characterRangeTable.getOrCompute(this, BoundCharacterRangeTableAttribute::compute_characterRangeTable_253);
-        }
-
-        private List<CharacterRangeInfo> compute_characterRangeTable_253() {
+        public cached List<CharacterRangeInfo> characterRangeTable() {
             int nLn = classReader.readU2(payloadStart);
             CharacterRangeInfo[] elements = new CharacterRangeInfo[nLn];
             int p = payloadStart + 2;
@@ -311,15 +282,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyCache< List<LocalVariableInfo>> localVars =
-                LazyCache.ofRetry();
-
         @Override
-        public List<LocalVariableInfo> localVariables() {
-            return localVars.getOrCompute(this, BoundLocalVariableTableAttribute::compute_localVariables_285);
-        }
-
-        private List<LocalVariableInfo> compute_localVariables_285() {
+        public cached List<LocalVariableInfo> localVariables() {
             int cnt = classReader.readU2(payloadStart);
             BoundLocalVariable[] elements = new BoundLocalVariable[cnt];
             int p = payloadStart + 2;
@@ -345,15 +309,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             }
         }
 
-        private final LazyCache< List<LocalVariableTypeInfo>> localVars =
-                LazyCache.ofRetry();
-
         @Override
-        public List<LocalVariableTypeInfo> localVariableTypes() {
-            return localVars.getOrCompute(this, BoundLocalVariableTypeTableAttribute::compute_localVariableTypes_312);
-        }
-
-        private List<LocalVariableTypeInfo> compute_localVariableTypes_312() {
+        public cached List<LocalVariableTypeInfo> localVariableTypes() {
             final int cnt = classReader.readU2(payloadStart);
             BoundLocalVariableType[] elements = new BoundLocalVariableType[cnt];
             int p = payloadStart + 2;
@@ -372,15 +329,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<MethodParameterInfo>> parameters =
-                LazyCache.ofRetry();
-
         @Override
-        public List<MethodParameterInfo> parameters() {
-            return parameters.getOrCompute(this, BoundMethodParametersAttribute::compute_parameters_332);
-        }
-
-        private List<MethodParameterInfo> compute_parameters_332() {
+        public cached List<MethodParameterInfo> parameters() {
             final int cnt = classReader.readU1(payloadStart);
             MethodParameterInfo[] elements = new MethodParameterInfo[cnt];
             int p = payloadStart + 1;
@@ -406,15 +356,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
-        private final LazyCache< List<ModuleHashInfo>> hashes =
-                LazyCache.ofRetry();
-
         @Override
-        public List<ModuleHashInfo> hashes() {
-            return hashes.getOrCompute(this, BoundModuleHashesAttribute::compute_hashes_359);
-        }
-
-        private List<ModuleHashInfo> compute_hashes_359() {
+        public cached List<ModuleHashInfo> hashes() {
             final int cnt = classReader.readU2(payloadStart + 2);
             ModuleHashInfo[] elements = new ModuleHashInfo[cnt];
             int p = payloadStart + 4;
@@ -438,15 +381,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<RecordComponentInfo>> components =
-                LazyCache.ofRetry();
-
         @Override
-        public List<RecordComponentInfo> components() {
-            return components.getOrCompute(this, BoundRecordAttribute::compute_components_384);
-        }
-
-        private List<RecordComponentInfo> compute_components_384() {
+        public cached List<RecordComponentInfo> components() {
             final int cnt = classReader.readU2(payloadStart);
             RecordComponentInfo[] elements = new RecordComponentInfo[cnt];
             int p = payloadStart + 2;
@@ -588,15 +524,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<ClassEntry>> exceptions =
-                LazyCache.ofRetry();
-
         @Override
-        public List<ClassEntry> exceptions() {
-            return exceptions.getOrCompute(this, BoundExceptionsAttribute::compute_exceptions_527);
-        }
-
-        private List<ClassEntry> compute_exceptions_527() {
+        public cached List<ClassEntry> exceptions() {
             return readEntryList(payloadStart, ClassEntry.class);
         }
     }
@@ -739,15 +668,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<PackageEntry>> packages =
-                LazyCache.ofRetry();
-
         @Override
-        public List<PackageEntry> packages() {
-            return packages.getOrCompute(this, BoundModulePackagesAttribute::compute_packages_671);
-        }
-
-        private List<PackageEntry> compute_packages_671() {
+        public cached List<PackageEntry> packages() {
             return readEntryList(payloadStart, PackageEntry.class);
         }
     }
@@ -759,15 +681,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<ClassEntry>> members =
-                LazyCache.ofRetry();
-
         @Override
-        public List<ClassEntry> nestMembers() {
-            return members.getOrCompute(this, BoundNestMembersAttribute::compute_nestMembers_684);
-        }
-
-        private List<ClassEntry> compute_nestMembers_684() {
+        public cached List<ClassEntry> nestMembers() {
             return readEntryList(payloadStart, ClassEntry.class);
         }
     }
@@ -787,15 +702,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
-        private final LazyCache< List<BootstrapMethodEntry>> bootstraps =
-                LazyCache.ofRetry();
-
         @Override
-        public List<BootstrapMethodEntry> bootstrapMethods() {
-            return bootstraps.getOrCompute(this, BoundBootstrapMethodsAttribute::compute_bootstrapMethods_705);
-        }
-
-        private List<BootstrapMethodEntry> compute_bootstrapMethods_705() {
+        public cached List<BootstrapMethodEntry> bootstrapMethods() {
             BootstrapMethodEntry[] bs = new BootstrapMethodEntry[size];
             int p = payloadStart + 2;
             for (int i = 0; i < size; ++i) {
@@ -816,15 +724,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<InnerClassInfo>> classes =
-                LazyCache.ofRetry();
-
         @Override
-        public List<InnerClassInfo> classes() {
-            return classes.getOrCompute(this, BoundInnerClassesAttribute::compute_classes_727);
-        }
-
-        private List<InnerClassInfo> compute_classes_727() {
+        public cached List<InnerClassInfo> classes() {
             final int cnt = classReader.readU2(payloadStart);
             int p = payloadStart + 2;
             InnerClassInfo[] elements = new InnerClassInfo[cnt];
@@ -865,15 +766,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< AnnotationValue> annotationValue =
-                LazyCache.ofRetry();
-
         @Override
-        public AnnotationValue defaultValue() {
-            return annotationValue.getOrCompute(this, BoundAnnotationDefaultAttr::compute_defaultValue_769);
-        }
-
-        private AnnotationValue compute_defaultValue_769() {
+        public cached AnnotationValue defaultValue() {
             return AnnotationReader.readElementValue(classReader, payloadStart);
         }
     }
@@ -947,15 +841,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
-        private final LazyCache< List<Annotation>> inflated =
-                LazyCache.ofRetry();
-
         @Override
-        public List<Annotation> annotations() {
-            return inflated.getOrCompute(this, BoundRuntimeInvisibleAnnotationsAttribute::compute_annotations_844);
-        }
-
-        private List<Annotation> compute_annotations_844() {
+        public cached List<Annotation> annotations() {
             return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
@@ -969,15 +856,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
-        private final LazyCache< List<Annotation>> inflated =
-                LazyCache.ofRetry();
-
         @Override
-        public List<Annotation> annotations() {
-            return inflated.getOrCompute(this, BoundRuntimeVisibleAnnotationsAttribute::compute_annotations_859);
-        }
-
-        private List<Annotation> compute_annotations_859() {
+        public cached List<Annotation> annotations() {
             return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
@@ -989,15 +869,8 @@ public abstract sealed /*value*/ class BoundAttribute<T extends Attribute<T>>
             super(cf, mapper, pos);
         }
 
-        private final LazyCache< List<ClassEntry>> permittedSubclasses =
-                LazyCache.ofRetry();
-
         @Override
-        public List<ClassEntry> permittedSubclasses() {
-            return permittedSubclasses.getOrCompute(this, BoundPermittedSubclassesAttribute::compute_permittedSubclasses_872);
-        }
-
-        private List<ClassEntry> compute_permittedSubclasses_872() {
+        public cached List<ClassEntry> permittedSubclasses() {
             return readEntryList(payloadStart, ClassEntry.class);
         }
     }

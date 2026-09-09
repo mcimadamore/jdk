@@ -237,6 +237,9 @@ public class Names {
     // special annotation names
     public final Name requiresIdentityInternal;
 
+    // cached methods
+    public final Name cached;
+
     public final Name.Table table;
 
     @SuppressWarnings("this-escape")
@@ -425,6 +428,9 @@ public class Names {
         typeSwitch = fromString("typeSwitch");
         enumSwitch = fromString("enumSwitch");
         enumConstant = fromString("enumConstant");
+
+        // cached methods
+        cached = fromString("cached");
 
         // special annotations:
         requiresIdentityInternal = fromString("jdk.internal.RequiresIdentity+Annotation");

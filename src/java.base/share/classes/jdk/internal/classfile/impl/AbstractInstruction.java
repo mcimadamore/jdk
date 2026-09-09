@@ -31,7 +31,6 @@ import java.lang.classfile.TypeKind;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
 import java.lang.constant.ConstantDesc;
-import java.lang.invoke.LazyCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -352,15 +351,8 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyCache< FieldRefEntry> fieldEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public FieldRefEntry field() {
-            return fieldEntry.getOrCompute(this, BoundFieldInstruction::compute_field_356);
-        }
-
-        private FieldRefEntry compute_field_356() {
+        public cached FieldRefEntry field() {
             return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
         }
 
@@ -386,15 +378,8 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyCache< MemberRefEntry> methodEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public MemberRefEntry method() {
-            return methodEntry.getOrCompute(this, BoundInvokeInstruction::compute_method_383);
-        }
-
-        private MemberRefEntry compute_method_383() {
+        public cached MemberRefEntry method() {
             return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
         }
 
@@ -430,15 +415,8 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyCache< MemberRefEntry> methodEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public MemberRefEntry method() {
-            return methodEntry.getOrCompute(this, BoundInvokeInterfaceInstruction::compute_method_420);
-        }
-
-        private MemberRefEntry compute_method_420() {
+        public cached MemberRefEntry method() {
             return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
         }
 
@@ -474,15 +452,8 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyCache< InvokeDynamicEntry> indyEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public InvokeDynamicEntry invokedynamic() {
-            return indyEntry.getOrCompute(this, BoundInvokeDynamicInstruction::compute_invokedynamic_457);
-        }
-
-        private InvokeDynamicEntry compute_invokedynamic_457() {
+        public cached InvokeDynamicEntry invokedynamic() {
             return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
         }
 
@@ -508,15 +479,8 @@ public abstract sealed class AbstractInstruction
             super(Opcode.NEW, code, pos);
         }
 
-        private final LazyCache< ClassEntry> classEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public ClassEntry className() {
-            return classEntry.getOrCompute(this, BoundNewObjectInstruction::compute_className_484);
-        }
-
-        private ClassEntry compute_className_484() {
+        public cached ClassEntry className() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
@@ -619,15 +583,8 @@ public abstract sealed class AbstractInstruction
             super(op, code, pos);
         }
 
-        private final LazyCache< ClassEntry> typeEntry =
-                LazyCache.ofRetry();
-
         @Override
-        public ClassEntry type() {
-            return typeEntry.getOrCompute(this, BoundTypeCheckInstruction::compute_type_588);
-        }
-
-        private ClassEntry compute_type_588() {
+        public cached ClassEntry type() {
             return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
