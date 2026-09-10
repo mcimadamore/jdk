@@ -40,7 +40,8 @@ import jdk.internal.reflect.Reflection;
  */
 public interface LazyFieldCache<R, T> {
     /**
-     * Returns the cached value, computing and storing it with plain semantics if unset.
+     * Returns the cached value with stable semantics, computing and publishing it
+     * atomically if unset.
      *
      * @param receiver the field receiver
      * @return the cached value

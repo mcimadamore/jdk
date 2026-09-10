@@ -57,17 +57,11 @@ final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
     @ForceInline
     @SuppressWarnings("unchecked")
     public T get(R receiver) {
-        Object value = getPlainValue(receiver);
+        Object value = getStableValue(receiver);
         if (isDefault(value)) {
-            return getSlow(receiver);
+            return getCasSlow(receiver);
         }
         return (T)value;
-    }
-
-    private T getSlow(R receiver) {
-        T value = requireInitialized(computer.apply(receiver));
-        putPlainValue(receiver, value);
-        return value;
     }
 
     @Override
@@ -76,13 +70,13 @@ final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
     public T getVolatile(R receiver) {
         Object value = getVolatileValue(receiver);
         if (isDefault(value)) {
-            return getVolatileSlow(receiver);
+            return getCasSlow(receiver);
         }
         return (T)value;
     }
 
     @SuppressWarnings("unchecked")
-    private T getVolatileSlow(R receiver) {
+    private T getCasSlow(R receiver) {
         Object candidate = requireInitialized(computer.apply(receiver));
         Object witness = compareAndExchangeValue(receiver, candidate);
         return (T)(isDefault(witness) ? candidate : witness);
@@ -112,16 +106,16 @@ final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
         return (T)value;
     }
 
-    private Object getPlainValue(Object receiver) {
-        if (!type.isPrimitive()) return UNSAFE.getReference(receiver, offset);
-        if (type == int.class) return UNSAFE.getInt(receiver, offset);
-        if (type == long.class) return UNSAFE.getLong(receiver, offset);
-        if (type == boolean.class) return UNSAFE.getBoolean(receiver, offset);
-        if (type == byte.class) return UNSAFE.getByte(receiver, offset);
-        if (type == short.class) return UNSAFE.getShort(receiver, offset);
-        if (type == char.class) return UNSAFE.getChar(receiver, offset);
-        if (type == float.class) return UNSAFE.getFloat(receiver, offset);
-        return UNSAFE.getDouble(receiver, offset);
+    private Object getStableValue(Object receiver) {
+        if (!type.isPrimitive()) return UNSAFE.getReferenceStable(receiver, offset);
+        if (type == int.class) return UNSAFE.getIntStable(receiver, offset);
+        if (type == long.class) return UNSAFE.getLongStable(receiver, offset);
+        if (type == boolean.class) return UNSAFE.getBooleanStable(receiver, offset);
+        if (type == byte.class) return UNSAFE.getByteStable(receiver, offset);
+        if (type == short.class) return UNSAFE.getShortStable(receiver, offset);
+        if (type == char.class) return UNSAFE.getCharStable(receiver, offset);
+        if (type == float.class) return UNSAFE.getFloatStable(receiver, offset);
+        return UNSAFE.getDoubleStable(receiver, offset);
     }
 
     private Object getVolatileValue(Object receiver) {
@@ -134,18 +128,6 @@ final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
         if (type == char.class) return UNSAFE.getCharVolatile(receiver, offset);
         if (type == float.class) return UNSAFE.getFloatVolatile(receiver, offset);
         return UNSAFE.getDoubleVolatile(receiver, offset);
-    }
-
-    private void putPlainValue(Object receiver, Object value) {
-        if (!type.isPrimitive()) UNSAFE.putReference(receiver, offset, value);
-        else if (type == int.class) UNSAFE.putInt(receiver, offset, (Integer)value);
-        else if (type == long.class) UNSAFE.putLong(receiver, offset, (Long)value);
-        else if (type == boolean.class) UNSAFE.putBoolean(receiver, offset, (Boolean)value);
-        else if (type == byte.class) UNSAFE.putByte(receiver, offset, (Byte)value);
-        else if (type == short.class) UNSAFE.putShort(receiver, offset, (Short)value);
-        else if (type == char.class) UNSAFE.putChar(receiver, offset, (Character)value);
-        else if (type == float.class) UNSAFE.putFloat(receiver, offset, (Float)value);
-        else UNSAFE.putDouble(receiver, offset, (Double)value);
     }
 
     private void putVolatileValue(Object receiver, Object value) {
