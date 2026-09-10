@@ -61,7 +61,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     private Utf8Entry attributeName$cache;
     private static final LazyFieldCache<BoundAttribute<?>, Utf8Entry> attributeName$cacheAccessor =
-            LazyFieldCache.ofField(BoundAttribute.class, "attributeName$cache",
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundAttribute.class, "attributeName$cache",
                     (BoundAttribute<?> attribute) -> attribute.attributeName$compute());
 
     @Override
@@ -210,7 +210,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<StackMapFrameInfo> entries$cache;
         private static final LazyFieldCache<BoundStackMapTableAttribute, List<StackMapFrameInfo>> entries$cacheAccessor =
-                LazyFieldCache.ofField(BoundStackMapTableAttribute.class, "entries$cache", BoundStackMapTableAttribute::entries$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundStackMapTableAttribute.class, "entries$cache", BoundStackMapTableAttribute::entries$compute);
 
         @Override
         public List<StackMapFrameInfo> entries() {
@@ -249,7 +249,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<LineNumberInfo> lineNumbers$cache;
         private static final LazyFieldCache<BoundLineNumberTableAttribute, List<LineNumberInfo>> lineNumbers$cacheAccessor =
-                LazyFieldCache.ofField(BoundLineNumberTableAttribute.class, "lineNumbers$cache", BoundLineNumberTableAttribute::lineNumbers$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundLineNumberTableAttribute.class, "lineNumbers$cache", BoundLineNumberTableAttribute::lineNumbers$compute);
 
         @Override
         public List<LineNumberInfo> lineNumbers() {
@@ -278,7 +278,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<CharacterRangeInfo> characterRangeTable$cache;
         private static final LazyFieldCache<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> characterRangeTable$cacheAccessor =
-                LazyFieldCache.ofField(BoundCharacterRangeTableAttribute.class, "characterRangeTable$cache", BoundCharacterRangeTableAttribute::characterRangeTable$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundCharacterRangeTableAttribute.class, "characterRangeTable$cache", BoundCharacterRangeTableAttribute::characterRangeTable$compute);
 
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
@@ -318,7 +318,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<LocalVariableInfo> localVariables$cache;
         private static final LazyFieldCache<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> localVariables$cacheAccessor =
-                LazyFieldCache.ofField(BoundLocalVariableTableAttribute.class, "localVariables$cache", BoundLocalVariableTableAttribute::localVariables$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundLocalVariableTableAttribute.class, "localVariables$cache", BoundLocalVariableTableAttribute::localVariables$compute);
 
         @Override
         public List<LocalVariableInfo> localVariables() {
@@ -353,7 +353,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<LocalVariableTypeInfo> localVariableTypes$cache;
         private static final LazyFieldCache<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> localVariableTypes$cacheAccessor =
-                LazyFieldCache.ofField(BoundLocalVariableTypeTableAttribute.class, "localVariableTypes$cache", BoundLocalVariableTypeTableAttribute::localVariableTypes$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundLocalVariableTypeTableAttribute.class, "localVariableTypes$cache", BoundLocalVariableTypeTableAttribute::localVariableTypes$compute);
 
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
@@ -381,7 +381,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<MethodParameterInfo> parameters$cache;
         private static final LazyFieldCache<BoundMethodParametersAttribute, List<MethodParameterInfo>> parameters$cacheAccessor =
-                LazyFieldCache.ofField(BoundMethodParametersAttribute.class, "parameters$cache", BoundMethodParametersAttribute::parameters$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundMethodParametersAttribute.class, "parameters$cache", BoundMethodParametersAttribute::parameters$compute);
 
         @Override
         public List<MethodParameterInfo> parameters() {
@@ -416,7 +416,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<ModuleHashInfo> hashes$cache;
         private static final LazyFieldCache<BoundModuleHashesAttribute, List<ModuleHashInfo>> hashes$cacheAccessor =
-                LazyFieldCache.ofField(BoundModuleHashesAttribute.class, "hashes$cache", BoundModuleHashesAttribute::hashes$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundModuleHashesAttribute.class, "hashes$cache", BoundModuleHashesAttribute::hashes$compute);
 
         @Override
         public List<ModuleHashInfo> hashes() {
@@ -449,7 +449,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<RecordComponentInfo> components$cache;
         private static final LazyFieldCache<BoundRecordAttribute, List<RecordComponentInfo>> components$cacheAccessor =
-                LazyFieldCache.ofField(BoundRecordAttribute.class, "components$cache", BoundRecordAttribute::components$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundRecordAttribute.class, "components$cache", BoundRecordAttribute::components$compute);
 
         @Override
         public List<RecordComponentInfo> components() {
@@ -600,7 +600,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<ClassEntry> exceptions$cache;
         private static final LazyFieldCache<BoundExceptionsAttribute, List<ClassEntry>> exceptions$cacheAccessor =
-                LazyFieldCache.ofField(BoundExceptionsAttribute.class, "exceptions$cache", BoundExceptionsAttribute::exceptions$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundExceptionsAttribute.class, "exceptions$cache", BoundExceptionsAttribute::exceptions$compute);
 
         @Override
         public List<ClassEntry> exceptions() {
@@ -752,7 +752,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<PackageEntry> packages$cache;
         private static final LazyFieldCache<BoundModulePackagesAttribute, List<PackageEntry>> packages$cacheAccessor =
-                LazyFieldCache.ofField(BoundModulePackagesAttribute.class, "packages$cache", BoundModulePackagesAttribute::packages$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundModulePackagesAttribute.class, "packages$cache", BoundModulePackagesAttribute::packages$compute);
 
         @Override
         public List<PackageEntry> packages() {
@@ -773,7 +773,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<ClassEntry> nestMembers$cache;
         private static final LazyFieldCache<BoundNestMembersAttribute, List<ClassEntry>> nestMembers$cacheAccessor =
-                LazyFieldCache.ofField(BoundNestMembersAttribute.class, "nestMembers$cache", BoundNestMembersAttribute::nestMembers$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundNestMembersAttribute.class, "nestMembers$cache", BoundNestMembersAttribute::nestMembers$compute);
 
         @Override
         public List<ClassEntry> nestMembers() {
@@ -802,7 +802,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<BootstrapMethodEntry> bootstrapMethods$cache;
         private static final LazyFieldCache<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> bootstrapMethods$cacheAccessor =
-                LazyFieldCache.ofField(BoundBootstrapMethodsAttribute.class, "bootstrapMethods$cache", BoundBootstrapMethodsAttribute::bootstrapMethods$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundBootstrapMethodsAttribute.class, "bootstrapMethods$cache", BoundBootstrapMethodsAttribute::bootstrapMethods$compute);
 
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
@@ -832,7 +832,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<InnerClassInfo> classes$cache;
         private static final LazyFieldCache<BoundInnerClassesAttribute, List<InnerClassInfo>> classes$cacheAccessor =
-                LazyFieldCache.ofField(BoundInnerClassesAttribute.class, "classes$cache", BoundInnerClassesAttribute::classes$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundInnerClassesAttribute.class, "classes$cache", BoundInnerClassesAttribute::classes$compute);
 
         @Override
         public List<InnerClassInfo> classes() {
@@ -882,7 +882,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private AnnotationValue defaultValue$cache;
         private static final LazyFieldCache<BoundAnnotationDefaultAttr, AnnotationValue> defaultValue$cacheAccessor =
-                LazyFieldCache.ofField(BoundAnnotationDefaultAttr.class, "defaultValue$cache", BoundAnnotationDefaultAttr::defaultValue$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundAnnotationDefaultAttr.class, "defaultValue$cache", BoundAnnotationDefaultAttr::defaultValue$compute);
 
         @Override
         public AnnotationValue defaultValue() {
@@ -965,7 +965,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<Annotation> annotations$cache;
         private static final LazyFieldCache<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> annotations$cacheAccessor =
-                LazyFieldCache.ofField(BoundRuntimeInvisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeInvisibleAnnotationsAttribute::annotations$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundRuntimeInvisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeInvisibleAnnotationsAttribute::annotations$compute);
 
         @Override
         public List<Annotation> annotations() {
@@ -988,7 +988,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<Annotation> annotations$cache;
         private static final LazyFieldCache<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> annotations$cacheAccessor =
-                LazyFieldCache.ofField(BoundRuntimeVisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeVisibleAnnotationsAttribute::annotations$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundRuntimeVisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeVisibleAnnotationsAttribute::annotations$compute);
 
         @Override
         public List<Annotation> annotations() {
@@ -1009,7 +1009,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
         private List<ClassEntry> permittedSubclasses$cache;
         private static final LazyFieldCache<BoundPermittedSubclassesAttribute, List<ClassEntry>> permittedSubclasses$cacheAccessor =
-                LazyFieldCache.ofField(BoundPermittedSubclassesAttribute.class, "permittedSubclasses$cache", BoundPermittedSubclassesAttribute::permittedSubclasses$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundPermittedSubclassesAttribute.class, "permittedSubclasses$cache", BoundPermittedSubclassesAttribute::permittedSubclasses$compute);
 
         @Override
         public List<ClassEntry> permittedSubclasses() {

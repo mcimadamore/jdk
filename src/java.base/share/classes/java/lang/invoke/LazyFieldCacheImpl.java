@@ -20,18 +20,17 @@ import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
 
-@TrustFinalFields
-final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
+abstract class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private final long offset;
-    private final Class<?> type;
-    private final Function<? super R, ? extends T> computer;
+    final long offset;
+    final Function<? super R, ? extends T> computer;
 
-    static <R, T> LazyFieldCache<R, T> ofField(Class<?> owner,
-                                                  String name,
-                                                  Function<? super R, ? extends T> computer,
-                                                  Class<?> caller) {
+    static <R, T> LazyFieldCache<R, T> ofField(Mode mode,
+                                               Class<?> owner,
+                                               String name,
+                                               Function<? super R, ? extends T> computer,
+                                               Class<?> caller) {
         try {
             Field field = owner.getDeclaredField(name);
             int modifiers = field.getModifiers();
@@ -41,133 +40,77 @@ final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
             if (Modifier.isFinal(modifiers)) {
                 throw new IllegalArgumentException(name + " is a final field");
             }
-            return new LazyFieldCacheImpl<>(UNSAFE.objectFieldOffset(field), field.getType(), computer);
+            if (field.getType().isPrimitive()) {
+                throw new IllegalArgumentException(name + " is not a reference field");
+            }
+            long offset = UNSAFE.objectFieldOffset(field);
+            return switch (mode) {
+                case RETRY -> new OfRetry<>(offset, computer);
+                case ONCE -> new OfOnce<>(offset, computer);
+            };
         } catch (NoSuchFieldException ex) {
             throw new IllegalArgumentException("Cannot access " + owner.getName() + "." + name, ex);
         }
     }
 
-    private LazyFieldCacheImpl(long offset, Class<?> type, Function<? super R, ? extends T> computer) {
+    private LazyFieldCacheImpl(long offset, Function<? super R, ? extends T> computer) {
         this.offset = offset;
-        this.type = type;
         this.computer = computer;
     }
 
-    @Override
-    @ForceInline
-    @SuppressWarnings("unchecked")
-    public T get(R receiver) {
-        Object value = getStableValue(receiver);
-        if (isDefault(value)) {
-            return getCasSlow(receiver);
+    @TrustFinalFields
+    private static final class OfRetry<R, T> extends LazyFieldCacheImpl<R, T> {
+        private OfRetry(long offset, Function<? super R, ? extends T> computer) {
+            super(offset, computer);
         }
-        return (T)value;
-    }
 
-    @Override
-    @ForceInline
-    @SuppressWarnings("unchecked")
-    public T getVolatile(R receiver) {
-        Object value = getVolatileValue(receiver);
-        if (isDefault(value)) {
-            return getCasSlow(receiver);
-        }
-        return (T)value;
-    }
-
-    @SuppressWarnings("unchecked")
-    private T getCasSlow(R receiver) {
-        Object candidate = requireInitialized(computer.apply(receiver));
-        Object witness = compareAndExchangeValue(receiver, candidate);
-        return (T)(isDefault(witness) ? candidate : witness);
-    }
-
-    @Override
-    @ForceInline
-    @SuppressWarnings("unchecked")
-    public T getSynchronized(Object lock, R receiver) {
-        Object value = getVolatileValue(receiver);
-        if (isDefault(value)) {
-            return getSynchronizedSlow(lock, receiver);
-        }
-        return (T)value;
-    }
-
-    @SuppressWarnings("unchecked")
-    private T getSynchronizedSlow(Object lock, R receiver) {
-        Object value;
-        synchronized (Objects.requireNonNull(lock)) {
-            value = getVolatileValue(receiver);
-            if (isDefault(value)) {
-                value = requireInitialized(computer.apply(receiver));
-                putVolatileValue(receiver, value);
+        @Override
+        @ForceInline
+        @SuppressWarnings("unchecked")
+        public T get(R receiver) {
+            Object value = UNSAFE.getReferenceStable(receiver, offset);
+            if (value != null) {
+                return (T) value;
             }
+            return getSlow(receiver);
         }
-        return (T)value;
-    }
 
-    private Object getStableValue(Object receiver) {
-        if (!type.isPrimitive()) return UNSAFE.getReferenceStable(receiver, offset);
-        if (type == int.class) return UNSAFE.getIntStable(receiver, offset);
-        if (type == long.class) return UNSAFE.getLongStable(receiver, offset);
-        if (type == boolean.class) return UNSAFE.getBooleanStable(receiver, offset);
-        if (type == byte.class) return UNSAFE.getByteStable(receiver, offset);
-        if (type == short.class) return UNSAFE.getShortStable(receiver, offset);
-        if (type == char.class) return UNSAFE.getCharStable(receiver, offset);
-        if (type == float.class) return UNSAFE.getFloatStable(receiver, offset);
-        return UNSAFE.getDoubleStable(receiver, offset);
-    }
-
-    private Object getVolatileValue(Object receiver) {
-        if (!type.isPrimitive()) return UNSAFE.getReferenceVolatile(receiver, offset);
-        if (type == int.class) return UNSAFE.getIntVolatile(receiver, offset);
-        if (type == long.class) return UNSAFE.getLongVolatile(receiver, offset);
-        if (type == boolean.class) return UNSAFE.getBooleanVolatile(receiver, offset);
-        if (type == byte.class) return UNSAFE.getByteVolatile(receiver, offset);
-        if (type == short.class) return UNSAFE.getShortVolatile(receiver, offset);
-        if (type == char.class) return UNSAFE.getCharVolatile(receiver, offset);
-        if (type == float.class) return UNSAFE.getFloatVolatile(receiver, offset);
-        return UNSAFE.getDoubleVolatile(receiver, offset);
-    }
-
-    private void putVolatileValue(Object receiver, Object value) {
-        if (!type.isPrimitive()) UNSAFE.putReferenceVolatile(receiver, offset, value);
-        else if (type == int.class) UNSAFE.putIntVolatile(receiver, offset, (Integer)value);
-        else if (type == long.class) UNSAFE.putLongVolatile(receiver, offset, (Long)value);
-        else if (type == boolean.class) UNSAFE.putBooleanVolatile(receiver, offset, (Boolean)value);
-        else if (type == byte.class) UNSAFE.putByteVolatile(receiver, offset, (Byte)value);
-        else if (type == short.class) UNSAFE.putShortVolatile(receiver, offset, (Short)value);
-        else if (type == char.class) UNSAFE.putCharVolatile(receiver, offset, (Character)value);
-        else if (type == float.class) UNSAFE.putFloatVolatile(receiver, offset, (Float)value);
-        else UNSAFE.putDoubleVolatile(receiver, offset, (Double)value);
-    }
-
-    private Object compareAndExchangeValue(Object receiver, Object value) {
-        if (!type.isPrimitive()) return UNSAFE.compareAndExchangeReference(receiver, offset, null, value);
-        if (type == int.class) return UNSAFE.compareAndExchangeInt(receiver, offset, 0, (Integer)value);
-        if (type == long.class) return UNSAFE.compareAndExchangeLong(receiver, offset, 0L, (Long)value);
-        if (type == boolean.class) return UNSAFE.compareAndExchangeBoolean(receiver, offset, false, (Boolean)value);
-        if (type == byte.class) return UNSAFE.compareAndExchangeByte(receiver, offset, (byte)0, (Byte)value);
-        if (type == short.class) return UNSAFE.compareAndExchangeShort(receiver, offset, (short)0, (Short)value);
-        if (type == char.class) return UNSAFE.compareAndExchangeChar(receiver, offset, (char)0, (Character)value);
-        if (type == float.class) return UNSAFE.compareAndExchangeFloat(receiver, offset, 0.0f, (Float)value);
-        return UNSAFE.compareAndExchangeDouble(receiver, offset, 0.0d, (Double)value);
-    }
-
-    private boolean isDefault(Object value) {
-        if (value == null) return true;
-        if (!type.isPrimitive()) return false;
-        if (type == boolean.class) return !(Boolean)value;
-        if (type == char.class) return (Character)value == 0;
-        if (type == float.class) return Float.floatToRawIntBits((Float)value) == 0;
-        if (type == double.class) return Double.doubleToRawLongBits((Double)value) == 0;
-        return ((Number)value).longValue() == 0;
-    }
-
-    private T requireInitialized(T value) {
-        if (isDefault(value)) {
-            throw new IllegalStateException("initializer returned the default value");
+        @SuppressWarnings("unchecked")
+        private T getSlow(R receiver) {
+            Object candidate = Objects.requireNonNull(computer.apply(receiver));
+            Object witness = UNSAFE.compareAndExchangeReference(receiver, offset, null, candidate);
+            return (T) (witness == null ? candidate : witness);
         }
-        return value;
+    }
+
+    @TrustFinalFields
+    private static final class OfOnce<R, T> extends LazyFieldCacheImpl<R, T> {
+        private OfOnce(long offset, Function<? super R, ? extends T> computer) {
+            super(offset, computer);
+        }
+
+        @Override
+        @ForceInline
+        @SuppressWarnings("unchecked")
+        public T get(R receiver) {
+            Object value = UNSAFE.getReferenceStable(receiver, offset);
+            if (value != null) {
+                return (T) value;
+            }
+            return getSlow(receiver);
+        }
+
+        @SuppressWarnings("unchecked")
+        private T getSlow(R receiver) {
+            Object value;
+            synchronized (Objects.requireNonNull(receiver)) {
+                value = UNSAFE.getReferenceVolatile(receiver, offset);
+                if (value == null) {
+                    value = Objects.requireNonNull(computer.apply(receiver));
+                    UNSAFE.putReferenceVolatile(receiver, offset, value);
+                }
+            }
+            return (T) value;
+        }
     }
 }

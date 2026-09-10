@@ -133,7 +133,7 @@ public final class CodeImpl
 
     private List<Attribute<?>> attributes$cache;
     private static final LazyFieldCache<CodeImpl, List<Attribute<?>>> attributes$cacheAccessor =
-            LazyFieldCache.ofField(CodeImpl.class, "attributes$cache", CodeImpl::attributes$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, CodeImpl.class, "attributes$cache", CodeImpl::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {
@@ -194,7 +194,7 @@ public final class CodeImpl
 
     private List<ExceptionCatch> exceptionHandlers$cache;
     private static final LazyFieldCache<CodeImpl, List<ExceptionCatch>> exceptionHandlers$cacheAccessor =
-            LazyFieldCache.ofField(CodeImpl.class, "exceptionHandlers$cache", CodeImpl::exceptionHandlers$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, CodeImpl.class, "exceptionHandlers$cache", CodeImpl::exceptionHandlers$compute);
 
     @Override
     public List<ExceptionCatch> exceptionHandlers() {

@@ -55,7 +55,7 @@ public final class BoundRecordComponentInfo
 
     private List<Attribute<?>> attributes$cache;
     private static final LazyFieldCache<BoundRecordComponentInfo, List<Attribute<?>>> attributes$cacheAccessor =
-            LazyFieldCache.ofField(BoundRecordComponentInfo.class, "attributes$cache", BoundRecordComponentInfo::attributes$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundRecordComponentInfo.class, "attributes$cache", BoundRecordComponentInfo::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {

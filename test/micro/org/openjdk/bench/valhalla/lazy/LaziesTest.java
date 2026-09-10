@@ -116,9 +116,8 @@ public class LaziesTest {
     public enum Configuration {
         DIRECT(Variant.DIRECT, null),
         CACHED_METHOD(Variant.CACHED_METHOD, null),
-        LAZY_CACHE_DECL_SITE_PLAIN(Variant.LAZY_CACHE_DECL_SITE, LazyMode.PLAIN),
-        LAZY_CACHE_DECL_SITE_CAS(Variant.LAZY_CACHE_DECL_SITE, LazyMode.CAS),
-        LAZY_CACHE_DECL_SITE_SYNCHRONIZED(Variant.LAZY_CACHE_DECL_SITE, LazyMode.SYNCHRONIZED),
+        LAZY_FIELD_CACHE_RETRY(Variant.LAZY_FIELD_CACHE, LazyMode.CAS),
+        LAZY_FIELD_CACHE_ONCE(Variant.LAZY_FIELD_CACHE, LazyMode.SYNCHRONIZED),
         LAZY_VALUE_USE_SITE_PLAIN(Variant.LAZY_VALUE_USE_SITE, LazyMode.PLAIN),
         LAZY_VALUE_USE_SITE_CAS(Variant.LAZY_VALUE_USE_SITE, LazyMode.CAS),
         LAZY_VALUE_USE_SITE_SYNCHRONIZED(Variant.LAZY_VALUE_USE_SITE, LazyMode.SYNCHRONIZED),
@@ -153,13 +152,13 @@ public class LaziesTest {
                 return new CachedMethodHolder(seed);
             }
         },
-        LAZY_CACHE_DECL_SITE {
+        LAZY_FIELD_CACHE {
             @Override
             Holder create(int seed, LazyMode mode) {
                 return switch (mode) {
-                    case PLAIN -> new PlainLazyFieldCacheHolder(seed);
-                    case CAS -> new CasLazyFieldCacheHolder(seed);
-                    case SYNCHRONIZED -> new SynchronizedLazyFieldCacheHolder(seed);
+                    case PLAIN -> throw new AssertionError();
+                    case CAS -> new RetryLazyFieldCacheHolder(seed);
+                    case SYNCHRONIZED -> new OnceLazyFieldCacheHolder(seed);
                 };
             }
         },
@@ -237,10 +236,6 @@ public class LaziesTest {
     }
 
     public abstract static class LazyFieldCacheHolder implements Holder {
-        protected static final LazyFieldCache<LazyFieldCacheHolder, List<Integer>> CACHE =
-                LazyFieldCache.ofField(LazyFieldCacheHolder.class, "value",
-                        LazyFieldCacheHolder::compute);
-
         private final int seed;
         private List<Integer> value;
 
@@ -253,8 +248,12 @@ public class LaziesTest {
         }
     }
 
-    public static final class PlainLazyFieldCacheHolder extends LazyFieldCacheHolder {
-        PlainLazyFieldCacheHolder(int seed) {
+    public static final class RetryLazyFieldCacheHolder extends LazyFieldCacheHolder {
+        private static final LazyFieldCache<LazyFieldCacheHolder, List<Integer>> CACHE =
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY,
+                        LazyFieldCacheHolder.class, "value", LazyFieldCacheHolder::compute);
+
+        RetryLazyFieldCacheHolder(int seed) {
             super(seed);
         }
 
@@ -264,25 +263,18 @@ public class LaziesTest {
         }
     }
 
-    public static final class CasLazyFieldCacheHolder extends LazyFieldCacheHolder {
-        CasLazyFieldCacheHolder(int seed) {
+    public static final class OnceLazyFieldCacheHolder extends LazyFieldCacheHolder {
+        private static final LazyFieldCache<LazyFieldCacheHolder, List<Integer>> CACHE =
+                LazyFieldCache.ofField(LazyFieldCache.Mode.ONCE,
+                        LazyFieldCacheHolder.class, "value", LazyFieldCacheHolder::compute);
+
+        OnceLazyFieldCacheHolder(int seed) {
             super(seed);
         }
 
         @Override
         public List<Integer> get() {
-            return CACHE.getVolatile(this);
-        }
-    }
-
-    public static final class SynchronizedLazyFieldCacheHolder extends LazyFieldCacheHolder {
-        SynchronizedLazyFieldCacheHolder(int seed) {
-            super(seed);
-        }
-
-        @Override
-        public List<Integer> get() {
-            return CACHE.getSynchronized(this, this);
+            return CACHE.get(this);
         }
     }
 

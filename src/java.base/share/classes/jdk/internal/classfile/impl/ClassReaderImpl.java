@@ -137,7 +137,7 @@ public final class ClassReaderImpl
 
     private ClassEntry thisClassEntry$cache;
     private static final LazyFieldCache<ClassReaderImpl, ClassEntry> thisClassEntry$cacheAccessor =
-            LazyFieldCache.ofField(ClassReaderImpl.class, "thisClassEntry$cache", ClassReaderImpl::thisClassEntry$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassReaderImpl.class, "thisClassEntry$cache", ClassReaderImpl::thisClassEntry$compute);
 
     @Override
     public ClassEntry thisClassEntry() {
@@ -150,7 +150,7 @@ public final class ClassReaderImpl
 
     private Optional<ClassEntry> superclassEntry$cache;
     private static final LazyFieldCache<ClassReaderImpl, Optional<ClassEntry>> superclassEntry$cacheAccessor =
-            LazyFieldCache.ofField(ClassReaderImpl.class, "superclassEntry$cache", ClassReaderImpl::superclassEntry$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassReaderImpl.class, "superclassEntry$cache", ClassReaderImpl::superclassEntry$compute);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
@@ -288,7 +288,7 @@ public final class ClassReaderImpl
 
     private BootstrapMethodsAttribute bootstrapMethodsAttribute$cache;
     private static final LazyFieldCache<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute$cacheAccessor =
-            LazyFieldCache.ofField(ClassReaderImpl.class, "bootstrapMethodsAttribute$cache", ClassReaderImpl::bootstrapMethodsAttribute$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassReaderImpl.class, "bootstrapMethodsAttribute$cache", ClassReaderImpl::bootstrapMethodsAttribute$compute);
 
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
         return bootstrapMethodsAttribute$cacheAccessor.get(this);
@@ -301,7 +301,7 @@ public final class ClassReaderImpl
 
     private List<BootstrapMethodEntryImpl> bsmEntries$cache;
     private static final LazyFieldCache<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries$cacheAccessor =
-            LazyFieldCache.ofField(ClassReaderImpl.class, "bsmEntries$cache", ClassReaderImpl::bsmEntries$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassReaderImpl.class, "bsmEntries$cache", ClassReaderImpl::bsmEntries$compute);
 
     List<BootstrapMethodEntryImpl> bsmEntries() {
         return bsmEntries$cacheAccessor.get(this);

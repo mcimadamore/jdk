@@ -40,6 +40,16 @@ import jdk.internal.reflect.Reflection;
  */
 public interface LazyFieldCache<R, T> {
     /**
+     * Lazy-initialization mode.
+     */
+    enum Mode {
+        /** Computations may race; one successful result is published with CAS. */
+        RETRY,
+        /** Computation is serialized on the receiver; one successful result is published. */
+        ONCE
+    }
+
+    /**
      * Returns the cached value with stable semantics, computing and publishing it
      * atomically if unset.
      *
@@ -49,25 +59,9 @@ public interface LazyFieldCache<R, T> {
     T get(R receiver);
 
     /**
-     * Returns the cached value, computing it if unset and publishing it atomically.
-     *
-     * @param receiver the field receiver
-     * @return the cached value
-     */
-    T getVolatile(R receiver);
-
-    /**
-     * Returns the cached value, computing it while holding {@code lock} if unset.
-     *
-     * @param lock the computation lock
-     * @param receiver the field receiver
-     * @return the cached value
-     */
-    T getSynchronized(Object lock, R receiver);
-
-    /**
      * Creates a cache backed by an instance field.
      *
+     * @param mode the lazy-initialization mode
      * @param owner the field declaring class
      * @param name the field name
      * @param computer the computing function
@@ -76,12 +70,14 @@ public interface LazyFieldCache<R, T> {
      * @return the cache
      */
     @CallerSensitive
-    static <R, T> LazyFieldCache<R, T> ofField(Class<? super R> owner,
-                                                  String name,
-                                                  Function<? super R, ? extends T> computer) {
+    static <R, T> LazyFieldCache<R, T> ofField(Mode mode,
+                                               Class<? super R> owner,
+                                               String name,
+                                               Function<? super R, ? extends T> computer) {
+        Objects.requireNonNull(mode);
         Objects.requireNonNull(owner);
         Objects.requireNonNull(name);
         Objects.requireNonNull(computer);
-        return LazyFieldCacheImpl.ofField(owner, name, computer, Reflection.getCallerClass());
+        return LazyFieldCacheImpl.ofField(mode, owner, name, computer, Reflection.getCallerClass());
     }
 }

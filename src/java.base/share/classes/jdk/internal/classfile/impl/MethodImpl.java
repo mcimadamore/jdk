@@ -90,7 +90,7 @@ public final class MethodImpl
 
     private List<Attribute<?>> attributes$cache;
     private static final LazyFieldCache<MethodImpl, List<Attribute<?>>> attributes$cacheAccessor =
-            LazyFieldCache.ofField(MethodImpl.class, "attributes$cache", MethodImpl::attributes$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, MethodImpl.class, "attributes$cache", MethodImpl::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {

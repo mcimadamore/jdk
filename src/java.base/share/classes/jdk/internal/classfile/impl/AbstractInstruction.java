@@ -354,7 +354,7 @@ public abstract sealed class AbstractInstruction
 
         private FieldRefEntry field$cache;
         private static final LazyFieldCache<BoundFieldInstruction, FieldRefEntry> field$cacheAccessor =
-                LazyFieldCache.ofField(BoundFieldInstruction.class, "field$cache", BoundFieldInstruction::field$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundFieldInstruction.class, "field$cache", BoundFieldInstruction::field$compute);
 
         @Override
         public FieldRefEntry field() {
@@ -389,7 +389,7 @@ public abstract sealed class AbstractInstruction
 
         private MemberRefEntry method$cache;
         private static final LazyFieldCache<BoundInvokeInstruction, MemberRefEntry> method$cacheAccessor =
-                LazyFieldCache.ofField(BoundInvokeInstruction.class, "method$cache", BoundInvokeInstruction::method$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundInvokeInstruction.class, "method$cache", BoundInvokeInstruction::method$compute);
 
         @Override
         public MemberRefEntry method() {
@@ -434,7 +434,7 @@ public abstract sealed class AbstractInstruction
 
         private MemberRefEntry method$cache;
         private static final LazyFieldCache<BoundInvokeInterfaceInstruction, MemberRefEntry> method$cacheAccessor =
-                LazyFieldCache.ofField(BoundInvokeInterfaceInstruction.class, "method$cache", BoundInvokeInterfaceInstruction::method$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundInvokeInterfaceInstruction.class, "method$cache", BoundInvokeInterfaceInstruction::method$compute);
 
         @Override
         public MemberRefEntry method() {
@@ -479,7 +479,7 @@ public abstract sealed class AbstractInstruction
 
         private InvokeDynamicEntry invokedynamic$cache;
         private static final LazyFieldCache<BoundInvokeDynamicInstruction, InvokeDynamicEntry> invokedynamic$cacheAccessor =
-                LazyFieldCache.ofField(BoundInvokeDynamicInstruction.class, "invokedynamic$cache", BoundInvokeDynamicInstruction::invokedynamic$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundInvokeDynamicInstruction.class, "invokedynamic$cache", BoundInvokeDynamicInstruction::invokedynamic$compute);
 
         @Override
         public InvokeDynamicEntry invokedynamic() {
@@ -514,7 +514,7 @@ public abstract sealed class AbstractInstruction
 
         private ClassEntry className$cache;
         private static final LazyFieldCache<BoundNewObjectInstruction, ClassEntry> className$cacheAccessor =
-                LazyFieldCache.ofField(BoundNewObjectInstruction.class, "className$cache", BoundNewObjectInstruction::className$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundNewObjectInstruction.class, "className$cache", BoundNewObjectInstruction::className$compute);
 
         @Override
         public ClassEntry className() {
@@ -626,7 +626,7 @@ public abstract sealed class AbstractInstruction
 
         private ClassEntry type$cache;
         private static final LazyFieldCache<BoundTypeCheckInstruction, ClassEntry> type$cacheAccessor =
-                LazyFieldCache.ofField(BoundTypeCheckInstruction.class, "type$cache", BoundTypeCheckInstruction::type$compute);
+                LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, BoundTypeCheckInstruction.class, "type$cache", BoundTypeCheckInstruction::type$compute);
 
         @Override
         public ClassEntry type() {

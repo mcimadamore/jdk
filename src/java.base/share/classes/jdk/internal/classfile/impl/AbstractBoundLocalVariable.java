@@ -44,7 +44,7 @@ public class AbstractBoundLocalVariable
 
     private Utf8Entry name$cache;
     private static final LazyFieldCache<AbstractBoundLocalVariable, Utf8Entry> name$cacheAccessor =
-            LazyFieldCache.ofField(AbstractBoundLocalVariable.class, "name$cache", AbstractBoundLocalVariable::name$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, AbstractBoundLocalVariable.class, "name$cache", AbstractBoundLocalVariable::name$compute);
 
     public Utf8Entry name() {
         return name$cacheAccessor.get(this);
@@ -60,7 +60,7 @@ public class AbstractBoundLocalVariable
 
     private Utf8Entry secondaryEntry$cache;
     private static final LazyFieldCache<AbstractBoundLocalVariable, Utf8Entry> secondaryEntry$cacheAccessor =
-            LazyFieldCache.ofField(AbstractBoundLocalVariable.class, "secondaryEntry$cache", AbstractBoundLocalVariable::secondaryEntry$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, AbstractBoundLocalVariable.class, "secondaryEntry$cache", AbstractBoundLocalVariable::secondaryEntry$compute);
 
     protected Utf8Entry secondaryEntry() {
         return secondaryEntry$cacheAccessor.get(this);

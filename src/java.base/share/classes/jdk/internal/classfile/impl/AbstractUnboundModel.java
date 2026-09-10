@@ -61,7 +61,7 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
 
     private List<Attribute<?>> attributes$cache;
     private static final LazyFieldCache<AbstractUnboundModel<?>, List<Attribute<?>>> attributes$cacheAccessor =
-            LazyFieldCache.ofField(AbstractUnboundModel.class, "attributes$cache",
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, AbstractUnboundModel.class, "attributes$cache",
                     (AbstractUnboundModel<?> model) -> model.attributes$compute());
 
     @Override

@@ -109,7 +109,7 @@ public final class ClassImpl
 
     private List<ClassEntry> interfaces$cache;
     private static final LazyFieldCache<ClassImpl, List<ClassEntry>> interfaces$cacheAccessor =
-            LazyFieldCache.ofField(ClassImpl.class, "interfaces$cache", ClassImpl::interfaces$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassImpl.class, "interfaces$cache", ClassImpl::interfaces$compute);
 
     @Override
     public List<ClassEntry> interfaces() {
@@ -130,7 +130,7 @@ public final class ClassImpl
 
     private List<Attribute<?>> attributes$cache;
     private static final LazyFieldCache<ClassImpl, List<Attribute<?>>> attributes$cacheAccessor =
-            LazyFieldCache.ofField(ClassImpl.class, "attributes$cache", ClassImpl::attributes$compute);
+            LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY, ClassImpl.class, "attributes$cache", ClassImpl::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {

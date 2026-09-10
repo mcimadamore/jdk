@@ -137,31 +137,27 @@ public class LazyUpdaterTest {
     }
 
     private static void testConvenienceCaches() {
-        LazyFieldCache<Box, String> plain = LazyFieldCache.ofField(
+        LazyFieldCache<Box, String> retry = LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY,
                 Box.class, "cachePlain", box -> "cache-plain");
-        LazyFieldCache<Box, String> atomic = LazyFieldCache.ofField(
-                Box.class, "cacheAtomic", box -> "cache-atomic");
-        LazyFieldCache<Box, String> locked = LazyFieldCache.ofField(
-                Box.class, "cacheLocked", box -> "cache-locked");
-        LazyFieldCache<Box, Integer> number = LazyFieldCache.ofField(
-                Box.class, "number", receiver -> 42);
+        LazyFieldCache<Box, String> once = LazyFieldCache.ofField(LazyFieldCache.Mode.ONCE,
+                Box.class, "cacheLocked", box -> "cache-once");
 
         Box box = new Box();
-        assertEquals("cache-plain", plain.get(box));
-        assertEquals("cache-atomic", atomic.getVolatile(box));
-        assertEquals("cache-locked", locked.getSynchronized(box, box));
-        assertEquals(42, number.getVolatile(box));
-        assertEquals(42, box.number);
+        assertEquals("cache-plain", retry.get(box));
+        assertEquals("cache-once", once.get(box));
+        expectThrows(IllegalArgumentException.class, () -> LazyFieldCache.ofField(
+                LazyFieldCache.Mode.RETRY, Box.class, "number", receiver -> 42));
 
         AtomicInteger attempts = new AtomicInteger();
-        LazyFieldCache<Box, String> retry = LazyFieldCache.ofField(Box.class, "retry", receiver -> {
+        LazyFieldCache<Box, String> retryAfterFailure = LazyFieldCache.ofField(
+                LazyFieldCache.Mode.RETRY, Box.class, "retry", receiver -> {
             if (attempts.getAndIncrement() == 0) {
                 throw new TestException();
             }
             return "retried";
         });
-        expectThrows(TestException.class, () -> retry.getVolatile(box));
-        assertEquals("retried", retry.getVolatile(box));
+        expectThrows(TestException.class, () -> retryAfterFailure.get(box));
+        assertEquals("retried", retryAfterFailure.get(box));
         assertEquals(2, attempts.get());
 
         LazyArrayCache<int[], Integer> array = LazyArrayCache.of(
@@ -174,7 +170,7 @@ public class LazyUpdaterTest {
     private static void testVolatileRace() throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
         AtomicInteger computations = new AtomicInteger();
-        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(
+        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(LazyFieldCache.Mode.RETRY,
                 Box.class, "cacheAtomic", box -> {
                     int id = computations.incrementAndGet();
                     await(barrier);
@@ -183,8 +179,8 @@ public class LazyUpdaterTest {
         Box box = new Box();
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-            Future<String> first = executor.submit(() -> cache.getVolatile(box));
-            Future<String> second = executor.submit(() -> cache.getVolatile(box));
+            Future<String> first = executor.submit(() -> cache.get(box));
+            Future<String> second = executor.submit(() -> cache.get(box));
             String firstValue = first.get();
             String secondValue = second.get();
             assertEquals(firstValue, secondValue);
@@ -195,7 +191,7 @@ public class LazyUpdaterTest {
 
     private static void testSynchronizedComputation() throws Exception {
         AtomicInteger computations = new AtomicInteger();
-        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(
+        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(LazyFieldCache.Mode.ONCE,
                 Box.class, "cacheLocked", box -> {
                     computations.incrementAndGet();
                     return "once";
@@ -206,7 +202,7 @@ public class LazyUpdaterTest {
             @SuppressWarnings("unchecked")
             Future<String>[] futures = new Future[8];
             for (int i = 0; i < futures.length; i++) {
-                futures[i] = executor.submit(() -> cache.getSynchronized(box, box));
+                futures[i] = executor.submit(() -> cache.get(box));
             }
             for (Future<String> future : futures) {
                 assertEquals("once", future.get());
