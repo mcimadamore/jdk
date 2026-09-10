@@ -94,7 +94,6 @@ public abstract class StableAccessor {
      */
     public abstract Object getOrInit(Object receiver) throws Throwable;
 
-    @ForceInline
     final Object slowGetOrInit(Object actualBase, Object receiver) throws Throwable {
         Object value = initHandle.invokeExact(receiver);
         Object encoded = Objects.requireNonNull(value);
