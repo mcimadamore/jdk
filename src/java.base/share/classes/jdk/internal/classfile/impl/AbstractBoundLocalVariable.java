@@ -28,7 +28,7 @@ import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.invoke.LazyCache;
 
-public abstract /*value*/ class AbstractBoundLocalVariable
+public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;
@@ -47,12 +47,8 @@ public abstract /*value*/ class AbstractBoundLocalVariable
 
     public Utf8Entry name() {
 
-        return nameEntry.getOrCompute(this, AbstractBoundLocalVariable::compute_name_43);
-
-    }
-
-    private Utf8Entry compute_name_43() {
-        return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
+        return nameEntry.getOrCompute(this,
+                variable -> variable.code.constantPool().entryByIndex(variable.nameIndex(), Utf8Entry.class));
     }
 
     protected int secondaryIndex() {
@@ -64,12 +60,8 @@ public abstract /*value*/ class AbstractBoundLocalVariable
 
     protected Utf8Entry secondaryEntry() {
 
-        return secondaryEntry.getOrCompute(this, AbstractBoundLocalVariable::compute_secondaryEntry_51);
-
-    }
-
-    private Utf8Entry compute_secondaryEntry_51() {
-        return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
+        return secondaryEntry.getOrCompute(this,
+                variable -> variable.code.constantPool().entryByIndex(variable.secondaryIndex(), Utf8Entry.class));
     }
 
     public Label startScope() {

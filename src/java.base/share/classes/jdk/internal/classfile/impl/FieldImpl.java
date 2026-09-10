@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public final /*value*/ class FieldImpl
+public final class FieldImpl
         extends AbstractElement
         implements FieldModel, WritableField {
 

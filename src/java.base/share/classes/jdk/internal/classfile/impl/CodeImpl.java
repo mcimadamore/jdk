@@ -43,7 +43,7 @@ import java.util.function.Consumer;
 import static jdk.internal.classfile.impl.StackMapGenerator.*;
 import static jdk.internal.classfile.impl.RawBytecodeHelper.*;
 
-public final /*value*/ class CodeImpl
+public final class CodeImpl
         extends BoundAttribute.BoundCodeAttribute
         implements LabelContext {
 
@@ -136,11 +136,9 @@ public final /*value*/ class CodeImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, CodeImpl::compute_attributes_134);
-    }
-
-    private List<Attribute<?>> compute_attributes_134() {
-        return BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
+        return attributes.getOrCompute(this,
+                code -> BoundAttribute.readAttributes(code, code.classReader, code.attributePos,
+                        code.classReader.customAttributes()));
     }
 
     @Override

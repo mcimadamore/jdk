@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 
 import jdk.internal.access.SharedSecrets;
 
-public final /*value*/ class ClassImpl
+public final class ClassImpl
         extends AbstractElement
         implements ClassModel {
     final ClassReaderImpl reader;
@@ -112,19 +112,17 @@ public final /*value*/ class ClassImpl
 
     @Override
     public List<ClassEntry> interfaces() {
-        return interfaces.getOrCompute(this, ClassImpl::compute_interfaces_110);
-    }
-
-    private List<ClassEntry> compute_interfaces_110() {
-        int pos = reader.thisClassPos() + 4;
-        int cnt = reader.readU2(pos);
-        pos += 2;
-        var arr = new Object[cnt];
-        for (int i = 0; i < cnt; ++i) {
-            arr[i] = reader.readEntry(pos, ClassEntry.class);
+        return interfaces.getOrCompute(this, model -> {
+            int pos = model.reader.thisClassPos() + 4;
+            int cnt = model.reader.readU2(pos);
             pos += 2;
-        }
-        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+            var arr = new Object[cnt];
+            for (int i = 0; i < cnt; ++i) {
+                arr[i] = model.reader.readEntry(pos, ClassEntry.class);
+                pos += 2;
+            }
+            return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+        });
     }
 
     private final LazyCache< List<Attribute<?>>> attributes =
@@ -132,11 +130,9 @@ public final /*value*/ class ClassImpl
 
     @Override
     public List<Attribute<?>> attributes() {
-        return attributes.getOrCompute(this, ClassImpl::compute_attributes_123);
-    }
-
-    private List<Attribute<?>> compute_attributes_123() {
-        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
+        return attributes.getOrCompute(this,
+                model -> BoundAttribute.readAttributes(model, model.reader, model.attributesPos,
+                        model.reader.customAttributes()));
     }
 
     // ClassModel
