@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import java.lang.LazyConstant;
+
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
@@ -42,8 +44,6 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -108,28 +108,34 @@ public final class ClassImpl
         return reader.superclassEntry();
     }
 
+    private final LazyConstant<List<ClassEntry>> interfaces$constant = LazyConstant.of(this::interfaces$compute);
+
     @Override
     public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
-            pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readEntry(pos, ClassEntry.class);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
-        }
-        return interfaces;
+        return interfaces$constant.get();
     }
+
+    private List<ClassEntry> interfaces$compute() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readEntry(pos, ClassEntry.class);
+            pos += 2;
+        }
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+    }
+
+    private final LazyConstant<List<Attribute<?>>> attributes$constant = LazyConstant.of(this::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$constant.get();
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     // ClassModel

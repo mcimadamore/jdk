@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import java.lang.LazyConstant;
+
 import java.lang.classfile.AccessFlags;
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassModel;
@@ -42,7 +44,6 @@ public final class FieldImpl
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public FieldImpl(ClassReaderImpl reader, int startPos, int endPos, int attributesPos) {
         this.reader = reader;
@@ -79,12 +80,15 @@ public final class FieldImpl
         return reader.readU2(startPos);
     }
 
+    private final LazyConstant<List<Attribute<?>>> attributes$constant = LazyConstant.of(this::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$constant.get();
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

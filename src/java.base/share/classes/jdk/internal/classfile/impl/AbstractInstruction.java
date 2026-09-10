@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import java.lang.LazyConstant;
+
 import java.lang.classfile.Instruction;
 import java.lang.classfile.Label;
 import java.lang.classfile.Opcode;
@@ -111,7 +113,6 @@ public abstract sealed class AbstractInstruction
         public BoundLoadInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
-
 
         @Override
         public TypeKind typeKind() {
@@ -348,17 +349,19 @@ public abstract sealed class AbstractInstruction
     public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
-        private FieldRefEntry fieldEntry;
-
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private final LazyConstant<FieldRefEntry> field$constant = LazyConstant.of(this::field$compute);
+
         @Override
         public FieldRefEntry field() {
-            if (fieldEntry == null)
-                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
-            return fieldEntry;
+            return field$constant.get();
+        }
+
+        private FieldRefEntry field$compute() {
+            return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
         }
 
         @Override
@@ -378,17 +381,20 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
-        MemberRefEntry methodEntry;
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private final LazyConstant<MemberRefEntry> method$constant = LazyConstant.of(this::method$compute);
+
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
-            return methodEntry;
+            return method$constant.get();
+        }
+
+        private MemberRefEntry method$compute() {
+            return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
         }
 
         @Override
@@ -418,17 +424,20 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
-        InterfaceMethodRefEntry methodEntry;
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private final LazyConstant<MemberRefEntry> method$constant = LazyConstant.of(this::method$compute);
+
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
-            return methodEntry;
+            return method$constant.get();
+        }
+
+        private MemberRefEntry method$compute() {
+            return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
         }
 
         @Override
@@ -458,17 +467,20 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
-        InvokeDynamicEntry indyEntry;
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private final LazyConstant<InvokeDynamicEntry> invokedynamic$constant = LazyConstant.of(this::invokedynamic$compute);
+
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            if (indyEntry == null)
-                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
-            return indyEntry;
+            return invokedynamic$constant.get();
+        }
+
+        private InvokeDynamicEntry invokedynamic$compute() {
+            return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
         }
 
         @Override
@@ -488,17 +500,20 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
-        ClassEntry classEntry;
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, code, pos);
         }
 
+        private final LazyConstant<ClassEntry> className$constant = LazyConstant.of(this::className$compute);
+
         @Override
         public ClassEntry className() {
-            if (classEntry == null)
-                classEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return classEntry;
+            return className$constant.get();
+        }
+
+        private ClassEntry className$compute() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override
@@ -595,17 +610,20 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
-        ClassEntry typeEntry;
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private final LazyConstant<ClassEntry> type$constant = LazyConstant.of(this::type$compute);
+
         @Override
         public ClassEntry type() {
-            if (typeEntry == null)
-                typeEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return typeEntry;
+            return type$constant.get();
+        }
+
+        private ClassEntry type$compute() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override

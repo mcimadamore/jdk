@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import java.lang.LazyConstant;
+
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.constant.MethodTypeDesc;
@@ -38,7 +40,6 @@ public final class MethodImpl
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReaderImpl reader, int startPos, int endPos, int attrStart) {
@@ -88,12 +89,15 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
+    private final LazyConstant<List<Attribute<?>>> attributes$constant = LazyConstant.of(this::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$constant.get();
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

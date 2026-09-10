@@ -24,6 +24,8 @@
  */
 package jdk.internal.classfile.impl;
 
+import java.lang.LazyConstant;
+
 import java.lang.classfile.Attribute;
 import java.lang.classfile.ClassReader;
 import java.lang.classfile.attribute.RecordComponentInfo;
@@ -35,7 +37,6 @@ public final class BoundRecordComponentInfo
 
     private final ClassReader reader;
     private final int startPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public BoundRecordComponentInfo(ClassReader reader, int startPos) {
         this.reader = reader;
@@ -53,11 +54,14 @@ public final class BoundRecordComponentInfo
         return reader.readEntry(startPos + 2, Utf8Entry.class);
     }
 
+    private final LazyConstant<List<Attribute<?>>> attributes$constant = LazyConstant.of(this::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$constant.get();
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(null, reader, attributesPos, reader.customAttributes());
     }
 }
