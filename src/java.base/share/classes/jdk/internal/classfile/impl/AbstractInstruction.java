@@ -30,6 +30,7 @@ import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.constant.ConstantDesc;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -111,7 +112,6 @@ public abstract sealed class AbstractInstruction
         public BoundLoadInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
-
 
         @Override
         public TypeKind typeKind() {
@@ -348,17 +348,21 @@ public abstract sealed class AbstractInstruction
     public static final class BoundFieldInstruction
             extends BoundInstruction implements FieldInstruction {
 
-        private FieldRefEntry fieldEntry;
-
         public BoundFieldInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private FieldRefEntry field$cache;
+        private static final LazyFieldCache<BoundFieldInstruction, FieldRefEntry> field$cacheAccessor =
+                LazyFieldCache.ofField(BoundFieldInstruction.class, "field$cache", BoundFieldInstruction::field$compute);
+
         @Override
         public FieldRefEntry field() {
-            if (fieldEntry == null)
-                fieldEntry = code.classReader.readEntry(pos + 1, FieldRefEntry.class);
-            return fieldEntry;
+            return field$cacheAccessor.get(this);
+        }
+
+        private FieldRefEntry field$compute() {
+            return code.classReader.readEntry(pos + 1, FieldRefEntry.class);
         }
 
         @Override
@@ -378,17 +382,22 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInstruction
             extends BoundInstruction implements InvokeInstruction {
-        MemberRefEntry methodEntry;
 
         public BoundInvokeInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private MemberRefEntry method$cache;
+        private static final LazyFieldCache<BoundInvokeInstruction, MemberRefEntry> method$cacheAccessor =
+                LazyFieldCache.ofField(BoundInvokeInstruction.class, "method$cache", BoundInvokeInstruction::method$compute);
+
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, MemberRefEntry.class);
-            return methodEntry;
+            return method$cacheAccessor.get(this);
+        }
+
+        private MemberRefEntry method$compute() {
+            return code.classReader.readEntry(pos + 1, MemberRefEntry.class);
         }
 
         @Override
@@ -418,17 +427,22 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeInterfaceInstruction
             extends BoundInstruction implements InvokeInstruction {
-        InterfaceMethodRefEntry methodEntry;
 
         public BoundInvokeInterfaceInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private MemberRefEntry method$cache;
+        private static final LazyFieldCache<BoundInvokeInterfaceInstruction, MemberRefEntry> method$cacheAccessor =
+                LazyFieldCache.ofField(BoundInvokeInterfaceInstruction.class, "method$cache", BoundInvokeInterfaceInstruction::method$compute);
+
         @Override
         public MemberRefEntry method() {
-            if (methodEntry == null)
-                methodEntry = code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
-            return methodEntry;
+            return method$cacheAccessor.get(this);
+        }
+
+        private MemberRefEntry method$compute() {
+            return code.classReader.readEntry(pos + 1, InterfaceMethodRefEntry.class);
         }
 
         @Override
@@ -458,17 +472,22 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundInvokeDynamicInstruction
             extends BoundInstruction implements InvokeDynamicInstruction {
-        InvokeDynamicEntry indyEntry;
 
         BoundInvokeDynamicInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private InvokeDynamicEntry invokedynamic$cache;
+        private static final LazyFieldCache<BoundInvokeDynamicInstruction, InvokeDynamicEntry> invokedynamic$cacheAccessor =
+                LazyFieldCache.ofField(BoundInvokeDynamicInstruction.class, "invokedynamic$cache", BoundInvokeDynamicInstruction::invokedynamic$compute);
+
         @Override
         public InvokeDynamicEntry invokedynamic() {
-            if (indyEntry == null)
-                indyEntry = code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
-            return indyEntry;
+            return invokedynamic$cacheAccessor.get(this);
+        }
+
+        private InvokeDynamicEntry invokedynamic$compute() {
+            return code.classReader.readEntry(pos + 1, InvokeDynamicEntry.class);
         }
 
         @Override
@@ -488,17 +507,22 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundNewObjectInstruction
             extends BoundInstruction implements NewObjectInstruction {
-        ClassEntry classEntry;
 
         BoundNewObjectInstruction(CodeImpl code, int pos) {
             super(Opcode.NEW, code, pos);
         }
 
+        private ClassEntry className$cache;
+        private static final LazyFieldCache<BoundNewObjectInstruction, ClassEntry> className$cacheAccessor =
+                LazyFieldCache.ofField(BoundNewObjectInstruction.class, "className$cache", BoundNewObjectInstruction::className$compute);
+
         @Override
         public ClassEntry className() {
-            if (classEntry == null)
-                classEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return classEntry;
+            return className$cacheAccessor.get(this);
+        }
+
+        private ClassEntry className$compute() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override
@@ -595,17 +619,22 @@ public abstract sealed class AbstractInstruction
 
     public static final class BoundTypeCheckInstruction
             extends BoundInstruction implements TypeCheckInstruction {
-        ClassEntry typeEntry;
 
         public BoundTypeCheckInstruction(Opcode op, CodeImpl code, int pos) {
             super(op, code, pos);
         }
 
+        private ClassEntry type$cache;
+        private static final LazyFieldCache<BoundTypeCheckInstruction, ClassEntry> type$cacheAccessor =
+                LazyFieldCache.ofField(BoundTypeCheckInstruction.class, "type$cache", BoundTypeCheckInstruction::type$compute);
+
         @Override
         public ClassEntry type() {
-            if (typeEntry == null)
-                typeEntry = code.classReader.readEntry(pos + 1, ClassEntry.class);
-            return typeEntry;
+            return type$cacheAccessor.get(this);
+        }
+
+        private ClassEntry type$compute() {
+            return code.classReader.readEntry(pos + 1, ClassEntry.class);
         }
 
         @Override

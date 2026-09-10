@@ -28,6 +28,7 @@ import java.lang.classfile.Attribute;
 import java.lang.classfile.AttributedElement;
 import java.lang.classfile.ClassFileElement;
 import java.lang.classfile.CompoundElement;
+import java.lang.invoke.LazyFieldCache;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -38,7 +39,6 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         implements CompoundElement<E>, AttributedElement
         permits BufferedCodeBuilder.Model, BufferedFieldBuilder.Model, BufferedMethodBuilder.Model {
     final List<E> elements;
-    private List<Attribute<?>> attributes;
 
     public AbstractUnboundModel(List<E> elements) {
         this.elements = Collections.unmodifiableList(elements);
@@ -59,16 +59,23 @@ public abstract sealed class AbstractUnboundModel<E extends ClassFileElement>
         return elements;
     }
 
+    private List<Attribute<?>> attributes$cache;
+    private static final LazyFieldCache<AbstractUnboundModel<?>, List<Attribute<?>>> attributes$cacheAccessor =
+            LazyFieldCache.ofField(AbstractUnboundModel.class, "attributes$cache",
+                    (AbstractUnboundModel<?> model) -> model.attributes$compute());
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null)
-            attributes = elements.stream()
-                                 .<Attribute<?>>mapMulti((e, sink) -> {
-                                     if (e instanceof Attribute<?> attr) {
-                                         sink.accept(attr);
-                                     }
-                                 })
-                                 .toList();
-        return attributes;
+        return attributes$cacheAccessor.get(this);
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return elements.stream()
+                       .<Attribute<?>>mapMulti((e, sink) -> {
+                           if (e instanceof Attribute<?> attr) {
+                               sink.accept(attr);
+                           }
+                       })
+                       .toList();
     }
 }

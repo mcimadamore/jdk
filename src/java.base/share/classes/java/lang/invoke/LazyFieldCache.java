@@ -38,7 +38,7 @@ import jdk.internal.reflect.Reflection;
  * @param <R> the receiver type
  * @param <T> the field value type
  */
-public interface LazyCacheDeclSite<R, T> {
+public interface LazyFieldCache<R, T> {
     /**
      * Returns the cached value, computing and storing it with plain semantics if unset.
      *
@@ -75,12 +75,12 @@ public interface LazyCacheDeclSite<R, T> {
      * @return the cache
      */
     @CallerSensitive
-    static <R, T> LazyCacheDeclSite<R, T> ofField(Class<R> owner,
+    static <R, T> LazyFieldCache<R, T> ofField(Class<? super R> owner,
                                                   String name,
                                                   Function<? super R, ? extends T> computer) {
         Objects.requireNonNull(owner);
         Objects.requireNonNull(name);
         Objects.requireNonNull(computer);
-        return LazyCacheDeclSiteImpl.ofField(owner, name, computer, Reflection.getCallerClass());
+        return LazyFieldCacheImpl.ofField(owner, name, computer, Reflection.getCallerClass());
     }
 }

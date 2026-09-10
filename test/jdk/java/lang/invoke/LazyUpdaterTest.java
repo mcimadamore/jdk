@@ -28,7 +28,7 @@
  */
 
 import java.lang.invoke.LazyArrayCache;
-import java.lang.invoke.LazyCacheDeclSite;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -137,13 +137,13 @@ public class LazyUpdaterTest {
     }
 
     private static void testConvenienceCaches() {
-        LazyCacheDeclSite<Box, String> plain = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, String> plain = LazyFieldCache.ofField(
                 Box.class, "cachePlain", box -> "cache-plain");
-        LazyCacheDeclSite<Box, String> atomic = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, String> atomic = LazyFieldCache.ofField(
                 Box.class, "cacheAtomic", box -> "cache-atomic");
-        LazyCacheDeclSite<Box, String> locked = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, String> locked = LazyFieldCache.ofField(
                 Box.class, "cacheLocked", box -> "cache-locked");
-        LazyCacheDeclSite<Box, Integer> number = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, Integer> number = LazyFieldCache.ofField(
                 Box.class, "number", receiver -> 42);
 
         Box box = new Box();
@@ -154,7 +154,7 @@ public class LazyUpdaterTest {
         assertEquals(42, box.number);
 
         AtomicInteger attempts = new AtomicInteger();
-        LazyCacheDeclSite<Box, String> retry = LazyCacheDeclSite.ofField(Box.class, "retry", receiver -> {
+        LazyFieldCache<Box, String> retry = LazyFieldCache.ofField(Box.class, "retry", receiver -> {
             if (attempts.getAndIncrement() == 0) {
                 throw new TestException();
             }
@@ -174,7 +174,7 @@ public class LazyUpdaterTest {
     private static void testVolatileRace() throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
         AtomicInteger computations = new AtomicInteger();
-        LazyCacheDeclSite<Box, String> cache = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(
                 Box.class, "cacheAtomic", box -> {
                     int id = computations.incrementAndGet();
                     await(barrier);
@@ -195,7 +195,7 @@ public class LazyUpdaterTest {
 
     private static void testSynchronizedComputation() throws Exception {
         AtomicInteger computations = new AtomicInteger();
-        LazyCacheDeclSite<Box, String> cache = LazyCacheDeclSite.ofField(
+        LazyFieldCache<Box, String> cache = LazyFieldCache.ofField(
                 Box.class, "cacheLocked", box -> {
                     computations.incrementAndGet();
                     return "once";

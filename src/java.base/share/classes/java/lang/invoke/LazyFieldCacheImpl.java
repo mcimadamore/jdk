@@ -21,14 +21,14 @@ import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.TrustFinalFields;
 
 @TrustFinalFields
-final class LazyCacheDeclSiteImpl<R, T> implements LazyCacheDeclSite<R, T> {
+final class LazyFieldCacheImpl<R, T> implements LazyFieldCache<R, T> {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     private final long offset;
     private final Class<?> type;
     private final Function<? super R, ? extends T> computer;
 
-    static <R, T> LazyCacheDeclSite<R, T> ofField(Class<R> owner,
+    static <R, T> LazyFieldCache<R, T> ofField(Class<?> owner,
                                                   String name,
                                                   Function<? super R, ? extends T> computer,
                                                   Class<?> caller) {
@@ -41,13 +41,13 @@ final class LazyCacheDeclSiteImpl<R, T> implements LazyCacheDeclSite<R, T> {
             if (Modifier.isFinal(modifiers)) {
                 throw new IllegalArgumentException(name + " is a final field");
             }
-            return new LazyCacheDeclSiteImpl<>(UNSAFE.objectFieldOffset(field), field.getType(), computer);
+            return new LazyFieldCacheImpl<>(UNSAFE.objectFieldOffset(field), field.getType(), computer);
         } catch (NoSuchFieldException ex) {
             throw new IllegalArgumentException("Cannot access " + owner.getName() + "." + name, ex);
         }
     }
 
-    private LazyCacheDeclSiteImpl(long offset, Class<?> type, Function<? super R, ? extends T> computer) {
+    private LazyFieldCacheImpl(long offset, Class<?> type, Function<? super R, ? extends T> computer) {
         this.offset = offset;
         this.type = type;
         this.computer = computer;

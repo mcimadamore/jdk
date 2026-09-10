@@ -32,6 +32,7 @@ import java.lang.classfile.constantpool.ConstantPoolException;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyFieldCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,8 +53,6 @@ public final class ClassReaderImpl
     private final int version;
     private final int flags;
     private final int thisClassPos;
-    private ClassEntry thisClass;
-    private Optional<ClassEntry> superclass;
     private final int constantPoolCount;
     private final int[] cpOffset;
 
@@ -62,8 +61,6 @@ public final class ClassReaderImpl
     final PoolEntry[] cp;
 
     private ClassModel containedClass;
-    private List<BootstrapMethodEntryImpl> bsmEntries;
-    private BootstrapMethodsAttribute bootstrapMethodsAttribute;
 
     ClassReaderImpl(byte[] classfileBytes,
                     ClassFileImpl context) {
@@ -138,20 +135,30 @@ public final class ClassReaderImpl
         return flags;
     }
 
+    private ClassEntry thisClassEntry$cache;
+    private static final LazyFieldCache<ClassReaderImpl, ClassEntry> thisClassEntry$cacheAccessor =
+            LazyFieldCache.ofField(ClassReaderImpl.class, "thisClassEntry$cache", ClassReaderImpl::thisClassEntry$compute);
+
     @Override
     public ClassEntry thisClassEntry() {
-        if (thisClass == null) {
-            thisClass = readEntry(thisClassPos, ClassEntry.class);
-        }
-        return thisClass;
+        return thisClassEntry$cacheAccessor.get(this);
     }
+
+    private ClassEntry thisClassEntry$compute() {
+        return readEntry(thisClassPos, ClassEntry.class);
+    }
+
+    private Optional<ClassEntry> superclassEntry$cache;
+    private static final LazyFieldCache<ClassReaderImpl, Optional<ClassEntry>> superclassEntry$cacheAccessor =
+            LazyFieldCache.ofField(ClassReaderImpl.class, "superclassEntry$cache", ClassReaderImpl::superclassEntry$compute);
 
     @Override
     public Optional<ClassEntry> superclassEntry() {
-        if (superclass == null) {
-            superclass = Optional.ofNullable(readEntryOrNull(thisClassPos + 2, ClassEntry.class));
-        }
-        return superclass;
+        return superclassEntry$cacheAccessor.get(this);
+    }
+
+    private Optional<ClassEntry> superclassEntry$compute() {
+        return Optional.ofNullable(readEntryOrNull(thisClassPos + 2, ClassEntry.class));
     }
 
     public int thisClassPos() {
@@ -279,29 +286,37 @@ public final class ClassReaderImpl
         }
     }
 
+    private BootstrapMethodsAttribute bootstrapMethodsAttribute$cache;
+    private static final LazyFieldCache<ClassReaderImpl, BootstrapMethodsAttribute> bootstrapMethodsAttribute$cacheAccessor =
+            LazyFieldCache.ofField(ClassReaderImpl.class, "bootstrapMethodsAttribute$cache", ClassReaderImpl::bootstrapMethodsAttribute$compute);
+
     BootstrapMethodsAttribute bootstrapMethodsAttribute() {
-
-        if (bootstrapMethodsAttribute == null) {
-            bootstrapMethodsAttribute
-                    = containedClass.findAttribute(Attributes.bootstrapMethods())
-                                    .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
-        }
-
-        return bootstrapMethodsAttribute;
+        return bootstrapMethodsAttribute$cacheAccessor.get(this);
     }
 
+    private BootstrapMethodsAttribute bootstrapMethodsAttribute$compute() {
+        return containedClass.findAttribute(Attributes.bootstrapMethods())
+                             .orElse(new UnboundAttribute.EmptyBootstrapAttribute());
+    }
+
+    private List<BootstrapMethodEntryImpl> bsmEntries$cache;
+    private static final LazyFieldCache<ClassReaderImpl, List<BootstrapMethodEntryImpl>> bsmEntries$cacheAccessor =
+            LazyFieldCache.ofField(ClassReaderImpl.class, "bsmEntries$cache", ClassReaderImpl::bsmEntries$compute);
+
     List<BootstrapMethodEntryImpl> bsmEntries() {
-        if (bsmEntries == null) {
-            bsmEntries = new ArrayList<>();
-            BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
-            List<BootstrapMethodEntry> list = attr.bootstrapMethods();
-            if (!list.isEmpty()) {
-                for (BootstrapMethodEntry bm : list) {
-                    AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
-                    List<LoadableConstantEntry> args = bm.arguments();
-                    int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
-                    bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
-                }
+        return bsmEntries$cacheAccessor.get(this);
+    }
+
+    private List<BootstrapMethodEntryImpl> bsmEntries$compute() {
+        var bsmEntries = new ArrayList<BootstrapMethodEntryImpl>();
+        BootstrapMethodsAttribute attr = bootstrapMethodsAttribute();
+        List<BootstrapMethodEntry> list = attr.bootstrapMethods();
+        if (!list.isEmpty()) {
+            for (BootstrapMethodEntry bm : list) {
+                AbstractPoolEntry.MethodHandleEntryImpl handle = (AbstractPoolEntry.MethodHandleEntryImpl) bm.bootstrapMethod();
+                List<LoadableConstantEntry> args = bm.arguments();
+                int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
+                bsmEntries.add(new BootstrapMethodEntryImpl(this, bsmEntries.size(), hash, handle, args));
             }
         }
         return bsmEntries;

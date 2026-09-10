@@ -28,6 +28,7 @@ package jdk.internal.classfile.impl;
 import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.*;
+import java.lang.invoke.LazyFieldCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,7 +48,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     private final AttributeMapper<T> mapper;
     final ClassReaderImpl classReader;
     final int payloadStart;
-    Utf8Entry name;
 
     BoundAttribute(ClassReader classReader, AttributeMapper<T> mapper, int payloadStart) {
         this.mapper = mapper;
@@ -59,12 +59,18 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
         return classReader.readInt(payloadStart - 4);
     }
 
+    private Utf8Entry attributeName$cache;
+    private static final LazyFieldCache<BoundAttribute<?>, Utf8Entry> attributeName$cacheAccessor =
+            LazyFieldCache.ofField(BoundAttribute.class, "attributeName$cache",
+                    (BoundAttribute<?> attribute) -> attribute.attributeName$compute());
+
     @Override
     public Utf8Entry attributeName() {
-        if (name == null) {
-            name = classReader.readEntry(payloadStart - 6, Utf8Entry.class);
-        }
-        return name;
+        return attributeName$cacheAccessor.get(this);
+    }
+
+    private Utf8Entry attributeName$compute() {
+        return classReader.readEntry(payloadStart - 6, Utf8Entry.class);
     }
 
     @Override
@@ -195,7 +201,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             implements StackMapTableAttribute {
         final MethodModel method;
         final LabelContext ctx;
-        List<StackMapFrameInfo> entries = null;
 
         public BoundStackMapTableAttribute(CodeImpl code, ClassReader cf, AttributeMapper<StackMapTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -203,13 +208,18 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             ctx = code;
         }
 
+        private List<StackMapFrameInfo> entries$cache;
+        private static final LazyFieldCache<BoundStackMapTableAttribute, List<StackMapFrameInfo>> entries$cacheAccessor =
+                LazyFieldCache.ofField(BoundStackMapTableAttribute.class, "entries$cache", BoundStackMapTableAttribute::entries$compute);
+
         @Override
         public List<StackMapFrameInfo> entries() {
-            if (entries == null) {
-                entries = new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method),
+            return entries$cacheAccessor.get(this);
+        }
+
+        private List<StackMapFrameInfo> entries$compute() {
+            return new StackMapDecoder(classReader, payloadStart, ctx, StackMapDecoder.initFrameLocals(method),
                         StackMapDecoder.initFrameUnsets(method)).entries();
-            }
-            return entries;
         }
 
         @Override
@@ -232,55 +242,63 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundLineNumberTableAttribute
             extends BoundAttribute<LineNumberTableAttribute>
             implements LineNumberTableAttribute {
-        private List<LineNumberInfo> lineNumbers = null;
 
         public BoundLineNumberTableAttribute(ClassReader cf, AttributeMapper<LineNumberTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<LineNumberInfo> lineNumbers$cache;
+        private static final LazyFieldCache<BoundLineNumberTableAttribute, List<LineNumberInfo>> lineNumbers$cacheAccessor =
+                LazyFieldCache.ofField(BoundLineNumberTableAttribute.class, "lineNumbers$cache", BoundLineNumberTableAttribute::lineNumbers$compute);
+
         @Override
         public List<LineNumberInfo> lineNumbers() {
-            if (lineNumbers == null) {
-                int nLn = classReader.readU2(payloadStart);
-                LineNumberInfo[] elements = new LineNumberInfo[nLn];
-                int p = payloadStart + 2;
-                int pEnd = p + (nLn * 4);
-                for (int i = 0; p < pEnd; p += 4, i++) {
-                    int startPc = classReader.readU2(p);
-                    int lineNumber = classReader.readU2(p + 2);
-                    elements[i] = LineNumberInfo.of(startPc, lineNumber);
-                }
-                lineNumbers = List.of(elements);
+            return lineNumbers$cacheAccessor.get(this);
+        }
+
+        private List<LineNumberInfo> lineNumbers$compute() {
+            int nLn = classReader.readU2(payloadStart);
+            LineNumberInfo[] elements = new LineNumberInfo[nLn];
+            int p = payloadStart + 2;
+            int pEnd = p + (nLn * 4);
+            for (int i = 0; p < pEnd; p += 4, i++) {
+                int startPc = classReader.readU2(p);
+                int lineNumber = classReader.readU2(p + 2);
+                elements[i] = LineNumberInfo.of(startPc, lineNumber);
             }
-            return lineNumbers;
+            return List.of(elements);
         }
     }
 
     public static final class BoundCharacterRangeTableAttribute extends BoundAttribute<CharacterRangeTableAttribute> implements CharacterRangeTableAttribute {
-        private List<CharacterRangeInfo> characterRangeTable = null;
 
         public BoundCharacterRangeTableAttribute(ClassReader cf, AttributeMapper<CharacterRangeTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<CharacterRangeInfo> characterRangeTable$cache;
+        private static final LazyFieldCache<BoundCharacterRangeTableAttribute, List<CharacterRangeInfo>> characterRangeTable$cacheAccessor =
+                LazyFieldCache.ofField(BoundCharacterRangeTableAttribute.class, "characterRangeTable$cache", BoundCharacterRangeTableAttribute::characterRangeTable$compute);
+
         @Override
         public List<CharacterRangeInfo> characterRangeTable() {
-            if (characterRangeTable == null) {
-                int nLn = classReader.readU2(payloadStart);
-                CharacterRangeInfo[] elements = new CharacterRangeInfo[nLn];
-                int p = payloadStart + 2;
-                int pEnd = p + (nLn * 14);
-                for (int i = 0; p < pEnd; p += 14, i++) {
-                    int startPc = classReader.readU2(p);
-                    int endPc = classReader.readU2(p + 2);
-                    int characterRangeStart = classReader.readInt(p + 4);
-                    int characterRangeEnd = classReader.readInt(p + 8);
-                    int flags = classReader.readU2(p + 12);
-                    elements[i] = CharacterRangeInfo.of(startPc, endPc, characterRangeStart, characterRangeEnd, flags);
-                }
-                characterRangeTable = List.of(elements);
+            return characterRangeTable$cacheAccessor.get(this);
+        }
+
+        private List<CharacterRangeInfo> characterRangeTable$compute() {
+            int nLn = classReader.readU2(payloadStart);
+            CharacterRangeInfo[] elements = new CharacterRangeInfo[nLn];
+            int p = payloadStart + 2;
+            int pEnd = p + (nLn * 14);
+            for (int i = 0; p < pEnd; p += 14, i++) {
+                int startPc = classReader.readU2(p);
+                int endPc = classReader.readU2(p + 2);
+                int characterRangeStart = classReader.readInt(p + 4);
+                int characterRangeEnd = classReader.readInt(p + 8);
+                int flags = classReader.readU2(p + 12);
+                elements[i] = CharacterRangeInfo.of(startPc, endPc, characterRangeStart, characterRangeEnd, flags);
             }
-            return characterRangeTable;
+            return List.of(elements);
         }
     }
 
@@ -288,7 +306,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             extends BoundAttribute<LocalVariableTableAttribute>
             implements LocalVariableTableAttribute {
         private final CodeImpl codeAttribute;
-        private List<LocalVariableInfo> localVars = null;
 
         public BoundLocalVariableTableAttribute(AttributedElement enclosing, ClassReader cf, AttributeMapper<LocalVariableTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -299,19 +316,24 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
+        private List<LocalVariableInfo> localVariables$cache;
+        private static final LazyFieldCache<BoundLocalVariableTableAttribute, List<LocalVariableInfo>> localVariables$cacheAccessor =
+                LazyFieldCache.ofField(BoundLocalVariableTableAttribute.class, "localVariables$cache", BoundLocalVariableTableAttribute::localVariables$compute);
+
         @Override
         public List<LocalVariableInfo> localVariables() {
-            if (localVars == null) {
-                int cnt = classReader.readU2(payloadStart);
-                BoundLocalVariable[] elements = new BoundLocalVariable[cnt];
-                int p = payloadStart + 2;
-                int pEnd = p + (cnt * 10);
-                for (int i = 0; p < pEnd; p += 10, i++) {
-                    elements[i] = new BoundLocalVariable(codeAttribute, p);
-                }
-                localVars = List.of(elements);
+            return localVariables$cacheAccessor.get(this);
+        }
+
+        private List<LocalVariableInfo> localVariables$compute() {
+            int cnt = classReader.readU2(payloadStart);
+            BoundLocalVariable[] elements = new BoundLocalVariable[cnt];
+            int p = payloadStart + 2;
+            int pEnd = p + (cnt * 10);
+            for (int i = 0; p < pEnd; p += 10, i++) {
+                elements[i] = new BoundLocalVariable(codeAttribute, p);
             }
-            return localVars;
+            return List.of(elements);
         }
     }
 
@@ -319,7 +341,6 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             extends BoundAttribute<LocalVariableTypeTableAttribute>
             implements LocalVariableTypeTableAttribute {
         private final CodeImpl codeAttribute;
-        private List<LocalVariableTypeInfo> localVars = null;
 
         public BoundLocalVariableTypeTableAttribute(AttributedElement enclosing, ClassReader cf, AttributeMapper<LocalVariableTypeTableAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -330,51 +351,59 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             }
         }
 
+        private List<LocalVariableTypeInfo> localVariableTypes$cache;
+        private static final LazyFieldCache<BoundLocalVariableTypeTableAttribute, List<LocalVariableTypeInfo>> localVariableTypes$cacheAccessor =
+                LazyFieldCache.ofField(BoundLocalVariableTypeTableAttribute.class, "localVariableTypes$cache", BoundLocalVariableTypeTableAttribute::localVariableTypes$compute);
+
         @Override
         public List<LocalVariableTypeInfo> localVariableTypes() {
-            if (localVars == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                BoundLocalVariableType[] elements = new BoundLocalVariableType[cnt];
-                int p = payloadStart + 2;
-                int pEnd = p + (cnt * 10);
-                for (int i = 0; p < pEnd; p += 10, i++) {
-                    elements[i] = new BoundLocalVariableType(codeAttribute, p);
-                }
-                localVars = List.of(elements);
+            return localVariableTypes$cacheAccessor.get(this);
+        }
+
+        private List<LocalVariableTypeInfo> localVariableTypes$compute() {
+            final int cnt = classReader.readU2(payloadStart);
+            BoundLocalVariableType[] elements = new BoundLocalVariableType[cnt];
+            int p = payloadStart + 2;
+            int pEnd = p + (cnt * 10);
+            for (int i = 0; p < pEnd; p += 10, i++) {
+                elements[i] = new BoundLocalVariableType(codeAttribute, p);
             }
-            return localVars;
+            return List.of(elements);
         }
     }
 
     public static final class BoundMethodParametersAttribute extends BoundAttribute<MethodParametersAttribute>
             implements MethodParametersAttribute {
-        private List<MethodParameterInfo> parameters = null;
 
         public BoundMethodParametersAttribute(ClassReader cf, AttributeMapper<MethodParametersAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<MethodParameterInfo> parameters$cache;
+        private static final LazyFieldCache<BoundMethodParametersAttribute, List<MethodParameterInfo>> parameters$cacheAccessor =
+                LazyFieldCache.ofField(BoundMethodParametersAttribute.class, "parameters$cache", BoundMethodParametersAttribute::parameters$compute);
+
         @Override
         public List<MethodParameterInfo> parameters() {
-            if (parameters == null) {
-                final int cnt = classReader.readU1(payloadStart);
-                MethodParameterInfo[] elements = new MethodParameterInfo[cnt];
-                int p = payloadStart + 1;
-                int pEnd = p + (cnt * 4);
-                for (int i = 0; p < pEnd; p += 4, i++) {
-                    Utf8Entry name = classReader.readEntryOrNull(p, Utf8Entry.class);
-                    int accessFlags = classReader.readU2(p + 2);
-                    elements[i] = MethodParameterInfo.of(Optional.ofNullable(name), accessFlags);
-                }
-                parameters = List.of(elements);
+            return parameters$cacheAccessor.get(this);
+        }
+
+        private List<MethodParameterInfo> parameters$compute() {
+            final int cnt = classReader.readU1(payloadStart);
+            MethodParameterInfo[] elements = new MethodParameterInfo[cnt];
+            int p = payloadStart + 1;
+            int pEnd = p + (cnt * 4);
+            for (int i = 0; p < pEnd; p += 4, i++) {
+                Utf8Entry name = classReader.readEntryOrNull(p, Utf8Entry.class);
+                int accessFlags = classReader.readU2(p + 2);
+                elements[i] = MethodParameterInfo.of(Optional.ofNullable(name), accessFlags);
             }
-            return parameters;
+            return List.of(elements);
         }
     }
 
     public static final class BoundModuleHashesAttribute extends BoundAttribute<ModuleHashesAttribute>
             implements ModuleHashesAttribute {
-        private List<ModuleHashInfo> hashes = null;
 
         public BoundModuleHashesAttribute(ClassReader cf, AttributeMapper<ModuleHashesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
@@ -385,48 +414,57 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return classReader.readEntry(payloadStart, Utf8Entry.class);
         }
 
+        private List<ModuleHashInfo> hashes$cache;
+        private static final LazyFieldCache<BoundModuleHashesAttribute, List<ModuleHashInfo>> hashes$cacheAccessor =
+                LazyFieldCache.ofField(BoundModuleHashesAttribute.class, "hashes$cache", BoundModuleHashesAttribute::hashes$compute);
+
         @Override
         public List<ModuleHashInfo> hashes() {
-            if (hashes == null) {
-                final int cnt = classReader.readU2(payloadStart + 2);
-                ModuleHashInfo[] elements = new ModuleHashInfo[cnt];
-                int p = payloadStart + 4;
-                //System.err.printf("%5d: ModuleHashesAttr alg = %s, cnt = %d%n", pos, algorithm(), cnt);
-                for (int i = 0; i < cnt; ++i) {
-                    ModuleEntry module = classReader.readEntry(p, ModuleEntry.class);
-                    int hashLength = classReader.readU2(p + 2);
-                    //System.err.printf("%5d:     [%d] module = %s, hashLength = %d%n", p, i, module, hashLength);
-                    p += 4;
-                    elements[i] = ModuleHashInfo.of(module, classReader.readBytes(p, hashLength));
-                    p += hashLength;
-                }
-                hashes = List.of(elements);
+            return hashes$cacheAccessor.get(this);
+        }
+
+        private List<ModuleHashInfo> hashes$compute() {
+            final int cnt = classReader.readU2(payloadStart + 2);
+            ModuleHashInfo[] elements = new ModuleHashInfo[cnt];
+            int p = payloadStart + 4;
+            //System.err.printf("%5d: ModuleHashesAttr alg = %s, cnt = %d%n", pos, algorithm(), cnt);
+            for (int i = 0; i < cnt; ++i) {
+                ModuleEntry module = classReader.readEntry(p, ModuleEntry.class);
+                int hashLength = classReader.readU2(p + 2);
+                //System.err.printf("%5d:     [%d] module = %s, hashLength = %d%n", p, i, module, hashLength);
+                p += 4;
+                elements[i] = ModuleHashInfo.of(module, classReader.readBytes(p, hashLength));
+                p += hashLength;
             }
-            return hashes;
+            return List.of(elements);
         }
     }
 
     public static final class BoundRecordAttribute extends BoundAttribute<RecordAttribute>
             implements RecordAttribute {
-        private List<RecordComponentInfo> components = null;
 
         public BoundRecordAttribute(ClassReader cf, AttributeMapper<RecordAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<RecordComponentInfo> components$cache;
+        private static final LazyFieldCache<BoundRecordAttribute, List<RecordComponentInfo>> components$cacheAccessor =
+                LazyFieldCache.ofField(BoundRecordAttribute.class, "components$cache", BoundRecordAttribute::components$compute);
+
         @Override
         public List<RecordComponentInfo> components() {
-            if (components == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                RecordComponentInfo[] elements = new RecordComponentInfo[cnt];
-                int p = payloadStart + 2;
-                for (int i = 0; i < cnt; i++) {
-                    elements[i] = new BoundRecordComponentInfo(classReader, p);
-                    p = classReader.skipAttributeHolder(p + 4);
-                }
-                components = List.of(elements);
+            return components$cacheAccessor.get(this);
+        }
+
+        private List<RecordComponentInfo> components$compute() {
+            final int cnt = classReader.readU2(payloadStart);
+            RecordComponentInfo[] elements = new RecordComponentInfo[cnt];
+            int p = payloadStart + 2;
+            for (int i = 0; i < cnt; i++) {
+                elements[i] = new BoundRecordComponentInfo(classReader, p);
+                p = classReader.skipAttributeHolder(p + 4);
             }
-            return components;
+            return List.of(elements);
         }
     }
 
@@ -555,18 +593,22 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     public static final class BoundExceptionsAttribute extends BoundAttribute<ExceptionsAttribute>
             implements ExceptionsAttribute {
-        private List<ClassEntry> exceptions = null;
 
         public BoundExceptionsAttribute(ClassReader cf, AttributeMapper<ExceptionsAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<ClassEntry> exceptions$cache;
+        private static final LazyFieldCache<BoundExceptionsAttribute, List<ClassEntry>> exceptions$cacheAccessor =
+                LazyFieldCache.ofField(BoundExceptionsAttribute.class, "exceptions$cache", BoundExceptionsAttribute::exceptions$compute);
+
         @Override
         public List<ClassEntry> exceptions() {
-            if (exceptions == null) {
-                exceptions = readEntryList(payloadStart, ClassEntry.class);
-            }
-            return exceptions;
+            return exceptions$cacheAccessor.get(this);
+        }
+
+        private List<ClassEntry> exceptions$compute() {
+            return readEntryList(payloadStart, ClassEntry.class);
         }
     }
 
@@ -703,43 +745,49 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
 
     public static final class BoundModulePackagesAttribute extends BoundAttribute<ModulePackagesAttribute>
             implements ModulePackagesAttribute {
-        private List<PackageEntry> packages = null;
 
         public BoundModulePackagesAttribute(ClassReader cf, AttributeMapper<ModulePackagesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<PackageEntry> packages$cache;
+        private static final LazyFieldCache<BoundModulePackagesAttribute, List<PackageEntry>> packages$cacheAccessor =
+                LazyFieldCache.ofField(BoundModulePackagesAttribute.class, "packages$cache", BoundModulePackagesAttribute::packages$compute);
+
         @Override
         public List<PackageEntry> packages() {
-            if (packages == null) {
-                packages = readEntryList(payloadStart, PackageEntry.class);
-            }
-            return packages;
+            return packages$cacheAccessor.get(this);
+        }
+
+        private List<PackageEntry> packages$compute() {
+            return readEntryList(payloadStart, PackageEntry.class);
         }
     }
 
     public static final class BoundNestMembersAttribute extends BoundAttribute<NestMembersAttribute>
             implements NestMembersAttribute {
 
-        private List<ClassEntry> members = null;
-
         public BoundNestMembersAttribute(ClassReader cf, AttributeMapper<NestMembersAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<ClassEntry> nestMembers$cache;
+        private static final LazyFieldCache<BoundNestMembersAttribute, List<ClassEntry>> nestMembers$cacheAccessor =
+                LazyFieldCache.ofField(BoundNestMembersAttribute.class, "nestMembers$cache", BoundNestMembersAttribute::nestMembers$compute);
+
         @Override
         public List<ClassEntry> nestMembers() {
-            if (members == null) {
-                members = readEntryList(payloadStart, ClassEntry.class);
-            }
-            return members;
+            return nestMembers$cacheAccessor.get(this);
+        }
+
+        private List<ClassEntry> nestMembers$compute() {
+            return readEntryList(payloadStart, ClassEntry.class);
         }
     }
 
     public static final class BoundBootstrapMethodsAttribute extends BoundAttribute<BootstrapMethodsAttribute>
             implements BootstrapMethodsAttribute {
 
-        private List<BootstrapMethodEntry> bootstraps = null;
         private final int size;
 
         public BoundBootstrapMethodsAttribute(ClassReader reader, AttributeMapper<BootstrapMethodsAttribute> mapper, int pos) {
@@ -752,49 +800,58 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return size;
         }
 
+        private List<BootstrapMethodEntry> bootstrapMethods$cache;
+        private static final LazyFieldCache<BoundBootstrapMethodsAttribute, List<BootstrapMethodEntry>> bootstrapMethods$cacheAccessor =
+                LazyFieldCache.ofField(BoundBootstrapMethodsAttribute.class, "bootstrapMethods$cache", BoundBootstrapMethodsAttribute::bootstrapMethods$compute);
+
         @Override
         public List<BootstrapMethodEntry> bootstrapMethods() {
-            if (bootstraps == null) {
-                BootstrapMethodEntry[] bs = new BootstrapMethodEntry[size];
-                int p = payloadStart + 2;
-                for (int i = 0; i < size; ++i) {
-                    final var handle = classReader.readEntry(p, AbstractPoolEntry.MethodHandleEntryImpl.class);
-                    final List<LoadableConstantEntry> args = readEntryList(p + 2, LoadableConstantEntry.class);
-                    p += 4 + args.size() * 2;
-                    int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
-                    bs[i] = new BootstrapMethodEntryImpl(classReader, i, hash, handle, args);
-                }
-                bootstraps = List.of(bs);
+            return bootstrapMethods$cacheAccessor.get(this);
+        }
+
+        private List<BootstrapMethodEntry> bootstrapMethods$compute() {
+            BootstrapMethodEntry[] bs = new BootstrapMethodEntry[size];
+            int p = payloadStart + 2;
+            for (int i = 0; i < size; ++i) {
+                final var handle = classReader.readEntry(p, AbstractPoolEntry.MethodHandleEntryImpl.class);
+                final List<LoadableConstantEntry> args = readEntryList(p + 2, LoadableConstantEntry.class);
+                p += 4 + args.size() * 2;
+                int hash = BootstrapMethodEntryImpl.computeHashCode(handle, args);
+                bs[i] = new BootstrapMethodEntryImpl(classReader, i, hash, handle, args);
             }
-            return bootstraps;
+            return List.of(bs);
         }
     }
 
     public static final class BoundInnerClassesAttribute extends BoundAttribute<InnerClassesAttribute>
             implements InnerClassesAttribute {
-        private List<InnerClassInfo> classes;
 
         public BoundInnerClassesAttribute(ClassReader cf, AttributeMapper<InnerClassesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<InnerClassInfo> classes$cache;
+        private static final LazyFieldCache<BoundInnerClassesAttribute, List<InnerClassInfo>> classes$cacheAccessor =
+                LazyFieldCache.ofField(BoundInnerClassesAttribute.class, "classes$cache", BoundInnerClassesAttribute::classes$compute);
+
         @Override
         public List<InnerClassInfo> classes() {
-            if (classes == null) {
-                final int cnt = classReader.readU2(payloadStart);
-                int p = payloadStart + 2;
-                InnerClassInfo[] elements = new InnerClassInfo[cnt];
-                for (int i = 0; i < cnt; i++) {
-                    ClassEntry innerClass = classReader.readEntry(p, ClassEntry.class);
-                    var outerClass = classReader.readEntryOrNull(p + 2, ClassEntry.class);
-                    var innerName = classReader.readEntryOrNull(p + 4, Utf8Entry.class);
-                    int flags = classReader.readU2(p + 6);
-                    p += 8;
-                    elements[i] = InnerClassInfo.of(innerClass, Optional.ofNullable(outerClass), Optional.ofNullable(innerName), flags);
-                }
-                classes = List.of(elements);
+            return classes$cacheAccessor.get(this);
+        }
+
+        private List<InnerClassInfo> classes$compute() {
+            final int cnt = classReader.readU2(payloadStart);
+            int p = payloadStart + 2;
+            InnerClassInfo[] elements = new InnerClassInfo[cnt];
+            for (int i = 0; i < cnt; i++) {
+                ClassEntry innerClass = classReader.readEntry(p, ClassEntry.class);
+                var outerClass = classReader.readEntryOrNull(p + 2, ClassEntry.class);
+                var innerName = classReader.readEntryOrNull(p + 4, Utf8Entry.class);
+                int flags = classReader.readU2(p + 6);
+                p += 8;
+                elements[i] = InnerClassInfo.of(innerClass, Optional.ofNullable(outerClass), Optional.ofNullable(innerName), flags);
             }
-            return classes;
+            return List.of(elements);
         }
     }
 
@@ -818,17 +875,22 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundAnnotationDefaultAttr
             extends BoundAttribute<AnnotationDefaultAttribute>
             implements AnnotationDefaultAttribute {
-        private AnnotationValue annotationValue;
 
         public BoundAnnotationDefaultAttr(ClassReader cf, AttributeMapper<AnnotationDefaultAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private AnnotationValue defaultValue$cache;
+        private static final LazyFieldCache<BoundAnnotationDefaultAttr, AnnotationValue> defaultValue$cacheAccessor =
+                LazyFieldCache.ofField(BoundAnnotationDefaultAttr.class, "defaultValue$cache", BoundAnnotationDefaultAttr::defaultValue$compute);
+
         @Override
         public AnnotationValue defaultValue() {
-            if (annotationValue == null)
-                annotationValue = AnnotationReader.readElementValue(classReader, payloadStart);
-            return annotationValue;
+            return defaultValue$cacheAccessor.get(this);
+        }
+
+        private AnnotationValue defaultValue$compute() {
+            return AnnotationReader.readElementValue(classReader, payloadStart);
         }
     }
 
@@ -895,53 +957,67 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
     public static final class BoundRuntimeInvisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeInvisibleAnnotationsAttribute>
             implements RuntimeInvisibleAnnotationsAttribute {
-        private List<Annotation> inflated;
 
         public BoundRuntimeInvisibleAnnotationsAttribute(ClassReader cf,
                                                          int payloadStart) {
             super(cf, Attributes.runtimeInvisibleAnnotations(), payloadStart);
         }
 
+        private List<Annotation> annotations$cache;
+        private static final LazyFieldCache<BoundRuntimeInvisibleAnnotationsAttribute, List<Annotation>> annotations$cacheAccessor =
+                LazyFieldCache.ofField(BoundRuntimeInvisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeInvisibleAnnotationsAttribute::annotations$compute);
+
         @Override
         public List<Annotation> annotations() {
-            if (inflated == null)
-                inflated = AnnotationReader.readAnnotations(classReader, payloadStart);
-            return inflated;
+            return annotations$cacheAccessor.get(this);
+        }
+
+        private List<Annotation> annotations$compute() {
+            return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
 
     public static final class BoundRuntimeVisibleAnnotationsAttribute
             extends BoundAttribute<RuntimeVisibleAnnotationsAttribute>
             implements RuntimeVisibleAnnotationsAttribute {
-        private List<Annotation> inflated;
 
         public BoundRuntimeVisibleAnnotationsAttribute(ClassReader cf,
                                                        int payloadStart) {
             super(cf, Attributes.runtimeVisibleAnnotations(), payloadStart);
         }
 
+        private List<Annotation> annotations$cache;
+        private static final LazyFieldCache<BoundRuntimeVisibleAnnotationsAttribute, List<Annotation>> annotations$cacheAccessor =
+                LazyFieldCache.ofField(BoundRuntimeVisibleAnnotationsAttribute.class, "annotations$cache", BoundRuntimeVisibleAnnotationsAttribute::annotations$compute);
+
         @Override
         public List<Annotation> annotations() {
-            if (inflated == null)
-                inflated = AnnotationReader.readAnnotations(classReader, payloadStart);
-            return inflated;
+            return annotations$cacheAccessor.get(this);
+        }
+
+        private List<Annotation> annotations$compute() {
+            return AnnotationReader.readAnnotations(classReader, payloadStart);
         }
     }
 
     public static final class BoundPermittedSubclassesAttribute extends BoundAttribute<PermittedSubclassesAttribute>
             implements PermittedSubclassesAttribute {
-        private List<ClassEntry> permittedSubclasses = null;
 
         public BoundPermittedSubclassesAttribute(ClassReader cf, AttributeMapper<PermittedSubclassesAttribute> mapper, int pos) {
             super(cf, mapper, pos);
         }
 
+        private List<ClassEntry> permittedSubclasses$cache;
+        private static final LazyFieldCache<BoundPermittedSubclassesAttribute, List<ClassEntry>> permittedSubclasses$cacheAccessor =
+                LazyFieldCache.ofField(BoundPermittedSubclassesAttribute.class, "permittedSubclasses$cache", BoundPermittedSubclassesAttribute::permittedSubclasses$compute);
+
         @Override
         public List<ClassEntry> permittedSubclasses() {
-            if (permittedSubclasses == null) {
-                permittedSubclasses = readEntryList(payloadStart, ClassEntry.class);
-            }
-            return permittedSubclasses;
+            return permittedSubclasses$cacheAccessor.get(this);
+        }
+
+        private List<ClassEntry> permittedSubclasses$compute() {
+            return readEntryList(payloadStart, ClassEntry.class);
         }
     }
 
@@ -961,6 +1037,7 @@ public abstract sealed class BoundAttribute<T extends Attribute<T>>
             return loadableDescriptors;
         }
     }
+
 
     public abstract static sealed class BoundCodeAttribute
             extends BoundAttribute<CodeAttribute>

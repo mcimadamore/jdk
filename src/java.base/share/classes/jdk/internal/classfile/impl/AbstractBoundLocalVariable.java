@@ -26,13 +26,12 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.Label;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyFieldCache;
 
 public class AbstractBoundLocalVariable
         extends AbstractElement implements Util.WritableLocalVariable {
     protected final CodeImpl code;
     protected final int offset;
-    private Utf8Entry nameEntry;
-    private Utf8Entry secondaryEntry;
 
     public AbstractBoundLocalVariable(CodeImpl code, int offset) {
         this.code = code;
@@ -43,20 +42,32 @@ public class AbstractBoundLocalVariable
         return code.classReader.readU2(offset + 4);
     }
 
+    private Utf8Entry name$cache;
+    private static final LazyFieldCache<AbstractBoundLocalVariable, Utf8Entry> name$cacheAccessor =
+            LazyFieldCache.ofField(AbstractBoundLocalVariable.class, "name$cache", AbstractBoundLocalVariable::name$compute);
+
     public Utf8Entry name() {
-        if (nameEntry == null)
-            nameEntry = code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
-        return nameEntry;
+        return name$cacheAccessor.get(this);
+    }
+
+    private Utf8Entry name$compute() {
+        return code.constantPool().entryByIndex(nameIndex(), Utf8Entry.class);
     }
 
     protected int secondaryIndex() {
         return code.classReader.readU2(offset + 6);
     }
 
+    private Utf8Entry secondaryEntry$cache;
+    private static final LazyFieldCache<AbstractBoundLocalVariable, Utf8Entry> secondaryEntry$cacheAccessor =
+            LazyFieldCache.ofField(AbstractBoundLocalVariable.class, "secondaryEntry$cache", AbstractBoundLocalVariable::secondaryEntry$compute);
+
     protected Utf8Entry secondaryEntry() {
-        if (secondaryEntry == null)
-            secondaryEntry = code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
-        return secondaryEntry;
+        return secondaryEntry$cacheAccessor.get(this);
+    }
+
+    private Utf8Entry secondaryEntry$compute() {
+        return code.constantPool().entryByIndex(secondaryIndex(), Utf8Entry.class);
     }
 
     public Label startScope() {

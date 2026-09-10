@@ -28,6 +28,7 @@ import java.lang.classfile.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -42,8 +43,6 @@ public final class ClassImpl
     private final int attributesPos;
     private final List<MethodModel> methods;
     private final List<FieldModel> fields;
-    private List<Attribute<?>> attributes;
-    private List<ClassEntry> interfaces;
 
     public ClassImpl(byte[] cfbytes, ClassFileImpl context) {
         this.reader = new ClassReaderImpl(cfbytes, context);
@@ -108,28 +107,38 @@ public final class ClassImpl
         return reader.superclassEntry();
     }
 
+    private List<ClassEntry> interfaces$cache;
+    private static final LazyFieldCache<ClassImpl, List<ClassEntry>> interfaces$cacheAccessor =
+            LazyFieldCache.ofField(ClassImpl.class, "interfaces$cache", ClassImpl::interfaces$compute);
+
     @Override
     public List<ClassEntry> interfaces() {
-        if (interfaces == null) {
-            int pos = reader.thisClassPos() + 4;
-            int cnt = reader.readU2(pos);
-            pos += 2;
-            var arr = new Object[cnt];
-            for (int i = 0; i < cnt; ++i) {
-                arr[i] = reader.readEntry(pos, ClassEntry.class);
-                pos += 2;
-            }
-            this.interfaces = SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
-        }
-        return interfaces;
+        return interfaces$cacheAccessor.get(this);
     }
+
+    private List<ClassEntry> interfaces$compute() {
+        int pos = reader.thisClassPos() + 4;
+        int cnt = reader.readU2(pos);
+        pos += 2;
+        var arr = new Object[cnt];
+        for (int i = 0; i < cnt; ++i) {
+            arr[i] = reader.readEntry(pos, ClassEntry.class);
+            pos += 2;
+        }
+        return SharedSecrets.getJavaUtilCollectionAccess().listFromTrustedArray(arr);
+    }
+
+    private List<Attribute<?>> attributes$cache;
+    private static final LazyFieldCache<ClassImpl, List<Attribute<?>>> attributes$cacheAccessor =
+            LazyFieldCache.ofField(ClassImpl.class, "attributes$cache", ClassImpl::attributes$compute);
 
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$cacheAccessor.get(this);
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     // ClassModel

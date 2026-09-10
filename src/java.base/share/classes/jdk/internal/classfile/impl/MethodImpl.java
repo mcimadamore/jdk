@@ -26,6 +26,7 @@ package jdk.internal.classfile.impl;
 
 import java.lang.classfile.*;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
@@ -38,7 +39,6 @@ public final class MethodImpl
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
     private int[] parameterSlots;
 
     public MethodImpl(ClassReaderImpl reader, int startPos, int endPos, int attrStart) {
@@ -88,12 +88,17 @@ public final class MethodImpl
         return parameterSlots[paramNo];
     }
 
+    private List<Attribute<?>> attributes$cache;
+    private static final LazyFieldCache<MethodImpl, List<Attribute<?>>> attributes$cacheAccessor =
+            LazyFieldCache.ofField(MethodImpl.class, "attributes$cache", MethodImpl::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$cacheAccessor.get(this);
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

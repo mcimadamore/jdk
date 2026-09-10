@@ -32,6 +32,7 @@ import java.lang.classfile.attribute.StackMapTableAttribute;
 import java.lang.classfile.attribute.UnknownAttribute;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.*;
+import java.lang.invoke.LazyFieldCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -69,9 +70,6 @@ public final class CodeImpl
             }
         }
     }
-
-    List<ExceptionCatch> exceptionTable;
-    List<Attribute<?>> attributes;
 
     // Inflated for iteration
     LabelImpl[] labels;
@@ -133,12 +131,17 @@ public final class CodeImpl
 
     // CodeAttribute
 
+    private List<Attribute<?>> attributes$cache;
+    private static final LazyFieldCache<CodeImpl, List<Attribute<?>>> attributes$cacheAccessor =
+            LazyFieldCache.ofField(CodeImpl.class, "attributes$cache", CodeImpl::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
-        }
-        return attributes;
+        return attributes$cacheAccessor.get(this);
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, classReader, attributePos, classReader.customAttributes());
     }
 
     @Override
@@ -189,27 +192,32 @@ public final class CodeImpl
             consumer.accept(LineNumberImpl.of(lineNumbers[codeEnd - codeStart]));
     }
 
+    private List<ExceptionCatch> exceptionHandlers$cache;
+    private static final LazyFieldCache<CodeImpl, List<ExceptionCatch>> exceptionHandlers$cacheAccessor =
+            LazyFieldCache.ofField(CodeImpl.class, "exceptionHandlers$cache", CodeImpl::exceptionHandlers$compute);
+
     @Override
     public List<ExceptionCatch> exceptionHandlers() {
-        if (exceptionTable == null) {
-            inflateMetadata();
-            exceptionTable = new ArrayList<>(exceptionHandlerCnt);
-            iterateExceptionHandlers(new ExceptionHandlerAction() {
-                @Override
-                public void accept(int s, int e, int h, int c) {
-                    ClassEntry catchTypeEntry = c == 0
-                                                             ? null
-                                                             : constantPool().entryByIndex(c, ClassEntry.class);
-                    exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
-                }
-            });
-            exceptionTable = Collections.unmodifiableList(exceptionTable);
-        }
-        return exceptionTable;
+        return exceptionHandlers$cacheAccessor.get(this);
+    }
+
+    private List<ExceptionCatch> exceptionHandlers$compute() {
+        inflateMetadata();
+        var exceptionTable = new ArrayList<ExceptionCatch>(exceptionHandlerCnt);
+        iterateExceptionHandlers(new ExceptionHandlerAction() {
+            @Override
+            public void accept(int s, int e, int h, int c) {
+                ClassEntry catchTypeEntry = c == 0
+                                                         ? null
+                                                         : constantPool().entryByIndex(c, ClassEntry.class);
+                exceptionTable.add(new AbstractPseudoInstruction.ExceptionCatchImpl(getLabel(h), getLabel(s), getLabel(e), catchTypeEntry));
+            }
+        });
+        return Collections.unmodifiableList(exceptionTable);
     }
 
     private void generateUserAttributes(Consumer<? super CodeElement> consumer) {
-        for (var attr : attributes) {
+        for (var attr : attributes()) {
             if (attr instanceof CustomAttribute || attr instanceof UnknownAttribute) {
                 consumer.accept((CodeElement) attr);
             }

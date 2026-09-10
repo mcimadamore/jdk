@@ -31,6 +31,7 @@ import java.lang.classfile.ClassReader;
 import java.lang.classfile.FieldElement;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.constantpool.Utf8Entry;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.reflect.AccessFlag;
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +43,6 @@ public final class FieldImpl
 
     private final ClassReaderImpl reader;
     private final int startPos, endPos, attributesPos;
-    private List<Attribute<?>> attributes;
 
     public FieldImpl(ClassReaderImpl reader, int startPos, int endPos, int attributesPos) {
         this.reader = reader;
@@ -79,12 +79,17 @@ public final class FieldImpl
         return reader.readU2(startPos);
     }
 
+    private List<Attribute<?>> attributes$cache;
+    private static final LazyFieldCache<FieldImpl, List<Attribute<?>>> attributes$cacheAccessor =
+            LazyFieldCache.ofField(FieldImpl.class, "attributes$cache", FieldImpl::attributes$compute);
+
     @Override
     public List<Attribute<?>> attributes() {
-        if (attributes == null) {
-            attributes = BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
-        }
-        return attributes;
+        return attributes$cacheAccessor.get(this);
+    }
+
+    private List<Attribute<?>> attributes$compute() {
+        return BoundAttribute.readAttributes(this, reader, attributesPos, reader.customAttributes());
     }
 
     @Override

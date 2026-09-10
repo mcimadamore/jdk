@@ -16,7 +16,7 @@
 package org.openjdk.bench.valhalla.lazy;
 
 import java.lang.LazyConstant;
-import java.lang.invoke.LazyCacheDeclSite;
+import java.lang.invoke.LazyFieldCache;
 import java.lang.invoke.LazyValueDeclSite;
 import java.lang.invoke.LazyValueUseSite;
 import java.util.ArrayList;
@@ -157,9 +157,9 @@ public class LaziesTest {
             @Override
             Holder create(int seed, LazyMode mode) {
                 return switch (mode) {
-                    case PLAIN -> new PlainLazyCacheDeclSiteHolder(seed);
-                    case CAS -> new CasLazyCacheDeclSiteHolder(seed);
-                    case SYNCHRONIZED -> new SynchronizedLazyCacheDeclSiteHolder(seed);
+                    case PLAIN -> new PlainLazyFieldCacheHolder(seed);
+                    case CAS -> new CasLazyFieldCacheHolder(seed);
+                    case SYNCHRONIZED -> new SynchronizedLazyFieldCacheHolder(seed);
                 };
             }
         },
@@ -236,15 +236,15 @@ public class LaziesTest {
         }
     }
 
-    public abstract static class LazyCacheDeclSiteHolder implements Holder {
-        protected static final LazyCacheDeclSite<LazyCacheDeclSiteHolder, List<Integer>> CACHE =
-                LazyCacheDeclSite.ofField(LazyCacheDeclSiteHolder.class, "value",
-                        LazyCacheDeclSiteHolder::compute);
+    public abstract static class LazyFieldCacheHolder implements Holder {
+        protected static final LazyFieldCache<LazyFieldCacheHolder, List<Integer>> CACHE =
+                LazyFieldCache.ofField(LazyFieldCacheHolder.class, "value",
+                        LazyFieldCacheHolder::compute);
 
         private final int seed;
         private List<Integer> value;
 
-        LazyCacheDeclSiteHolder(int seed) {
+        LazyFieldCacheHolder(int seed) {
             this.seed = seed;
         }
 
@@ -253,8 +253,8 @@ public class LaziesTest {
         }
     }
 
-    public static final class PlainLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
-        PlainLazyCacheDeclSiteHolder(int seed) {
+    public static final class PlainLazyFieldCacheHolder extends LazyFieldCacheHolder {
+        PlainLazyFieldCacheHolder(int seed) {
             super(seed);
         }
 
@@ -264,8 +264,8 @@ public class LaziesTest {
         }
     }
 
-    public static final class CasLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
-        CasLazyCacheDeclSiteHolder(int seed) {
+    public static final class CasLazyFieldCacheHolder extends LazyFieldCacheHolder {
+        CasLazyFieldCacheHolder(int seed) {
             super(seed);
         }
 
@@ -275,8 +275,8 @@ public class LaziesTest {
         }
     }
 
-    public static final class SynchronizedLazyCacheDeclSiteHolder extends LazyCacheDeclSiteHolder {
-        SynchronizedLazyCacheDeclSiteHolder(int seed) {
+    public static final class SynchronizedLazyFieldCacheHolder extends LazyFieldCacheHolder {
+        SynchronizedLazyFieldCacheHolder(int seed) {
             super(seed);
         }
 
