@@ -27,6 +27,7 @@
 package jdk.internal.foreign;
 
 import jdk.internal.foreign.GlobalSession.HeapSession;
+import jdk.internal.access.JavaUtilConcurrentLocksAccess;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
@@ -39,13 +40,16 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class manages the temporal bounds associated with a memory segment as well
  * as thread confinement. A session has a liveness bit, which is updated when the session is closed
  * (this operation is triggered by {@link MemorySessionImpl#close()}). This bit is consulted prior
  * to memory access (see {@link #checkValidStateRaw()}).
- * There are two kinds of memory session: confined memory session and shared memory session.
+ * Sessions can be confined, shared, or associated with a caller-held lock.
+ * A lock-associated session checks ownership on access and close, so close does not
+ * need the synchronization protocol used by shared sessions.
  * A confined memory session has an associated owner thread that confines some operations to
  * associated owner thread such as {@link #close()} or {@link #checkValidStateRaw()}.
  * Shared sessions do not feature an owner thread - meaning their operations can be called, in a racy
@@ -55,7 +59,7 @@ import java.util.Objects;
  */
 public abstract sealed class MemorySessionImpl
         implements Scope
-        permits ConfinedSession, GlobalSession, SharedSession {
+        permits ConfinedSession, GlobalSession, SharedSession, MutexSession {
 
     /**
      * The value of the {@code state} of a {@code MemorySessionImpl}. The only possible transition
@@ -79,6 +83,7 @@ public abstract sealed class MemorySessionImpl
 
     final ResourceList resourceList;
     final Thread owner;
+    final JavaUtilConcurrentLocksAccess.Lock lock;
 
     @Stable
     int state;
@@ -97,7 +102,7 @@ public abstract sealed class MemorySessionImpl
     public final boolean isCloseableBy(Thread thread) {
         Objects.requireNonNull(thread);
         return isCloseable() &&
-                (owner == null || owner == thread);
+                isAccessibleBy(thread);
     }
 
     public void addCloseAction(Runnable runnable) {
@@ -136,12 +141,21 @@ public abstract sealed class MemorySessionImpl
     }
 
     protected MemorySessionImpl(Thread owner, ResourceList resourceList) {
+        this(owner, resourceList, null);
+    }
+
+    protected MemorySessionImpl(Thread owner, ResourceList resourceList, JavaUtilConcurrentLocksAccess.Lock lock) {
         this.owner = owner;
         this.resourceList = resourceList;
+        this.lock = lock;
     }
 
     public static MemorySessionImpl createConfined(Thread thread) {
         return new ConfinedSession(thread);
+    }
+
+    public static MemorySessionImpl createMutex(ReentrantLock lock) {
+        return new MutexSession(Objects.requireNonNull(lock));
     }
 
     public static MemorySessionImpl createShared() {
@@ -176,7 +190,8 @@ public abstract sealed class MemorySessionImpl
 
     public final boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return owner == null || owner == thread;
+        return (owner == null || owner == thread) &&
+                (lock == null || lock.isHeldBy(thread));
     }
 
     /**
@@ -199,6 +214,9 @@ public abstract sealed class MemorySessionImpl
     public void checkValidStateRaw() {
         if (owner != null && owner != Thread.currentThread()) {
             throw WRONG_THREAD;
+        }
+        if (lock != null && !lock.isHeldBy(Thread.currentThread())) {
+            throw MutexSession.LOCK_NOT_HELD;
         }
         if (state < OPEN) {
             throw ALREADY_CLOSED;

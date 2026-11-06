@@ -29,6 +29,7 @@ import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.ref.CleanerFactory;
 
 import java.lang.foreign.MemorySegment.Scope;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
@@ -73,8 +74,8 @@ import java.util.function.Consumer;
  * <p>
  * Rather than leaving deallocation in the hands of the Java runtime, clients will often
  * wish to exercise control over the timing of deallocation for regions of memory that
- * back memory segments. Two kinds of arenas support this, namely {@linkplain #ofConfined() confined}
- * and {@linkplain #ofShared() shared} arenas. They both feature bounded lifetimes that
+ * back memory segments. Three kinds of arenas support this, namely {@linkplain #ofConfined() confined},
+ * {@linkplain #ofMutex(ReentrantLock) mutex}, and {@linkplain #ofShared() shared} arenas. They all feature bounded lifetimes that
  * are managed manually. For instance, when a confined arena is {@linkplain #close() closed}
  * successfully, its scope is {@linkplain Scope#isAlive() invalidated}. As a result, all
  * the memory segments allocated by the arena can no longer be accessed, and their
@@ -92,7 +93,7 @@ import java.util.function.Consumer;
  * Memory segments allocated with a {@linkplain #ofConfined() confined arena} can only be
  * accessed (and closed) by the thread that created the arena. If access to a memory
  * segment from multiple threads is required, clients can allocate segments in a
- * {@linkplain #ofShared() shared arena} instead.
+ * {@linkplain #ofMutex(ReentrantLock) mutex arena} or a {@linkplain #ofShared() shared arena} instead.
  * <p>
  * The characteristics of the various arenas are summarized in the following table:
  *
@@ -119,6 +120,10 @@ import java.util.function.Consumer;
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">No</td></tr>
+ * <tr><th scope="row" style="font-weight:normal">Mutex</th>
+ *     <td style="text-align:center;">Yes</td>
+ *     <td style="text-align:center;">Yes, if closing thread holds lock</td>
+ *     <td style="text-align:center;">Yes, if accessing thread holds lock</td></tr>
  * <tr><th scope="row" style="font-weight:normal">Shared</th>
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes</td>
@@ -141,7 +146,7 @@ import java.util.function.Consumer;
  * arena might be accessed <em>while</em> another thread attempts, concurrently, to close
  * the arena. To provide the strong temporal safety guarantee without forcing every
  * client, even simple ones, to incur a performance impact, arenas are divided into
- * <em>thread-confined</em> arenas, and <em>shared</em> arenas.
+ * <em>thread-confined</em> arenas, <em>mutex</em> arenas, and <em>shared</em> arenas.
  * <p>
  * Confined arenas, support strong thread-confinement guarantees. Upon creation, they are
  * assigned an <em>owner thread</em>, typically the thread which initiated the creation
@@ -149,6 +154,13 @@ import java.util.function.Consumer;
  * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by the owner thread.
  * Moreover, any attempt to close the confined arena from a thread other than the owner
  * thread will fail with a {@link WrongThreadException}.
+ * <p>
+ * Mutex arenas allow mutually exclusive access to the segments they create. As such, they are useful
+ * when a memory segment can be accessed by multiple threads, but never concurrently.
+ * Upon creation, a mutex arena is assigned a {@linkplain ReentrantLock} lock. The segments created by a
+ * mutex arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by a thread
+ * that owns the lock. Moreover, any attempt to close the mutex arena from a thread that doesn't own
+ * the lock will fail with a {@link WrongThreadException}.
  * <p>
  * Shared arenas, on the other hand, have no owner thread. The segments created by a
  * shared arena can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by
@@ -269,6 +281,22 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
+     * {@return a new mutex arena} Segments allocated with the mutex arena can be
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} only while
+     *          holding the provided lock. Similarly, a mutex arena can only be closed
+     *          while holding the provided lock.
+     * <p>
+     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
+     * are zero-initialized.
+     *
+     * @param lock the lock controlling access to the arena
+     * @since 28
+     */
+    static Arena ofMutex(ReentrantLock lock) {
+        return MemorySessionImpl.createMutex(lock).asArena();
+    }
+
+    /**
      * Returns a native memory segment with the given size (in bytes) and alignment
      * constraint (in bytes).
      * The returned segment is associated with this {@linkplain #scope() arena scope}.
@@ -295,7 +323,8 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      *         or if {@code byteAlignment} is not a power of 2
      * @throws IllegalStateException if this arena has already been {@linkplain #close() closed}
      * @throws WrongThreadException if this arena is confined, and this method is called
-     *         from a thread other than the arena's owner thread
+     *         from a thread other than the arena's owner thread, or if this arena is
+     *         a mutex arena and the current thread does not own its lock
      */
     @Override
     MemorySegment allocate(long byteSize, long byteAlignment);
@@ -328,7 +357,8 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      *         accessed concurrently, e.g. by a
      *         {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handle}
      * @throws WrongThreadException if this arena is confined, and this method is called
-     *         from a thread other than the arena's owner thread
+     *         from a thread other than the arena's owner thread, or if this arena is
+     *         a mutex arena and the current thread does not own its lock
      * @throws UnsupportedOperationException if this arena cannot be closed explicitly
      * @throws RuntimeException if an exception is thrown while executing a custom cleanup action
      *                          associated with this arena (e.g. as a result of calling

@@ -37,6 +37,7 @@ import java.security.Security;
 import java.security.spec.EncodedKeySpec;
 import java.util.ResourceBundle;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.jar.JarFile;
 import java.io.Console;
 import java.io.FileDescriptor;
@@ -97,6 +98,7 @@ public class SharedSecrets {
     @Stable private static JavaUtilCollectionAccess javaUtilCollectionAccess;
     @Stable private static JavaUtilConcurrentTLRAccess javaUtilConcurrentTLRAccess;
     @Stable private static JavaUtilConcurrentFJPAccess javaUtilConcurrentFJPAccess;
+    @Stable private static JavaUtilConcurrentLocksAccess javaUtilConcurrentLocksAccess;
     @Stable private static JavaUtilJarAccess javaUtilJarAccess;
     @Stable private static JavaUtilZipFileAccess javaUtilZipFileAccess;
     @Stable private static JavaUtilResourceBundleAccess javaUtilResourceBundleAccess;
@@ -133,6 +135,19 @@ public class SharedSecrets {
                 Class.forName("java.util.concurrent.ThreadLocalRandom$Access", true, null);
                 access = javaUtilConcurrentTLRAccess;
             } catch (ClassNotFoundException e) {}
+        }
+        return access;
+    }
+
+    public static void setJavaUtilConcurrentLocksAccess(JavaUtilConcurrentLocksAccess access) {
+        javaUtilConcurrentLocksAccess = access;
+    }
+
+    public static JavaUtilConcurrentLocksAccess getJavaUtilConcurrentLocksAccess() {
+        var access = javaUtilConcurrentLocksAccess;
+        if (access == null) {
+            ensureClassInitialized(ReentrantLock.class);
+            access = javaUtilConcurrentLocksAccess;
         }
         return access;
     }
