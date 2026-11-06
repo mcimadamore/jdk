@@ -575,6 +575,9 @@ public interface JavaLangAccess {
      */
     Object scopedValueBindings();
 
+    /** Captures the current top binding scope for an arena, rejecting other positions. */
+    jdk.internal.vm.ScopedValueContainer scopedArenaScope(ScopedValue<?> key);
+
     /**
      * Returns the native thread ID for the given platform thread or 0 if not set.
      */

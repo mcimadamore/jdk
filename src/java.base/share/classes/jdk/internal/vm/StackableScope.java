@@ -26,7 +26,11 @@ package jdk.internal.vm;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.DontInline;
+import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.Stable;
+import java.util.Arrays;
 import jdk.internal.vm.annotation.ReservedStackAccess;
 
 /**
@@ -37,6 +41,11 @@ import jdk.internal.vm.annotation.ReservedStackAccess;
  */
 public class StackableScope {
     private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
+    private static final Unsafe U = Unsafe.getUnsafe();
+    private static final long HEAD_OFFSET = U.objectFieldOffset(Thread.class, "headStackableScopes");
+
+    @Stable private int depth;
+    @Stable private StackableScope[] parents;
 
     private final Thread owner;
     private volatile StackableScope previous;
@@ -76,8 +85,45 @@ public class StackableScope {
         if (Thread.currentThread() != owner)
             throw new WrongThreadException("Not owner");
         previous = head();
+        initAncestry();
         setHead(this);
         return this;
+    }
+
+    // Build once, before publishing a pushed scope. Shared thread containers
+    // are initialized lazily when a descendant is first pushed beneath them.
+    private synchronized void initAncestry() {
+        if (parents != null) return;
+        StackableScope parent = enclosingScope();
+        if (parent == null) {
+            depth = 0;
+            parents = new StackableScope[] { this };
+        } else {
+            parent.initAncestry();
+            depth = parent.parents.length;
+            StackableScope[] ancestors = Arrays.copyOf(parent.parents, depth + 1);
+            ancestors[depth] = this;
+            parents = ancestors;
+        }
+    }
+
+    /** Tests containment using the ancestry captured when scopes are pushed. */
+    @ForceInline
+    public final boolean containsThreadFast(Thread thread) {
+        // Only a thread changes its own head. A plain read is sufficient for
+        // access checks; cross-thread inspection retains volatile semantics.
+        StackableScope current = thread == Thread.currentThread()
+                ? (StackableScope) U.getReference(thread, HEAD_OFFSET)
+                : JLA.headStackableScope(thread);
+        if (current == null) current = JLA.threadContainer(thread);
+        if (current == null) return false;
+        StackableScope[] ancestors = current.parents;
+        return ancestors != null && ancestors.length > depth && ancestors[depth] == this;
+    }
+
+    /** Returns whether this is the current owner's top scope. */
+    public final boolean isTop() {
+        return Thread.currentThread() == owner && head() == this;
     }
 
     /**

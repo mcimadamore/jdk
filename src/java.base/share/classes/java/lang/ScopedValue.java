@@ -695,6 +695,18 @@ public final class ScopedValue<T> {
         return (Snapshot) bindings;
     }
 
+    static ScopedValueContainer scopedArenaScope(ScopedValue<?> key) {
+        ScopedValueContainer scope = ScopedValueContainer.latest();
+        if (scope == null || !scope.isTop()) {
+            throw new IllegalArgumentException("Arena creation requires the owner's top binding scope");
+        }
+        // Only accept keys introduced by this scope, not an enclosing binding.
+        for (Carrier carrier = scopedValueBindings().bindings; carrier != null; carrier = carrier.prev) {
+            if (carrier.getKey() == key) return scope;
+        }
+        throw new IllegalArgumentException("Scoped value is not bound by the top scope");
+    }
+
     private static int nextKey = 0xf0f0_f0f0;
 
     // A Marsaglia xor-shift generator used to generate hashes. This one has

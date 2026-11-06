@@ -93,31 +93,7 @@ public class ScopedValueContainer extends StackableScope {
      * For use by ScopedValue to run an operation in a structured context.
      */
     public static void run(Runnable op) {
-        if (head() == null) {
-            // no need to push scope when stack is empty
-            runWithoutScope(op);
-        } else {
-            new ScopedValueContainer().doRun(op);
-        }
-    }
-
-    /**
-     * Run an operation without a scope on the stack.
-     */
-    private static void runWithoutScope(Runnable op) {
-        assert head() == null;
-        Throwable ex;
-        boolean atTop;
-        try {
-            op.run();
-            ex = null;
-        } catch (Throwable e) {
-            ex = e;
-        } finally {
-            atTop = (head() == null);
-            if (!atTop) popAll();   // may block
-        }
-        throwIfFailed(ex, atTop);
+        new ScopedValueContainer().doRun(op);
     }
 
     /**
@@ -142,34 +118,7 @@ public class ScopedValueContainer extends StackableScope {
      * For use by ScopedValue to call a value returning operation in a structured context.
      */
     public static <V, X extends Throwable> V call(CallableOp<V, X> op) {
-        if (head() == null) {
-            // no need to push scope when stack is empty
-            return callWithoutScope(op);
-        } else {
-            return new ScopedValueContainer().doCall(op);
-        }
-    }
-
-    /**
-     * Call an operation without a scope on the stack.
-     */
-    private static <V, X extends Throwable> V callWithoutScope(CallableOp<V, X> op) {
-        assert head() == null;
-        Throwable ex;
-        boolean atTop;
-        V result;
-        try {
-            result = op.call();
-            ex = null;
-        } catch (Throwable e) {
-            result = null;
-            ex = e;
-        } finally {
-            atTop = (head() == null);
-            if (!atTop) popAll();  // may block
-        }
-        throwIfFailed(ex, atTop);
-        return result;
+        return new ScopedValueContainer().doCall(op);
     }
 
     /**

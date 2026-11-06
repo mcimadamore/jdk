@@ -28,6 +28,7 @@ package jdk.internal.foreign;
 
 import jdk.internal.foreign.GlobalSession.HeapSession;
 import jdk.internal.access.JavaUtilConcurrentLocksAccess;
+import jdk.internal.vm.ScopedValueContainer;
 import jdk.internal.invoke.MhUtil;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
@@ -59,7 +60,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public abstract sealed class MemorySessionImpl
         implements Scope
-        permits ConfinedSession, GlobalSession, SharedSession, MutexSession {
+        permits ConfinedSession, GlobalSession, SharedSession, MutexSession, ScopedSession {
 
     /**
      * The value of the {@code state} of a {@code MemorySessionImpl}. The only possible transition
@@ -84,6 +85,7 @@ public abstract sealed class MemorySessionImpl
     final ResourceList resourceList;
     final Thread owner;
     final JavaUtilConcurrentLocksAccess.Lock lock;
+    final ScopedValueContainer bindingScope;
 
     @Stable
     int state;
@@ -101,8 +103,10 @@ public abstract sealed class MemorySessionImpl
 
     public final boolean isCloseableBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return isCloseable() &&
-                isAccessibleBy(thread);
+        if (this instanceof ScopedSession scoped) {
+            return scoped.canClose(thread);
+        }
+        return isCloseable() && isAccessibleBy(thread);
     }
 
     public void addCloseAction(Runnable runnable) {
@@ -145,9 +149,15 @@ public abstract sealed class MemorySessionImpl
     }
 
     protected MemorySessionImpl(Thread owner, ResourceList resourceList, JavaUtilConcurrentLocksAccess.Lock lock) {
+        this(owner, resourceList, lock, null);
+    }
+
+    protected MemorySessionImpl(Thread owner, ResourceList resourceList,
+                                JavaUtilConcurrentLocksAccess.Lock lock, ScopedValueContainer bindingScope) {
         this.owner = owner;
         this.resourceList = resourceList;
         this.lock = lock;
+        this.bindingScope = bindingScope;
     }
 
     public static MemorySessionImpl createConfined(Thread thread) {
@@ -156,6 +166,10 @@ public abstract sealed class MemorySessionImpl
 
     public static MemorySessionImpl createMutex(ReentrantLock lock) {
         return new MutexSession(Objects.requireNonNull(lock));
+    }
+
+    public static MemorySessionImpl createScoped(ScopedValue<?> binding) {
+        return new ScopedSession(Objects.requireNonNull(binding));
     }
 
     public static MemorySessionImpl createShared() {
@@ -191,7 +205,8 @@ public abstract sealed class MemorySessionImpl
     public final boolean isAccessibleBy(Thread thread) {
         Objects.requireNonNull(thread);
         return (owner == null || owner == thread) &&
-                (lock == null || lock.isHeldBy(thread));
+                (lock == null || lock.isHeldBy(thread)) &&
+                (bindingScope == null || bindingScope.containsThreadFast(thread));
     }
 
     /**
@@ -217,6 +232,9 @@ public abstract sealed class MemorySessionImpl
         }
         if (lock != null && !lock.isHeldBy(Thread.currentThread())) {
             throw MutexSession.LOCK_NOT_HELD;
+        }
+        if (bindingScope != null && !bindingScope.containsThreadFast(Thread.currentThread())) {
+            throw ScopedSession.NOT_BOUND;
         }
         if (state < OPEN) {
             throw ALREADY_CLOSED;

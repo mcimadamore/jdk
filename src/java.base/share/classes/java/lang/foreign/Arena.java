@@ -124,6 +124,10 @@ import java.util.function.Consumer;
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes, if closing thread holds lock</td>
  *     <td style="text-align:center;">Yes, if accessing thread holds lock</td></tr>
+ * <tr><th scope="row" style="font-weight:normal">Scoped</th>
+ *     <td style="text-align:center;">Yes</td>
+ *     <td style="text-align:center;">Yes, from owner thread</td>
+ *     <td style="text-align:center;">Yes, if accessing thread is in binding scope</td></tr>
  * <tr><th scope="row" style="font-weight:normal">Shared</th>
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes</td>
@@ -161,6 +165,15 @@ import java.util.function.Consumer;
  * mutex arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by a thread
  * that owns the lock. Moreover, any attempt to close the mutex arena from a thread that doesn't own
  * the lock will fail with a {@link WrongThreadException}.
+ * <p>
+ * Scoped arenas allow restricted concurrent access to the segments they created. Upon creation,
+ * a scoped arena is assigned an <em>owner thread</em> and a <em>binding scope</em> -- the scope
+ * in which the {@linkplain ScopedValue scoped value} provided at creation was
+ * {@linkplain ScopedValue#where(ScopedValue, Object) bound}. Segments allocated with the
+ * scoped arena can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread
+ * {@linkplain java.util.concurrent.StructuredTaskScope#fork(Runnable) nested} inside the arena's binding scope.
+ * A scoped arena can only be closed by the owner thread, and only when any computation nested in the
+ * binding scope has completed.
  * <p>
  * Shared arenas, on the other hand, have no owner thread. The segments created by a
  * shared arena can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by
@@ -294,6 +307,24 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      */
     static Arena ofMutex(ReentrantLock lock) {
         return MemorySessionImpl.createMutex(lock).asArena();
+    }
+
+    /**
+     * {@return a new scoped arena} Segments allocated with the scoped arena can be
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread
+     *          which executes inside arena's binding scope.
+     * <p>
+     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
+     * are zero-initialized.
+     *
+     * @param binding the scoped value controlling access to the arena
+     * @throws IllegalArgumentException if the provided scoped value is not {@linkplain ScopedValue#isBound() bound} in the current thread
+     * @throws IllegalArgumentException if there is an active {@link java.util.concurrent.StructuredTaskScope} or
+     * {@link ScopedValue} binding nested in the binding scope associated with the provided scoped value
+     * @since 28
+     */
+    static Arena ofScoped(ScopedValue<?> binding) {
+        return MemorySessionImpl.createScoped(binding).asArena();
     }
 
     /**

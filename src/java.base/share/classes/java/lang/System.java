@@ -2289,6 +2289,10 @@ public final class System {
                 return Thread.scopedValueBindings();
             }
 
+            public jdk.internal.vm.ScopedValueContainer scopedArenaScope(ScopedValue<?> key) {
+                return ScopedValue.scopedArenaScope(key);
+            }
+
             public long nativeThreadID(Thread thread) {
                 return thread.nativeThreadID();
             }
