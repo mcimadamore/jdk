@@ -524,6 +524,10 @@ public interface JavaLangAccess {
      */
     ThreadContainer threadContainer(Thread thread);
 
+    Object cachedReadWriteLock();
+
+    void setCachedReadWriteLock(Object lock);
+
     /**
      * Starts a thread in the given ThreadContainer.
      */

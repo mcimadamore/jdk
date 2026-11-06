@@ -38,8 +38,6 @@ package java.util.concurrent.locks;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import jdk.internal.vm.annotation.ReservedStackAccess;
-import jdk.internal.access.SharedSecrets;
-import jdk.internal.access.JavaUtilConcurrentLocksAccess;
 
 /**
  * A reentrant mutual exclusion {@link Lock} with the same basic
@@ -113,17 +111,12 @@ public class ReentrantLock implements Lock, java.io.Serializable {
     /** @serial Synchronizer providing all implementation mechanics */
     private final Sync sync;
 
-    static {
-        SharedSecrets.setJavaUtilConcurrentLocksAccess(lock -> lock.sync);
-    }
-
     /**
      * Base of synchronization control for this lock. Subclassed
      * into fair and nonfair versions below. Uses AQS state to
      * represent the number of holds on the lock.
      */
-    abstract static class Sync extends AbstractQueuedSynchronizer
-            implements JavaUtilConcurrentLocksAccess.Lock {
+    abstract static class Sync extends AbstractQueuedSynchronizer {
         private static final long serialVersionUID = -5179523762034025860L;
 
         /**
@@ -191,12 +184,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         protected final boolean isHeldExclusively() {
             // While we must in general read state before owner,
             // we don't need to do so to check if current thread is owner
-            return isHeldBy(Thread.currentThread());
-        }
-
-        @Override
-        public final boolean isHeldBy(Thread thread) {
-            return getExclusiveOwnerThread() == thread;
+            return getExclusiveOwnerThread() == Thread.currentThread();
         }
 
         final ConditionObject newCondition() {

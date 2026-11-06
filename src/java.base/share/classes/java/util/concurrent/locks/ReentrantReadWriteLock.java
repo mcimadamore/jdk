@@ -38,6 +38,10 @@ package java.util.concurrent.locks;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import jdk.internal.vm.annotation.ReservedStackAccess;
+import jdk.internal.access.JavaUtilConcurrentLocksAccess;
+import jdk.internal.access.SharedSecrets;
+import jdk.internal.vm.annotation.ForceInline;
+import jdk.internal.vm.annotation.DontInline;
 
 /**
  * An implementation of {@link ReadWriteLock} supporting similar
@@ -228,6 +232,10 @@ public class ReentrantReadWriteLock
     /** @serial Performs all synchronization mechanics */
     final Sync sync;
 
+    static {
+        SharedSecrets.setJavaUtilConcurrentLocksAccess(lock -> lock.sync);
+    }
+
     /**
      * Creates a new {@code ReentrantReadWriteLock} with
      * default (nonfair) ordering properties.
@@ -255,7 +263,8 @@ public class ReentrantReadWriteLock
      * Synchronization implementation for ReentrantReadWriteLock.
      * Subclassed into fair and nonfair versions.
      */
-    abstract static class Sync extends AbstractQueuedLongSynchronizer {
+    abstract static class Sync extends AbstractQueuedLongSynchronizer
+            implements JavaUtilConcurrentLocksAccess.Lock {
         private static final long serialVersionUID = 6317671515068378041L;
 
         /*
@@ -376,6 +385,7 @@ public class ReentrantReadWriteLock
         protected final boolean tryRelease(long releases) {
             if (!isHeldExclusively())
                 throw new IllegalMonitorStateException();
+            invalidateArenaOwnershipCache();
             long nextc = getState() - releases;
             boolean free = exclusiveCount(nextc) == 0;
             if (free)
@@ -409,18 +419,21 @@ public class ReentrantReadWriteLock
                     throw new Error("Maximum lock count exceeded");
                 // Reentrant acquire
                 setState(c + acquires);
+                cacheArenaOwnership();
                 return true;
             }
             if (writerShouldBlock() ||
                 !compareAndSetState(c, c + acquires))
                 return false;
             setExclusiveOwnerThread(current);
+            cacheArenaOwnership();
             return true;
         }
 
         @Override
         @ReservedStackAccess
         protected final boolean tryReleaseShared(long unused) {
+            invalidateArenaOwnershipCache();
             Thread current = Thread.currentThread();
             if (firstReader == current) {
                 // assert firstReaderHoldCount > 0;
@@ -498,6 +511,7 @@ public class ReentrantReadWriteLock
                         readHolds.set(rh);
                     rh.count++;
                 }
+                cacheArenaOwnership();
                 return 1L;
             }
             return fullTryAcquireShared(current);
@@ -559,6 +573,7 @@ public class ReentrantReadWriteLock
                         rh.count++;
                         cachedHoldCounter = rh; // cache for release
                     }
+                    cacheArenaOwnership();
                     return 1L;
                 }
             }
@@ -583,6 +598,7 @@ public class ReentrantReadWriteLock
             if (!compareAndSetState(c, c + 1))
                 return false;
             setExclusiveOwnerThread(current);
+            cacheArenaOwnership();
             return true;
         }
 
@@ -617,6 +633,7 @@ public class ReentrantReadWriteLock
                             readHolds.set(rh);
                         rh.count++;
                     }
+                    cacheArenaOwnership();
                     return true;
                 }
             }
@@ -626,6 +643,44 @@ public class ReentrantReadWriteLock
             // While we must in general read state before owner,
             // we don't need to do so to check if current thread is owner
             return getExclusiveOwnerThread() == Thread.currentThread();
+        }
+
+        @Override
+        public final boolean isExclusivelyHeldBy(Thread thread) {
+            return getExclusiveOwnerThread() == thread;
+        }
+
+        @Override
+        @ForceInline
+        public final boolean isHeldBy(Thread thread) {
+            if (thread == Thread.currentThread()) {
+                var access = SharedSecrets.getJavaLangAccess();
+                if (access != null && access.cachedReadWriteLock() == this) return true;
+            }
+            return isHeldBySlow(thread);
+        }
+
+        @DontInline
+        private boolean isHeldBySlow(Thread thread) {
+            if (isExclusivelyHeldBy(thread) || firstReader == thread) return true;
+            HoldCounter rh = cachedHoldCounter;
+            if (rh != null && rh.tid == LockSupport.getThreadId(thread)) return rh.count > 0;
+            // Prototype: arbitrary-thread uncached reader queries need further work.
+            return thread == Thread.currentThread() && readHolds.get().count > 0;
+        }
+
+        private void cacheArenaOwnership() {
+            var access = SharedSecrets.getJavaLangAccess();
+            if (access != null && access.cachedReadWriteLock() != this) {
+                access.setCachedReadWriteLock(this);
+            }
+        }
+
+        private void invalidateArenaOwnershipCache() {
+            var access = SharedSecrets.getJavaLangAccess();
+            if (access != null && access.cachedReadWriteLock() == this) {
+                access.setCachedReadWriteLock(null);
+            }
         }
 
         // Methods relayed to outer class

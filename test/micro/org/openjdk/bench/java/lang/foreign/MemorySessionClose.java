@@ -40,7 +40,7 @@ import java.lang.foreign.Arena;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @BenchmarkMode(Mode.AverageTime)
 @Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
@@ -64,7 +64,7 @@ public class MemorySessionClose {
     List<byte[]> arrays;
     volatile boolean stop = false;
     List<Thread> threads;
-    final ReentrantLock lock = new ReentrantLock();
+    final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     @Setup
     public void setup() throws Throwable {
@@ -86,12 +86,12 @@ public class MemorySessionClose {
             threads.forEach(Thread::start);
         }
         // The caller holds the lock; measure the arena lifecycle without lock acquisition.
-        lock.lock();
+        readWriteLock.writeLock().lock();
     }
 
     @TearDown
     public void tearDown() throws Throwable {
-        lock.unlock();
+        readWriteLock.writeLock().unlock();
         arrays = null;
         if (threads != null) {
             stop = true;
@@ -120,8 +120,8 @@ public class MemorySessionClose {
     }
 
     @Benchmark
-    public MemorySegment mutex_close() {
-        try (Arena arena = Arena.ofMutex(lock)) {
+    public MemorySegment read_write_close() {
+        try (Arena arena = Arena.ofShared(readWriteLock)) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }

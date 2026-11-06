@@ -26,10 +26,10 @@
  * @requires vm.flavor != "zero"
  * @modules java.base/jdk.internal.vm.annotation java.base/jdk.internal.misc
  * @key randomness
- * @run junit/othervm TestMutexHandshake
- * @run junit/othervm -Xint TestMutexHandshake
- * @run junit/othervm -XX:TieredStopAtLevel=1 TestMutexHandshake
- * @run junit/othervm -XX:-TieredCompilation TestMutexHandshake
+ * @run junit/othervm TestReadWriteHandshake
+ * @run junit/othervm -Xint TestReadWriteHandshake
+ * @run junit/othervm -XX:TieredStopAtLevel=1 TestReadWriteHandshake
+ * @run junit/othervm -XX:-TieredCompilation TestReadWriteHandshake
  */
 
 import java.lang.foreign.Arena;
@@ -39,11 +39,14 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -57,10 +60,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class TestMutexHandshake {
+public class TestReadWriteHandshake {
 
     // Use fair lock to ensure tight access loops don't starve closer thread
-    static final ReentrantLock LOCK = new ReentrantLock(true);
+    static final ReentrantReadWriteLock LOCK = new ReentrantReadWriteLock(true);
 
     static final int ITERATIONS = 5;
     static final int SEGMENT_SIZE = 1_000_000;
@@ -75,29 +78,31 @@ public class TestMutexHandshake {
 
     @ParameterizedTest
     @MethodSource("accessors")
-    public void testHandshake(String testName, AccessorFactory accessorFactory) throws InterruptedException {
+    public void testHandshake(String testName, AccessorFactory accessorFactory) throws Exception {
         for (int it = 0 ; it < ITERATIONS ; it++) {
-            Arena arena = Arena.ofMutex(LOCK);
+            Arena arena = Arena.ofShared(LOCK);
             MemorySegment segment;
             ExecutorService accessExecutor = Executors.newCachedThreadPool();
-            LOCK.lock();
+            List<Future<?>> tasks = new ArrayList<>();
+            LOCK.writeLock().lock();
             try {
                 segment = arena.allocate(SEGMENT_SIZE, 1);
                 System.out.println("ITERATION " + it);
                 start.set(System.currentTimeMillis());
                 started.set(false);
                 for (int i = 0; i < NUM_ACCESSORS ; i++) {
-                    accessExecutor.execute(accessorFactory.make(i, segment, arena));
+                    tasks.add(accessExecutor.submit(accessorFactory.make(i, segment, arena)));
                 }
             } finally {
-                LOCK.unlock();
+                LOCK.writeLock().unlock();
             }
             int delay = ThreadLocalRandom.current().nextInt(MAX_DELAY_MILLIS);
             System.out.println("Starting handshaker with delay set to " + delay + " millis");
             Thread.sleep(delay);
-            accessExecutor.execute(new Handshaker(arena));
+            tasks.add(accessExecutor.submit(new Handshaker(arena)));
             accessExecutor.shutdown();
             assertTrue(accessExecutor.awaitTermination(MAX_EXECUTOR_WAIT_SECONDS, TimeUnit.SECONDS));
+            for (Future<?> task : tasks) task.get();
             assertTrue(!segment.scope().isAlive());
         }
     }
@@ -117,11 +122,11 @@ public class TestMutexHandshake {
             start("Accessor #" + id);
             while (segment.scope().isAlive()) {
                 try {
-                    LOCK.lock();
+                    LOCK.readLock().lock();
                     try {
                         doAccess();
                     } finally {
-                        LOCK.unlock();
+                        LOCK.readLock().unlock();
                     }
                 } catch (IllegalStateException ex) {
                     if (!failed.get()) {
@@ -295,11 +300,11 @@ public class TestMutexHandshake {
         @Override
         public void run() {
             start("Handshaker");
-            LOCK.lock();
+            LOCK.writeLock().lock();
             try {
                 arena.close(); // This should NOT throw
             } finally {
-                LOCK.unlock();
+                LOCK.writeLock().unlock();
             }
             long delay = System.currentTimeMillis() - start.get();
             System.out.println("Segment closed - elapsed (ms): " + delay);

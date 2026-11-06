@@ -43,7 +43,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.lang.foreign.ValueLayout.*;
 
@@ -68,7 +68,7 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         return MethodHandles.insertCoordinates(varHandle, 1, 0L);
     }
 
-    final ReentrantLock lock = new ReentrantLock();
+    final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     Arena arena;
     MemorySegment segment;
     long unsafe_addr;
@@ -83,8 +83,8 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         }
         // Construction is allowed without owning the lock. Ownership is external
         // to the timed accesses, so this measures the arena's checks, not locking.
-        arena = Arena.ofMutex(lock);
-        lock.lock();
+        arena = Arena.ofShared(lock);
+        lock.writeLock().lock();
         segment = arena.allocate(ALLOC_SIZE, 1);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);
@@ -100,7 +100,7 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         try {
             arena.close();
         } finally {
-            lock.unlock();
+            lock.writeLock().unlock();
         }
         unsafe.invokeCleaner(byteBuffer);
         unsafe.freeMemory(unsafe_addr);

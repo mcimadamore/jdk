@@ -40,7 +40,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class manages the temporal bounds associated with a memory segment as well
@@ -101,8 +101,8 @@ public abstract sealed class MemorySessionImpl
 
     public final boolean isCloseableBy(Thread thread) {
         Objects.requireNonNull(thread);
-        return isCloseable() &&
-                isAccessibleBy(thread);
+        return isCloseable() && (owner == null || owner == thread) &&
+                (lock == null || lock.isExclusivelyHeldBy(thread));
     }
 
     public void addCloseAction(Runnable runnable) {
@@ -154,7 +154,7 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
-    public static MemorySessionImpl createMutex(ReentrantLock lock) {
+    public static MemorySessionImpl createShared(ReentrantReadWriteLock lock) {
         return new MutexSession(Objects.requireNonNull(lock));
     }
 
