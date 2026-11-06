@@ -291,6 +291,19 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
+     * Creates an arena whose allocation, access and close require ownership of
+     * the supplied object's monitor. The caller enters and exits the monitor;
+     * the arena only verifies ownership.
+     *
+     * @param monitor the object whose monitor guards access and close
+     * @return a new monitor-guarded arena
+     * @since 28
+     */
+    static Arena ofSynchronized(Object monitor) {
+        return MemorySessionImpl.createSynchronized(monitor).asArena();
+    }
+
+    /**
      * Returns a native memory segment with the given size (in bytes) and alignment
      * constraint (in bytes).
      * The returned segment is associated with this {@linkplain #scope() arena scope}.

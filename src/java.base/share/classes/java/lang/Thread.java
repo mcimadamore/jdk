@@ -2213,6 +2213,7 @@ public class Thread implements Runnable {
      *         the specified object.
      * @since 1.4
      */
+    @IntrinsicCandidate
     public static native boolean holdsLock(Object obj);
 
     private static final StackTraceElement[] EMPTY_STACK_TRACE

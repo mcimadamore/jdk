@@ -59,6 +59,7 @@
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "runtime/lockStack.hpp"
 #include "opto/subnode.hpp"
 #include "opto/type.hpp"
 #include "opto/valuetypenode.hpp"
@@ -495,6 +496,7 @@ bool LibraryCallKit::try_to_inline(int predicate) {
 
   case vmIntrinsics::_currentCarrierThread:     return inline_native_currentCarrierThread();
   case vmIntrinsics::_currentThread:            return inline_native_currentThread();
+  case vmIntrinsics::_holdsLock:                return inline_native_holdsLock();
   case vmIntrinsics::_setCurrentThread:         return inline_native_setCurrentThread();
 
   case vmIntrinsics::_scopedValueCache:          return inline_native_scopedValueCache();
@@ -4291,7 +4293,42 @@ bool LibraryCallKit::inline_native_currentThread() {
   return true;
 }
 
-//------------------------inline_native_setVthread------------------
+//------------------------inline_native_holdsLock------------------
+// Experimental ownership query checking only the top entry of the current
+// JavaThread's lightweight-lock stack. On a miss, reexecute the native query.
+// Repeated misses disable the intrinsic at this call site.
+// Concurrent relocating collectors retain the existing implementation for now.
+bool LibraryCallKit::inline_native_holdsLock() {
+  if (UseZGC || UseShenandoahGC ||
+      too_many_traps(Deoptimization::Reason_intrinsic)) {
+    return false;
+  }
+  Node* obj = argument(0);
+  Node* thread = _gvn.transform(new ThreadLocalNode());
+  Node* top_addr = off_heap_plus_addr(thread, in_bytes(JavaThread::lock_stack_top_offset()));
+  Node* stack_top = make_load(control(), top_addr, TypeInt::INT, T_INT, MemNode::unordered);
+  Node* nonempty = _gvn.transform(new BoolNode(
+      _gvn.transform(new CmpINode(stack_top, intcon(in_bytes(JavaThread::lock_stack_base_offset())))),
+      BoolTest::gt));
+  {
+    BuildCutout unless(this, nonempty, PROB_MAX);
+    uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_maybe_recompile);
+  }
+  if (stopped()) return true;
+  Node* offset = _gvn.transform(new SubINode(stack_top, intcon(oopSize)));
+  Node* address = basic_plus_adr(top(), thread, ConvI2X(offset));
+  Node* entry = make_load(control(), address, TypeInstPtr::BOTTOM, T_OBJECT,
+                          MemNode::unordered, LoadNode::Pinned);
+  Node* same = _gvn.transform(new BoolNode(_gvn.transform(new CmpPNode(obj, entry)), BoolTest::eq));
+  {
+    BuildCutout unless(this, same, PROB_MAX);
+    uncommon_trap(Deoptimization::Reason_intrinsic, Deoptimization::Action_maybe_recompile);
+  }
+  if (!stopped()) set_result(intcon(1));
+  return true;
+}
+
+//------------------------inline_native_setCurrentThread------------------
 bool LibraryCallKit::inline_native_setCurrentThread() {
   assert(C->method()->changes_current_thread(),
          "method changes current Thread but is not annotated ChangesCurrentThread");

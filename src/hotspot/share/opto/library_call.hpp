@@ -277,6 +277,7 @@ class LibraryCallKit : public GraphKit {
 
   bool inline_native_currentCarrierThread();
   bool inline_native_currentThread();
+  bool inline_native_holdsLock();
   bool inline_native_setCurrentThread();
 
   bool inline_native_scopedValueCache();

@@ -293,6 +293,8 @@ class methodHandle;
   do_intrinsic(_currentThread,            java_lang_Thread,       currentThread_name, currentThread_signature,   F_SN)  \
    do_name(     currentThread_name,                              "currentThread")                                       \
    do_signature(currentThread_signature,                         "()Ljava/lang/Thread;")                                \
+  do_intrinsic(_holdsLock,                java_lang_Thread,       holdsLock_name, object_boolean_signature,      F_SN)  \
+   do_name(     holdsLock_name,                                  "holdsLock")                                           \
   do_intrinsic(_scopedValueCache,         java_lang_Thread,       scopedValueCache_name, scopedValueCache_signature, F_SN) \
    do_name(     scopedValueCache_name,                           "scopedValueCache")                                    \
    do_signature(scopedValueCache_signature,                      "()[Ljava/lang/Object;")                               \

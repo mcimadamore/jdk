@@ -46,6 +46,30 @@ final class MutexSession extends MemorySessionImpl {
         super(null, new SharedSession.SharedResourceList(), LOCK_ACCESS.lock(lock));
     }
 
+    MutexSession(Object monitor) {
+        super(null, new ConfinedSession.ConfinedResourceList(), new MonitorLock(monitor));
+    }
+
+    private static final class MonitorLock implements JavaUtilConcurrentLocksAccess.Lock {
+        private final Object monitor;
+
+        MonitorLock(Object monitor) {
+            this.monitor = monitor;
+        }
+
+        @Override
+        @ForceInline
+        public boolean isHeldBy(Thread thread) {
+            return thread == Thread.currentThread() && Thread.holdsLock(monitor);
+        }
+
+        @Override
+        @ForceInline
+        public boolean isExclusivelyHeldBy(Thread thread) {
+            return isHeldBy(thread);
+        }
+    }
+
     @Override
     @ForceInline
     public void acquire0() {

@@ -158,6 +158,10 @@ public abstract sealed class MemorySessionImpl
         return new MutexSession(Objects.requireNonNull(lock));
     }
 
+    public static MemorySessionImpl createSynchronized(Object monitor) {
+        return new MutexSession(Objects.requireNonNull(monitor));
+    }
+
     public static MemorySessionImpl createShared() {
         return new SharedSession();
     }
