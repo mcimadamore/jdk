@@ -29,7 +29,6 @@ import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.ref.CleanerFactory;
 
 import java.lang.foreign.MemorySegment.Scope;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 /**
@@ -142,7 +141,7 @@ import java.util.function.Consumer;
  * arena might be accessed <em>while</em> another thread attempts, concurrently, to close
  * the arena. To provide the strong temporal safety guarantee without forcing every
  * client, even simple ones, to incur a performance impact, arenas are divided into
- * <em>thread-confined</em> arenas and <em>shared</em> arenas.
+ * <em>thread-confined</em> arenas, and <em>shared</em> arenas.
  * <p>
  * Confined arenas, support strong thread-confinement guarantees. Upon creation, they are
  * assigned an <em>owner thread</em>, typically the thread which initiated the creation
@@ -156,10 +155,6 @@ import java.util.function.Consumer;
  * any thread. This might be useful when multiple threads need to access the same memory
  * segment concurrently (e.g. in the case of parallel processing). Moreover, a shared
  * arena can be closed by any thread.
- * <p>
- * A shared arena can also be {@linkplain #ofShared(ReentrantReadWriteLock) guarded}
- * by a read/write lock. Allocation and segment access require the current thread
- * to hold the read or write lock; closing requires the write lock.
  *
  * <h2 id = "custom-arenas">Custom arenas</h2>
  *
@@ -274,23 +269,6 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
-     * Creates a shared arena guarded by the given read/write lock. Allocation and
-     * memory access require a read or write hold; close requires a write hold.
-     * The caller acquires and releases the lock. Creation requires no hold.
-     *
-     * <p>
-     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
-     * are zero-initialized.
-     *
-     * @param lock the lock controlling access and close
-     * @return a new lock-guarded shared arena
-     * @since 28
-     */
-    static Arena ofShared(ReentrantReadWriteLock lock) {
-        return MemorySessionImpl.createShared(lock).asArena();
-    }
-
-    /**
      * Creates an arena whose allocation, access and close require ownership of
      * the supplied object's monitor. The caller enters and exits the monitor;
      * the arena only verifies ownership.
@@ -330,8 +308,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      *         or if {@code byteAlignment} is not a power of 2
      * @throws IllegalStateException if this arena has already been {@linkplain #close() closed}
      * @throws WrongThreadException if this arena is confined, and this method is called
-     *         from a thread other than the arena's owner thread, or if this arena is
-     *         guarded by a read/write lock and the current thread holds neither lock
+     *         from a thread other than the arena's owner thread
      */
     @Override
     MemorySegment allocate(long byteSize, long byteAlignment);
@@ -364,8 +341,7 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
      *         accessed concurrently, e.g. by a
      *         {@linkplain Linker#downcallHandle(FunctionDescriptor, Linker.Option...) downcall method handle}
      * @throws WrongThreadException if this arena is confined, and this method is called
-     *         from a thread other than the arena's owner thread, or if this arena is
-     *         guarded by a read/write lock and the current thread does not hold the write lock
+     *         from a thread other than the arena's owner thread
      * @throws UnsupportedOperationException if this arena cannot be closed explicitly
      * @throws RuntimeException if an exception is thrown while executing a custom cleanup action
      *                          associated with this arena (e.g. as a result of calling

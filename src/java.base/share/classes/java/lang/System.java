@@ -2249,15 +2249,6 @@ public final class System {
                 return thread.threadContainer();
             }
 
-            public Object cachedReadWriteLock() {
-                return Thread.currentThread().cachedReadWriteLock();
-            }
-
-            @jdk.internal.vm.annotation.DontInline
-            public void setCachedReadWriteLock(Object lock) {
-                Thread.currentThread().setCachedReadWriteLock(lock);
-            }
-
             public void start(Thread thread, ThreadContainer container) {
                 thread.start(container);
             }

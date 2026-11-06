@@ -2648,18 +2648,6 @@ public class Thread implements Runnable {
         this.container = container;
     }
 
-    // Positive RRWL ownership cache, populated on acquisition. The access fast
-    // path only reads it; matching unlocks invalidate it before releasing ownership.
-    private Object cachedReadWriteLock;
-
-    Object cachedReadWriteLock() {
-        return cachedReadWriteLock;
-    }
-
-    void setCachedReadWriteLock(Object lock) {
-        cachedReadWriteLock = lock;
-    }
-
     /** The top of this stack of stackable scopes owned by this thread */
     private volatile StackableScope headStackableScopes;
     StackableScope headStackableScopes() {

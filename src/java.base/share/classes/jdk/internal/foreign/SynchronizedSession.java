@@ -26,48 +26,17 @@
 
 package jdk.internal.foreign;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import jdk.internal.access.JavaUtilConcurrentLocksAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
-/** A session whose accesses and close are guarded by a caller-held lock. */
-final class MutexSession extends MemorySessionImpl {
-    private static final JavaUtilConcurrentLocksAccess LOCK_ACCESS =
-            SharedSecrets.getJavaUtilConcurrentLocksAccess();
-
-    static final ScopedMemoryAccess.ScopedAccessError LOCK_NOT_HELD =
+/** A session whose accesses and close are guarded by a caller-held monitor. */
+final class SynchronizedSession extends MemorySessionImpl {
+    static final ScopedMemoryAccess.ScopedAccessError MONITOR_NOT_HELD =
             new ScopedMemoryAccess.ScopedAccessError(() ->
-                    new WrongThreadException("Current thread does not own the arena lock"));
+                    new WrongThreadException("Current thread does not own the arena monitor"));
 
-    MutexSession(ReentrantReadWriteLock lock) {
-        super(null, new SharedSession.SharedResourceList(), LOCK_ACCESS.lock(lock));
-    }
-
-    MutexSession(Object monitor) {
-        super(null, new ConfinedSession.ConfinedResourceList(), new MonitorLock(monitor));
-    }
-
-    private static final class MonitorLock implements JavaUtilConcurrentLocksAccess.Lock {
-        private final Object monitor;
-
-        MonitorLock(Object monitor) {
-            this.monitor = monitor;
-        }
-
-        @Override
-        @ForceInline
-        public boolean isHeldBy(Thread thread) {
-            return thread == Thread.currentThread() && Thread.holdsLock(monitor);
-        }
-
-        @Override
-        @ForceInline
-        public boolean isExclusivelyHeldBy(Thread thread) {
-            return isHeldBy(thread);
-        }
+    SynchronizedSession(Object monitor) {
+        super(null, new ConfinedSession.ConfinedResourceList(), monitor);
     }
 
     @Override
@@ -86,20 +55,20 @@ final class MutexSession extends MemorySessionImpl {
     @Override
     @ForceInline
     public void release0() {
-        // A keep-alive operation may have released the caller's lock before returning.
+        // A keep-alive operation may have released the caller's monitor before returning.
         ACQUIRE_COUNT.getAndAdd(this, -1);
     }
 
     @Override
     void justClose() {
-        if (!lock.isExclusivelyHeldBy(Thread.currentThread())) throw wrongThread();
+        if (!Thread.holdsLock(monitor)) throw wrongThread();
         checkValidState();
         int count = (int) ACQUIRE_COUNT.getVolatile(this);
         if (count != 0) {
             throw alreadyAcquired(count);
         }
-        // Exclusive ownership excludes concurrent accesses, acquires and closes. Outstanding
-        // acquisitions exclude close even when the lock is temporarily released.
+        // Monitor ownership excludes concurrent accesses, acquires and closes. Outstanding
+        // acquisitions exclude close even when the monitor is temporarily released.
         state = CLOSED;
     }
 }

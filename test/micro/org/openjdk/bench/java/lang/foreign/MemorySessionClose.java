@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,6 @@ import java.lang.foreign.Arena;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @BenchmarkMode(Mode.AverageTime)
 @Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
@@ -64,7 +63,6 @@ public class MemorySessionClose {
     List<byte[]> arrays;
     volatile boolean stop = false;
     List<Thread> threads;
-    final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     @Setup
     public void setup() throws Throwable {
@@ -85,13 +83,11 @@ public class MemorySessionClose {
             }
             threads.forEach(Thread::start);
         }
-        // The caller holds the lock; measure the arena lifecycle without lock acquisition.
-        readWriteLock.writeLock().lock();
+
     }
 
     @TearDown
     public void tearDown() throws Throwable {
-        readWriteLock.writeLock().unlock();
         arrays = null;
         if (threads != null) {
             stop = true;
@@ -115,13 +111,6 @@ public class MemorySessionClose {
     @Benchmark
     public MemorySegment shared_close() {
         try (Arena arena = Arena.ofShared()) {
-            return arena.allocate(ALLOC_SIZE, 4);
-        }
-    }
-
-    @Benchmark
-    public MemorySegment read_write_close() {
-        try (Arena arena = Arena.ofShared(readWriteLock)) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }
