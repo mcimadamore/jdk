@@ -26,15 +26,13 @@
 
 package jdk.internal.foreign;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import jdk.internal.access.JavaUtilConcurrentLocksAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.internal.vm.annotation.ForceInline;
 
 /** A session whose accesses and close are guarded by a caller-held lock. */
-final class MutexSession extends MemorySessionImpl {
+final class SynchronizedSession extends MemorySessionImpl {
     private static final JavaUtilConcurrentLocksAccess LOCK_ACCESS =
             SharedSecrets.getJavaUtilConcurrentLocksAccess();
 
@@ -42,7 +40,7 @@ final class MutexSession extends MemorySessionImpl {
             new ScopedMemoryAccess.ScopedAccessError(() ->
                     new WrongThreadException("Current thread does not own the arena lock"));
 
-    MutexSession(ReentrantReadWriteLock lock) {
+    SynchronizedSession(Object lock) {
         super(null, new SharedSession.SharedResourceList(), LOCK_ACCESS.lock(lock));
     }
 

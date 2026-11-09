@@ -233,7 +233,12 @@ public class ReentrantReadWriteLock
     final Sync sync;
 
     static {
-        SharedSecrets.setJavaUtilConcurrentLocksAccess(lock -> lock.sync);
+        SharedSecrets.setJavaUtilConcurrentLocksAccess(lock ->
+                switch (lock) {
+                    case ReentrantLock reentrantLock -> reentrantLock.sync;
+                    case ReentrantReadWriteLock reentrantReadWriteLock -> reentrantReadWriteLock.sync;
+                    default -> throw new AssertionError();
+                });
     }
 
     /**
@@ -653,7 +658,9 @@ public class ReentrantReadWriteLock
         @Override
         @ForceInline
         public final boolean isHeldBy(Thread thread) {
-            if (thread == Thread.currentThread()) {
+            if (isExclusivelyHeldBy(thread) || firstReader == thread) {
+                return true;
+            } else if (thread == Thread.currentThread()) {
                 var access = SharedSecrets.getJavaLangAccess();
                 if (access != null && access.cachedReadWriteLock() == this) return true;
             }
@@ -662,7 +669,6 @@ public class ReentrantReadWriteLock
 
         @DontInline
         private boolean isHeldBySlow(Thread thread) {
-            if (isExclusivelyHeldBy(thread) || firstReader == thread) return true;
             HoldCounter rh = cachedHoldCounter;
             if (rh != null && rh.tid == LockSupport.getThreadId(thread)) return rh.count > 0;
             // Prototype: arbitrary-thread uncached reader queries need further work.

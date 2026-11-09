@@ -29,6 +29,7 @@ import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.ref.CleanerFactory;
 
 import java.lang.foreign.MemorySegment.Scope;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
@@ -74,9 +75,10 @@ import java.util.function.Consumer;
  * <p>
  * Rather than leaving deallocation in the hands of the Java runtime, clients will often
  * wish to exercise control over the timing of deallocation for regions of memory that
- * back memory segments. Two kinds of arenas support this, namely {@linkplain #ofConfined() confined}
- * and {@linkplain #ofShared() shared} arenas. They both feature bounded lifetimes that
- * are managed manually. For instance, when a confined arena is {@linkplain #close() closed}
+ * back memory segments. Three kinds of arenas support this, namely {@linkplain #ofConfined() confined},
+ * {@linkplain #ofSynchronized(ReentrantLock) synchronized}, and {@linkplain #ofShared() shared}
+ * arenas. They all feature bounded lifetimes that are managed manually. For instance,
+ * when a confined arena is {@linkplain #close() closed}
  * successfully, its scope is {@linkplain Scope#isAlive() invalidated}. As a result, all
  * the memory segments allocated by the arena can no longer be accessed, and their
  * regions of memory are deallocated:
@@ -93,7 +95,7 @@ import java.util.function.Consumer;
  * Memory segments allocated with a {@linkplain #ofConfined() confined arena} can only be
  * accessed (and closed) by the thread that created the arena. If access to a memory
  * segment from multiple threads is required, clients can allocate segments in a
- * {@linkplain #ofShared() shared arena} instead.
+ * {@linkplain #ofSynchronized synchronized arena} or a {@linkplain #ofShared() shared arena} instead.
  * <p>
  * The characteristics of the various arenas are summarized in the following table:
  *
@@ -120,6 +122,10 @@ import java.util.function.Consumer;
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">No</td></tr>
+ * <tr><th scope="row" style="font-weight:normal">Synchronized</th>
+ *     <td style="text-align:center;">Yes</td>
+ *     <td style="text-align:center;">Yes, if closing thread holds lock exclusively</td>
+ *     <td style="text-align:center;">Yes, if accessing thread holds lock</td></tr>
  * <tr><th scope="row" style="font-weight:normal">Shared</th>
  *     <td style="text-align:center;">Yes</td>
  *     <td style="text-align:center;">Yes</td>
@@ -142,7 +148,7 @@ import java.util.function.Consumer;
  * arena might be accessed <em>while</em> another thread attempts, concurrently, to close
  * the arena. To provide the strong temporal safety guarantee without forcing every
  * client, even simple ones, to incur a performance impact, arenas are divided into
- * <em>thread-confined</em> arenas and <em>shared</em> arenas.
+ * <em>thread-confined</em> arenas, <em>synchronized</em> arenas, and <em>shared</em> arenas.
  * <p>
  * Confined arenas, support strong thread-confinement guarantees. Upon creation, they are
  * assigned an <em>owner thread</em>, typically the thread which initiated the creation
@@ -151,15 +157,30 @@ import java.util.function.Consumer;
  * Moreover, any attempt to close the confined arena from a thread other than the owner
  * thread will fail with a {@link WrongThreadException}.
  * <p>
- * Shared arenas, on the other hand, have no owner thread. The segments created by a
- * shared arena can be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by
- * any thread. This might be useful when multiple threads need to access the same memory
- * segment concurrently (e.g. in the case of parallel processing). Moreover, a shared
- * arena can be closed by any thread.
+ * A synchronized arena is associated with a lock, which controls which threads can access
+ * segments created by the arena, and which thread can close the arena. There are two kinds
+ * of synchronized arenas:
+ * <ul>
+ * <li>A mutex arena, associated with a {@linkplain ReentrantLock} lock. The segments created by a
+ * mutex arena can only be {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by a thread
+ * that owns the lock. Moreover, any attempt to close the mutex arena from a thread that doesn't own
+ * the lock will fail with a {@link WrongThreadException}.</li>
+ * <li>A read-write arena, associated with a {@linkplain ReentrantReadWriteLock} lock.
+ * The segments created by a read-write arena can be
+ * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread that owns
+ * either the read lock or the write lock. Moreover, any attempt to close the read-write
+ * arena from a thread that doesn't own the lock exclusively will fail with a
+ * {@link WrongThreadException}.</li>
+ * </ul>
+ * Synchronized arenas might be useful when multiple threads need to access the same
+ * memory segments, provided that access is coordinated using adequate lock operations.
  * <p>
- * A shared arena can also be {@linkplain #ofShared(ReentrantReadWriteLock) guarded}
- * by a read/write lock. Allocation and segment access require the current thread
- * to hold the read or write lock; closing requires the write lock.
+ * Shared arenas, on the other hand, have no owner thread and no associated lock. The
+ * segments created by a shared arena can be
+ * {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} by any thread. Moreover,
+ * a shared arena can be closed by any thread. This might be useful when multiple
+ * threads need to access the same memory segment concurrently, without requiring
+ * access and closure to be coordinated through an associated lock.
  *
  * <h2 id = "custom-arenas">Custom arenas</h2>
  *
@@ -274,20 +295,39 @@ public interface Arena extends SegmentAllocator, AutoCloseable {
     }
 
     /**
-     * Creates a shared arena guarded by the given read/write lock. Allocation and
-     * memory access require a read or write hold; close requires a write hold.
-     * The caller acquires and releases the lock. Creation requires no hold.
-     *
+     * {@return a new mutex synchronized arena guarded by the given reentrant lock}
+     *          Segments allocated with the mutex arena can be
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} only while
+     *          holding the provided lock.
+     *          Similarly, a mutex arena can only be closed
+     *          while holding the provided lock.
      * <p>
      * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
      * are zero-initialized.
      *
      * @param lock the lock controlling access and close
-     * @return a new lock-guarded shared arena
      * @since 28
      */
-    static Arena ofShared(ReentrantReadWriteLock lock) {
-        return MemorySessionImpl.createShared(lock).asArena();
+    static Arena ofSynchronized(ReentrantLock lock) {
+        return MemorySessionImpl.createSynchronized(lock).asArena();
+    }
+
+    /**
+     * {@return a new read-write synchronized arena guarded by the given read/write lock}
+     *          Segments allocated with the read-write arena can be
+     *          {@linkplain MemorySegment#isAccessibleBy(Thread) accessed} only while
+     *          holding either the read lock or the write lock associated with the provided lock.
+     *          Similarly, a read-write arena can only be closed
+     *          while holding the write lock associated with the provided lock.
+     * <p>
+     * Memory segments {@linkplain #allocate(long, long) allocated} by the returned arena
+     * are zero-initialized.
+     *
+     * @param lock the lock controlling access and close
+     * @since 28
+     */
+    static Arena ofSynchronized(ReentrantReadWriteLock lock) {
+        return MemorySessionImpl.createSynchronized(lock).asArena();
     }
 
     /**

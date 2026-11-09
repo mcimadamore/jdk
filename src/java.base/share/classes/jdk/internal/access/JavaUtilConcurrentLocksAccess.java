@@ -26,10 +26,8 @@
 
 package jdk.internal.access;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 public interface JavaUtilConcurrentLocksAccess {
-    Lock lock(ReentrantReadWriteLock lock);
+    Lock lock(Object lock);
 
     interface Lock {
         boolean isHeldBy(Thread thread);

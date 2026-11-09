@@ -37,6 +37,10 @@ package java.util.concurrent.locks;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+
+import jdk.internal.access.JavaUtilConcurrentLocksAccess;
+import jdk.internal.access.SharedSecrets;
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.ReservedStackAccess;
 
 /**
@@ -109,14 +113,15 @@ import jdk.internal.vm.annotation.ReservedStackAccess;
 public class ReentrantLock implements Lock, java.io.Serializable {
     private static final long serialVersionUID = 7373984872572414699L;
     /** @serial Synchronizer providing all implementation mechanics */
-    private final Sync sync;
+    final Sync sync;
 
     /**
      * Base of synchronization control for this lock. Subclassed
      * into fair and nonfair versions below. Uses AQS state to
      * represent the number of holds on the lock.
      */
-    abstract static class Sync extends AbstractQueuedSynchronizer {
+    abstract static class Sync extends AbstractQueuedSynchronizer
+            implements JavaUtilConcurrentLocksAccess.Lock {
         private static final long serialVersionUID = -5179523762034025860L;
 
         /**
@@ -212,6 +217,18 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             throws java.io.IOException, ClassNotFoundException {
             s.defaultReadObject();
             setState(0); // reset to unlocked state
+        }
+
+        @Override
+        @ForceInline
+        public final boolean isExclusivelyHeldBy(Thread thread) {
+            return getExclusiveOwnerThread() == thread;
+        }
+
+        @Override
+        @ForceInline
+        public final boolean isHeldBy(Thread thread) {
+            return isExclusivelyHeldBy(thread);
         }
     }
 

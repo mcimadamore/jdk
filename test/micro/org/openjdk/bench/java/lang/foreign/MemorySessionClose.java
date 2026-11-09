@@ -121,7 +121,7 @@ public class MemorySessionClose {
 
     @Benchmark
     public MemorySegment read_write_close() {
-        try (Arena arena = Arena.ofShared(readWriteLock)) {
+        try (Arena arena = Arena.ofSynchronized(readWriteLock)) {
             return arena.allocate(ALLOC_SIZE, 4);
         }
     }

@@ -59,7 +59,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public abstract sealed class MemorySessionImpl
         implements Scope
-        permits ConfinedSession, GlobalSession, SharedSession, MutexSession {
+        permits ConfinedSession, GlobalSession, SharedSession, SynchronizedSession {
 
     /**
      * The value of the {@code state} of a {@code MemorySessionImpl}. The only possible transition
@@ -154,8 +154,8 @@ public abstract sealed class MemorySessionImpl
         return new ConfinedSession(thread);
     }
 
-    public static MemorySessionImpl createShared(ReentrantReadWriteLock lock) {
-        return new MutexSession(Objects.requireNonNull(lock));
+    public static MemorySessionImpl createSynchronized(Object lock) {
+        return new SynchronizedSession(Objects.requireNonNull(lock));
     }
 
     public static MemorySessionImpl createShared() {
@@ -216,7 +216,7 @@ public abstract sealed class MemorySessionImpl
             throw WRONG_THREAD;
         }
         if (lock != null && !lock.isHeldBy(Thread.currentThread())) {
-            throw MutexSession.LOCK_NOT_HELD;
+            throw SynchronizedSession.LOCK_NOT_HELD;
         }
         if (state < OPEN) {
             throw ALREADY_CLOSED;

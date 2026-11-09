@@ -23,80 +23,93 @@
 package org.openjdk.bench.java.lang.foreign;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
+
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
+import jdk.internal.misc.Unsafe;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.openjdk.jmh.annotations.*;
-import static java.lang.foreign.ValueLayout.JAVA_INT;
+
+import static java.lang.foreign.ValueLayout.*;
 
 @BenchmarkMode(Mode.AverageTime)
-@Warmup(iterations = 3, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(org.openjdk.jmh.annotations.Scope.Thread)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Fork(2)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED" })
 public class LoopOverNonConstantReadWrite extends JavaLayouts {
-    static final int ELEM_SIZE = 1_000_000;
-    @Param({"SHARED", "READ_WRITE"}) public String kind;
-    @Param({"FIRST", "CACHED", "THREAD_LOCAL", "WRITE"}) public String reader;
-    final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    final CountDownLatch stop = new CountDownLatch(1);
-    final List<Thread> holders = new ArrayList<>();
-    Arena arena;
-    MemorySegment segment;
 
-    void addReader() throws InterruptedException {
-        CountDownLatch ready = new CountDownLatch(1);
-        Thread holder = Thread.ofPlatform().start(() -> {
-            lock.readLock().lock();
-            try {
-                ready.countDown();
-                stop.await();
-            } catch (InterruptedException ex) {
-                throw new AssertionError(ex);
-            } finally {
-                lock.readLock().unlock();
-            }
-        });
-        holders.add(holder);
-        ready.await();
+    static final Unsafe unsafe = Utils.unsafe;
+
+    static final int ELEM_SIZE = 1_000_000;
+    static final int CARRIER_SIZE = (int)JAVA_INT.byteSize();
+    static final int ALLOC_SIZE = ELEM_SIZE * CARRIER_SIZE;
+
+    static final VarHandle VH_SEQ_INT = bindToZeroOffset(MemoryLayout.sequenceLayout(ELEM_SIZE, JAVA_INT).varHandle(PathElement.sequenceElement()));
+    static final VarHandle VH_SEQ_INT_UNALIGNED = bindToZeroOffset(MemoryLayout.sequenceLayout(ELEM_SIZE, JAVA_INT.withByteAlignment(1)).varHandle(PathElement.sequenceElement()));
+
+    static VarHandle bindToZeroOffset(VarHandle varHandle) {
+        return MethodHandles.insertCoordinates(varHandle, 1, 0L);
     }
 
+    final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    Arena arena;
+    MemorySegment segment;
+    long unsafe_addr;
+
+    ByteBuffer byteBuffer;
+
     @Setup
-    public void setup() throws InterruptedException {
-        arena = kind.equals("READ_WRITE") ? Arena.ofShared(lock) : Arena.ofShared();
-        lock.writeLock().lock();
-        try {
-            segment = arena.allocate((long) ELEM_SIZE * Integer.BYTES, Integer.BYTES);
-            for (int i = 0; i < ELEM_SIZE; i++) segment.setAtIndex(JAVA_INT, i, i);
-        } finally {
-            lock.writeLock().unlock();
+    public void setup() {
+        unsafe_addr = unsafe.allocateMemory(ALLOC_SIZE);
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            unsafe.putInt(unsafe_addr + (i * CARRIER_SIZE) , i);
         }
-        if (reader.equals("WRITE")) {
-            lock.writeLock().lock();
-        } else {
-            if (!reader.equals("FIRST")) addReader();
-            lock.readLock().lock();
-            if (reader.equals("THREAD_LOCAL")) addReader();
+        // Construction is allowed without owning the lock. Ownership is external
+        // to the timed accesses, so this measures the arena's checks, not locking.
+        arena = Arena.ofSynchronized(lock);
+        lock.writeLock().lock();
+        segment = arena.allocate(ALLOC_SIZE, 1);
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            VH_INT.set(segment, (long) i, i);
+        }
+        byteBuffer = ByteBuffer.allocateDirect(ALLOC_SIZE).order(ByteOrder.nativeOrder());
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            byteBuffer.putInt(i * CARRIER_SIZE , i);
         }
     }
 
     @TearDown
-    public void tearDown() throws InterruptedException {
-        if (!reader.equals("WRITE")) {
-            lock.readLock().unlock();
-            stop.countDown();
-            for (Thread holder : holders) holder.join();
-            lock.writeLock().lock();
-        }
+    public void tearDown() {
         try {
             arena.close();
         } finally {
             lock.writeLock().unlock();
         }
+        unsafe.invokeCleaner(byteBuffer);
+        unsafe.freeMemory(unsafe_addr);
+    }
+
+    @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public int unsafe_get() {
+        return unsafe.getInt(unsafe_addr);
     }
 
     @Benchmark
@@ -106,9 +119,113 @@ public class LoopOverNonConstantReadWrite extends JavaLayouts {
     }
 
     @Benchmark
+    @OutputTimeUnit(TimeUnit.NANOSECONDS)
+    public int BB_get() {
+        return byteBuffer.getInt(0);
+    }
+
+    @Benchmark
+    public int unsafe_loop() {
+        int res = 0;
+        for (int i = 0; i < ELEM_SIZE; i ++) {
+            res += unsafe.getInt(unsafe_addr + (i * CARRIER_SIZE));
+        }
+        return res;
+    }
+
+    @Benchmark
     public int segment_loop() {
         int sum = 0;
-        for (int i = 0; i < ELEM_SIZE; i++) sum += (int) VH_INT.get(segment, (long) i);
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_INT.get(segment, (long) i);
+        }
         return sum;
     }
+
+    @Benchmark
+    public int segment_loop_unaligned() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_INT_UNALIGNED.get(segment, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_nested() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_SEQ_INT.get(segment, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_nested_unaligned() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_SEQ_INT_UNALIGNED.get(segment, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_instance() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += segment.get(JAVA_INT, i * CARRIER_SIZE);
+
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_instance_index() {
+        int sum = 0;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += segment.getAtIndex(JAVA_INT, i);
+
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_instance_unaligned() {
+        int res = 0;
+        for (int i = 0; i < ELEM_SIZE; i ++) {
+            res += segment.get(JAVA_INT_UNALIGNED, i * CARRIER_SIZE);
+        }
+        return res;
+    }
+
+    @Benchmark
+    public int segment_loop_slice() {
+        int sum = 0;
+        MemorySegment base = segment.asSlice(0, segment.byteSize());
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_INT.get(base, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int segment_loop_readonly() {
+        int sum = 0;
+        MemorySegment base = segment.asReadOnly();
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += (int) VH_INT.get(base, (long) i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int BB_loop() {
+        int sum = 0;
+        ByteBuffer bb = byteBuffer;
+        for (int i = 0; i < ELEM_SIZE; i++) {
+            sum += bb.getInt(i * CARRIER_SIZE);
+        }
+        return sum;
+    }
+
 }

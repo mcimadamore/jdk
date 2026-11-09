@@ -22,28 +22,18 @@
  */
 package org.openjdk.bench.java.lang.foreign;
 
+import jdk.internal.misc.Unsafe;
+import org.openjdk.jmh.annotations.*;
+
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.BenchmarkMode;
-import org.openjdk.jmh.annotations.Fork;
-import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
-import org.openjdk.jmh.annotations.Warmup;
-import jdk.internal.misc.Unsafe;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.foreign.ValueLayout.*;
 
@@ -53,7 +43,7 @@ import static java.lang.foreign.ValueLayout.*;
 @State(org.openjdk.jmh.annotations.Scope.Thread)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 3, jvmArgs = { "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED" })
-public class LoopOverNonConstantLocked extends JavaLayouts {
+public class LoopOverNonConstantMutex extends JavaLayouts {
 
     static final Unsafe unsafe = Utils.unsafe;
 
@@ -68,7 +58,7 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         return MethodHandles.insertCoordinates(varHandle, 1, 0L);
     }
 
-    final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    final ReentrantLock lock = new ReentrantLock();
     Arena arena;
     MemorySegment segment;
     long unsafe_addr;
@@ -83,8 +73,8 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         }
         // Construction is allowed without owning the lock. Ownership is external
         // to the timed accesses, so this measures the arena's checks, not locking.
-        arena = Arena.ofShared(lock);
-        lock.writeLock().lock();
+        arena = Arena.ofSynchronized(lock);
+        lock.lock();
         segment = arena.allocate(ALLOC_SIZE, 1);
         for (int i = 0; i < ELEM_SIZE; i++) {
             VH_INT.set(segment, (long) i, i);
@@ -100,7 +90,7 @@ public class LoopOverNonConstantLocked extends JavaLayouts {
         try {
             arena.close();
         } finally {
-            lock.writeLock().unlock();
+            lock.unlock();
         }
         unsafe.invokeCleaner(byteBuffer);
         unsafe.freeMemory(unsafe_addr);

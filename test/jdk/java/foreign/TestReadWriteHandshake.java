@@ -80,7 +80,7 @@ public class TestReadWriteHandshake {
     @MethodSource("accessors")
     public void testHandshake(String testName, AccessorFactory accessorFactory) throws Exception {
         for (int it = 0 ; it < ITERATIONS ; it++) {
-            Arena arena = Arena.ofShared(LOCK);
+            Arena arena = Arena.ofSynchronized(LOCK);
             MemorySegment segment;
             ExecutorService accessExecutor = Executors.newCachedThreadPool();
             List<Future<?>> tasks = new ArrayList<>();
